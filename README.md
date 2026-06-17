@@ -6,6 +6,7 @@ A Cursor Agent Skill for maintaining simple, useful changelogs:
 
 - `CHANGELOG.md` for customer-facing release notes.
 - `DEVELOPER_CHANGELOG.md` for internal technical history.
+- Bootstrap missing changelog files and backfill them from git history.
 - Optional release-note data for in-app "What's New" surfaces, release pages,
   app store notes, or other product-facing release summaries.
 
@@ -66,7 +67,9 @@ cp skills/simple-changelogs/SKILL.md .cursor/skills/simple-changelogs/SKILL.md
 Use this skill when asking an agent to:
 
 - Update `CHANGELOG.md`.
-- Add or backfill `DEVELOPER_CHANGELOG.md`.
+- Create `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md` when they do not exist yet.
+- Backfill customer and developer changelogs from git history, tags, releases,
+  package versions, or deployment milestones.
 - Prepare release notes.
 - Decide whether a change is customer-facing.
 - Summarize technical changes for maintainers.

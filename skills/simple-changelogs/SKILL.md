@@ -12,13 +12,60 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` for maintainers who need plain technical context
   without reading raw commit logs.
 
+## Bootstrap And Backfill
+
+When `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md` does not exist, create it. Do
+not stop at "file not found" if the user asked for changelog work.
+
+Use this structure for new files:
+
+```md
+# Changelog
+
+## Unreleased
+
+- ...
+```
+
+```md
+# Developer Changelog
+
+## Unreleased
+
+- ...
+```
+
+For a git-history backfill:
+
+1. Find release boundaries first:
+   - `git tag --sort=-creatordate`
+   - existing GitHub/GitLab releases, package versions, app versions, or
+     deployment milestones when available
+2. If tags or releases exist, backfill one range at a time with
+   `git log --oneline <previous-tag>..<tag>` and inspect important commits with
+   `git show --stat --summary --format=fuller <sha>`.
+3. If no release boundaries exist, walk history in batches with
+   `git log --oneline --reverse` or paginated `git log --skip=<n>` ranges, then
+   group entries by date, milestone, or coherent feature area.
+4. Summarize outcomes, not commits. Combine related commits into one grouped
+   entry and leave out churn, reversions, failed experiments, and internal-only
+   details from `CHANGELOG.md`.
+5. Put useful technical history in `DEVELOPER_CHANGELOG.md`, especially
+   migrations, data model changes, parser or pipeline behavior, release-note
+   plumbing, tests, operational changes, and workflow changes.
+6. Mark uncertainty plainly when old commits do not reveal shipped behavior.
+   Prefer a conservative omission over inventing user impact.
+
+For large histories, produce a short backfill plan first, then work in reviewable
+batches instead of rewriting the whole history in one pass.
+
 ## Workflow
 
 1. Inspect repo context first:
    - `git status --short --branch`
    - `git log --oneline --decorate --max-count=25`
-   - existing `CHANGELOG.md`
-   - existing `DEVELOPER_CHANGELOG.md`
+   - existing `CHANGELOG.md`, or create it if missing and needed
+   - existing `DEVELOPER_CHANGELOG.md`, or create it if missing and useful
    - affected app/package versions when version tracking is part of the task
    - pushed refs when the task involves pushing, merging, creating a pull or
      merge request, publishing, or deploying
