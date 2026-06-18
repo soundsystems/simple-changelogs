@@ -207,10 +207,21 @@ same pass:
 - Update every affected app, package, or release-note version field to match the
   current changelog release heading unless the repo documents independent
   per-surface versioning.
+- Handle routine version tracking end to end when release intent and repo policy
+  are clear. Do not ask for human approval just to align local changelog,
+  release-note, app, or workspace metadata.
 - For repos with independent versioning, update only the fields the repo
   declares as product-facing or release-note-facing. Do not override deployment
   IDs, EAS/build numbers, Changesets, or package versions owned by a separate
   release flow.
+- When a remote release system is the source of truth, run the repo's read-only
+  verification command when available. If release prep requires changing remote
+  metadata, do it only when the task asks for release prep and the repo documents
+  the command; otherwise report the exact command and missing credential or
+  release decision.
+- Ask for help only when the version level, shipped surface, release timing,
+  source-of-truth policy, or required remote credentials cannot be determined
+  from local context.
 - Do not leave an affected workspace's current app/package metadata behind the
   changelog version just because the changelog text was already written.
 - In the final response, explain which version fields changed, which fields were

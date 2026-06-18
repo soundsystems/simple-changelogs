@@ -12,6 +12,11 @@
     already aligned, and which were intentionally skipped.
 - Generalized the README wording so the skill is described as agent-neutral,
   while keeping Cursor install commands as examples.
+- Expanded the install examples for Codex, Claude Code, Cursor, all-agent CLI
+  installs, and common manual skill directories.
+- Clarified that agents should handle routine version tracking themselves when
+  release intent and repo policy are clear, escalating only for ambiguous release
+  decisions or unavailable remote credentials.
 
 ## 2026-06-17
 

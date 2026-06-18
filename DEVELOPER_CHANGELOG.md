@@ -12,6 +12,11 @@
     intentionally skipped version fields.
 - Updated README phrasing from Cursor-specific skill language to agent-neutral
   language while preserving Cursor as one install example.
+- Added explicit Codex, Claude Code, Cursor, and all-agent install examples to
+  the README, plus common manual install paths.
+- Tightened the version-tracking instructions so agents own local version
+  alignment and only escalate for unclear SemVer/surface decisions, source-of-
+  truth policy, release timing, or missing remote credentials.
 
 ## 2026-06-17
 

@@ -19,20 +19,31 @@ turning the developer changelog into a raw commit log.
 Use the [Skills CLI](https://skills.sh/docs) with `bunx` or `pnpx`:
 
 ```bash
-# Cursor example (global, non-interactive)
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs -a cursor -g -y
+# Codex (global, non-interactive)
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
 
-# Same install with pnpm
-pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs -a cursor -g -y
+# Claude Code (global, non-interactive)
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent claude-code -g -y
 
-# List skills in this repo before installing
-pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --list
+# Cursor (global, non-interactive)
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent cursor -g -y
+
+# Install for every supported agent the CLI detects
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent '*' -g -y
 ```
 
-Install to the current project instead of globally by omitting `-g`.
+Use `pnpx` instead of `bunx` if that is your preferred package runner:
 
-Other agents: replace `-a cursor` with your agent, or use `--all` to install
-everywhere the CLI detects.
+```bash
+pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
+```
+
+Install to the current project instead of globally by omitting `-g`. List the
+skills in this repo before installing with:
+
+```bash
+pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --list
+```
 
 ## skills.sh discovery
 
@@ -46,18 +57,34 @@ README badge above links to the skills.sh page once indexing picks it up.
 If the badge or leaderboard page is not live yet, installs still work from the
 GitLab URL above.
 
-## Manual install
+## Manual Install
 
-Copy the skill file into your agent's skill directory. For Cursor:
+The Skills CLI is preferred because it knows each agent's current skill
+location. For manual installs, copy the skill file into the skill directory your
+agent reads. Common locations are:
 
 ```bash
+# Codex
+mkdir -p ~/.codex/skills/simple-changelogs
+cp skills/simple-changelogs/SKILL.md ~/.codex/skills/simple-changelogs/SKILL.md
+
+# Claude Code
+mkdir -p ~/.claude/skills/simple-changelogs
+cp skills/simple-changelogs/SKILL.md ~/.claude/skills/simple-changelogs/SKILL.md
+
+# Cursor
 mkdir -p ~/.cursor/skills/simple-changelogs
 cp skills/simple-changelogs/SKILL.md ~/.cursor/skills/simple-changelogs/SKILL.md
 ```
 
-For a project skill:
+For project-local installs, use the project skill directory your agent supports:
 
 ```bash
+# Shared project agent directory used by the Skills CLI for several agents
+mkdir -p .agents/skills/simple-changelogs
+cp skills/simple-changelogs/SKILL.md .agents/skills/simple-changelogs/SKILL.md
+
+# Cursor project directory
 mkdir -p .cursor/skills/simple-changelogs
 cp skills/simple-changelogs/SKILL.md .cursor/skills/simple-changelogs/SKILL.md
 ```
