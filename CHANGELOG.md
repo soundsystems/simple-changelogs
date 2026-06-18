@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-18
+
+- Added explicit version-sync guidance:
+  - Agents are now told to find and update affected app, package, and
+    release-note version fields in the same pass as release changelog work.
+  - Repos with independent release policies now get a clear exception for
+    deployment IDs, EAS/build numbers, Changesets, and separately versioned
+    package flows.
+  - Final responses should explain which version fields changed, which were
+    already aligned, and which were intentionally skipped.
+- Generalized the README wording so the skill is described as agent-neutral,
+  while keeping Cursor install commands as examples.
+
 ## 2026-06-17
 
 - Added clearer first-run changelog setup:

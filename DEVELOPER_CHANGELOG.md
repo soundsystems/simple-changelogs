@@ -1,5 +1,18 @@
 # Developer Changelog
 
+## 2026-06-18
+
+- Expanded release version tracking guidance in the `simple-changelogs` skill:
+  - Agents now search for affected app, package, and release-note version fields
+    during explicit version-tracking or release-prep work.
+  - Added guidance for repos that use independent release systems such as
+    deployment metadata, EAS/build numbers, Changesets, or package-specific
+    version flows.
+  - Final summaries now need to explain changed, already-aligned, and
+    intentionally skipped version fields.
+- Updated README phrasing from Cursor-specific skill language to agent-neutral
+  language while preserving Cursor as one install example.
+
 ## 2026-06-17
 
 - Published the skill in the canonical Skills CLI catalog layout:

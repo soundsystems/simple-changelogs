@@ -2,7 +2,7 @@
 
 [![skills.sh](https://skills.sh/b/soundsystems/simple-changelogs)](https://skills.sh/soundsystems/simple-changelogs)
 
-A Cursor Agent Skill for maintaining simple, useful changelogs:
+An agent skill for maintaining simple, useful changelogs:
 
 - `CHANGELOG.md` for customer-facing release notes.
 - `DEVELOPER_CHANGELOG.md` for internal technical history.
@@ -16,10 +16,10 @@ turning the developer changelog into a raw commit log.
 
 ## Install
 
-Use the [Skills CLI](https://skills.sh/docs) with `bunx`, `pnpx`, or `npx`:
+Use the [Skills CLI](https://skills.sh/docs) with `bunx` or `pnpx`:
 
 ```bash
-# Cursor (global, non-interactive)
+# Cursor example (global, non-interactive)
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs -a cursor -g -y
 
 # Same install with pnpm
@@ -48,7 +48,7 @@ GitLab URL above.
 
 ## Manual install
 
-Copy the skill file into a Cursor skill directory:
+Copy the skill file into your agent's skill directory. For Cursor:
 
 ```bash
 mkdir -p ~/.cursor/skills/simple-changelogs
@@ -86,5 +86,5 @@ Use this skill when asking an agent to:
 
 ## Files
 
-- `skills/simple-changelogs/SKILL.md` - the Cursor Agent Skill.
+- `skills/simple-changelogs/SKILL.md` - the agent skill.
 - `README.md` - public usage notes for this repository.

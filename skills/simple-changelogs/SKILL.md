@@ -66,7 +66,8 @@ batches instead of rewriting the whole history in one pass.
    - `git log --oneline --decorate --max-count=25`
    - existing `CHANGELOG.md`, or create it if missing and needed
    - existing `DEVELOPER_CHANGELOG.md`, or create it if missing and useful
-   - affected app/package versions when version tracking is part of the task
+   - affected app/package versions and release-note version fields when version
+     tracking is part of the task
    - pushed refs when the task involves pushing, merging, creating a pull or
      merge request, publishing, or deploying
    - deployment target and pending release contents when deploying publicly
@@ -196,6 +197,25 @@ Use semantic versioning unless the repo has a different published convention:
 Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior or
 published package contract changes.
+
+When preparing a release or doing explicit version-tracking work, keep the
+changelog, release-note data, and app/workspace version fields aligned in the
+same pass:
+
+- Find version fields with repo context first, then targeted searches such as
+  `rg -n '"version"|appVersion|runtimeVersion|buildNumber|versionCode'`.
+- Update every affected app, package, or release-note version field to match the
+  current changelog release heading unless the repo documents independent
+  per-surface versioning.
+- For repos with independent versioning, update only the fields the repo
+  declares as product-facing or release-note-facing. Do not override deployment
+  IDs, EAS/build numbers, Changesets, or package versions owned by a separate
+  release flow.
+- Do not leave an affected workspace's current app/package metadata behind the
+  changelog version just because the changelog text was already written.
+- In the final response, explain which version fields changed, which fields were
+  already aligned, and which were intentionally skipped because of repo release
+  policy.
 
 ## Release Notes And What's New
 
