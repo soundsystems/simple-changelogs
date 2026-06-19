@@ -7,8 +7,8 @@ An agent skill for maintaining simple, useful changelogs:
 - `CHANGELOG.md` for customer-facing release notes.
 - `DEVELOPER_CHANGELOG.md` for internal technical history.
 - Bootstrap missing changelog files and backfill them from git history.
-- Optional release-note data for in-app "What's New" surfaces, release pages,
-  app store notes, or other product-facing release summaries.
+- Optional release-note data for in-app "What's New" surfaces, release pages, app
+  store notes, or other product-facing release summaries.
 
 The skill helps agents decide what belongs in each changelog, keep technical
 details out of customer-facing notes, and preserve maintainer context without
@@ -19,23 +19,29 @@ turning the developer changelog into a raw commit log.
 Use the [Skills CLI](https://skills.sh/docs) with `bunx` or `pnpx`:
 
 ```bash
-# Codex (global, non-interactive)
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
-
-# Claude Code (global, non-interactive)
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent claude-code -g -y
-
-# Cursor (global, non-interactive)
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent cursor -g -y
-
-# Install for every supported agent the CLI detects
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent '*' -g -y
 ```
 
-Use `pnpx` instead of `bunx` if that is your preferred package runner:
+Use `pnpx` instead of `bunx` if preferred:
 
 ```bash
 pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
+```
+
+### Specific Agents
+
+```bash
+# Codex
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
+
+# Claude Code
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent claude-code -g -y
+
+# Cursor
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent cursor -g -y
+
+# All supported agents detected by the CLI
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent '*' -g -y
 ```
 
 Install to the current project instead of globally by omitting `-g`. List the
@@ -45,48 +51,54 @@ skills in this repo before installing with:
 pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --list
 ```
 
-## skills.sh discovery
-
-There is no manual submission or scraping step. [skills.sh](https://skills.sh)
-ranks skills from anonymous install telemetry sent by the Skills CLI when
-people run `skills add`.
-
-After installs accumulate, this repo should appear on the leaderboard. The
-README badge above links to the skills.sh page once indexing picks it up.
-
-If the badge or leaderboard page is not live yet, installs still work from the
-GitLab URL above.
-
 ## Manual Install
 
 The Skills CLI is preferred because it knows each agent's current skill
-location. For manual installs, copy the skill file into the skill directory your
-agent reads. Common locations are:
+location. For manual installs, copy `SKILL.md` into the skill directory your
+agent reads.
+
+### Hermes
+
+```bash
+mkdir -p ~/.hermes/skills/simple-changelogs
+cp SKILL.md ~/.hermes/skills/simple-changelogs/SKILL.md
+```
+
+### Eve (Vercel)
+
+Place the skill in your agent's `.vercel/skills` directory:
+
+```bash
+mkdir -p .vercel/skills/simple-changelogs
+cp SKILL.md .vercel/skills/simple-changelogs/SKILL.md
+```
+
+### Other Agents
 
 ```bash
 # Codex
 mkdir -p ~/.codex/skills/simple-changelogs
-cp skills/simple-changelogs/SKILL.md ~/.codex/skills/simple-changelogs/SKILL.md
+cp SKILL.md ~/.codex/skills/simple-changelogs/SKILL.md
 
 # Claude Code
 mkdir -p ~/.claude/skills/simple-changelogs
-cp skills/simple-changelogs/SKILL.md ~/.claude/skills/simple-changelogs/SKILL.md
+cp SKILL.md ~/.claude/skills/simple-changelogs/SKILL.md
 
 # Cursor
 mkdir -p ~/.cursor/skills/simple-changelogs
-cp skills/simple-changelogs/SKILL.md ~/.cursor/skills/simple-changelogs/SKILL.md
+cp SKILL.md ~/.cursor/skills/simple-changelogs/SKILL.md
 ```
 
 For project-local installs, use the project skill directory your agent supports:
 
 ```bash
-# Shared project agent directory used by the Skills CLI for several agents
+# Shared project agent directory used by several agents
 mkdir -p .agents/skills/simple-changelogs
-cp skills/simple-changelogs/SKILL.md .agents/skills/simple-changelogs/SKILL.md
+cp SKILL.md .agents/skills/simple-changelogs/SKILL.md
 
 # Cursor project directory
 mkdir -p .cursor/skills/simple-changelogs
-cp skills/simple-changelogs/SKILL.md .cursor/skills/simple-changelogs/SKILL.md
+cp SKILL.md .cursor/skills/simple-changelogs/SKILL.md
 ```
 
 ## When To Use It
@@ -113,5 +125,5 @@ Use this skill when asking an agent to:
 
 ## Files
 
-- `skills/simple-changelogs/SKILL.md` - the agent skill.
+- `SKILL.md` - the agent skill.
 - `README.md` - public usage notes for this repository.

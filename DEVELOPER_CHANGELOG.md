@@ -14,6 +14,9 @@
   language while preserving Cursor as one install example.
 - Added explicit Codex, Claude Code, Cursor, and all-agent install examples to
   the README, plus common manual install paths.
+- Fixed README code spans and command blocks after the root-level `SKILL.md`
+  flattening so the public docs no longer omit file names, runners, or copy
+  paths.
 - Tightened the version-tracking instructions so agents own local version
   alignment and only escalate for unclear SemVer/surface decisions, source-of-
   truth policy, release timing, or missing remote credentials.

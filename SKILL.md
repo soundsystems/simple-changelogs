@@ -261,3 +261,29 @@ Before finalizing, review the diff and confirm:
 
 For changelog-only edits, diff review is usually enough. When version, package,
 or code files changed as part of the same task, run the repo's relevant checks.
+
+## Scope & Limitations
+
+This skill is for maintaining **human-readable changelogs and release notes**. It does not:
+- Generate screenshots, videos, or store assets
+- Create Git tags or GitHub/GitLab releases
+- Automatically bump versions in code (it only aligns existing version fields when the task involves release prep)
+- Work on non-git projects
+- Replace dedicated release automation tools
+
+Use it together with other skills for full release workflows.
+
+## When This Skill Should Be Considered (Even If Not Explicitly Asked)
+
+The agent should **automatically consider** this skill (or explicitly decide against it) in these situations:
+
+- Preparing a PR/MR that targets main, master, or a production branch
+- Any work involving version bumps, releases, or deployment
+- “Triage recent changes”, “get us back on main”, or similar instructions
+- PRs/MRs that touch user-facing surfaces (UI, APIs, CLI, docs, onboarding, etc.)
+
+In these cases the agent should either:
+1. Update the changelogs as part of the task, or
+2. Explicitly state: “No customer-facing changelog updates needed” + a short reason.
+
+For small internal-only PRs (tests, refactors, dev tooling, CI changes with no user impact), the agent can skip without calling the full skill.

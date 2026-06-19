@@ -14,6 +14,8 @@
   while keeping Cursor install commands as examples.
 - Expanded the install examples for Codex, Claude Code, Cursor, all-agent CLI
   installs, and common manual skill directories.
+- Fixed the README so changelog file names, install commands, and manual copy
+  paths render correctly after the root-level skill layout change.
 - Clarified that agents should handle routine version tracking themselves when
   release intent and repo policy are clear, escalating only for ambiguous release
   decisions or unavailable remote credentials.
