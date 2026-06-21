@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Clarified version bump guidance:
+  - Version changes are now based on shipped impact, compatibility, release
+    boundaries, and repo policy instead of calendar dates or implementation
+    duration.
+  - Pre-1.0 projects now get clearer guidance to use minor bumps for durable
+    product direction, workflow, public surface, or contract changes without
+    treating every significant change as a major release.
+  - Patch, minor, major, and pre-1.0 decisions now have clearer criteria that
+    should work as defaults while remaining easy for teams to customize.
+
 ## 2026-06-18
 
 - Added explicit version-sync guidance:

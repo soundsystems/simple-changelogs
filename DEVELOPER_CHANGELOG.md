@@ -1,5 +1,19 @@
 # Developer Changelog
 
+## Unreleased
+
+- Tightened the `Version Decisions` section in `SKILL.md`:
+  - Added an explicit rule that elapsed time, date changes, branch duration, and
+    commit count are batching context only, not version bump signals.
+  - Replaced the short SemVer bullets with a more detailed patch/minor/major
+    rubric based on user impact, compatibility, contract changes, migrations,
+    and product direction.
+  - Added pre-1.0-specific guidance for when to use `0.x.y` patch bumps,
+    `0.(x+1).0` minor bumps, and `1.0.0`, while deferring to repo policy for
+    teams that model pre-1.0 breaking boundaries differently.
+- Updated `README.md` to describe smart version bump decisions as a core skill
+  behavior.
+
 ## 2026-06-18
 
 - Expanded release version tracking guidance in the `simple-changelogs` skill:

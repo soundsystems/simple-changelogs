@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, and app-themed "What's New" surfaces. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn out of pre-release and pre-1.0 user-facing logs unless users can see, do, understand, or trust something materially different.
+description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, app-themed "What's New" surfaces, and smart SemVer/version bump decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, version bumping, SemVer decisions, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn out of pre-release and pre-1.0 user-facing logs unless users can see, do, understand, or trust something materially different.
 ---
 
 # Simple Changelogs
@@ -245,7 +245,9 @@ not been assigned to a product release yet.
 
 ## Version Decisions
 
-Treat changelog versions as release boundaries, not commit batches.
+Treat changelog versions as release boundaries, not commit batches, date
+changes, or measures of implementation time. A new day, a long-running branch, or
+several commits is not enough reason to bump a version.
 
 Before changing versions, answer:
 
@@ -253,19 +255,48 @@ Before changing versions, answer:
 2. Is it shipped now, being prepared for release, or still internal work?
 3. Which shipped surface changed: web, mobile, API, backend data, docs, package,
    CLI, integration, or multiple surfaces?
-4. Is the release a patch, minor, or major?
-5. Do `CHANGELOG.md`, release-note data, and affected version fields agree?
+4. What durable impact changed: repair, polish, capability, workflow, contract,
+   migration, or product direction?
+5. Is the release a patch, minor, or major?
+6. Do `CHANGELOG.md`, release-note data, and affected version fields agree?
 
 Use semantic versioning unless the repo has a different published convention:
 
-- Patch for fixes and small visible improvements.
-- Minor for new user-facing capabilities or meaningful workflow changes.
-- Major for a new product era or a change that breaks established expectations.
+- Patch for fixes, compatibility-preserving repairs, narrow UX polish, small
+  visible improvements, and stabilization that does not introduce a new durable
+  capability or contract.
+- Minor for new user-facing capabilities, meaningful workflow improvements,
+  compatible API/data additions, important onboarding or trust improvements, or a
+  few cohesive changes that significantly improve the user experience without
+  breaking established expectations.
+- Major for incompatible API, data, workflow, or package contract changes;
+  removals or renames of established capabilities; migrations that users or
+  operators must plan around; or an explicit new product era.
+
+Use elapsed time only as batching context. It can justify grouping related small
+changes into one release, but it must not decide the bump level.
 
 For pre-`1.0.0` products, treat every `0.x.y` section as pre-release unless the
-repo has an explicit public release contract. During that period, avoid
-customer-facing patch-note churn for hot fixes; roll durable product outcomes
-into the next meaningful release section instead.
+repo has an explicit public release contract. During that period:
+
+- Do not treat every significant change as a major bump just because the product
+  is still taking shape.
+- Use `0.x.y` patch bumps for repairs, small UX improvements, compatible
+  stabilization, and release-candidate cleanup that is worth
+  publishing.
+- Use `0.(x+1).0` minor bumps more often than post-`1.0.0` when the release adds
+  a durable capability, changes product direction, reshapes a primary workflow,
+  introduces a public surface, or changes an API/data contract before it is
+  stable.
+- Reserve `1.0.0` for an explicit stability, public contract, or launch
+  milestone. Do not jump to `1.0.0` just because a pre-`1.0.0` feature feels
+  large.
+- When the repo treats pre-`1.0.0` minor bumps as compatibility-breaking
+  boundaries, mention the break plainly in the changelog and developer
+  changelog, but follow the repo policy instead of inventing a separate major
+  scheme.
+- Avoid customer-facing patch-note churn for hot fixes; roll durable product
+  outcomes into the next meaningful release section instead.
 
 Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior or

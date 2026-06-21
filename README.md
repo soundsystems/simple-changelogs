@@ -9,6 +9,8 @@ An agent skill for maintaining simple, useful changelogs:
 - Bootstrap missing changelog files and backfill them from git history.
 - Optional release-note data for in-app "What's New" surfaces, release pages, app
   store notes, or other product-facing release summaries.
+- Smart version bump decisions based on shipped impact, compatibility, and repo
+  policy instead of calendar dates or implementation duration.
 
 The skill helps agents decide what belongs in each changelog, keep technical
 details out of customer-facing notes, and preserve maintainer context without
@@ -121,6 +123,8 @@ Use this skill when asking an agent to:
 - Developer changelog entries that explain migrations, data model changes,
   parser behavior, tests, release-note structures, and process changes simply.
 - Grouped feature entries when one feature includes several related changes.
+- Version bumps that distinguish patch, minor, major, and pre-1.0 release
+  boundaries without forcing one team's policy onto every project.
 - Explicit "no changelog needed" decisions for internal-only work.
 
 ## Files
