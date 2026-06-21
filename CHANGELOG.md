@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Tightened customer changelog rules for visual hot fixes:
+  - Narrow visual fixes now stay out of customer-facing changelogs unless they
+    change a durable user capability, trust or safety behavior, access, shopping
+    flow, or a broadly noticeable UX surface.
+  - The customer impact gate now asks agents to look for durable or broadly
+    noticeable user impact before writing user-facing notes.
 - Clarified version bump guidance:
   - Version changes are now based on shipped impact, compatibility, release
     boundaries, and repo policy instead of calendar dates or implementation

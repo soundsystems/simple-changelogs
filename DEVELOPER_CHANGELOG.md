@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Tightened the `Customer Changelog` and hot-fix guidance in `SKILL.md`:
+  - Added explicit exclusion language for narrow visual hot fixes unless they
+    affect durable capability, trust/safety behavior, access, shopping flow, or a
+    broadly noticeable UX surface.
+  - Updated the frontmatter description and customer impact gate so skill
+    triggering and execution both carry the narrower customer-facing threshold.
 - Tightened the `Version Decisions` section in `SKILL.md`:
   - Added an explicit rule that elapsed time, date changes, branch duration, and
     commit count are batching context only, not version bump signals.

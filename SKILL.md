@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, app-themed "What's New" surfaces, and smart SemVer/version bump decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, version bumping, SemVer decisions, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn out of pre-release and pre-1.0 user-facing logs unless users can see, do, understand, or trust something materially different.
+description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, app-themed "What's New" surfaces, and smart SemVer/version bump decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, version bumping, SemVer decisions, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn and narrow visual fixes out of customer-facing logs unless users can see, do, understand, or trust something materially different.
 ---
 
 # Simple Changelogs
@@ -77,7 +77,8 @@ batches instead of rewriting the whole history in one pass.
    commit titles.
 3. Apply the customer impact gate before writing a customer changelog bullet.
    Include a change only when it changes what a user, customer, stakeholder, or
-   operator can see, do, understand, or trust.
+   operator can see, do, understand, or trust in a durable or broadly noticeable
+   way.
 4. Keep developer-only work out of `CHANGELOG.md`. Put useful technical context
    in `DEVELOPER_CHANGELOG.md` instead.
 5. If a change mixes technical work with visible behavior, write only the
@@ -142,9 +143,11 @@ Treat `alpha`, `beta`, `Pre-1.0`, and every `0.x.y` version before an explicit
 During pre-release:
 
 - Keep routine hot fixes, regression repairs, test-release churn, temporary
-  workarounds, and cleanup out of the user-facing changelog.
+  workarounds, narrow visual fixes, and cleanup out of the user-facing
+  changelog.
 - Add a user-facing entry only when the change materially affects trust,
-  onboarding, compliance, payment, safety, access, or a durable user capability.
+  onboarding, compliance, payment, shopping flow, safety, access, a broadly
+  noticeable UX surface, or a durable user capability.
 - Prefer folding small fixes into the next meaningful feature or milestone entry
   instead of publishing patch-by-patch customer notes.
 - Preserve useful internal detail in `DEVELOPER_CHANGELOG.md`, a PR/MR body, or a
@@ -170,9 +173,13 @@ Include:
 
 Exclude:
 
+- Narrow visual hot fixes unless they change a durable user capability,
+  trust/safety behavior, access, shopping flow, or a broadly noticeable UX
+  surface.
 - Routine hot-fix-only entries in `alpha`, `beta`, `Pre-1.0`, or any `0.x.y`
   release before an explicit `1.0.0`, unless they materially change user trust,
-  onboarding, compliance, payment, safety, access, or durable capability.
+  onboarding, compliance, payment, shopping flow, safety, access, a broadly
+  noticeable UX surface, or durable capability.
 - Linting, formatting, dependency bumps, CI, build config, package-manager
   changes, tests, migrations, refactors, type-only edits, internal docs, or
   schema plumbing with no visible behavior change.
