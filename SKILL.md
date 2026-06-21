@@ -364,6 +364,14 @@ For app-themed "What's New" surfaces:
 - Use the changelog or release-note data as the source of truth; do not maintain
   separate copy by hand.
 - Preserve the same version order and grouped structure the app UI can support.
+- Make headline capabilities easier to scan than minor updates. Group related
+  major feature bullets under a plain feature heading, put those groups before
+  narrow fixes, and keep polish or small repairs as shorter lower-priority
+  bullets.
+- Do not let narrow fixes visually compete with launch-level work. When a
+  release includes primary workflow, access, shopping, safety, trust, or durable
+  capability improvements, make those outcomes the first things returning users
+  can scan.
 - Auto-show at most once per release to returning users.
 - Keep manual access available from a menu, account area, help surface, or public
   changelog page.
@@ -385,6 +393,8 @@ Before finalizing, review the diff and confirm:
 - Customer bullets inside each version are ordered by affected-surface radius.
 - Pre-release and pre-`1.0.0` hot-fix churn is excluded from customer-facing
   logs unless it meets the material-impact gate.
+- Major feature groups stand out above minor fixes in app "What's New" surfaces
+  and public release-note pages.
 - Customer wording is plain, concise, and audience-appropriate.
 - `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
   like a raw commit log.

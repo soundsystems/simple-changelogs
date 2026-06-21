@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Improved "What's New" hierarchy guidance:
+  - Agents are now told to make headline capabilities easier to scan than minor
+    updates by grouping major feature bullets above narrow fixes.
+  - App release-note surfaces should keep small polish and repair notes lower
+    priority so they do not visually compete with launch-level work.
 - Tightened customer changelog rules for visual hot fixes:
   - Narrow visual fixes now stay out of customer-facing changelogs unless they
     change a durable user capability, trust or safety behavior, access, shopping

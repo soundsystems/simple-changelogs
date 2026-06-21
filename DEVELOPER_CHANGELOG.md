@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Tightened the `Release Notes And What's New` guidance in `SKILL.md`:
+  - Added explicit hierarchy rules so headline capabilities group above narrow
+    fixes in app "What's New" surfaces and public release-note pages.
+  - Added a verification check that major feature groups stand out above minor
+    fixes before finalizing changelog or release-note work.
 - Tightened the `Customer Changelog` and hot-fix guidance in `SKILL.md`:
   - Added explicit exclusion language for narrow visual hot fixes unless they
     affect durable capability, trust/safety behavior, access, shopping flow, or a
