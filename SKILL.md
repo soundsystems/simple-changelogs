@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing changelogs, internal developer changelogs, and release notes. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release-note data, app "What's New" content, version tracking, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, or deciding whether a change belongs in a changelog.
+description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, and app-themed "What's New" surfaces. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn out of pre-release and pre-1.0 user-facing logs unless users can see, do, understand, or trust something materially different.
 ---
 
 # Simple Changelogs
@@ -83,10 +83,75 @@ batches instead of rewriting the whole history in one pass.
 5. If a change mixes technical work with visible behavior, write only the
    visible outcome in `CHANGELOG.md` and put implementation details in
    `DEVELOPER_CHANGELOG.md`.
-6. Before pushing, merging, opening a pull or merge request, publishing a
+6. Order customer-facing entries inside each version by affected-surface radius,
+   not commit order.
+7. Before pushing, merging, opening a pull or merge request, publishing a
    release, or deploying publicly, make the changelog decision explicit. If no
    customer-facing update is needed, say so and explain whether the developer
    changelog needs an entry.
+
+## Changelog Entry Lifecycle
+
+Use `Unreleased` for meaningful work that has not been assigned to a release
+yet.
+
+While work is still changing, keep changelog bullets accurate:
+
+- Add entries for customer-visible changes and maintainer-relevant technical
+  changes.
+- Revise entries when the implementation or user impact changes.
+- Remove entries for reverted, abandoned, or no-longer-relevant work.
+
+Before pushing, merging, opening a pull or merge request, publishing, or
+deploying:
+
+- Re-read the final diff or relevant commits.
+- Confirm whether each `Unreleased` entry is still true.
+- Leave merged-but-unshipped work under `Unreleased` unless the repo treats merge
+  to the target branch as a production release.
+- Move shipped or release-prep entries from `Unreleased` into the matching
+  version/date heading.
+- Apply the pre-release hot-fix omission rules below before adding or keeping any
+  user-facing entry.
+
+## Release Ordering
+
+Order customer-facing bullets inside each version by affected-surface radius,
+not by commit order or implementation order:
+
+1. Trust, safety, privacy, legal, compliance, onboarding, payment, or release
+   boundary behavior.
+2. Cross-surface or multi-role capabilities that change a primary workflow.
+3. Data-quality, ingest, sync, search, taxonomy, or backend behavior that changes
+   what users see or prevents bad data from reaching them.
+4. Surface-specific feature work.
+5. Polish, wording refinements, visual cleanup, and narrow bug fixes.
+
+If a release mixes broad and narrow impact, move narrow-impact updates below broad
+ones before syncing release-note data.
+
+Group related entries under a plain feature heading when a feature area has
+multiple visible changes. Do not preserve chronological commit order when it
+makes the release harder for users to scan.
+
+## Pre-Release And Hot Fixes
+
+Treat `alpha`, `beta`, `Pre-1.0`, and every `0.x.y` version before an explicit
+`1.0.0` declaration as pre-release.
+
+During pre-release:
+
+- Keep routine hot fixes, regression repairs, test-release churn, temporary
+  workarounds, and cleanup out of the user-facing changelog.
+- Add a user-facing entry only when the change materially affects trust,
+  onboarding, compliance, payment, safety, access, or a durable user capability.
+- Prefer folding small fixes into the next meaningful feature or milestone entry
+  instead of publishing patch-by-patch customer notes.
+- Preserve useful internal detail in `DEVELOPER_CHANGELOG.md`, a PR/MR body, or a
+  worklog.
+
+After `1.0.0`, patch releases can include narrow user-facing fixes, but still
+omit implementation-only repair work.
 
 ## Customer Changelog
 
@@ -105,6 +170,9 @@ Include:
 
 Exclude:
 
+- Routine hot-fix-only entries in `alpha`, `beta`, `Pre-1.0`, or any `0.x.y`
+  release before an explicit `1.0.0`, unless they materially change user trust,
+  onboarding, compliance, payment, safety, access, or durable capability.
 - Linting, formatting, dependency bumps, CI, build config, package-manager
   changes, tests, migrations, refactors, type-only edits, internal docs, or
   schema plumbing with no visible behavior change.
@@ -194,6 +262,11 @@ Use semantic versioning unless the repo has a different published convention:
 - Minor for new user-facing capabilities or meaningful workflow changes.
 - Major for a new product era or a change that breaks established expectations.
 
+For pre-`1.0.0` products, treat every `0.x.y` section as pre-release unless the
+repo has an explicit public release contract. During that period, avoid
+customer-facing patch-note churn for hot fixes; roll durable product outcomes
+into the next meaningful release section instead.
+
 Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior or
 published package contract changes.
@@ -242,6 +315,24 @@ release-note surfaces used by the product, such as:
 Keep release-note versions and dates identical to their changelog headings.
 Mirror the same grouped structure when the product UI supports nested notes.
 
+If an app has authenticated, returning, or session-based users and no "What's
+New" surface yet, add one when customer-facing release notes are part of the
+product. Pull from the same user-facing changelog or release-note data, style it
+in the app's own theme, keep the body constrained and scrollable, and make the
+header and dismiss action persistent.
+
+For app-themed "What's New" surfaces:
+
+- Use the changelog or release-note data as the source of truth; do not maintain
+  separate copy by hand.
+- Preserve the same version order and grouped structure the app UI can support.
+- Auto-show at most once per release to returning users.
+- Keep manual access available from a menu, account area, help surface, or public
+  changelog page.
+- Never use the modal as onboarding for brand-new users.
+- At a new major version, reset the modal to that major's relevant release
+  history; within a major, append minor and patch sections newest first.
+
 If a release has no customer-facing or UX-impacting bullets, do not update
 customer-facing release-note surfaces. Say explicitly that no customer release
 notes are needed.
@@ -253,37 +344,21 @@ Before finalizing, review the diff and confirm:
 - Every customer changelog bullet answers what a user can see, do, understand,
   or trust now.
 - No customer bullet is DX-only or purely implementation detail.
+- Customer bullets inside each version are ordered by affected-surface radius.
+- Pre-release and pre-`1.0.0` hot-fix churn is excluded from customer-facing
+  logs unless it meets the material-impact gate.
 - Customer wording is plain, concise, and audience-appropriate.
 - `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
   like a raw commit log.
-- Release-note data and version fields match the changelog when they are part of
-  the release.
+- Release-note data, app "What's New" surfaces, and version fields match the
+  changelog when they are part of the release.
 
 For changelog-only edits, diff review is usually enough. When version, package,
 or code files changed as part of the same task, run the repo's relevant checks.
 
-## Scope & Limitations
+## Boundaries
 
-This skill is for maintaining **human-readable changelogs and release notes**. It does not:
-- Generate screenshots, videos, or store assets
-- Create Git tags or GitHub/GitLab releases
-- Automatically bump versions in code (it only aligns existing version fields when the task involves release prep)
-- Work on non-git projects
-- Replace dedicated release automation tools
-
-Use it together with other skills for full release workflows.
-
-## When This Skill Should Be Considered (Even If Not Explicitly Asked)
-
-The agent should **automatically consider** this skill (or explicitly decide against it) in these situations:
-
-- Preparing a PR/MR that targets main, master, or a production branch
-- Any work involving version bumps, releases, or deployment
-- “Triage recent changes”, “get us back on main”, or similar instructions
-- PRs/MRs that touch user-facing surfaces (UI, APIs, CLI, docs, onboarding, etc.)
-
-In these cases the agent should either:
-1. Update the changelogs as part of the task, or
-2. Explicitly state: “No customer-facing changelog updates needed” + a short reason.
-
-For small internal-only PRs (tests, refactors, dev tooling, CI changes with no user impact), the agent can skip without calling the full skill.
+Use this skill for human-readable changelogs and release notes. Do not use it to
+generate screenshots, create Git tags, create GitHub/GitLab releases, replace
+dedicated release automation, or invent version policy that the repo does not
+document.
