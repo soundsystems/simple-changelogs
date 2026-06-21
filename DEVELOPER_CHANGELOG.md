@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+## 2026-06-21
+
+- Tightened the changelog entry lifecycle guidance in `SKILL.md`:
+  - Added default-branch release guidance for public skill repos, package docs,
+    static changelog pages, and release-note data consumed directly from the
+    branch.
+  - Clarified that shipped entries should be moved out of `Unreleased` before
+    pushing, merging, publishing, or deploying.
 - Tightened the `Release Notes And What's New` guidance in `SKILL.md`:
   - Added explicit hierarchy rules so headline capabilities group above narrow
     fixes in app "What's New" surfaces and public release-note pages.

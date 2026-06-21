@@ -110,8 +110,13 @@ deploying:
 - Confirm whether each `Unreleased` entry is still true.
 - Leave merged-but-unshipped work under `Unreleased` unless the repo treats merge
   to the target branch as a production release.
+- Treat a push or merge to the default branch as a shipped release when users
+  install, read, or consume directly from that branch, such as public skill repos,
+  package docs, static changelog pages, or default-branch app release-note data.
 - Move shipped or release-prep entries from `Unreleased` into the matching
-  version/date heading.
+  version/date heading before pushing, merging, publishing, or deploying.
+- Do not leave entries under `Unreleased` after a public default-branch release
+  unless the repo documents a separate release system that has not shipped yet.
 - Apply the pre-release hot-fix omission rules below before adding or keeping any
   user-facing entry.
 

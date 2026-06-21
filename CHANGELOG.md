@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+## 2026-06-21
+
+- Clarified default-branch release boundaries:
+  - Public repos that users install, read, or consume directly from the default
+    branch now get clearer guidance to treat pushes and merges to that branch as
+    shipped releases.
+  - Agents are now told to move shipped entries out of `Unreleased` before
+    pushing, merging, publishing, or deploying.
 - Improved "What's New" hierarchy guidance:
   - Agents are now told to make headline capabilities easier to scan than minor
     updates by grouping major feature bullets above narrow fixes.
