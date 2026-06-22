@@ -4,6 +4,17 @@
 
 No unreleased changes.
 
+## 2026-06-22
+
+- Tightened the public `simple-changelogs` lifecycle guidance:
+  - Replaced forge-specific release wording with provider-neutral hosted release
+    language.
+  - Added release-bearing target branch checks for default, production,
+    protected release, and direct-consumption public repo branches.
+  - Added explicit production/public deployment and later pull/merge request
+    reconciliation triggers for moving shipped `Unreleased` entries into
+    released changelog, release-note, version, and developer changelog sections.
+
 ## 2026-06-21
 
 - Tightened copy-update guidance in `SKILL.md`:

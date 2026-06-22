@@ -39,7 +39,7 @@ For a git-history backfill:
 
 1. Find release boundaries first:
    - `git tag --sort=-creatordate`
-   - existing GitHub/GitLab releases, package versions, app versions, or
+   - existing repository-hosted releases, package versions, app versions, or
      deployment milestones when available
 2. If tags or releases exist, backfill one range at a time with
    `git log --oneline <previous-tag>..<tag>` and inspect important commits with
@@ -108,11 +108,42 @@ deploying:
 
 - Re-read the final diff or relevant commits.
 - Confirm whether each `Unreleased` entry is still true.
-- Leave merged-but-unshipped work under `Unreleased` unless the repo treats merge
-  to the target branch as a production release.
-- Treat a push or merge to the default branch as a shipped release when users
-  install, read, or consume directly from that branch, such as public skill repos,
-  package docs, static changelog pages, or default-branch app release-note data.
+- Fetch or inspect the target refs involved in the task. Treat the default
+  branch, production branches, protected release branches, and documented
+  release targets as release-bearing when users install, read, consume, or
+  deploy directly from them.
+- Leave merged-but-unshipped work under `Unreleased` only when the repo clearly
+  documents a separate release system that has not shipped yet.
+- Treat a push or merge to a release-bearing branch as release finalization when
+  users install, read, or consume directly from that branch, such as public skill
+  repos, package docs, static changelog pages, or default-branch app release-note
+  data.
+- When the user asks you to create pull or merge requests and merge them, treat
+  the merge into a release-bearing target branch as release finalization. Move
+  the shipped customer-facing `Unreleased` entries into the matching
+  version/date heading before the run is finished, then sync release-note
+  surfaces and affected version fields when the release has customer-facing
+  bullets.
+- When the user asks you to push, publish, or run a production or public
+  deployment, treat that deployment as release finalization even if no branch
+  merge is part of the request. Before deploying, move the shipped
+  customer-facing `Unreleased` entries into the matching version/date heading,
+  sync release-note surfaces and affected version fields when applicable, and
+  leave only still-unshipped work under `Unreleased`.
+- When preparing a new pull or merge request, check whether existing
+  `Unreleased` entries are already present on the release-bearing target branch.
+  Use the target branch changelog files, commit history, diffs, and commit
+  containment as evidence. If the work is already on the target branch, reconcile
+  it before opening the new request: move those entries out of `Unreleased` into
+  the matching released heading, sync release-note surfaces and version metadata
+  when applicable, and keep only still-unmerged or still-unshipped work under
+  `Unreleased`.
+- If `Unreleased` mixes entries that are already on the target branch with
+  entries that are still local or still pending, split them. Move only the
+  target-branch-contained entries into the released section.
+- Move shipped or release-prep developer notes from `DEVELOPER_CHANGELOG.md`
+  `Unreleased` into the same version/date heading when they belong to that
+  release.
 - Move shipped or release-prep entries from `Unreleased` into the matching
   version/date heading before pushing, merging, publishing, or deploying.
 - Do not leave entries under `Unreleased` after a public default-branch release
@@ -420,6 +451,6 @@ or code files changed as part of the same task, run the repo's relevant checks.
 ## Boundaries
 
 Use this skill for human-readable changelogs and release notes. Do not use it to
-generate screenshots, create Git tags, create GitHub/GitLab releases, replace
-dedicated release automation, or invent version policy that the repo does not
-document.
+generate screenshots, create Git tags, create hosted repository releases,
+replace dedicated release automation, or invent version policy that the repo
+does not document.

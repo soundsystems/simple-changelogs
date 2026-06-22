@@ -4,6 +4,18 @@
 
 No unreleased changes.
 
+## 2026-06-22
+
+- Clarified release-finalization triggers:
+  - Production and public deployments now explicitly move shipped entries out of
+    `Unreleased` before deploying, even when no branch merge is involved.
+  - Pull and merge request prep now checks whether existing `Unreleased` entries
+    are already on a release-bearing target branch and reconciles them before
+    opening new work.
+  - Release-bearing branch guidance is provider-neutral, covering default,
+    production, protected release, and direct-consumption public repo branches
+    without depending on a specific forge.
+
 ## 2026-06-21
 
 - Clarified copy-update changelog rules:
