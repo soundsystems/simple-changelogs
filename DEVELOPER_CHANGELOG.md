@@ -2,6 +2,14 @@
 
 ## 2026-06-22
 
+- Tightened pre-`1.0.0` customer changelog omission rules in `SKILL.md`:
+  - Added explicit guidance to keep embarrassing baseline defects that should
+    already work out of user-facing pre-release changelogs.
+  - Added examples for omitted pre-1.0 repairs, including broken login,
+    checkout crashes, and missing saved data.
+  - Updated verification coverage so agents exclude those repairs unless they
+    meet the material-impact gate and can be framed without advertising the
+    defect.
 - Added post-`1.0.0` public bug-fix framing rules in `SKILL.md`:
   - Added examples that convert raw regression, metadata, and query-failure
     descriptions into user-outcome changelog bullets.

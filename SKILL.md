@@ -217,13 +217,18 @@ Treat `alpha`, `beta`, `Pre-1.0`, and every `0.x.y` version before an explicit
 During pre-release:
 
 - Keep routine hot fixes, regression repairs, test-release churn, temporary
-  workarounds, narrow visual fixes, and cleanup out of the user-facing
-  changelog.
+  workarounds, narrow visual fixes, cleanup, and baseline defects that should
+  already work out of the user-facing changelog.
 - Add a user-facing entry only when the change materially affects trust,
   onboarding, compliance, payment, shopping flow, safety, access, a broadly
   noticeable UX surface, or a durable user capability.
 - Prefer folding small fixes into the next meaningful feature or milestone entry
   instead of publishing patch-by-patch customer notes.
+- Do not advertise embarrassing pre-`1.0.0` repairs as public product news. Omit
+  entries such as "fixed broken login," "fixed checkout crashes," or "fixed
+  missing saved data" unless the release note can truthfully frame a material
+  trust, access, safety, payment, compliance, onboarding, or durable capability
+  improvement without exposing the defect.
 - Preserve useful internal detail in `DEVELOPER_CHANGELOG.md`, a PR/MR body, or a
   worklog.
 
@@ -501,8 +506,9 @@ Before finalizing, review the diff and confirm:
 - No copy-only bullet is included unless it changes user understanding, trust,
   access, legal/compliance meaning, pricing, setup, or error recovery.
 - Customer bullets inside each version are ordered by affected-surface radius.
-- Pre-release and pre-`1.0.0` hot-fix churn is excluded from customer-facing
-  logs unless it meets the material-impact gate.
+- Pre-release and pre-`1.0.0` hot-fix churn, regressions, and embarrassing
+  baseline defects are excluded from customer-facing logs unless they meet the
+  material-impact gate and can be framed without advertising the defect.
 - Post-`1.0.0` public bug-fix bullets describe the user-visible outcome without
   exposing blame, embarrassing root causes, incident details, or sensitive
   implementation internals.

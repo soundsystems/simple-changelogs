@@ -2,6 +2,13 @@
 
 ## 2026-06-22
 
+- Tightened pre-1.0 repair omission rules:
+  - Agents now avoid advertising embarrassing baseline defects that should
+    already work, such as broken login, checkout crashes, or missing saved data,
+    as public product news during pre-1.0 releases.
+  - Pre-1.0 repair notes now need a material trust, access, safety, payment,
+    compliance, onboarding, or durable capability reason before appearing in
+    customer-facing changelogs.
 - Added public-safe post-1.0 fix wording:
   - Patch release notes now describe user-visible repair outcomes without
     exposing blame, embarrassing root causes, incident details, or sensitive
