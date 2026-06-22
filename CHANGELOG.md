@@ -2,6 +2,15 @@
 
 ## 2026-06-22
 
+- Added release-safety guardrails:
+  - Agents now need explicit release intent before moving entries out of
+    `Unreleased`, syncing release-note surfaces, or changing version fields.
+  - Version synchronization now only applies to fields proven by local repo
+    evidence to belong to the same release flow.
+  - Hidden, disabled, preview, prototype, and internal-only surfaces no longer
+    count as customer-facing release-note surfaces just because code exists.
+  - Creating a new in-app "What's New" surface now requires an explicit task or
+    documented repo release policy.
 - Simplified empty `Unreleased` handling:
   - Agents are now told to omit `Unreleased` entirely when there are no pending
     changes instead of leaving placeholder text.

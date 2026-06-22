@@ -7,8 +7,8 @@ An agent skill for maintaining simple, useful changelogs:
 - `CHANGELOG.md` for customer-facing release notes.
 - `DEVELOPER_CHANGELOG.md` for internal technical history.
 - Bootstrap missing changelog files and backfill them from git history.
-- Optional release-note data for in-app "What's New" surfaces, release pages, app
-  store notes, or other product-facing release summaries.
+- Optional release-note data for documented product-facing "What's New" surfaces,
+  release pages, app store notes, or other release summaries.
 - Smart version bump decisions based on shipped impact, compatibility, and repo
   policy instead of calendar dates or implementation duration.
 
@@ -111,11 +111,11 @@ Use this skill when asking an agent to:
 - Create `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md` when they do not exist yet.
 - Backfill customer and developer changelogs from git history, tags, releases,
   package versions, or deployment milestones.
-- Prepare release notes.
+- Prepare release notes for documented user-facing release surfaces.
 - Decide whether a change is customer-facing.
 - Summarize technical changes for maintainers.
-- Publish, merge, release, or deploy changes where changelog coverage should be
-  checked first.
+- Publish, merge, release, or deploy changes when the task or repo policy
+  explicitly ties that work to changelog or release-note coverage.
 
 ## What It Encourages
 

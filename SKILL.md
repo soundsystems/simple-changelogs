@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, app-themed "What's New" surfaces, and smart SemVer/version bump decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, version bumping, SemVer decisions, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn, routine copy edits, and narrow visual fixes out of customer-facing logs unless users can see, do, understand, or trust something materially different.
+description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, documented product-facing "What's New" surfaces, and SemVer/version decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, documented product release-note surfaces, version tracking, version bumping, SemVer decisions, release prep with changelog or release-note coverage, changelog backfills, ordering release entries by impact, or deciding whether a change belongs in a changelog. Do not use for generic deployment, commit summaries, or UI work unless the task or repo policy explicitly connects that work to changelog or release-note handling. Keeps hot-fix churn, routine copy edits, and narrow visual fixes out of customer-facing logs unless users can see, do, understand, or trust something materially different.
 ---
 
 # Simple Changelogs
@@ -111,8 +111,32 @@ While work is still changing, keep changelog bullets accurate:
 - Revise entries when the implementation or user impact changes.
 - Remove entries for reverted, abandoned, or no-longer-relevant work.
 
-Before pushing, merging, opening a pull or merge request, publishing, or
-deploying:
+Do not move entries out of `Unreleased`, bump versions, or sync release-note
+surfaces merely because a task touches git, a branch, a preview, or a deploy
+command. First establish release intent from local evidence:
+
+- The user asks to release, publish, deploy publicly, close a release, bump a
+  version, update release notes, or merge into a release-bearing branch.
+- Repo docs, release automation, CI, package metadata, app-store metadata, or
+  deployment config identify the current action as release finalization.
+- Users install, read, consume, or deploy directly from the target branch or
+  published artifact affected by the task.
+
+If the task is only preparing a feature branch, draft pull or merge request,
+internal preview, staging deploy, code review, or non-release commit, keep
+pending work under `Unreleased`. Do not sync versions or release-note surfaces
+unless the task explicitly asks for release prep.
+
+Before opening a pull or merge request, pushing non-release work, or handing off
+pending work:
+
+- Re-read the final diff or relevant commits.
+- Confirm whether each `Unreleased` entry is still true.
+- Keep still-unshipped entries under `Unreleased`.
+- Make the changelog decision explicit. If no customer-facing update is needed,
+  say so and explain whether the developer changelog needs an entry.
+
+Before pushing, merging, publishing, or deploying with release intent:
 
 - Re-read the final diff or relevant commits.
 - Confirm whether each `Unreleased` entry is still true.
@@ -120,6 +144,10 @@ deploying:
   branch, production branches, protected release branches, and documented
   release targets as release-bearing when users install, read, consume, or
   deploy directly from them.
+- Do not infer release-bearing status from a branch name alone. If local docs,
+  release automation, deployment config, package metadata, or direct-consumption
+  evidence do not establish the branch as release-bearing, treat it as pending
+  work and report the ambiguity instead of finalizing the release.
 - Leave merged-but-unshipped work under `Unreleased` only when the repo clearly
   documents a separate release system that has not shipped yet.
 - Treat a push or merge to a release-bearing branch as release finalization when
@@ -363,16 +391,18 @@ published package contract changes.
 
 When preparing a release or doing explicit version-tracking work, keep the
 changelog, release-note data, and app/workspace version fields aligned in the
-same pass:
+same pass only after release intent and source-of-truth policy are clear:
 
 - Find version fields with repo context first, then targeted searches such as
   `rg -n '"version"|appVersion|runtimeVersion|buildNumber|versionCode'`.
-- Update every affected app, package, or release-note version field to match the
-  current changelog release heading unless the repo documents independent
-  per-surface versioning.
-- Handle routine version tracking end to end when release intent and repo policy
-  are clear. Do not ask for human approval just to align local changelog,
-  release-note, app, or workspace metadata.
+- Update only affected app, package, or release-note version fields that local
+  docs, config, tests, or release data identify as belonging to this release
+  flow. Match the current changelog release heading unless the repo documents
+  independent per-surface versioning.
+- Handle routine version tracking end to end when release intent, shipped
+  surface, and repo policy are clear. Do not ask for human approval just to align
+  local changelog, release-note, app, or workspace metadata that is proven to be
+  part of the same release flow.
 - For repos with independent versioning, update only the fields the repo
   declares as product-facing or release-note-facing. Do not override deployment
   IDs, EAS/build numbers, Changesets, or package versions owned by a separate
@@ -385,16 +415,18 @@ same pass:
 - Ask for help only when the version level, shipped surface, release timing,
   source-of-truth policy, or required remote credentials cannot be determined
   from local context.
-- Do not leave an affected workspace's current app/package metadata behind the
-  changelog version just because the changelog text was already written.
+- If policy is unclear, leave version fields unchanged, explain what evidence is
+  missing, and avoid inventing a versioning relationship.
+- Do not leave a proven affected workspace's current app/package metadata behind
+  the changelog version just because the changelog text was already written.
 - In the final response, explain which version fields changed, which fields were
   already aligned, and which were intentionally skipped because of repo release
   policy.
 
 ## Release Notes And What's New
 
-When a release has customer-facing changelog bullets, also update any user-facing
-release-note surfaces used by the product, such as:
+When a release has customer-facing changelog bullets, also update documented
+user-facing release-note surfaces used by the product, such as:
 
 - In-app "What's New" screens or modals.
 - Release-note data modules.
@@ -402,14 +434,24 @@ release-note surfaces used by the product, such as:
 - App store, extension store, or marketplace notes.
 - Email or notification release summaries.
 
+Treat a surface as user-facing only when local evidence shows users, customers,
+stakeholders, or operators can actually see it. Good evidence includes routing,
+navigation, app shell access, authenticated returning-user flows, public docs,
+release-note data consumed by a deployed product, marketplace metadata, or a
+public website. Do not assume a named app, route, module, prototype, preview,
+hidden screen, disabled feature, or internal-only tool is customer-facing merely
+because code exists.
+
 Keep release-note versions and dates identical to their changelog headings.
 Mirror the same grouped structure when the product UI supports nested notes.
 
 If an app has authenticated, returning, or session-based users and no "What's
-New" surface yet, add one when customer-facing release notes are part of the
-product. Pull from the same user-facing changelog or release-note data, style it
-in the app's own theme, keep the body constrained and scrollable, and make the
-header and dismiss action persistent.
+New" surface yet, add one only when the task asks for product release-note UI or
+the repo documents that such a surface is part of release prep. Otherwise report
+that no documented surface exists and keep the changelog or release-note data as
+the source of truth. When adding one, pull from the same user-facing changelog or
+release-note data, style it in the app's own theme, keep the body constrained
+and scrollable, and make the header and dismiss action persistent.
 
 For app-themed "What's New" surfaces:
 
@@ -452,8 +494,13 @@ Before finalizing, review the diff and confirm:
 - Customer wording is plain, concise, and audience-appropriate.
 - `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
   like a raw commit log.
+- Release intent is established before entries move out of `Unreleased`, version
+  fields change, or release-note surfaces sync.
 - Release-note data, app "What's New" surfaces, and version fields match the
-  changelog when they are part of the release.
+  changelog only when they are documented as part of the release flow or
+  explicitly requested.
+- Hidden, disabled, preview, prototype, or internal-only surfaces are not treated
+  as customer-facing without evidence of real user or operator visibility.
 - Empty `Unreleased` sections are removed after release finalization, and
   `Unreleased` exists only when it contains pending entries.
 

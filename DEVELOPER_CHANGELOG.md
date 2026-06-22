@@ -2,6 +2,20 @@
 
 ## 2026-06-22
 
+- Added release-intent and surface-visibility guardrails in `SKILL.md`:
+  - Added a release-intent gate before entries move out of `Unreleased`, version
+    fields change, or release-note surfaces sync.
+  - Split non-release pull/merge request and handoff behavior from release
+    finalization behavior.
+  - Required local evidence before treating a branch as release-bearing.
+  - Tightened version metadata updates so only fields proven to belong to the
+    same release flow are changed.
+  - Added guidance that named apps, hidden routes, previews, prototypes,
+    disabled features, and internal-only tools are not customer-facing without
+    evidence of real user or operator visibility.
+- Updated `README.md` trigger language to avoid activating the skill for generic
+  deploys, commit summaries, or UI work that is not tied to changelog or
+  release-note coverage.
 - Tightened empty `Unreleased` section handling in `SKILL.md`:
   - Added lifecycle guidance to omit `Unreleased` when no pending entries exist.
   - Added release-finalization guidance to remove empty `Unreleased` headings
