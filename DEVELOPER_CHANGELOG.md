@@ -1,11 +1,13 @@
 # Developer Changelog
 
-## Unreleased
-
-No unreleased changes.
-
 ## 2026-06-22
 
+- Tightened empty `Unreleased` section handling in `SKILL.md`:
+  - Added lifecycle guidance to omit `Unreleased` when no pending entries exist.
+  - Added release-finalization guidance to remove empty `Unreleased` headings
+    from both changelog files after shipped entries move into a released section.
+  - Added verification coverage so agents check that `Unreleased` exists only
+    when it contains pending entries.
 - Tightened the public `simple-changelogs` lifecycle guidance:
   - Replaced forge-specific release wording with provider-neutral hosted release
     language.

@@ -17,7 +17,7 @@ Maintain two complementary histories:
 When `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md` does not exist, create it. Do
 not stop at "file not found" if the user asked for changelog work.
 
-Use this structure for new files:
+Use this structure for new files when adding pending unreleased work:
 
 ```md
 # Changelog
@@ -34,6 +34,9 @@ Use this structure for new files:
 
 - ...
 ```
+
+If creating a changelog with no pending unreleased entries yet, omit
+`## Unreleased` until the first pending change exists.
 
 For a git-history backfill:
 
@@ -96,6 +99,11 @@ batches instead of rewriting the whole history in one pass.
 Use `Unreleased` for meaningful work that has not been assigned to a release
 yet.
 
+Keep `Unreleased` present only while it has at least one real entry. When no
+pending changes exist, omit the section entirely instead of writing placeholder
+text such as "No unreleased changes." When new pending work appears, recreate
+`## Unreleased` at the top of the changelog, before the first released heading.
+
 While work is still changing, keep changelog bullets accurate:
 
 - Add entries for customer-visible changes and maintainer-relevant technical
@@ -148,6 +156,8 @@ deploying:
   version/date heading before pushing, merging, publishing, or deploying.
 - Do not leave entries under `Unreleased` after a public default-branch release
   unless the repo documents a separate release system that has not shipped yet.
+- After all pending entries have moved into a released section, remove the empty
+  `Unreleased` heading from both customer and developer changelogs.
 - Apply the pre-release hot-fix omission rules below before adding or keeping any
   user-facing entry.
 
@@ -444,6 +454,8 @@ Before finalizing, review the diff and confirm:
   like a raw commit log.
 - Release-note data, app "What's New" surfaces, and version fields match the
   changelog when they are part of the release.
+- Empty `Unreleased` sections are removed after release finalization, and
+  `Unreleased` exists only when it contains pending entries.
 
 For changelog-only edits, diff review is usually enough. When version, package,
 or code files changed as part of the same task, run the repo's relevant checks.

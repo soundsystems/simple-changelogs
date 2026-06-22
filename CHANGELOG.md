@@ -1,11 +1,14 @@
 # Changelog
 
-## Unreleased
-
-No unreleased changes.
-
 ## 2026-06-22
 
+- Simplified empty `Unreleased` handling:
+  - Agents are now told to omit `Unreleased` entirely when there are no pending
+    changes instead of leaving placeholder text.
+  - After release finalization, empty `Unreleased` sections are removed from both
+    customer and developer changelogs.
+  - New pending work recreates `## Unreleased` at the top of the changelog before
+    the first released heading.
 - Clarified release-finalization triggers:
   - Production and public deployments now explicitly move shipped entries out of
     `Unreleased` before deploying, even when no branch merge is involved.
