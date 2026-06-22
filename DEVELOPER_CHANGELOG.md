@@ -2,6 +2,14 @@
 
 ## 2026-06-22
 
+- Added post-`1.0.0` public bug-fix framing rules in `SKILL.md`:
+  - Added examples that convert raw regression, metadata, and query-failure
+    descriptions into user-outcome changelog bullets.
+  - Added verification coverage to keep blame, embarrassing root causes,
+    incident details, and sensitive implementation internals out of public
+    changelog and "What's New" copy.
+  - Directed maintainer-only root-cause detail to `DEVELOPER_CHANGELOG.md`,
+    pull or merge request notes, or incident records.
 - Added release-intent and surface-visibility guardrails in `SKILL.md`:
   - Added a release-intent gate before entries move out of `Unreleased`, version
     fields change, or release-note surfaces sync.

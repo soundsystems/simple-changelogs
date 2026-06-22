@@ -2,6 +2,13 @@
 
 ## 2026-06-22
 
+- Added public-safe post-1.0 fix wording:
+  - Patch release notes now describe user-visible repair outcomes without
+    exposing blame, embarrassing root causes, incident details, or sensitive
+    implementation internals.
+  - Technical context for maintainers is directed to developer changelogs,
+    pull or merge request notes, and incident records instead of customer-facing
+    changelogs.
 - Added release-safety guardrails:
   - Agents now need explicit release intent before moving entries out of
     `Unreleased`, syncing release-note surfaces, or changing version fields.

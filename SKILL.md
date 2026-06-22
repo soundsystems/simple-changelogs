@@ -228,7 +228,21 @@ During pre-release:
   worklog.
 
 After `1.0.0`, patch releases can include narrow user-facing fixes, but still
-omit implementation-only repair work.
+omit implementation-only repair work. When a post-`1.0.0` bug fix belongs in a
+public changelog, frame it as a calm user outcome:
+
+- Prefer "Shared links now show the right preview" over "fixed our broken
+  metadata generator."
+- Prefer "Checkout now keeps the selected shipping method when totals update"
+  over "fixed a regression that reset shipping state."
+- Prefer "Reports now load reliably for larger date ranges" over "fixed a crash
+  caused by an inefficient query."
+
+Do not expose blame, embarrassing root causes, failed releases, avoidable
+mistakes, internal incident language, or security-sensitive implementation
+details in `CHANGELOG.md` or public "What's New" surfaces. Preserve useful
+technical context in `DEVELOPER_CHANGELOG.md`, PR/MR notes, or incident records
+when maintainers need it.
 
 ## Customer Changelog
 
@@ -489,6 +503,9 @@ Before finalizing, review the diff and confirm:
 - Customer bullets inside each version are ordered by affected-surface radius.
 - Pre-release and pre-`1.0.0` hot-fix churn is excluded from customer-facing
   logs unless it meets the material-impact gate.
+- Post-`1.0.0` public bug-fix bullets describe the user-visible outcome without
+  exposing blame, embarrassing root causes, incident details, or sensitive
+  implementation internals.
 - Major feature groups stand out above minor fixes in app "What's New" surfaces
   and public release-note pages.
 - Customer wording is plain, concise, and audience-appropriate.
