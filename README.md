@@ -14,7 +14,9 @@ An agent skill for maintaining simple, useful changelogs:
 
 The skill helps agents decide what belongs in each changelog, keep technical
 details out of customer-facing notes, and preserve maintainer context without
-turning the developer changelog into a raw commit log.
+turning the developer changelog into a raw commit log. Detailed release,
+versioning, and "What's New" behavior lives in focused reference files that
+agents load only when the task needs them.
 
 ## Install
 
@@ -56,14 +58,15 @@ pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --list
 ## Manual Install
 
 The Skills CLI is preferred because it knows each agent's current skill
-location. For manual installs, copy `SKILL.md` into the skill directory your
-agent reads.
+location. For manual installs, copy `SKILL.md`, `EVAL.md`, and `references/`
+into the skill directory your agent reads.
 
 ### Hermes
 
 ```bash
 mkdir -p ~/.hermes/skills/simple-changelogs
-cp SKILL.md ~/.hermes/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md ~/.hermes/skills/simple-changelogs/
+cp -R references ~/.hermes/skills/simple-changelogs/
 ```
 
 ### Eve (Vercel)
@@ -72,7 +75,8 @@ Place the skill in your agent's `.vercel/skills` directory:
 
 ```bash
 mkdir -p .vercel/skills/simple-changelogs
-cp SKILL.md .vercel/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md .vercel/skills/simple-changelogs/
+cp -R references .vercel/skills/simple-changelogs/
 ```
 
 ### Other Agents
@@ -80,15 +84,18 @@ cp SKILL.md .vercel/skills/simple-changelogs/SKILL.md
 ```bash
 # Codex
 mkdir -p ~/.codex/skills/simple-changelogs
-cp SKILL.md ~/.codex/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md ~/.codex/skills/simple-changelogs/
+cp -R references ~/.codex/skills/simple-changelogs/
 
 # Claude Code
 mkdir -p ~/.claude/skills/simple-changelogs
-cp SKILL.md ~/.claude/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md ~/.claude/skills/simple-changelogs/
+cp -R references ~/.claude/skills/simple-changelogs/
 
 # Cursor
 mkdir -p ~/.cursor/skills/simple-changelogs
-cp SKILL.md ~/.cursor/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md ~/.cursor/skills/simple-changelogs/
+cp -R references ~/.cursor/skills/simple-changelogs/
 ```
 
 For project-local installs, use the project skill directory your agent supports:
@@ -96,11 +103,13 @@ For project-local installs, use the project skill directory your agent supports:
 ```bash
 # Shared project agent directory used by several agents
 mkdir -p .agents/skills/simple-changelogs
-cp SKILL.md .agents/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md .agents/skills/simple-changelogs/
+cp -R references .agents/skills/simple-changelogs/
 
 # Cursor project directory
 mkdir -p .cursor/skills/simple-changelogs
-cp SKILL.md .cursor/skills/simple-changelogs/SKILL.md
+cp SKILL.md EVAL.md .cursor/skills/simple-changelogs/
+cp -R references .cursor/skills/simple-changelogs/
 ```
 
 ## When To Use It
@@ -130,4 +139,7 @@ Use this skill when asking an agent to:
 ## Files
 
 - `SKILL.md` - the agent skill.
+- `references/` - focused guidance loaded only for relevant changelog,
+  release-lifecycle, versioning, and release-note tasks.
+- `EVAL.md` - trigger and behavior eval prompts for improving the skill.
 - `README.md` - public usage notes for this repository.

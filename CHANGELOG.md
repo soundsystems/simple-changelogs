@@ -2,6 +2,19 @@
 
 ## 2026-06-22
 
+- Improved the skill's structure and regression coverage:
+  - Detailed backfill, entry classification, release lifecycle, versioning, and
+    "What's New" guidance now lives in focused reference files so agents load
+    only the detail needed for the current task.
+  - Trigger wording now avoids generic deploys, package bumps, commit summaries,
+    UI work, and code review unless the task explicitly relates to changelog,
+    release-note, or release version handling.
+  - Added eval prompts for trigger precision, customer/developer classification,
+    hot-fix omission, release finalization, version alignment, and hidden
+    release-note surfaces.
+  - Manual install docs now copy the reference files and eval prompt pack along
+    with `SKILL.md`.
+
 - Tightened pre-1.0 repair omission rules:
   - Agents now avoid advertising embarrassing baseline defects that should
     already work, such as broken login, checkout crashes, or missing saved data,

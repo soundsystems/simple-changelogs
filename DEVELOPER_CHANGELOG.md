@@ -2,6 +2,26 @@
 
 ## 2026-06-22
 
+- Restructured `SKILL.md` for progressive disclosure:
+  - Replaced the monolithic root instructions with a concise core workflow and a
+    task-to-reference loading table.
+  - Added `references/backfill.md`,
+    `references/entry-classification.md`,
+    `references/release-lifecycle.md`,
+    `references/version-decisions.md`, and
+    `references/release-note-surfaces.md`.
+  - Preserved the existing release-finalization, hot-fix, SemVer, and "What's
+    New" rules in focused reference files instead of loading all detail for every
+    activation.
+- Added `EVAL.md` with should-trigger/should-not-trigger queries and behavior
+  cases for visible features, developer-only migrations, copy edits, pre-1.0 hot
+  fixes, post-1.0 fixes, release-bearing branches, non-release PR prep, and
+  hidden release-note surfaces.
+- Tightened the frontmatter description to scope version and deploy-related
+  triggers to changelog, release-note, or release version handling.
+- Updated `README.md` manual install commands so reference files and `EVAL.md`
+  are copied with `SKILL.md`.
+
 - Tightened pre-`1.0.0` customer changelog omission rules in `SKILL.md`:
   - Added explicit guidance to keep embarrassing baseline defects that should
     already work out of user-facing pre-release changelogs.
