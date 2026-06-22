@@ -6,6 +6,12 @@ No unreleased changes.
 
 ## 2026-06-21
 
+- Tightened copy-update guidance in `SKILL.md`:
+  - Added frontmatter and customer changelog rules that exclude routine copy,
+    typo, grammar, tone, label, placeholder, and microcopy edits unless they
+    materially change user understanding, access, trust, legal/compliance
+    meaning, pricing, setup, or error recovery.
+  - Added a verification check for copy-only customer changelog bullets.
 - Tightened the changelog entry lifecycle guidance in `SKILL.md`:
   - Added default-branch release guidance for public skill repos, package docs,
     static changelog pages, and release-note data consumed directly from the

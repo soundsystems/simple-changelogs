@@ -6,6 +6,15 @@ No unreleased changes.
 
 ## 2026-06-21
 
+- Clarified copy-update changelog rules:
+  - Routine copy edits, typo fixes, grammar fixes, tone tweaks, label wording,
+    placeholder text, and microcopy polish now stay out of customer changelogs
+    unless they materially change what users understand, decide, can access,
+    must trust, or are legally promised.
+  - Copy and content changes now have clearer inclusion guidance for user
+    understanding, trust, legal/compliance meaning, pricing, purchase decisions,
+    onboarding/setup, error recovery, permissions/access, and support
+    obligations.
 - Clarified default-branch release boundaries:
   - Public repos that users install, read, or consume directly from the default
     branch now get clearer guidance to treat pushes and merges to that branch as

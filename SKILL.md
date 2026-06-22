@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, app-themed "What's New" surfaces, and smart SemVer/version bump decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, version bumping, SemVer decisions, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn and narrow visual fixes out of customer-facing logs unless users can see, do, understand, or trust something materially different.
+description: Maintains customer-facing changelogs, internal developer changelogs, release-note data, app-themed "What's New" surfaces, and smart SemVer/version bump decisions. Use when updating CHANGELOG.md, DEVELOPER_CHANGELOG.md, release notes, app "What's New" content, version tracking, version bumping, SemVer decisions, release prep, publishing changes, deploying publicly, triaging recent commits, summarizing user-facing changes, ordering release entries by impact, or deciding whether a change belongs in a changelog. Keeps hot-fix churn, routine copy edits, and narrow visual fixes out of customer-facing logs unless users can see, do, understand, or trust something materially different.
 ---
 
 # Simple Changelogs
@@ -174,6 +174,9 @@ Include:
   that changes what users see or prevents bad data from reaching them.
 - Public sharing, page metadata, SEO, install, onboarding, email, or notification
   changes that affect discovery, previews, or user communication.
+- Copy or content changes that materially change user understanding, trust,
+  legal/compliance meaning, pricing, purchase decisions, onboarding/setup, error
+  recovery, permissions/access, or support obligations.
 - Admin or operator UI changes that an operator can see or act on.
 
 Exclude:
@@ -185,6 +188,9 @@ Exclude:
   release before an explicit `1.0.0`, unless they materially change user trust,
   onboarding, compliance, payment, shopping flow, safety, access, a broadly
   noticeable UX surface, or durable capability.
+- Routine copy edits, typo fixes, grammar fixes, tone tweaks, label wording,
+  placeholder text, and microcopy polish unless the wording materially changes
+  what users understand, decide, can access, must trust, or are legally promised.
 - Linting, formatting, dependency bumps, CI, build config, package-manager
   changes, tests, migrations, refactors, type-only edits, internal docs, or
   schema plumbing with no visible behavior change.
@@ -395,6 +401,8 @@ Before finalizing, review the diff and confirm:
 - Every customer changelog bullet answers what a user can see, do, understand,
   or trust now.
 - No customer bullet is DX-only or purely implementation detail.
+- No copy-only bullet is included unless it changes user understanding, trust,
+  access, legal/compliance meaning, pricing, setup, or error recovery.
 - Customer bullets inside each version are ordered by affected-surface radius.
 - Pre-release and pre-`1.0.0` hot-fix churn is excluded from customer-facing
   logs unless it meets the material-impact gate.
