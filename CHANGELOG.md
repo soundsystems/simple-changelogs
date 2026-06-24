@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+- Improved "What's New" surface handoff guidance:
+  - Skills CLI installs now package the skill from `skills/simple-changelogs/`
+    so supporting eval and reference files ship with the skill.
+  - Release prep now defaults to adding a visible in-app release-notes or
+    "What's New" surface for apps with returning users when no equivalent
+    surface already exists.
+  - Existing reachable release-note surfaces are updated instead of duplicated.
+  - Monorepos now get clearer guidance to keep web, mobile, admin, developer,
+    and portal release-note surfaces scoped to their own audiences.
+  - Mobile-only release notes now default to a mobile modal, sheet, route, or
+    screen instead of being crowded into a web What's New modal.
+  - Existing admin, developer, dashboard, analysis, and portal areas can now get
+    one internal release-note surface that pulls filtered backend and operations
+    updates from `DEVELOPER_CHANGELOG.md`.
+  - Auto-shown release-note modals now wait until after higher-priority auth,
+    age-gate, consent, onboarding, payment, safety, account-recovery, or
+    migration flows.
+  - Pre-release fix guidance now tells agents to check whether the affected
+    feature was already announced and revise still-unreleased entries instead of
+    creating duplicate fix announcements.
+  - Post-`1.0.0` releases with multiple public fixes now group them under a
+    `Bug Fixes` heading after larger release-note entries.
+  - New release-note surfaces should be linked from a natural app location such
+    as a footer, menu, help area, settings, or public changelog page.
+  - React or TSX apps without stronger local conventions now get a clearer
+    naming nudge toward public-facing release-notes or What's New components.
+  - New in-app release-note surfaces now add a short top-of-file comment
+    pointing future agents to local changelog, release-note, or "What's New"
+    guidance.
+  - Added eval coverage so release prep creates or wires the right visible
+    surface, scopes platform/internal notes correctly, sequences modals after
+    higher-priority flows, and avoids re-announcing already promised behavior.
+
 ## 2026-06-22
 
 - Improved the skill's structure and regression coverage:

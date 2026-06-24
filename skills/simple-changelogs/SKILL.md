@@ -164,8 +164,9 @@ or several commits is not enough reason to bump a version.
 Read `references/version-decisions.md` before changing app/package versions,
 release-note version fields, or SemVer headings.
 
-When a release has customer-facing changelog bullets, also update documented
-user-facing release-note surfaces used by the product. Read
+When a release has customer-facing changelog bullets, update existing
+user-facing release-note surfaces used by the product, or add one only when no
+visible equivalent exists. Read
 `references/release-note-surfaces.md` before editing release-note data, public
 release pages, marketplace notes, email summaries, or in-app "What's New"
 screens.
@@ -183,9 +184,14 @@ Before finalizing, review the diff and confirm:
 - Pre-release and pre-`1.0.0` hot-fix churn, regressions, and embarrassing
   baseline defects are excluded from customer-facing logs unless they meet the
   material-impact gate and can be framed without advertising the defect.
+- Pre-release fixes to already announced features, workflows, or baseline
+  expectations are not announced separately; still-unreleased prior entries are
+  revised instead when needed.
 - Post-`1.0.0` public bug-fix bullets describe the user-visible outcome without
   exposing blame, embarrassing root causes, incident details, or sensitive
   implementation internals.
+- Multiple post-`1.0.0` public bug fixes are grouped under `Bug Fixes` after
+  larger feature, workflow, trust, and data-quality entries.
 - Major feature groups stand out above minor fixes in app "What's New" surfaces
   and public release-note pages.
 - Customer wording is plain, concise, and audience-appropriate.
@@ -194,8 +200,18 @@ Before finalizing, review the diff and confirm:
 - Release intent is established before entries move out of `Unreleased`, version
   fields change, or release-note surfaces sync.
 - Release-note data, app "What's New" surfaces, and version fields match the
-  changelog only when they are documented as part of the release flow or
-  explicitly requested.
+  changelog when the repo already has a visible release-note flow or release
+  prep adds one by default for an app with returning users.
+- In monorepos, web, mobile, admin, developer, and portal release-note surfaces
+  are scoped to the audience and platform that can use them instead of crowding
+  one web modal with unrelated notes.
+- Internal admin/developer release-note surfaces, when added, pull from
+  `DEVELOPER_CHANGELOG.md` or equivalent internal history and exclude
+  frontend-only UI polish or customer-only notes unless relevant to that
+  internal audience.
+- Auto-shown release-note modals appear only after higher-priority gates such as
+  auth, age gates, consent, onboarding, account recovery, payment, safety, or
+  mandatory migration flows.
 - Hidden, disabled, preview, prototype, or internal-only surfaces are not treated
   as customer-facing without evidence of real user or operator visibility.
 - Empty `Unreleased` sections are removed after release finalization, and

@@ -93,6 +93,9 @@ test build. Write public release notes.
 Expected behavior:
 
 - Does not advertise embarrassing baseline defects as public product news.
+- Checks whether login and checkout were already announced as expected
+  capabilities, and does not create a second customer-facing fix announcement
+  just to make that prior promise true.
 - Either omits the public bullet or reframes only a material trust/access/payment
   improvement if the diff supports that.
 - Preserves useful technical context in `DEVELOPER_CHANGELOG.md`.
@@ -110,6 +113,8 @@ Expected behavior:
 
 - Adds a calm user-outcome customer bullet, for example "Checkout now keeps the
   selected shipping method when totals update."
+- Places the fix near the end of the release section, or under a `Bug Fixes`
+  group when the release has several public fixes.
 - Does not mention regression blame or internal root cause in `CHANGELOG.md`.
 - Adds developer context only if useful.
 
@@ -149,17 +154,97 @@ Expected behavior:
 Prompt:
 
 ```text
-The repo has a disabled What's New component behind an unreachable route. Should
-release notes be synced there?
+During release prep, the repo has a disabled What's New component behind an
+unreachable route. Should release notes be synced there?
 ```
 
 Expected behavior:
 
 - Does not treat the hidden/disabled surface as customer-facing merely because
   code exists.
-- Reports that no documented visible release-note surface was found.
-- Leaves the changelog as source of truth unless the task asks to create or wire
-  the surface.
+- Does not count the hidden/disabled component as an equivalent release-note
+  surface.
+- Wires that component into the visible app flow or creates a visible equivalent
+  when the app has returning users and the release has customer-facing bullets.
+
+### New What's New surface
+
+Prompt:
+
+```text
+The app has returning users and shared release-note data, but no What's New
+modal. Prepare the customer-facing release notes as part of release prep.
+```
+
+Expected behavior:
+
+- Creates a visible release-note or What's New surface by default because the
+  app has returning users and no equivalent exists.
+- Does not create a duplicate when an existing reachable release-note or What's
+  New surface already pulls from the same user-facing data.
+- Pulls from the shared changelog or release-note data.
+- Links the surface from a natural place in the app, such as a footer, menu,
+  help area, settings, or public changelog page.
+- Adds a short top-of-file comment pointing future agents to local changelog,
+  release-note, or "What's New" guidance.
+
+### Mobile monorepo release notes
+
+Prompt:
+
+```text
+The monorepo has separate web and mobile apps. The release includes a mobile-only
+offline sync improvement and an existing web What's New modal. Prepare release
+notes.
+```
+
+Expected behavior:
+
+- Does not crowd the web modal with mobile-only release notes.
+- Updates or creates a mobile What's New modal, sheet, route, or screen that
+  follows the mobile app's existing UI conventions.
+- Shares cross-platform release notes across web and mobile only when both
+  audiences benefit from the same note.
+- Keeps app store or marketplace notes derived from the same customer-facing
+  changelog or platform-specific release-note data.
+
+### Internal admin or developer release notes
+
+Prompt:
+
+```text
+The app has an authenticated admin dashboard and DEVELOPER_CHANGELOG.md includes
+backend queue, API, and data-retention changes. Add release notes for operators.
+```
+
+Expected behavior:
+
+- Adds or updates one internal release-note surface at the admin/developer area
+  root instead of adding separate modals to each dashboard route.
+- Pulls from `DEVELOPER_CHANGELOG.md` or equivalent internal technical history.
+- Filters out frontend-only UI polish, visual fixes, marketing copy, and
+  customer-only notes unless relevant to admin/developer operations or trust.
+- Does not expose internal developer notes to public customers or unauthenticated
+  users.
+
+### Modal sequencing and eligibility
+
+Prompt:
+
+```text
+The app has auth, an age gate, onboarding, and a What's New modal. Make the
+release notes show automatically for this release.
+```
+
+Expected behavior:
+
+- Shows release notes only after auth and higher-priority gates such as age
+  gates, consent, required onboarding, account recovery, payment, safety, or
+  mandatory migration flows.
+- Auto-shows only to authenticated returning users when the app has auth.
+- Defers release notes during critical tasks such as checkout, account recovery,
+  safety reporting, or destructive admin actions.
+- Tracks dismissal per release and per relevant surface or platform.
 
 ## Acceptance Rubric
 
@@ -173,4 +258,14 @@ Pass only if:
 - `Unreleased` moves only with release intent and is removed when empty.
 - Version fields change only when local evidence ties them to the same release
   flow.
-- Release-note surfaces are updated only when documented or explicitly requested.
+- Release-note surfaces are updated when documented or explicitly requested, and
+  are added by default during release prep for apps with returning users when no
+  visible equivalent exists.
+- Monorepo release-note surfaces are scoped by platform and audience so web,
+  mobile, admin, developer, and portal notes do not pollute unrelated surfaces.
+- Internal admin/developer release-note surfaces pull from internal technical
+  history and filter out frontend-only UI polish and public-customer notes unless
+  they affect the internal audience.
+- Auto-shown release-note modals respect auth, returning-user state,
+  higher-priority gates, critical tasks, and per-surface dismissal.
+- Newly created "What's New" surfaces include a short guidance comment.

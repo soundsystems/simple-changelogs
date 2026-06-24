@@ -38,6 +38,12 @@ During pre-release:
 - Keep routine hot fixes, regression repairs, test-release churn, temporary
   workarounds, narrow visual fixes, cleanup, and baseline defects that should
   already work out of the user-facing changelog.
+- Before adding a customer-facing fix entry, check prior changelog and
+  release-note entries for the affected feature, workflow, or promise. Do not
+  separately announce fixes that make an already announced feature or baseline
+  expectation work as intended.
+- If the prior entry is still unreleased and would otherwise overpromise, revise
+  that existing entry instead of adding a new fix announcement.
 - Add a user-facing entry only when the change materially affects trust,
   onboarding, compliance, payment, shopping flow, safety, access, a broadly
   noticeable UX surface, or a durable user capability.
@@ -67,6 +73,11 @@ mistakes, internal incident language, or security-sensitive implementation
 details in `CHANGELOG.md` or public "What's New" surfaces. Preserve useful
 technical context in `DEVELOPER_CHANGELOG.md`, PR/MR notes, or incident records
 when maintainers need it.
+
+When a post-`1.0.0` release has several public bug fixes, group them under a
+plain `Bug Fixes` heading after larger feature, workflow, trust, and
+data-quality entries. For one or two fixes, keep calm outcome bullets near the
+end of the release section unless the repo already uses grouped fix headings.
 
 ## Developer Changelog Entries
 

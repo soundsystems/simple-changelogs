@@ -58,15 +58,16 @@ pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --list
 ## Manual Install
 
 The Skills CLI is preferred because it knows each agent's current skill
-location. For manual installs, copy `SKILL.md`, `EVAL.md`, and `references/`
+location and installs the complete `skills/simple-changelogs/` directory. For
+manual installs, copy that directory's `SKILL.md`, `EVAL.md`, and `references/`
 into the skill directory your agent reads.
 
 ### Hermes
 
 ```bash
 mkdir -p ~/.hermes/skills/simple-changelogs
-cp SKILL.md EVAL.md ~/.hermes/skills/simple-changelogs/
-cp -R references ~/.hermes/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md ~/.hermes/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references ~/.hermes/skills/simple-changelogs/
 ```
 
 ### Eve (Vercel)
@@ -75,8 +76,8 @@ Place the skill in your agent's `.vercel/skills` directory:
 
 ```bash
 mkdir -p .vercel/skills/simple-changelogs
-cp SKILL.md EVAL.md .vercel/skills/simple-changelogs/
-cp -R references .vercel/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md .vercel/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references .vercel/skills/simple-changelogs/
 ```
 
 ### Other Agents
@@ -84,18 +85,18 @@ cp -R references .vercel/skills/simple-changelogs/
 ```bash
 # Codex
 mkdir -p ~/.codex/skills/simple-changelogs
-cp SKILL.md EVAL.md ~/.codex/skills/simple-changelogs/
-cp -R references ~/.codex/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md ~/.codex/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references ~/.codex/skills/simple-changelogs/
 
 # Claude Code
 mkdir -p ~/.claude/skills/simple-changelogs
-cp SKILL.md EVAL.md ~/.claude/skills/simple-changelogs/
-cp -R references ~/.claude/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md ~/.claude/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references ~/.claude/skills/simple-changelogs/
 
 # Cursor
 mkdir -p ~/.cursor/skills/simple-changelogs
-cp SKILL.md EVAL.md ~/.cursor/skills/simple-changelogs/
-cp -R references ~/.cursor/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md ~/.cursor/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references ~/.cursor/skills/simple-changelogs/
 ```
 
 For project-local installs, use the project skill directory your agent supports:
@@ -103,13 +104,13 @@ For project-local installs, use the project skill directory your agent supports:
 ```bash
 # Shared project agent directory used by several agents
 mkdir -p .agents/skills/simple-changelogs
-cp SKILL.md EVAL.md .agents/skills/simple-changelogs/
-cp -R references .agents/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md .agents/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references .agents/skills/simple-changelogs/
 
 # Cursor project directory
 mkdir -p .cursor/skills/simple-changelogs
-cp SKILL.md EVAL.md .cursor/skills/simple-changelogs/
-cp -R references .cursor/skills/simple-changelogs/
+cp skills/simple-changelogs/SKILL.md skills/simple-changelogs/EVAL.md .cursor/skills/simple-changelogs/
+cp -R skills/simple-changelogs/references .cursor/skills/simple-changelogs/
 ```
 
 ## When To Use It
@@ -138,8 +139,9 @@ Use this skill when asking an agent to:
 
 ## Files
 
-- `SKILL.md` - the agent skill.
-- `references/` - focused guidance loaded only for relevant changelog,
-  release-lifecycle, versioning, and release-note tasks.
-- `EVAL.md` - trigger and behavior eval prompts for improving the skill.
+- `skills/simple-changelogs/SKILL.md` - the agent skill.
+- `skills/simple-changelogs/references/` - focused guidance loaded only for
+  relevant changelog, release-lifecycle, versioning, and release-note tasks.
+- `skills/simple-changelogs/EVAL.md` - trigger and behavior eval prompts for
+  improving the skill.
 - `README.md` - public usage notes for this repository.

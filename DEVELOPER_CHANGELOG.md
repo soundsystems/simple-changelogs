@@ -1,5 +1,29 @@
 # Developer Changelog
 
+## Unreleased
+
+- Updated `SKILL.md`, `references/release-note-surfaces.md`, and `EVAL.md` so
+  release prep defaults to creating or wiring a visible release-note surface for
+  apps with returning users when no equivalent exists, while explicitly avoiding
+  duplicate surfaces when a reachable equivalent already exists.
+- Moved the distributable skill into `skills/simple-changelogs/` and updated
+  manual install docs so Skills CLI installs include `EVAL.md` and
+  `references/` alongside `SKILL.md`.
+- Added guidance for linking new release-note surfaces from natural app
+  locations, preferring clear public-facing React/TSX component names when no
+  stronger local convention exists, and keeping a concise top-of-file guidance
+  comment on newly created surfaces.
+- Added monorepo release-note surface scoping guidance for separate web, mobile,
+  admin, developer, dashboard, analysis, and portal surfaces, including internal
+  surfaces that pull filtered backend/operations updates from
+  `DEVELOPER_CHANGELOG.md`.
+- Added release-note modal sequencing and eligibility guidance so auto-shown
+  notes wait for auth, returning-user state, and higher-priority gates before
+  appearing.
+- Added explicit pre-release fix guidance to check prior announcements, revise
+  still-unreleased entries instead of adding duplicate fix notes, and group
+  multiple post-`1.0.0` public fixes under `Bug Fixes`.
+
 ## 2026-06-22
 
 - Restructured `SKILL.md` for progressive disclosure:
