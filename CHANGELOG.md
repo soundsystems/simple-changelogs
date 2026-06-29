@@ -5,6 +5,8 @@
 - Improved "What's New" surface handoff guidance:
   - Skills CLI installs now package the skill from `skills/simple-changelogs/`
     so supporting eval and reference files ship with the skill.
+  - Install docs now call out the default-branch install command and the
+    explicit Git ref form for branch or tag installs.
   - Release prep now defaults to adding a visible in-app release-notes or
     "What's New" surface for apps with returning users when no equivalent
     surface already exists.

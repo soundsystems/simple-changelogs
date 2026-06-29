@@ -9,6 +9,8 @@
 - Moved the distributable skill into `skills/simple-changelogs/` and updated
   manual install docs so Skills CLI installs include `EVAL.md` and
   `references/` alongside `SKILL.md`.
+- Clarified Skills CLI install docs so default-branch installs use the simple
+  source URL and branch or tag installs use an explicit `.git#<ref>` source.
 - Added guidance for linking new release-note surfaces from natural app
   locations, preferring clear public-facing React/TSX component names when no
   stronger local convention exists, and keeping a concise top-of-file guidance

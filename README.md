@@ -26,6 +26,16 @@ Use the [Skills CLI](https://skills.sh/docs) with `bunx` or `pnpx`:
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
 ```
 
+That command installs the complete `skills/simple-changelogs/` package from the
+default branch, including `SKILL.md`, `EVAL.md`, and `references/`.
+
+To install a branch or tag before it reaches the default branch, use the Git URL
+with a ref:
+
+```bash
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs.git#<branch-or-tag> --skill simple-changelogs --agent codex -g -y
+```
+
 Use `pnpx` instead of `bunx` if preferred:
 
 ```bash
