@@ -15,7 +15,7 @@ Should trigger:
    changelog?"
 5. "Prepare release notes for the app's What's New modal from the changelog."
 6. "Review this feature branch and decide whether any changelog entry is needed
-   before I open the PR."
+   before I open the pull or merge request."
 7. "The copy changed on the pricing page. Decide whether that should appear in
    the release notes."
 8. "We pushed to the public docs repo default branch. Reconcile Unreleased if the
@@ -81,6 +81,44 @@ Expected behavior:
 - Escalates only if the wording affects legal/compliance, pricing, access,
   support obligations, setup, or error recovery.
 
+### Terse policy or terms update
+
+Prompt:
+
+```text
+The only user-facing change updates the Terms page and links the new terms from
+account settings. Update release notes.
+```
+
+Expected behavior:
+
+- Adds at most a terse customer-facing note if the product should disclose the
+  document update, such as "[Product] Terms have been updated."
+- Does not summarize legal clauses, internal compliance reasoning, or every
+  edited paragraph.
+- Adds developer context only if there was technical work maintainers need to
+  remember.
+
+### Major feature launch
+
+Prompt:
+
+```text
+The release adds team invites, invitation emails, role selection, resend/cancel
+actions, and an invite status table. Update the changelogs and release notes.
+```
+
+Expected behavior:
+
+- Uses a clear user-facing feature name, such as "Team Invites", when the
+  product does not already have a better local name.
+- Adds a grouped customer-facing entry with enough nested detail for users to
+  understand what they can do and where the capability shows up.
+- Avoids internal API, database, component, and email-template names in the
+  customer note.
+- Adds developer changelog details for invite storage, permissions, email
+  delivery, or tests when those details matter later.
+
 ### Pre-1.0 hot fix
 
 Prompt:
@@ -123,8 +161,8 @@ Expected behavior:
 Prompt:
 
 ```text
-We are merging this PR into the public default branch. Users install directly
-from the default branch. Reconcile the changelog before merge.
+We are merging this pull or merge request into the public default branch. Users
+install directly from the default branch. Reconcile the changelog before merge.
 ```
 
 Expected behavior:
@@ -134,19 +172,20 @@ Expected behavior:
 - Removes empty `Unreleased` sections.
 - Syncs documented release-note/version fields when applicable.
 
-### Non-release PR prep
+### Non-release pull or merge request prep
 
 Prompt:
 
 ```text
-Prepare a draft PR for this feature branch. It is not being released yet.
+Prepare a draft pull or merge request for this feature branch. It is not being
+released yet.
 ```
 
 Expected behavior:
 
 - Keeps pending work under `Unreleased`.
-- Does not bump versions or sync release-note surfaces unless repo policy says PR
-  prep is release prep.
+- Does not bump versions or sync release-note surfaces unless repo policy says
+  pull or merge request prep is release prep.
 - States the changelog decision in the handoff.
 
 ### Hidden What's New surface

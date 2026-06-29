@@ -23,6 +23,12 @@
 - Added explicit pre-release fix guidance to check prior announcements, revise
   still-unreleased entries instead of adding duplicate fix notes, and group
   multiple post-`1.0.0` public fixes under `Bug Fixes`.
+- Added `entry-classification.md` guidance for minimum necessary customer
+  detail, terse policy/terms/privacy/legal-document notes, major feature launch
+  detail, user-facing feature naming, pruning non-product-news changes, and
+  provider-neutral pull or merge request source links.
+- Added eval coverage for terse policy/terms updates and detailed major feature
+  launches.
 
 ## 2026-06-22
 
@@ -39,8 +45,8 @@
     activation.
 - Added `EVAL.md` with should-trigger/should-not-trigger queries and behavior
   cases for visible features, developer-only migrations, copy edits, pre-1.0 hot
-  fixes, post-1.0 fixes, release-bearing branches, non-release PR prep, and
-  hidden release-note surfaces.
+  fixes, post-1.0 fixes, release-bearing branches, non-release pull or merge
+  request prep, and hidden release-note surfaces.
 - Tightened the frontmatter description to scope version and deploy-related
   triggers to changelog, release-note, or release version handling.
 - Updated `README.md` manual install commands so reference files and `EVAL.md`
@@ -154,8 +160,9 @@
 - Published the skill in the canonical Skills CLI catalog layout:
   - Moved the skill to `skills/simple-changelogs/SKILL.md`.
   - Added README install commands for `bunx skills add` and `pnpx skills add`
-    from the GitLab URL.
-  - Verified the Skills CLI can discover the skill from the public GitLab repo.
+    from the hosted repository URL.
+  - Verified the Skills CLI can discover the skill from the public hosted
+    repository.
 - Added bootstrap and git backfill guidance:
   - Documented how agents should create missing `CHANGELOG.md` and
     `DEVELOPER_CHANGELOG.md` files.

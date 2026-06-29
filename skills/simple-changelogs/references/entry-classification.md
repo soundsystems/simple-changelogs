@@ -5,10 +5,32 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 
 ## Contents
 
+- Pruning rules
 - Customer changelog entries
+- Detail level
 - Pre-release and hot fixes
 - Developer changelog entries
+- Source links
 - Grouping and wording examples
+
+## Pruning Rules
+
+Before writing a customer entry, remove changes that are not durable
+user-facing product news.
+
+Exclude from `CHANGELOG.md`:
+
+- Refactors, tests, linting, formatting, dependency bumps, CI, build config, and
+  internal tooling.
+- Schema, pipeline, API, or data-model work with no visible user or operator
+  effect.
+- Benchmark-only performance work that users or operators would not materially
+  notice.
+- Release-note plumbing, shared modules, and technical architecture unless they
+  create or change a visible release-note surface.
+
+Put technically important excluded work in `DEVELOPER_CHANGELOG.md` when
+maintainers will need the context later.
 
 ## Customer Changelog Entries
 
@@ -27,6 +49,37 @@ onboarding/setup, error recovery, permissions/access, or support obligations.
 Exclude implementation details, raw enum names, migration numbers, pipeline
 markers, internal package names, or function names unless the requested audience
 explicitly needs technical release notes.
+
+## Detail Level
+
+Use the minimum detail needed for the audience to understand the visible change.
+
+Some user-facing changes should stay terse even when they are important:
+
+- Policy, terms, privacy, or legal-document updates can be one line when users
+  only need to know the document changed.
+- Copy and content updates should describe the practical user impact, not every
+  wording change.
+- Security, compliance, billing, and privacy notes should avoid implementation
+  detail and avoid summarizing legal clauses unless product behavior changed.
+
+Prefer:
+
+- `[Product] Terms have been updated.`
+- `The Privacy Policy now covers mobile analytics and location-based workflows.`
+- `Billing emails now explain failed payments more clearly.`
+
+Avoid:
+
+- Clause-by-clause legal summaries.
+- Internal compliance rationale.
+- Repeating every edited paragraph, setting name, or implementation detail.
+
+Major feature launches, workflow overhauls, and new paid, safety, or
+business-critical capabilities are the exception: give enough detail for users
+to understand what changed, where to find it, and how to benefit from it. Use a
+clear top-level feature heading with nested bullets when multiple user actions
+or benefits matter.
 
 ## Pre-Release and Hot Fixes
 
@@ -54,8 +107,8 @@ During pre-release:
   missing saved data" unless the release note can truthfully frame a material
   trust, access, safety, payment, compliance, onboarding, or durable capability
   improvement without exposing the defect.
-- Preserve useful internal detail in `DEVELOPER_CHANGELOG.md`, a PR/MR body, or
-  a worklog.
+- Preserve useful internal detail in `DEVELOPER_CHANGELOG.md`, a pull or merge
+  request body, or a worklog.
 
 After `1.0.0`, patch releases can include narrow user-facing fixes, but still
 omit implementation-only repair work. When a post-`1.0.0` bug fix belongs in a
@@ -71,8 +124,8 @@ public changelog, frame it as a calm user outcome:
 Do not expose blame, embarrassing root causes, failed releases, avoidable
 mistakes, internal incident language, or security-sensitive implementation
 details in `CHANGELOG.md` or public "What's New" surfaces. Preserve useful
-technical context in `DEVELOPER_CHANGELOG.md`, PR/MR notes, or incident records
-when maintainers need it.
+technical context in `DEVELOPER_CHANGELOG.md`, pull or merge request notes, or
+incident records when maintainers need it.
 
 When a post-`1.0.0` release has several public bug fixes, group them under a
 plain `Bug Fixes` heading after larger feature, workflow, trust, and
@@ -101,6 +154,39 @@ Good developer changelog entries explain maintainable technical outcomes:
 
 Avoid entries that only restate commit messages, hashes, raw diffs, or
 implementation trivia without explaining why maintainers will care later.
+
+## Source Links
+
+Do not add raw pull request, merge request, issue, or commit links to
+`CHANGELOG.md` unless the link directly helps users.
+
+`DEVELOPER_CHANGELOG.md` may link to a pull request, merge request, issue,
+design note, or other source artifact when it helps future maintainers
+understand a major refactor, migration, incident repair, or architectural
+decision. Use descriptive links or plain pull or merge request references; do
+not dump commit hashes.
+
+## Introducing and Naming Features
+
+Name the user-facing concept, not the implementation.
+
+Use the product's existing term when one exists. For a new feature, introduce it
+with a clear noun phrase and explain what users can do with it.
+
+Prefer:
+
+- `Added Team Invites so admins can bring coworkers into a workspace.`
+- `Added saved reports:`
+- `Workers can now request time off from mobile.`
+
+Avoid:
+
+- Internal project names unless they are already visible in the product.
+- API, database, package, or component names in customer notes.
+- Vague launch wording like `Added improvements` without the capability.
+
+When a named feature has several visible parts, use the feature name as the
+top-level bullet and put the outcomes underneath.
 
 ## Grouping and Wording Examples
 

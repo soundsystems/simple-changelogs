@@ -39,9 +39,10 @@ Read only the reference files needed for the task:
    - deployment target and pending release contents when deploying publicly
 2. Load the reference file for any branch of the work that is not routine.
 3. Triage recent commits with `git show --stat --summary --format=fuller <sha>`.
-   For uncommitted work, inspect the changed files directly. Read enough diff
-   context to understand user impact and technical impact; do not rely only on
-   commit titles.
+   When commit messages are vague, incomplete, or impact is unclear, read the
+   actual diff. For uncommitted work, inspect the changed files directly. When
+   a pull or merge request description and linked issues are available, use them
+   as context, but verify impact against the code and changelog files.
 4. Apply the customer impact gate before writing a customer changelog bullet.
    Include a change only when it changes what a user, customer, stakeholder, or
    operator can see, do, understand, or trust in a durable or broadly noticeable
@@ -180,6 +181,9 @@ Before finalizing, review the diff and confirm:
 - No customer bullet is DX-only or purely implementation detail.
 - No copy-only bullet is included unless it changes user understanding, trust,
   access, legal/compliance meaning, pricing, setup, or error recovery.
+- Customer-facing entries use the minimum detail needed to communicate the
+  change, except major feature launches or workflow overhauls include enough
+  detail for users to understand what changed and how to use it.
 - Customer bullets inside each version are ordered by affected-surface radius.
 - Pre-release and pre-`1.0.0` hot-fix churn, regressions, and embarrassing
   baseline defects are excluded from customer-facing logs unless they meet the

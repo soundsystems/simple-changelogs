@@ -24,6 +24,16 @@
     creating duplicate fix announcements.
   - Post-`1.0.0` releases with multiple public fixes now group them under a
     `Bug Fixes` heading after larger release-note entries.
+  - Customer-facing entries now use the minimum detail needed to communicate the
+    change, while major feature launches and workflow overhauls include enough
+    detail for users to understand what changed and how to use it.
+  - Policy, terms, privacy, and legal-document updates now get terse one-line
+    guidance when users only need to know the document changed.
+  - Feature launch notes now name the user-facing concept instead of internal
+    implementation details, with grouped bullets when several user actions or
+    benefits matter.
+  - Developer changelog source-link guidance now stays provider-neutral across
+    pull and merge request workflows.
   - New release-note surfaces should be linked from a natural app location such
     as a footer, menu, help area, settings, or public changelog page.
   - React or TSX apps without stronger local conventions now get a clearer
@@ -155,4 +165,5 @@
     when they do not exist yet.
   - Git-history backfills now include guidance for tags, release boundaries,
     batching, and conservative summaries.
-- Published the `simple-changelogs` skill for Skills CLI installs from GitLab.
+- Published the `simple-changelogs` skill for Skills CLI installs from the
+  hosted repository.
