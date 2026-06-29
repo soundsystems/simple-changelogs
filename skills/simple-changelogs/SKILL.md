@@ -201,6 +201,9 @@ Before finalizing, review the diff and confirm:
 - Customer wording is plain, concise, and audience-appropriate.
 - `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
   like a raw commit log.
+- Superseded developer notes are removed when no longer useful, or moved to a
+  bottom-of-section `Superseded` subsection with obsolete claims struck through
+  and concise replacement context.
 - Release intent is established before entries move out of `Unreleased`, version
   fields change, or release-note surfaces sync.
 - Release-note data, app "What's New" surfaces, and version fields match the

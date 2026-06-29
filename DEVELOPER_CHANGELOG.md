@@ -29,8 +29,14 @@
   detail, terse policy/terms/privacy/legal-document notes, major feature launch
   detail, user-facing feature naming, pruning non-product-news changes, and
   provider-neutral pull or merge request source links.
+- Added `Superseded` developer changelog guidance for useful obsolete technical
+  notes, including when to delete noise, when to preserve replacement history,
+  and how to strike through only the replaced claim at the bottom of the same
+  release section.
 - Added eval coverage for terse policy/terms updates and detailed major feature
   launches.
+- Added eval coverage for developer changelog entries superseded by newer
+  implementation decisions.
 
 ## 2026-06-22
 

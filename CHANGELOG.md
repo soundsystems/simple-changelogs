@@ -43,6 +43,9 @@
   - New in-app release-note surfaces now add a short top-of-file comment
     pointing future agents to local changelog, release-note, or "What's New"
     guidance.
+  - Developer changelog cleanup now moves useful replaced technical notes into a
+    bottom-of-section `Superseded` area instead of leaving obsolete entries mixed
+    into active history.
   - Added eval coverage so release prep creates or wires the right visible
     surface, scopes platform/internal notes correctly, sequences modals after
     higher-priority flows, and avoids re-announcing already promised behavior.

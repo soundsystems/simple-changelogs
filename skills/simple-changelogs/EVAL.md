@@ -65,6 +65,26 @@ Expected behavior:
 - Adds a developer changelog entry if the migration/refactor will matter later.
 - Explicitly says no customer-facing changelog update is needed.
 
+### Superseded developer note
+
+Prompt:
+
+```text
+DEVELOPER_CHANGELOG.md already says the release-note UI stores copy in
+per-app files. This diff replaces that with shared release-note data generated
+from CHANGELOG.md. Update the developer changelog.
+```
+
+Expected behavior:
+
+- Keeps the current shared-data implementation as the active developer note.
+- Moves the obsolete per-app storage note to a `Superseded` subsection at the
+  bottom of the same release section only if maintainers need that history.
+- Strikes through the obsolete claim and adds concise replacement context.
+- Deletes the obsolete note instead when it is routine churn with no lasting
+  maintainer value.
+- Does not add strikethroughs to `CHANGELOG.md`.
+
 ### Routine copy edit
 
 Prompt:

@@ -10,6 +10,7 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 - Detail level
 - Pre-release and hot fixes
 - Developer changelog entries
+- Superseded developer notes
 - Source links
 - Grouping and wording examples
 
@@ -154,6 +155,43 @@ Good developer changelog entries explain maintainable technical outcomes:
 
 Avoid entries that only restate commit messages, hashes, raw diffs, or
 implementation trivia without explaining why maintainers will care later.
+
+## Superseded Developer Notes
+
+When a newer change in the same section replaces, reverses, or materially
+changes an older `DEVELOPER_CHANGELOG.md` note, do not leave the obsolete note
+in the main flow as if it is still true.
+
+Prefer updating or replacing the original note when the old implementation no
+longer matters. Preserve the old note only when maintainers may need the trail
+to understand why an approach changed, why a migration was superseded, or why a
+release-plan decision should not be repeated.
+
+When preserving that trail, move the obsolete note to a `Superseded` subsection
+at the bottom of the same release section and strike through only the obsolete
+claim:
+
+```md
+## Unreleased
+
+- Added release-note data generated from `CHANGELOG.md`.
+
+### Superseded
+
+- ~~Stored release-note copy in separate per-app files.~~ Replaced by shared
+  release-note data generated from `CHANGELOG.md`.
+```
+
+Rules:
+
+- Keep the active, current technical truth in the main section.
+- Put `Superseded` after all active notes for that section.
+- Use concise replacement context after the strikethrough.
+- Do not use `Superseded` for routine typo fixes, noisy churn, or work that no
+  longer needs maintainer context; delete those entries instead.
+- Do not add strikethroughs to customer-facing `CHANGELOG.md`.
+- Avoid rewriting old released history unless the current task is explicitly a
+  changelog cleanup or correction.
 
 ## Source Links
 
