@@ -29,6 +29,13 @@
   detail, terse policy/terms/privacy/legal-document notes, major feature launch
   detail, user-facing feature naming, pruning non-product-news changes, and
   provider-neutral pull or merge request source links.
+- Tightened first-time feature launch wording so new capabilities use a feature
+  name plus what users can now do, reserving `easier`, `clearer`, `better`, and
+  `improved` framing for changes to existing flows.
+- Added hidden raw-changelog signature guidance for agent edits, including model
+  name/version, local timestamp, placement, generated-data exclusions, and
+  rendered-public-note constraints.
+<!-- Agent: GPT-5 Codex | 06/30/2026 6:50 PM CDT -->
 - Added `Superseded` developer changelog guidance for useful obsolete technical
   notes, including when to delete noise, when to preserve replacement history,
   and how to strike through only the replaced claim at the bottom of the same

@@ -34,6 +34,12 @@
   - Feature launch notes now name the user-facing concept instead of internal
     implementation details, with grouped bullets when several user actions or
     benefits matter.
+  - First-time feature launch notes now name the new capability and say what
+    users can do, instead of framing a brand-new action as "easier" or
+    "improved."
+  - Raw changelog edits now get hidden agent signature comments with model and
+    timestamp attribution near the changed entry or group.
+  <!-- Agent: GPT-5 Codex | 06/30/2026 6:50 PM CDT -->
   - Developer changelog source-link guidance now stays provider-neutral across
     pull and merge request workflows.
   - New release-note surfaces should be linked from a natural app location such

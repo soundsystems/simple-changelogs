@@ -12,6 +12,7 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 - Developer changelog entries
 - Superseded developer notes
 - Source links
+- Raw changelog signatures
 - Grouping and wording examples
 
 ## Pruning Rules
@@ -216,15 +217,71 @@ Prefer:
 - `Added Team Invites so admins can bring coworkers into a workspace.`
 - `Added saved reports:`
 - `Workers can now request time off from mobile.`
+- `Product Page Corrections: Users can now report inconsistent or missing
+  product data directly from a product page.`
 
 Avoid:
 
 - Internal project names unless they are already visible in the product.
 - API, database, package, or component names in customer notes.
 - Vague launch wording like `Added improvements` without the capability.
+- Comparative framing such as `easier to`, `clearer`, `better`, `faster`, or
+  `improved` when the release is introducing a capability for the first time.
+  Use that wording only when improving an already shipped or already announced
+  flow.
 
 When a named feature has several visible parts, use the feature name as the
 top-level bullet and put the outcomes underneath.
+
+For first-time feature introductions, default to this shape:
+
+```md
+- Feature Name:
+  - Users can now do the new thing from the surface where it appears.
+```
+
+Use a concise sentence instead of nested bullets when the feature has only one
+important user action:
+
+```md
+- Product Page Corrections: Users can now report inconsistent or missing product
+  data directly from a product page.
+```
+
+Before writing `now makes it easier to...`, ask whether users already had that
+action. If the answer is no, name the new capability instead of comparing it to
+a nonexistent prior flow.
+
+## Raw Changelog Signatures
+
+When an agent directly adds to or adjusts raw changelog markdown, sign the
+relevant changed part with the agent's model name/version and a short local
+timestamp.
+
+Use an HTML comment so rendered customer release notes and in-app surfaces do
+not show the signature:
+
+```md
+- Product Page Corrections: Users can now report inconsistent or missing product
+  data directly from a product page.
+<!-- Agent: GPT-5 Codex | 06/30/2026 6:50 PM CDT -->
+```
+
+Rules:
+
+- Place the signature immediately after the changed bullet, group, or section.
+- Match the surrounding indentation when signing nested bullets.
+- One signature may cover adjacent bullets in the same changed group or
+  subsection.
+- Use the active model label and version exposed by the runtime or system
+  context. If only a model family is known, use that exact label rather than
+  inventing a more specific version.
+- Include timezone in the timestamp.
+- Sign raw `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` edits. Do not separately
+  sign generated release-note data that is mechanically synced from a signed
+  changelog entry.
+- Do not use visible prose signatures in customer-facing notes unless the repo
+  explicitly requires rendered attribution.
 
 ## Grouping and Wording Examples
 

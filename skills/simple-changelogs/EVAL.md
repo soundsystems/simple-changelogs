@@ -139,6 +139,43 @@ Expected behavior:
 - Adds developer changelog details for invite storage, permissions, email
   delivery, or tests when those details matter later.
 
+### First-time feature naming
+
+Prompt:
+
+```text
+The diff adds the first product-page correction feature: a "something wrong?"
+prompt opens a prefilled correction email from product pages. Update release
+notes.
+```
+
+Expected behavior:
+
+- Names the new capability, for example `Product Page Corrections`.
+- Says what users can now do from the relevant surface, such as reporting
+  inconsistent or missing product data from a product page.
+- Does not frame the first launch as `easier to correct`, `clearer`, `better`,
+  or `improved`, because there was no prior correction flow to compare against.
+- Keeps implementation details such as mailto parameters, prefilled subject
+  strings, or component names out of the customer note unless requested.
+
+### Raw changelog signature
+
+Prompt:
+
+```text
+Update CHANGELOG.md directly for this new Product Page Corrections feature.
+```
+
+Expected behavior:
+
+- Adds the customer-facing changelog entry in the right release section.
+- Adds a nearby hidden HTML comment signature for the changed entry or group.
+- Includes the active model name/version and a short local timestamp with
+  timezone in the signature.
+- Does not add visible signature prose to customer-facing release notes or
+  separately sign generated release-note data synced from the raw changelog.
+
 ### Pre-1.0 hot fix
 
 Prompt:
@@ -314,6 +351,10 @@ Pass only if:
 - Customer bullets describe visible outcomes and omit implementation details.
 - Developer bullets preserve maintainable technical context without becoming raw
   commit logs.
+- First-time feature launches are named as capabilities and say what users can
+  now do instead of using comparative `easier/clearer/better/improved` wording.
+- Raw changelog markdown edits include hidden agent signature comments with model
+  name/version and local timestamp.
 - `Unreleased` moves only with release intent and is removed when empty.
 - Version fields change only when local evidence ties them to the same release
   flow.

@@ -198,12 +198,17 @@ Before finalizing, review the diff and confirm:
   larger feature, workflow, trust, and data-quality entries.
 - Major feature groups stand out above minor fixes in app "What's New" surfaces
   and public release-note pages.
+- First-time feature launches use a feature name plus what users can now do,
+  instead of comparative wording such as `easier to`, `clearer`, `better`, or
+  `improved`.
 - Customer wording is plain, concise, and audience-appropriate.
 - `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
   like a raw commit log.
 - Superseded developer notes are removed when no longer useful, or moved to a
   bottom-of-section `Superseded` subsection with obsolete claims struck through
   and concise replacement context.
+- Raw changelog markdown edits include a nearby hidden agent signature comment
+  with the model name/version and local timestamp.
 - Release intent is established before entries move out of `Unreleased`, version
   fields change, or release-note surfaces sync.
 - Release-note data, app "What's New" surfaces, and version fields match the
