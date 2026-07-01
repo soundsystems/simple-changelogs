@@ -58,6 +58,11 @@ Internal admin/developer surfaces:
 - Filter to backend, data, API, automation, security, infrastructure,
   integration, release-process, and operational changes relevant to that
   audience.
+- Use `Release Notes` as the visible UI label unless the app already has a
+  stronger local convention. The source file may still be named
+  `DEVELOPER_CHANGELOG.md`.
+- Ignore hidden raw-changelog signature comments such as `<!-- Agent: ... -->`
+  when parsing `DEVELOPER_CHANGELOG.md` for an internal UI surface.
 - Exclude frontend-only UI polish, visual fixes, customer-facing marketing
   copy, design-only changes, and routine component work unless those changes
   alter admin/developer operations or trust.
@@ -70,6 +75,10 @@ Internal admin/developer surfaces:
 
 Keep release-note versions and dates identical to their changelog headings.
 Mirror the same grouped structure when the product UI supports nested notes.
+
+Release-note sync and internal release-note parsers must ignore hidden
+raw-changelog signature comments such as `<!-- Agent: ... -->`; signatures are
+audit metadata, not rendered release-note copy.
 
 If a release has no customer-facing or UX-impacting bullets, do not update
 customer-facing release-note surfaces. Say explicitly that no customer release
@@ -111,6 +120,40 @@ When adding one:
 - Keep the body constrained and scrollable.
 - Make the header and dismiss action persistent.
 
+## Full Changelog Route and Major Release Detail
+
+Do not use a release-note modal as the only long-term changelog archive when the
+product has no external changelog, hosted repository release page, public docs
+page, or existing in-app changelog route that users can reach.
+
+For non-developer-facing products without a canonical public changelog source,
+add or update a real changelog route or page when release prep adds or
+materially changes a "What's New" modal. The route should render the full
+relevant history from the same changelog or release-note source of truth. Link
+it from the modal and from natural app navigation, and keep it scoped to the
+same platform and audience as the modal.
+
+Use the modal for the latest release or the current major version's most
+relevant recent history. Do not append every historical major release into the
+same modal forever; preserve older history on the canonical changelog route,
+docs page, or external release source.
+
+For major releases or launch-level updates, the modal or release-detail view may
+use a full-release format:
+
+- A concise version summary that names the release and its main outcomes.
+- A short `Highlights` section with feature-led, outcome-focused items.
+- Enough detail for users to understand where important new capabilities appear
+  and how to take advantage of them.
+- Inline technical names only when they are visible product, API, CLI, SDK, or
+  integration concepts that the audience recognizes.
+- One clear `View full changelog` action. When the detail area scrolls, prefer
+  a sticky bottom action that stays available while users read.
+
+Avoid duplicating the same full-changelog link inline and again as a footer or
+button. If two links appear, they must have distinct purposes, such as one
+release-specific technical detail link and one general changelog archive link.
+
 ## App-Themed What's New Rules
 
 For app-themed "What's New" surfaces:
@@ -128,8 +171,10 @@ For app-themed "What's New" surfaces:
 - Keep manual access available from a menu, account area, help surface, or
   public changelog page.
 - Never use the modal as onboarding for brand-new users.
-- At a new major version, reset the modal to that major's relevant release
-  history; within a major, append minor and patch sections newest first.
+- At a new major version, reset the modal to that major's current release or
+  most relevant recent history; within a major, append minor and patch sections
+  newest first only while the modal remains readable. Keep full older history on
+  the canonical changelog route, docs page, or external release source.
 
 ## Timing and Eligibility
 

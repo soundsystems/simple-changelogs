@@ -18,6 +18,19 @@
   - Existing admin, developer, dashboard, analysis, and portal areas can now get
     one internal release-note surface that pulls filtered backend and operations
     updates from `DEVELOPER_CHANGELOG.md`.
+  - Internal admin/developer release-note surfaces now use `Release Notes` as
+    the visible UI label and ignore hidden agent signature comments when
+    rendering from `DEVELOPER_CHANGELOG.md`.
+  - Release-note sync guidance now tells agents to ignore hidden signature
+    comments before rendering generated customer-facing or internal release
+    notes.
+  <!-- Agent: GPT-5 Codex | 07/01/2026 2:41 PM CDT -->
+  - Major-release "What's New" surfaces now favor a concise summary,
+    scannable highlights, and one clear full-changelog action.
+  - Apps without an existing public changelog source now get guidance to add a
+    real changelog route or page for full history instead of using one growing
+    modal as the archive.
+  <!-- Agent: GPT-5 Codex | 07/01/2026 3:06 PM CDT -->
   - Auto-shown release-note modals now wait until after higher-priority auth,
     age-gate, consent, onboarding, payment, safety, account-recovery, or
     migration flows.

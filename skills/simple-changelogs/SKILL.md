@@ -209,11 +209,19 @@ Before finalizing, review the diff and confirm:
   and concise replacement context.
 - Raw changelog markdown edits include a nearby hidden agent signature comment
   with the model name/version and local timestamp.
+- Generated release-note data and internal release-note UI parsers ignore hidden
+  signature comments so attribution metadata is not rendered to users.
 - Release intent is established before entries move out of `Unreleased`, version
   fields change, or release-note surfaces sync.
 - Release-note data, app "What's New" surfaces, and version fields match the
   changelog when the repo already has a visible release-note flow or release
   prep adds one by default for an app with returning users.
+- Non-developer-facing apps without an existing public changelog source have a
+  real changelog route or page for full history instead of using one ever-growing
+  modal as the archive.
+- Major-release modals or detail views use a concise summary, scannable
+  highlights, and one clear full-changelog action without duplicating identical
+  links.
 - In monorepos, web, mobile, admin, developer, and portal release-note surfaces
   are scoped to the audience and platform that can use them instead of crowding
   one web modal with unrelated notes.
@@ -221,6 +229,8 @@ Before finalizing, review the diff and confirm:
   `DEVELOPER_CHANGELOG.md` or equivalent internal history and exclude
   frontend-only UI polish or customer-only notes unless relevant to that
   internal audience.
+- Internal admin/developer release-note surfaces use `Release Notes` as the
+  user-visible label unless the repo already has a stronger local convention.
 - Auto-shown release-note modals appear only after higher-priority gates such as
   auth, age gates, consent, onboarding, account recovery, payment, safety, or
   mandatory migration flows.

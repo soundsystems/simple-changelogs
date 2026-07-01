@@ -175,6 +175,28 @@ Expected behavior:
   timezone in the signature.
 - Does not add visible signature prose to customer-facing release notes or
   separately sign generated release-note data synced from the raw changelog.
+- Ensures release-note sync or parser logic ignores hidden signature comments
+  before rendering customer-facing or internal release notes.
+
+### Internal release-note surface
+
+Prompt:
+
+```text
+The repo has an authenticated admin/dev portal but no internal UI for developer
+release notes. Add the surface from DEVELOPER_CHANGELOG.md.
+```
+
+Expected behavior:
+
+- Adds or updates a single internal surface at the portal root instead of
+  duplicating modals across nested routes.
+- Labels the UI as `Release Notes` unless the repo already has a stronger local
+  convention, while still using `DEVELOPER_CHANGELOG.md` as the source.
+- Filters to backend, data, API, automation, security, infrastructure,
+  release-process, and operations notes relevant to the internal audience.
+- Ignores hidden raw-changelog signature comments when parsing the developer
+  changelog for display.
 
 ### Pre-1.0 hot fix
 
@@ -284,6 +306,29 @@ Expected behavior:
 - Adds a short top-of-file comment pointing future agents to local changelog,
   release-note, or "What's New" guidance.
 
+### Major release modal and changelog route
+
+Prompt:
+
+```text
+The app has returning users, no public changelog route, and no external release
+archive. Version 2.0 launches several major user-facing features. Prepare the
+What's New experience.
+```
+
+Expected behavior:
+
+- Uses the modal or release-detail view for the latest major release summary and
+  scannable highlights, not as an endless archive of every historical release.
+- Adds or updates a real changelog route or page that carries the full relevant
+  history from the same changelog or release-note source of truth.
+- Links to the full changelog from the modal and a natural app navigation
+  location.
+- Uses one clear full-changelog action, preferably sticky when the detail area
+  scrolls, and avoids duplicating the same link inline and in the footer.
+- Keeps release-specific technical or docs links only when they serve a distinct
+  purpose from the full changelog archive.
+
 ### Mobile monorepo release notes
 
 Prompt:
@@ -361,6 +406,8 @@ Pass only if:
 - Release-note surfaces are updated when documented or explicitly requested, and
   are added by default during release prep for apps with returning users when no
   visible equivalent exists.
+- Major-release modals summarize the latest release while a canonical changelog
+  route, docs page, or external release source carries full history.
 - Monorepo release-note surfaces are scoped by platform and audience so web,
   mobile, admin, developer, and portal notes do not pollute unrelated surfaces.
 - Internal admin/developer release-note surfaces pull from internal technical

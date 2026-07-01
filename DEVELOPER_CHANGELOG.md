@@ -19,6 +19,19 @@
   admin, developer, dashboard, analysis, and portal surfaces, including internal
   surfaces that pull filtered backend/operations updates from
   `DEVELOPER_CHANGELOG.md`.
+- Updated internal release-note surface guidance so UI labels use
+  `Release Notes` and parsers skip hidden raw-changelog signature comments when
+  rendering from `DEVELOPER_CHANGELOG.md`.
+- Added release-note sync guidance and eval coverage so generated customer and
+  internal release-note surfaces ignore hidden signature comments before
+  rendering.
+<!-- Agent: GPT-5 Codex | 07/01/2026 2:41 PM CDT -->
+- Added major-release surface guidance so "What's New" modals use summary and
+  highlights while a canonical changelog route, docs page, or external release
+  source carries full history.
+- Added eval coverage for apps that need a real changelog route instead of an
+  ever-growing modal archive, including single-action full-changelog linking.
+<!-- Agent: GPT-5 Codex | 07/01/2026 3:06 PM CDT -->
 - Added release-note modal sequencing and eligibility guidance so auto-shown
   notes wait for auth, returning-user state, and higher-priority gates before
   appearing.
