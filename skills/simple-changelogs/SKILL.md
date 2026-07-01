@@ -222,6 +222,9 @@ Before finalizing, review the diff and confirm:
 - Major-release modals or detail views use a concise summary, scannable
   highlights, and one clear full-changelog action without duplicating identical
   links.
+- Auto-shown release-note modals default to the latest release; manual modal or
+  compact detail surfaces show only the current major or last 2-3 short releases
+  while readable, then link to the full changelog route/page for older history.
 - In monorepos, web, mobile, admin, developer, and portal release-note surfaces
   are scoped to the audience and platform that can use them instead of crowding
   one web modal with unrelated notes.
@@ -231,6 +234,9 @@ Before finalizing, review the diff and confirm:
   internal audience.
 - Internal admin/developer release-note surfaces use `Release Notes` as the
   user-visible label unless the repo already has a stronger local convention.
+- Internal admin/developer full-history surfaces prefer a dedicated route or
+  panel, such as `/admin/dev/release-notes` or `/admin/release-notes`, while
+  admin modals stay short and link to the full internal surface.
 - Auto-shown release-note modals appear only after higher-priority gates such as
   auth, age gates, consent, onboarding, account recovery, payment, safety, or
   mandatory migration flows.

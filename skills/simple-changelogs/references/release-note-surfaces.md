@@ -61,6 +61,10 @@ Internal admin/developer surfaces:
 - Use `Release Notes` as the visible UI label unless the app already has a
   stronger local convention. The source file may still be named
   `DEVELOPER_CHANGELOG.md`.
+- Prefer a dedicated route or panel for full internal history, such as
+  `/admin/dev/release-notes`, `/admin/release-notes`, or the nearest equivalent
+  that matches local routing. Use `release-notes` in new route/component names
+  unless the repo already has a clearer convention.
 - Ignore hidden raw-changelog signature comments such as `<!-- Agent: ... -->`
   when parsing `DEVELOPER_CHANGELOG.md` for an internal UI surface.
 - Exclude frontend-only UI polish, visual fixes, customer-facing marketing
@@ -68,6 +72,10 @@ Internal admin/developer surfaces:
   alter admin/developer operations or trust.
 - Use one root modal, sheet, panel, or route for that admin/developer area
   instead of adding separate modals to every dashboard or nested route.
+- If the internal surface is a modal, keep it to the latest internal release or
+  a short current-major summary and link to the full route/panel for older
+  entries. Do not make an auto-open admin/developer modal carry the full
+  developer changelog.
 - Never expose internal developer notes to public customers or unauthenticated
   users.
 
@@ -137,6 +145,14 @@ Use the modal for the latest release or the current major version's most
 relevant recent history. Do not append every historical major release into the
 same modal forever; preserve older history on the canonical changelog route,
 docs page, or external release source.
+
+Use version count as a cap, not a target. Auto-shown modals should default to
+the latest release. Manual modals or compact release-detail views may show the
+current major version or the last 2-3 short releases only while the content
+stays easy to scan. If the modal needs more than about two comfortable
+screens, more than 5-7 top-level groups, or includes multiple major feature
+sections, move the older or lower-priority history behind the full changelog
+route/page.
 
 For major releases or launch-level updates, the modal or release-detail view may
 use a full-release format:

@@ -31,6 +31,13 @@
     real changelog route or page for full history instead of using one growing
     modal as the archive.
   <!-- Agent: GPT-5 Codex | 07/01/2026 3:06 PM CDT -->
+  - Release-note modals now get a content-depth budget: latest release by
+    default, current major or last few short releases only while readable, and a
+    full changelog route for older history.
+  - Internal admin/developer release notes now prefer a dedicated `Release Notes`
+    route or panel for full technical history while keeping any admin modal
+    short.
+  <!-- Agent: GPT-5 Codex | 07/01/2026 3:43 PM CDT -->
   - Auto-shown release-note modals now wait until after higher-priority auth,
     age-gate, consent, onboarding, payment, safety, account-recovery, or
     migration flows.

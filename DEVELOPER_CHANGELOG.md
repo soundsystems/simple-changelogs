@@ -32,6 +32,13 @@
 - Added eval coverage for apps that need a real changelog route instead of an
   ever-growing modal archive, including single-action full-changelog linking.
 <!-- Agent: GPT-5 Codex | 07/01/2026 3:06 PM CDT -->
+- Added release-note depth-budget guidance so auto-shown modals default to the
+  latest release, compact manual surfaces cap at readable recent history, and
+  full history moves to a canonical route or page.
+- Added internal admin/developer guidance and eval coverage for full `Release
+  Notes` routes or panels fed from `DEVELOPER_CHANGELOG.md`, with short modals
+  linking to the full internal history when needed.
+<!-- Agent: GPT-5 Codex | 07/01/2026 3:43 PM CDT -->
 - Added release-note modal sequencing and eligibility guidance so auto-shown
   notes wait for auth, returning-user state, and higher-priority gates before
   appearing.

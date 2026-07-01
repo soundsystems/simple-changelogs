@@ -362,11 +362,40 @@ Expected behavior:
 
 - Adds or updates one internal release-note surface at the admin/developer area
   root instead of adding separate modals to each dashboard route.
+- Uses a dedicated route or panel for full internal history when the admin area
+  needs more than a short latest-release summary.
+- Names new visible UI `Release Notes` and prefers route/component names like
+  `/admin/dev/release-notes` or `/admin/release-notes` when local routing allows.
 - Pulls from `DEVELOPER_CHANGELOG.md` or equivalent internal technical history.
 - Filters out frontend-only UI polish, visual fixes, marketing copy, and
   customer-only notes unless relevant to admin/developer operations or trust.
+- Keeps any admin/developer modal short and links it to the full internal
+  release-note route or panel instead of rendering the entire developer history
+  in an auto-open modal.
 - Does not expose internal developer notes to public customers or unauthenticated
   users.
+
+### Modal depth budget
+
+Prompt:
+
+```text
+The What's New modal currently renders six release sections, two of which are
+major feature launches. Decide what should stay in the modal and what should
+move behind a full release-notes link.
+```
+
+Expected behavior:
+
+- Does not use a hard "always show exactly 3 versions" rule.
+- Defaults an auto-shown modal to the latest release.
+- Allows a manual modal or compact detail view to show the current major version
+  or last 2-3 short releases only while the content stays easy to scan.
+- Moves older or lower-priority history behind a full changelog route/page when
+  the modal exceeds about two comfortable screens, 5-7 top-level groups, or
+  multiple major feature sections.
+- Keeps one clear full-changelog action visible instead of duplicating identical
+  links.
 
 ### Modal sequencing and eligibility
 
