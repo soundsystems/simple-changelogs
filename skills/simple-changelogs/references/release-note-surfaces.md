@@ -44,6 +44,56 @@ developer-only notes.
 If a platform already has a reachable equivalent surface that pulls from the
 right release-note data, update it instead of creating another one.
 
+## Mobile Store Release Notes
+
+When mobile release prep includes App Store, Google Play, TestFlight, internal
+testing, closed testing, or other store-track metadata, prepare store release
+notes as a separate customer-facing surface derived from the same changelog or
+platform-specific release-note data.
+
+Do not paste the full changelog into store release notes. Store notes should be
+short, mobile-scoped, and useful at install/update time:
+
+- Include only mobile-visible changes and shared account, auth, sync,
+  notification, offline, reliability, safety, privacy, or trust changes that
+  mobile users benefit from.
+- Exclude web-only, admin-only, developer-only, migration, CI, package,
+  internal release-process, and backend-only notes unless they directly change
+  the mobile user experience.
+- Use 2-5 concise bullets or one compact paragraph for normal releases. For
+  major mobile launches, lead with the headline capability and keep the rest
+  scannable.
+- Avoid generic `Bug fixes and performance improvements` when the release has
+  a concrete user-visible outcome. If a routine stability-only release truly
+  has no specific customer-facing change, keep the note terse.
+- Keep promotional copy, calls to action, pricing claims, and evergreen app
+  description changes out of release notes unless the store field is explicitly
+  for that purpose.
+- Do not expose implementation mechanics for security, abuse prevention,
+  offline replay, crash fixes, background work, providers, queues, review
+  workarounds, build systems, or store-review compliance. Say the mobile outcome
+  instead.
+- Localize store release notes when the repo already maintains localized store
+  metadata or the store submission requires per-language notes.
+
+Respect store constraints and repo metadata sources:
+
+- Apple App Store Connect uses `What's New in this Version` for changed app
+  versions; it is required after the first version, localizable, and currently
+  limited to 4000 characters.
+- Google Play uses `What's new in this release?`; it is entered per language,
+  currently limited to 500 Unicode characters per language, and should not be
+  used for promotion or solicitation.
+- Find existing store metadata before writing new copy. Check local sources such
+  as Fastlane metadata, App Store Connect API payloads, Play Console metadata,
+  EAS submit config, `app.json`, native version files, release scripts, docs, or
+  CI workflows.
+- If store metadata is remote-only, produce the exact release-note text and
+  state the command, dashboard, credential, or release-manager action needed to
+  apply it instead of claiming it was updated.
+- Include store release-note fields in the release metadata sync map as
+  `Updated`, `Already aligned`, or `Intentionally skipped`.
+
 ## Internal Admin and Developer Surfaces
 
 If a repo already has an authenticated admin, developer, analysis, portal,

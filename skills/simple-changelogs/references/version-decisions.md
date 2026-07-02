@@ -84,6 +84,10 @@ same pass only after release intent and source-of-truth policy are clear:
   - mobile store metadata such as `app.json`, native marketing version,
     `versionCode`, `buildNumber`, or runtime version when local policy ties it
     to the product release
+  - mobile store release-note metadata such as App Store Connect `What's New in
+    this Version`, Google Play `What's new in this release?`, TestFlight notes,
+    internal testing notes, Fastlane metadata, Play Console metadata, or EAS
+    submit metadata when mobile release prep includes store submission
   - shared package metadata such as `packages/types`, SDK, API client, database,
     scraper, or integration package versions when those packages are part of the
     same released surface

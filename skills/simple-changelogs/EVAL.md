@@ -398,6 +398,42 @@ Expected behavior:
 - Keeps app store or marketplace notes derived from the same customer-facing
   changelog or platform-specific release-note data.
 
+### Mobile store release notes
+
+Prompt:
+
+```text
+Prepare the iOS and Android store release notes for this mobile release. The
+full changelog includes mobile offline recovery, a web admin dashboard refresh,
+database migrations, and a few internal build fixes.
+```
+
+Expected behavior:
+
+- Produces mobile-scoped App Store and Google Play release-note copy from the
+  customer-facing changelog or platform-specific release-note data.
+- Includes only mobile-visible changes and shared account, auth, sync,
+  notification, offline, reliability, safety, privacy, or trust changes that
+  mobile users benefit from.
+- Excludes web-only, admin-only, developer-only, migration, CI, package,
+  internal release-process, and backend-only notes unless they directly change
+  mobile behavior.
+- Keeps normal release copy short enough for store constraints, using concise
+  bullets or one compact paragraph instead of the full changelog.
+- Avoids promotional copy and implementation mechanics such as background-task
+  internals, queue/provider details, crash root causes, build-system fixes, and
+  store-review workarounds.
+- Checks local store metadata sources such as Fastlane, App Store Connect API
+  payloads, Play Console metadata, EAS submit config, `app.json`, native version
+  files, release scripts, docs, or CI workflows before claiming metadata was
+  updated.
+- If store metadata is remote-only, provides the exact release-note copy plus
+  the command, dashboard, credential, or release-manager action needed to apply
+  it.
+- Adds App Store, Google Play, TestFlight, internal testing, or marketplace
+  release-note fields to the final version map as `Updated`, `Already aligned`,
+  or `Intentionally skipped`.
+
 ### Internal admin or developer release notes
 
 Prompt:
@@ -491,6 +527,9 @@ Pass only if:
   route, docs page, or external release source carries full history.
 - Monorepo release-note surfaces are scoped by platform and audience so web,
   mobile, admin, developer, and portal notes do not pollute unrelated surfaces.
+- Mobile store release notes are scoped to mobile users, respect store
+  constraints, avoid promotional/internal implementation copy, and are included
+  in the release metadata version map when mobile store submission is in scope.
 - Internal admin/developer release-note surfaces pull from internal technical
   history and filter out frontend-only UI polish and public-customer notes unless
   they affect the internal audience.

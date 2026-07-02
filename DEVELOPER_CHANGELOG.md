@@ -52,6 +52,12 @@
   edits require a concrete version map across changelog, release-note,
   app/package, store, and relevant package metadata sources.
 <!-- Agent: GPT-5 Codex | 07/02/2026 1:30 AM CDT -->
+- Added mobile store release-note guidance to `SKILL.md`,
+  `references/release-note-surfaces.md`, `references/version-decisions.md`, and
+  `EVAL.md` so App Store, Google Play, TestFlight, internal testing, and
+  marketplace notes are scoped to mobile users, respect store constraints, and
+  appear in release metadata version maps.
+<!-- Agent: GPT-5 Codex | 07/02/2026 1:50 AM CDT -->
 - Added explicit pre-release fix guidance to check prior announcements, revise
   still-unreleased entries instead of adding duplicate fix notes, and group
   multiple post-`1.0.0` public fixes under `Bug Fixes`.

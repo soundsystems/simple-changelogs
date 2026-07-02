@@ -274,6 +274,11 @@ Before finalizing, review the diff and confirm:
 - Release-note data, app "What's New" surfaces, and version fields match the
   changelog when the repo already has a visible release-note flow or release
   prep adds one by default for an app with returning users.
+- Mobile store release notes are updated or drafted during mobile release prep
+  when App Store, Google Play, TestFlight, internal testing, closed testing, or
+  marketplace metadata is part of the release flow.
+- Mobile store release notes stay mobile-scoped, concise, non-promotional, and
+  free of web-only/admin-only/developer-only notes and implementation mechanics.
 - When a released version section is created or changed, the final response
   reports a version map: `Updated`, `Already aligned`, or `Intentionally
   skipped` for each relevant changelog, release-note, app, package, and store

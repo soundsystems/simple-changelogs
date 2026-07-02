@@ -71,6 +71,12 @@
     showing which metadata sources were updated, already aligned, or
     intentionally skipped.
   <!-- Agent: GPT-5 Codex | 07/02/2026 1:30 AM CDT -->
+  - Mobile store release prep now gets dedicated guidance for App Store,
+    Google Play, TestFlight, internal testing, and marketplace release notes.
+  - Store release notes now stay mobile-scoped, concise, non-promotional, and
+    included in the release metadata version map when store submission is in
+    scope.
+  <!-- Agent: GPT-5 Codex | 07/02/2026 1:50 AM CDT -->
   - Developer changelog source-link guidance now stays provider-neutral across
     pull and merge request workflows.
   - New release-note surfaces should be linked from a natural app location such
