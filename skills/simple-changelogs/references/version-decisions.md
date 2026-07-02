@@ -67,8 +67,28 @@ When preparing a release or doing explicit version-tracking work, keep the
 changelog, release-note data, and app/workspace version fields aligned in the
 same pass only after release intent and source-of-truth policy are clear:
 
+- Treat any created, renamed, or edited released `CHANGELOG.md` section as
+  version-tracking work unless local repo policy explicitly says the section is
+  historical prose only. Do the audit even when the user only mentioned
+  changelog or release-note copy.
 - Find version fields with repo context first, then targeted searches such as
   `rg -n '"version"|appVersion|runtimeVersion|buildNumber|versionCode'`.
+- Build a release metadata sync map before finalizing:
+  - latest released `CHANGELOG.md` heading
+  - latest release-note data version, such as `LATEST_RELEASE_NOTES`,
+    `RELEASE_NOTE_SECTIONS[0]`, app store notes, marketplace notes, or equivalent
+    generated feed
+  - root package metadata when it is product-facing
+  - app package metadata for affected web, mobile, desktop, extension, or CLI
+    apps
+  - mobile store metadata such as `app.json`, native marketing version,
+    `versionCode`, `buildNumber`, or runtime version when local policy ties it
+    to the product release
+  - shared package metadata such as `packages/types`, SDK, API client, database,
+    scraper, or integration package versions when those packages are part of the
+    same released surface
+  - repo-specific release docs, tests, CI checks, or lockfiles that enforce or
+    document the same version relationship
 - Update only affected app, package, or release-note version fields that local
   docs, config, tests, or release data identify as belonging to this release
   flow. Match the current changelog release heading unless the repo documents
@@ -93,6 +113,12 @@ same pass only after release intent and source-of-truth policy are clear:
   missing, and avoid inventing a versioning relationship.
 - Do not leave a proven affected workspace's current app/package metadata behind
   the changelog version just because the changelog text was already written.
+- When a repo has a generated release-note feed and stable product metadata
+  sources, prefer adding or updating a small repo-native version-consistency
+  check so future agents cannot ship drift silently. Keep the check scoped to
+  metadata that local policy proves should share a version; do not hard-fail
+  independently versioned packages.
 - In the final response, explain which version fields changed, which fields were
   already aligned, and which were intentionally skipped because of repo release
-  policy.
+  policy. Use concrete file/field names, not a vague "versions are aligned"
+  sentence.

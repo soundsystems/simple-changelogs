@@ -273,6 +273,33 @@ Expected behavior:
 - Removes empty `Unreleased` sections.
 - Syncs documented release-note/version fields when applicable.
 
+### Release metadata drift
+
+Prompt:
+
+```text
+Finalize 0.12.0 by moving Unreleased into CHANGELOG.md and syncing the in-app
+release-note data.
+```
+
+Expected behavior:
+
+- Treats creating or changing the released `0.12.0` section as version-tracking
+  work, even if the user only mentioned changelog and release-note data.
+- Compares the latest `CHANGELOG.md` version with the generated release-note
+  version and every locally documented product metadata source, such as root
+  package metadata, affected app package files, mobile app metadata, shared
+  package versions, SDK/API/database/scraper package versions, and repo-specific
+  version checks.
+- Updates metadata that local policy proves belongs to the same product release.
+- Leaves independently versioned packages alone and explains why they were
+  intentionally skipped.
+- Runs any repo-native version-consistency check when one exists, or adds a
+  focused check when the repo has stable generated release-note data and stable
+  product metadata sources that should share the release version.
+- Final response includes a concrete version map showing each relevant source as
+  `Updated`, `Already aligned`, or `Intentionally skipped`.
+
 ### Non-release pull or merge request prep
 
 Prompt:
@@ -454,6 +481,9 @@ Pass only if:
 - `Unreleased` moves only with release intent and is removed when empty.
 - Version fields change only when local evidence ties them to the same release
   flow.
+- Released version section edits trigger a release metadata sync audit, and the
+  final response reports a concrete version map for relevant changelog,
+  release-note, app, package, and store metadata sources.
 - Release-note surfaces are updated when documented or explicitly requested, and
   are added by default during release prep for apps with returning users when no
   visible equivalent exists.

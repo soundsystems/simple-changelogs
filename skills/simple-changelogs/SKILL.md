@@ -210,6 +210,15 @@ or several commits is not enough reason to bump a version.
 Read `references/version-decisions.md` before changing app/package versions,
 release-note version fields, or SemVer headings.
 
+When creating, renaming, or editing a released version section, run a release
+metadata sync audit before finalizing. Compare the latest `CHANGELOG.md` version
+to release-note data and every app/package/store metadata field that local docs,
+config, tests, or release automation identify as part of that product release.
+If an automated version-consistency check exists, run it. If none exists and the
+repo has a generated release-note feed, consider adding a focused check that
+fails when the latest release-note version drifts from the product metadata that
+is known to share that release version.
+
 When a release has customer-facing changelog bullets, update existing
 user-facing release-note surfaces used by the product, or add one only when no
 visible equivalent exists. Read
@@ -265,6 +274,10 @@ Before finalizing, review the diff and confirm:
 - Release-note data, app "What's New" surfaces, and version fields match the
   changelog when the repo already has a visible release-note flow or release
   prep adds one by default for an app with returning users.
+- When a released version section is created or changed, the final response
+  reports a version map: `Updated`, `Already aligned`, or `Intentionally
+  skipped` for each relevant changelog, release-note, app, package, and store
+  metadata source identified by local repo policy.
 - Non-developer-facing apps without an existing public changelog source have a
   real changelog route or page for full history instead of using one ever-growing
   modal as the archive.

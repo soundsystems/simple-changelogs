@@ -47,6 +47,11 @@
   clone-enabling mechanics, hidden heuristics, security-control details, private
   vendor details, and roadmap sequencing out of public notes.
 <!-- Agent: GPT-5 Codex | 07/01/2026 10:45 PM CDT -->
+- Added release metadata sync-audit guidance to `SKILL.md`,
+  `references/version-decisions.md`, and `EVAL.md` so released changelog section
+  edits require a concrete version map across changelog, release-note,
+  app/package, store, and relevant package metadata sources.
+<!-- Agent: GPT-5 Codex | 07/02/2026 1:30 AM CDT -->
 - Added explicit pre-release fix guidance to check prior announcements, revise
   still-unreleased entries instead of adding duplicate fix notes, and group
   multiple post-`1.0.0` public fixes under `Bug Fixes`.

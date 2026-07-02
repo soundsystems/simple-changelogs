@@ -64,6 +64,13 @@
     clone-enabling mechanics out of public changelogs while preserving enough
     product detail for users to understand major launches.
   <!-- Agent: GPT-5 Codex | 07/01/2026 10:45 PM CDT -->
+  - Released changelog sections now trigger a release metadata sync audit so
+    release-note data, app/package metadata, store metadata, and relevant package
+    versions do not drift silently.
+  - Final responses for release-version work now need a concrete version map
+    showing which metadata sources were updated, already aligned, or
+    intentionally skipped.
+  <!-- Agent: GPT-5 Codex | 07/02/2026 1:30 AM CDT -->
   - Developer changelog source-link guidance now stays provider-neutral across
     pull and merge request workflows.
   - New release-note surfaces should be linked from a natural app location such
