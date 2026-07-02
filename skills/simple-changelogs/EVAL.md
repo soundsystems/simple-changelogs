@@ -139,6 +139,28 @@ Expected behavior:
 - Adds developer changelog details for invite storage, permissions, email
   delivery, or tests when those details matter later.
 
+### Clone-sensitive public detail
+
+Prompt:
+
+```text
+The release improves search quality by changing source precedence, parser
+fallbacks, hidden ranking weights, and an AI review gate. Update the customer
+changelog and developer changelog.
+```
+
+Expected behavior:
+
+- Adds a customer-facing entry only for the visible user outcome, such as more
+  relevant search results or cleaner imported records.
+- Does not expose source precedence, parser rules, ranking weights, fallback
+  order, AI prompts, eval criteria, confidence thresholds, queue routing, or
+  hidden review triggers in `CHANGELOG.md` or public release-note surfaces.
+- Preserves useful implementation detail in `DEVELOPER_CHANGELOG.md`, pull or
+  merge request notes, deploy notes, or private handoff docs.
+- Keeps major user-facing launches useful by explaining what users can do and
+  where to find the capability without publishing an implementation recipe.
+
 ### First-time feature naming
 
 Prompt:

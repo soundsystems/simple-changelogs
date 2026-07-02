@@ -7,6 +7,7 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 
 - Pruning rules
 - Customer changelog entries
+- Public detail budget
 - Detail level
 - Pre-release and hot fixes
 - Developer changelog entries
@@ -51,6 +52,56 @@ onboarding/setup, error recovery, permissions/access, or support obligations.
 Exclude implementation details, raw enum names, migration numbers, pipeline
 markers, internal package names, or function names unless the requested audience
 explicitly needs technical release notes.
+
+## Public Detail Budget
+
+Assume public changelog surfaces can be read by customers, prospects,
+competitors, agents, models, and attackers trying to infer product strategy or
+implementation mechanics. Customer entries should preserve the "it just works"
+layer: name the visible outcome, not the hidden decision tree.
+
+Before adding detail to `CHANGELOG.md`, ask whether the audience needs that
+detail to use, understand, or trust the change. If the detail mainly proves how
+the fix works, explains internal reasoning, or reveals how the product ranks,
+classifies, parses, moderates, routes, recovers, repairs data, or enforces
+trust boundaries, move it to `DEVELOPER_CHANGELOG.md`, a pull or merge request,
+deploy notes, incident records, or a private handoff instead.
+
+Keep these out of customer-facing notes:
+
+- ranking weights, source precedence, thresholds, scoring logic, fallback order,
+  confidence gates, or hidden sort rules
+- parser rules, taxonomy aliases, classification logic, matching heuristics,
+  canonicalization strategy, provider quirks, data-source mappings,
+  product-specific repair examples, and migration or backfill mechanics
+- moderation, fraud, abuse, trust, safety, recovery, account, permission, or
+  enforcement heuristics
+- AI prompts, model choices, eval criteria, queue routing, human-review
+  triggers, and internal QA signals
+- API endpoint names, schema fields, RPC/function names, package names, feature
+  flags, cron cadence, queue names, service boundaries, and pipeline markers
+- private vendor names, unreleased integrations, roadmap sequencing, release
+  slot strategy, and operational playbooks
+
+Prefer broad user-facing outcomes:
+
+- `Search results now surface more relevant matches first.`
+- `Imported records are cleaner and easier to compare.`
+- `Account recovery now gives users clearer next steps.`
+- `What's New focuses on the latest user-facing updates and links to the full
+  changelog.`
+
+Avoid proof-like or clone-enabling copy:
+
+- `Results now sort by source priority, freshness score, and fallback radius.`
+- `The parser strips package-size suffixes before canonical slug merging.`
+- `Low-confidence reviews enter the admin queue below the promotion threshold.`
+- `The release-note parser filters developer sections by backend keywords.`
+
+Name a specific vendor, data source, customer, product, or partner only when
+the public announcement is specifically about that visible support. Do not use
+customer changelog copy as a QA receipt for individual cleanup examples or as a
+map of internal logic.
 
 ## Detail Level
 

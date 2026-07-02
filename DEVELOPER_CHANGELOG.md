@@ -42,6 +42,11 @@
 - Added release-note modal sequencing and eligibility guidance so auto-shown
   notes wait for auth, returning-user state, and higher-priority gates before
   appearing.
+- Added public detail-budget guidance and eval coverage so customer-facing
+  changelog, release-page, app-store, email, and in-app "What's New" copy keeps
+  clone-enabling mechanics, hidden heuristics, security-control details, private
+  vendor details, and roadmap sequencing out of public notes.
+<!-- Agent: GPT-5 Codex | 07/01/2026 10:45 PM CDT -->
 - Added explicit pre-release fix guidance to check prior announcements, revise
   still-unreleased entries instead of adding duplicate fix notes, and group
   multiple post-`1.0.0` public fixes under `Bug Fixes`.

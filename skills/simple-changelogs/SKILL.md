@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing CHANGELOG.md, internal DEVELOPER_CHANGELOG.md, release-note data, documented "What's New" surfaces, and release version decisions when tied to shipped impact. Use when updating or backfilling changelogs, deciding whether a change belongs in customer or developer notes, preparing release notes, ordering release entries by impact, finalizing Unreleased sections, or aligning documented release-note/version fields during release prep. Do not use for generic deploys, package bumps, commit summaries, UI work, or code review unless the task or repo policy explicitly connects them to changelog, release-note, or release version handling.
+description: Maintains customer-facing CHANGELOG.md, internal DEVELOPER_CHANGELOG.md, release-note data, documented "What's New" surfaces, and release version decisions when tied to shipped impact. Use when updating or backfilling changelogs, deciding whether a change belongs in customer or developer notes, preparing release notes, ordering release entries by impact, finalizing Unreleased sections, or aligning documented release-note/version fields during release prep. Keeps clone-enabling mechanics and implementation details out of customer-facing notes unless the audience needs them to use, understand, or trust the change. Do not use for generic deploys, package bumps, commit summaries, UI work, or code review unless the task or repo policy explicitly connects them to changelog, release-note, or release version handling.
 ---
 
 # Simple Changelogs
@@ -47,14 +47,18 @@ Read only the reference files needed for the task:
    Include a change only when it changes what a user, customer, stakeholder, or
    operator can see, do, understand, or trust in a durable or broadly noticeable
    way.
-5. Keep developer-only work out of `CHANGELOG.md`. Put useful technical context
+5. Apply the public detail budget before writing a customer changelog bullet.
+   Public changelog, release-page, app-store, email, and in-app "What's New"
+   copy should explain the visible outcome and user benefit, not the private
+   mechanics that make it work.
+6. Keep developer-only work out of `CHANGELOG.md`. Put useful technical context
    in `DEVELOPER_CHANGELOG.md` instead.
-6. If a change mixes technical work with visible behavior, write only the
+7. If a change mixes technical work with visible behavior, write only the
    visible outcome in `CHANGELOG.md` and put implementation details in
    `DEVELOPER_CHANGELOG.md`.
-7. Order customer-facing entries inside each version by affected-surface radius,
+8. Order customer-facing entries inside each version by affected-surface radius,
    not commit order.
-8. Before pushing, merging, opening a pull or merge request, publishing a
+9. Before pushing, merging, opening a pull or merge request, publishing a
    release, or deploying publicly, make the changelog decision explicit. If no
    customer-facing update is needed, say so and explain whether the developer
    changelog needs an entry.
@@ -102,6 +106,47 @@ Exclude:
 - Implementation details, raw enum names, migration numbers, pipeline markers,
   internal package names, or function names unless the audience explicitly needs
   technical release notes.
+
+## Public Detail Budget
+
+Treat customer changelog surfaces as public product signals. A customer entry
+should explain what changed, where users benefit, and how to use the change
+when that matters, while preserving the "it just works" layer around private
+product judgment, data quality, security, and operational mechanics.
+
+Before publishing a customer bullet, ask:
+
+- Does this detail help the audience use, understand, or trust the change?
+- Would this detail help another team recreate, bypass, or cheaply clone the
+  product behavior?
+- Could the same user value be communicated with a broader outcome phrase?
+
+If a detail helps competitors, attackers, or implementation copyists more than
+users, omit it from `CHANGELOG.md`, public release pages, app-store notes,
+email summaries, and in-app "What's New" surfaces. Preserve useful proof and
+maintainer context in `DEVELOPER_CHANGELOG.md`, pull or merge request notes,
+incident records, deploy notes, or private handoff docs.
+
+Do not expose clone-enabling details in customer-facing notes:
+
+- ranking formulas, weights, thresholds, source precedence, fallback order, or
+  hidden sort rules
+- parser rules, taxonomy aliases, classification logic, matching heuristics,
+  canonicalization mechanics, data-source mappings, provider quirks, or
+  product-specific repair evidence
+- moderation, fraud, safety, trust, abuse, account recovery, permissions, or
+  enforcement heuristics
+- AI prompts, model choices, eval criteria, confidence gates, queue routing,
+  human-review triggers, or internal QA signals
+- API endpoint names, schema fields, RPC/function names, package names, feature
+  flags, cron cadence, queue names, service boundaries, or pipeline markers
+- private vendor names, unreleased integrations, roadmap sequencing, release
+  slot strategy, or operational playbooks
+
+Keep major feature launches useful: include enough detail for users to
+understand what changed, where to find it, and how to benefit. The constraint is
+against implementation recipes, hidden decision trees, and proof-like mechanics,
+not against clear product education.
 
 For detailed inclusion/exclusion examples, hot-fix rules, and grouped entry
 patterns, read `references/entry-classification.md`.
@@ -179,6 +224,10 @@ Before finalizing, review the diff and confirm:
 - Every customer changelog bullet answers what a user can see, do, understand,
   or trust now.
 - No customer bullet is DX-only or purely implementation detail.
+- No customer bullet exposes clone-enabling mechanics, hidden heuristics, source
+  precedence, parser rules, taxonomy aliases, provider quirks, operational
+  cadence, AI/moderation criteria, security-control mechanics, private vendor
+  details, or roadmap sequencing.
 - No copy-only bullet is included unless it changes user understanding, trust,
   access, legal/compliance meaning, pricing, setup, or error recovery.
 - Customer-facing entries use the minimum detail needed to communicate the
