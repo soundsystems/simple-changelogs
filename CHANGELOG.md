@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Improved skill maintenance guardrails:
+  - The skill now keeps detailed changelog rules in focused references so agents
+    load a shorter `SKILL.md` body for routine changelog work.
+  - Final verification now has a dedicated automation reference for checkable
+    rules such as empty `Unreleased` sections, hidden signature comments, and
+    release metadata alignment.
+  - Eval coverage now guards the skill against overlong descriptions,
+    duplicated reference rules, and checklist drift.
+  <!-- Agent: GPT-5 Codex | 07/04/2026 11:58 AM CDT -->
+
 - Improved "What's New" surface handoff guidance:
   - Skills CLI installs now package the skill from `skills/simple-changelogs/`
     so supporting eval and reference files ship with the skill.
