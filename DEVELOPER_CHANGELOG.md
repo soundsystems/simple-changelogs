@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Refactored the skill body for progressive disclosure:
+  - Shortened the frontmatter description to trigger and negative-trigger
+    conditions.
+  - Reduced duplicated customer-impact, public-detail, and final-verification
+    prose in `SKILL.md`.
+  - Added `references/automation-verification.md` as the single exhaustive
+    final-review and checkable-rule reference.
+  - Added eval coverage for skill maintenance regressions around description
+    bloat, duplicated reference rules, and checklist drift.
+<!-- Agent: GPT-5 Codex | 07/04/2026 11:58 AM CDT -->
+
 - Updated `SKILL.md`, `references/release-note-surfaces.md`, and `EVAL.md` so
   release prep defaults to creating or wiring a visible release-note surface for
   apps with returning users when no equivalent exists, while explicitly avoiding

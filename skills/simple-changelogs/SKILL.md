@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintains customer-facing CHANGELOG.md, internal DEVELOPER_CHANGELOG.md, release-note data, documented "What's New" surfaces, and release version decisions when tied to shipped impact. Use when updating or backfilling changelogs, deciding whether a change belongs in customer or developer notes, preparing release notes, ordering release entries by impact, finalizing Unreleased sections, or aligning documented release-note/version fields during release prep. Keeps clone-enabling mechanics and implementation details out of customer-facing notes unless the audience needs them to use, understand, or trust the change. Do not use for generic deploys, package bumps, commit summaries, UI work, or code review unless the task or repo policy explicitly connects them to changelog, release-note, or release version handling.
+description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer/developer changelogs, release notes, "What's New" surfaces, app-store notes, release metadata, version fields, or changelog decisions for push/merge/release/deploy prep. Do not use for generic deploys, package bumps, commit summaries, UI work, code review, or implementation work unless the request or repo policy explicitly ties them to changelog, release-note, or release-version handling.
 ---
 
 # Simple Changelogs
@@ -23,6 +23,7 @@ Read only the reference files needed for the task:
 | `Unreleased` lifecycle, release finalization, branch/deploy handling, or shipped-entry reconciliation | `references/release-lifecycle.md` |
 | Version bumping, SemVer, release version fields, package/app metadata, or version-source ambiguity | `references/version-decisions.md` |
 | Release-note data, public release pages, app store notes, or in-app "What's New" surfaces | `references/release-note-surfaces.md` |
+| Final verification, local automation, or checkable changelog rules | `references/automation-verification.md` |
 | Evaluating or changing this skill | `EVAL.md` |
 
 ## Core Workflow
@@ -74,82 +75,51 @@ exists. For history reconstruction, read `references/backfill.md`.
 
 ## Customer Impact Gate
 
-Use `CHANGELOG.md` for visible product changes. A customer bullet must answer
-what users, customers, stakeholders, or operators can see, do, understand, or
-trust now.
+Use `CHANGELOG.md` only when the change alters what users, customers,
+stakeholders, or operators can see, do, understand, or trust now. Use
+`DEVELOPER_CHANGELOG.md` for useful internal context that does not meet that
+gate.
 
-Include visible outcomes such as:
+Canonical examples:
 
-- New or changed screens, flows, navigation, filters, settings, carts, checkout,
-  product pages, pricing, content pages, mobile behavior, notifications, or
-  safety/trust gates.
-- Data-quality, ingest, search, taxonomy, sync, indexing, or backend behavior
-  that changes what users see or prevents bad data from reaching them.
-- Public sharing, page metadata, SEO, install, onboarding, email, or
-  notification changes that affect discovery, previews, or communication.
-- Copy or content changes that materially change user understanding, trust,
-  legal/compliance meaning, pricing, purchase decisions, onboarding/setup, error
-  recovery, permissions/access, or support obligations.
-- Admin or operator UI changes that an operator can see or act on.
+- Include a new saved-search screen, changed checkout flow, visible permission
+  behavior, or admin/operator control.
+- Include backend, ingest, search, sync, or data-quality work only when it
+  changes what users see or prevents bad data from reaching them.
+- Include copy changes only when they affect user understanding, trust, legal
+  meaning, pricing, access, setup, error recovery, or support obligations.
+- Exclude tests, linting, migrations, refactors, dependency bumps, build config,
+  type-only edits, and internal docs with no visible behavior change.
+- Exclude routine typo, tone, label, placeholder, visual-polish, and
+  pre-release hot-fix churn unless the material-impact gate is met.
 
-Exclude:
-
-- Linting, formatting, dependency bumps, CI, build config, package-manager
-  changes, tests, migrations, refactors, type-only edits, internal docs, or
-  schema plumbing with no visible behavior change.
-- Routine copy edits, typo fixes, grammar fixes, tone tweaks, label wording,
-  placeholder text, and microcopy polish unless the wording materially changes
-  what users understand, decide, can access, must trust, or are legally promised.
-- Narrow visual hot fixes unless they change a durable user capability,
-  trust/safety behavior, access, shopping flow, or a broadly noticeable UX
-  surface.
-- Implementation details, raw enum names, migration numbers, pipeline markers,
-  internal package names, or function names unless the audience explicitly needs
-  technical release notes.
+For the full inclusion/exclusion matrix, hot-fix rules, and wording examples,
+read `references/entry-classification.md`.
 
 ## Public Detail Budget
 
-Treat customer changelog surfaces as public product signals. A customer entry
-should explain what changed, where users benefit, and how to use the change
-when that matters, while preserving the "it just works" layer around private
-product judgment, data quality, security, and operational mechanics.
+Customer changelog, release-page, app-store, email, and in-app "What's New"
+copy should explain visible outcomes and user benefit without publishing the
+private mechanics that make the product work.
 
-Before publishing a customer bullet, ask:
+Use broad product phrasing when implementation detail would mostly help another
+team copy, bypass, or attack the system:
 
-- Does this detail help the audience use, understand, or trust the change?
-- Would this detail help another team recreate, bypass, or cheaply clone the
-  product behavior?
-- Could the same user value be communicated with a broader outcome phrase?
+- Prefer "Search results now surface more relevant matches first" over ranking
+  weights, fallback order, or source precedence.
+- Prefer "Imported records are cleaner and easier to compare" over parser
+  rules, taxonomy aliases, data-source mappings, or repair examples.
+- Prefer "Account recovery now gives users clearer next steps" over hidden
+  security, review, fraud, or enforcement heuristics.
+- Prefer "What's New focuses on the latest user-facing updates" over release
+  parser internals, queue names, schema fields, package names, or cron cadence.
 
-If a detail helps competitors, attackers, or implementation copyists more than
-users, omit it from `CHANGELOG.md`, public release pages, app-store notes,
-email summaries, and in-app "What's New" surfaces. Preserve useful proof and
-maintainer context in `DEVELOPER_CHANGELOG.md`, pull or merge request notes,
-incident records, deploy notes, or private handoff docs.
+Major feature launches still need enough detail for users to understand what
+changed, where to find it, and how to benefit. The constraint is against hidden
+decision trees and implementation recipes, not useful product education.
 
-Do not expose clone-enabling details in customer-facing notes:
-
-- ranking formulas, weights, thresholds, source precedence, fallback order, or
-  hidden sort rules
-- parser rules, taxonomy aliases, classification logic, matching heuristics,
-  canonicalization mechanics, data-source mappings, provider quirks, or
-  product-specific repair evidence
-- moderation, fraud, safety, trust, abuse, account recovery, permissions, or
-  enforcement heuristics
-- AI prompts, model choices, eval criteria, confidence gates, queue routing,
-  human-review triggers, or internal QA signals
-- API endpoint names, schema fields, RPC/function names, package names, feature
-  flags, cron cadence, queue names, service boundaries, or pipeline markers
-- private vendor names, unreleased integrations, roadmap sequencing, release
-  slot strategy, or operational playbooks
-
-Keep major feature launches useful: include enough detail for users to
-understand what changed, where to find it, and how to benefit. The constraint is
-against implementation recipes, hidden decision trees, and proof-like mechanics,
-not against clear product education.
-
-For detailed inclusion/exclusion examples, hot-fix rules, and grouped entry
-patterns, read `references/entry-classification.md`.
+For the complete public-detail budget, read
+`references/entry-classification.md`.
 
 ## Developer Changelog Gate
 
@@ -232,88 +202,32 @@ Before finalizing, review the diff and confirm:
 
 - Every customer changelog bullet answers what a user can see, do, understand,
   or trust now.
-- No customer bullet is DX-only or purely implementation detail.
-- No customer bullet exposes clone-enabling mechanics, hidden heuristics, source
-  precedence, parser rules, taxonomy aliases, provider quirks, operational
-  cadence, AI/moderation criteria, security-control mechanics, private vendor
-  details, or roadmap sequencing.
+- No customer bullet is DX-only, a pre-release repair-only note, or purely
+  implementation detail.
+- No customer bullet exposes clone-enabling mechanics or proof-like private
+  details.
 - No copy-only bullet is included unless it changes user understanding, trust,
   access, legal/compliance meaning, pricing, setup, or error recovery.
-- Customer-facing entries use the minimum detail needed to communicate the
-  change, except major feature launches or workflow overhauls include enough
-  detail for users to understand what changed and how to use it.
 - Customer bullets inside each version are ordered by affected-surface radius.
-- Pre-release and pre-`1.0.0` hot-fix churn, regressions, and embarrassing
-  baseline defects are excluded from customer-facing logs unless they meet the
-  material-impact gate and can be framed without advertising the defect.
-- Pre-release fixes to already announced features, workflows, or baseline
-  expectations are not announced separately; still-unreleased prior entries are
-  revised instead when needed.
-- Post-`1.0.0` public bug-fix bullets describe the user-visible outcome without
-  exposing blame, embarrassing root causes, incident details, or sensitive
-  implementation internals.
-- Multiple post-`1.0.0` public bug fixes are grouped under `Bug Fixes` after
-  larger feature, workflow, trust, and data-quality entries.
-- Major feature groups stand out above minor fixes in app "What's New" surfaces
-  and public release-note pages.
-- First-time feature launches use a feature name plus what users can now do,
-  instead of comparative wording such as `easier to`, `clearer`, `better`, or
-  `improved`.
-- Customer wording is plain, concise, and audience-appropriate.
 - `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
   like a raw commit log.
-- Superseded developer notes are removed when no longer useful, or moved to a
-  bottom-of-section `Superseded` subsection with obsolete claims struck through
-  and concise replacement context.
 - Raw changelog markdown edits include a nearby hidden agent signature comment
   with the model name/version and local timestamp.
-- Generated release-note data and internal release-note UI parsers ignore hidden
-  signature comments so attribution metadata is not rendered to users.
 - Release intent is established before entries move out of `Unreleased`, version
   fields change, or release-note surfaces sync.
 - Release-note data, app "What's New" surfaces, and version fields match the
-  changelog when the repo already has a visible release-note flow or release
-  prep adds one by default for an app with returning users.
-- Mobile store release notes are updated or drafted during mobile release prep
-  when App Store, Google Play, TestFlight, internal testing, closed testing, or
-  marketplace metadata is part of the release flow.
-- Mobile store release notes stay mobile-scoped, concise, non-promotional, and
-  free of web-only/admin-only/developer-only notes and implementation mechanics.
+  changelog when local policy ties them to the same release.
 - When a released version section is created or changed, the final response
   reports a version map: `Updated`, `Already aligned`, or `Intentionally
   skipped` for each relevant changelog, release-note, app, package, and store
   metadata source identified by local repo policy.
-- Non-developer-facing apps without an existing public changelog source have a
-  real changelog route or page for full history instead of using one ever-growing
-  modal as the archive.
-- Major-release modals or detail views use a concise summary, scannable
-  highlights, and one clear full-changelog action without duplicating identical
-  links.
-- Auto-shown release-note modals default to the latest release; manual modal or
-  compact detail surfaces show only the current major or last 2-3 short releases
-  while readable, then link to the full changelog route/page for older history.
-- In monorepos, web, mobile, admin, developer, and portal release-note surfaces
-  are scoped to the audience and platform that can use them instead of crowding
-  one web modal with unrelated notes.
-- Internal admin/developer release-note surfaces, when added, pull from
-  `DEVELOPER_CHANGELOG.md` or equivalent internal history and exclude
-  frontend-only UI polish or customer-only notes unless relevant to that
-  internal audience.
-- Internal admin/developer release-note surfaces use `Release Notes` as the
-  user-visible label unless the repo already has a stronger local convention.
-- Internal admin/developer full-history surfaces prefer a dedicated route or
-  panel, such as `/admin/dev/release-notes` or `/admin/release-notes`, while
-  admin modals stay short and link to the full internal surface.
-- Auto-shown release-note modals appear only after higher-priority gates such as
-  auth, age gates, consent, onboarding, account recovery, payment, safety, or
-  mandatory migration flows.
-- Hidden, disabled, preview, prototype, or internal-only surfaces are not treated
-  as customer-facing without evidence of real user or operator visibility.
 - Empty `Unreleased` sections are removed after release finalization, and
   `Unreleased` exists only when it contains pending entries.
 
-For changelog-only edits, diff review is usually enough. When version, package,
-or code files changed as part of the same task, run the repo's relevant checks.
+For the exhaustive checklist and automatable checks, read
+`references/automation-verification.md`. For changelog-only edits, diff review
+is usually enough. When version, package, generated release-note, or code files
+changed as part of the same task, run the repo's relevant checks.
 
 ## Boundaries
 

@@ -501,12 +501,38 @@ Expected behavior:
   safety reporting, or destructive admin actions.
 - Tracks dismissal per release and per relevant surface or platform.
 
+### Skill maintenance regression
+
+Prompt:
+
+```text
+Refine this changelog skill after an audit found duplicate SKILL.md and
+reference-file rules, an overlong description, and checklist drift.
+```
+
+Expected behavior:
+
+- Keeps the frontmatter description focused on trigger and negative-trigger
+  conditions instead of summarizing the detailed workflow.
+- Keeps `SKILL.md` as the short routing and core workflow layer, with only
+  canonical examples for the customer impact gate and public detail budget.
+- Keeps full include/exclude lists, clone-sensitive detail rules, hot-fix
+  nuances, and grouped wording examples in `references/entry-classification.md`.
+- Keeps the short final checklist in `SKILL.md` and the exhaustive final review
+  plus automatable checks in `references/automation-verification.md`.
+- Updates `EVAL.md` when changing skill behavior so future edits are tested
+  against realistic scenarios.
+
 ## Acceptance Rubric
 
 Pass only if:
 
 - Trigger language catches changelog/release-note/version tasks but rejects
   generic deploy, package bump, commit summary, UI, and code-review tasks.
+- The skill description stays trigger-focused and does not become a shortcut
+  summary of customer-impact, public-detail, or verification rules.
+- Detailed rules live in one reference file per concern instead of being copied
+  into both `SKILL.md` and references.
 - Customer bullets describe visible outcomes and omit implementation details.
 - Developer bullets preserve maintainable technical context without becoming raw
   commit logs.
