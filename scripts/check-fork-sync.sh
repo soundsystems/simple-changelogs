@@ -16,7 +16,14 @@
 
 set -eu
 
-FORK_SKILL="${1:?usage: check-fork-sync.sh <fork-SKILL.md> [upstream-dir]}"
+usage() {
+  echo "usage: check-fork-sync.sh <fork-SKILL.md> [upstream-dir]" >&2
+  exit 2
+}
+
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] || usage
+
+FORK_SKILL="$1"
 UPSTREAM_DIR="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
 SKILL_PATH="skills/simple-changelogs"
 
