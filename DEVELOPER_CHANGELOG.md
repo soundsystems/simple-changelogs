@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Added fork-sync maintenance support:
+  - Added `references/fork-maintenance.md` and routed downstream fork creation,
+    editing, and sync tasks to it from `SKILL.md`.
+  - Added `scripts/check-fork-sync.sh` to read a fork provenance pin and report
+    upstream skill commits and changed files since that pin.
+  - Added README and eval coverage for fork provenance pins, upstream syncs, and
+    preserving intentional fork deltas.
+  - Tightened internal release-note filter guidance so mixed parent and nested
+    entries are handled separately and checked against the real developer
+    changelog vocabulary.
+<!-- Agent: GPT-5 Codex | 07/05/2026 8:01 AM CDT -->
+
 - Refactored the skill body for progressive disclosure:
   - Shortened the frontmatter description to trigger and negative-trigger
     conditions.

@@ -108,6 +108,16 @@ Internal admin/developer surfaces:
 - Filter to backend, data, API, automation, security, infrastructure,
   integration, release-process, and operational changes relevant to that
   audience.
+- When filtering by keyword, match parent entries and nested bullets
+  separately instead of dropping or keeping whole groups: a matching parent
+  keeps its bullet group for context, and a non-matching parent is kept with
+  only its matching bullets when a mixed feature/backend group contains
+  internal-relevant detail. Drop the item only when nothing in it matches.
+- Verify the keyword filter against the actual developer changelog whenever
+  the filter or the changelog's vocabulary changes: parse the real file,
+  list entries the filter drops, and either widen the keywords or confirm each
+  dropped entry is genuinely out of scope. Migration-only and tooling-only
+  entries are the common silent casualties.
 - Use `Release Notes` as the visible UI label unless the app already has a
   stronger local convention. The source file may still be named
   `DEVELOPER_CHANGELOG.md`.

@@ -523,6 +523,27 @@ Expected behavior:
 - Updates `EVAL.md` when changing skill behavior so future edits are tested
   against realistic scenarios.
 
+### Fork sync and provenance pin
+
+Prompt:
+
+```text
+Our repo has a fork of this skill pinned at an older upstream sha. Port the
+latest upstream improvements into the fork.
+```
+
+Expected behavior:
+
+- Reads `references/fork-maintenance.md` before editing the fork.
+- Uses the fork's `Forked from \`simple-changelogs\` @ \`<sha>\`` line (or
+  `scripts/check-fork-sync.sh`) to find upstream changes since the pin.
+- Ports applicable upstream changes while preserving behaviors named in the
+  fork's deltas list instead of overwriting them with upstream wording.
+- Bumps the pinned sha to the synced upstream commit in the same edit and
+  updates the deltas list if fork-specific behavior changed.
+- Re-runs or updates the fork's `EVAL.md` behavior cases after material
+  changes.
+
 ## Acceptance Rubric
 
 Pass only if:
