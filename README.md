@@ -147,9 +147,42 @@ Use this skill when asking an agent to:
   boundaries without forcing one team's policy onto every project.
 - Explicit "no changelog needed" decisions for internal-only work.
 
+## Forking For Your Project
+
+This skill is designed to be forked into project repos as a repo-specific
+changelog maintainer (renamed, with your product's audiences, policies, and
+release surfaces baked in). To keep a fork syncable with upstream:
+
+1. Record provenance in the fork's `SKILL.md`, directly under the title:
+
+   ```md
+   Forked from `simple-changelogs` @ `<short-sha>`. <project>-specific deltas:
+   <audiences, policy sources, CLI workflows, release surfaces, ...>
+   ```
+
+2. When upstream improves, check what your fork is missing:
+
+   ```bash
+   scripts/check-fork-sync.sh path/to/your-fork/SKILL.md
+   ```
+
+   The script reads the fork's pinned sha, lists upstream skill commits since
+   that pin, and shows the changed files. Exit code `1` means there is
+   something to review; `0` means the fork is current.
+
+3. Port what applies, keep your fork-specific deltas, and bump the pinned sha
+   to the upstream commit you synced to. Improvements that are not
+   project-specific are welcome back upstream as merge requests.
+
+Agents get the same workflow from
+`skills/simple-changelogs/references/fork-maintenance.md`, which the skill
+loads when a task involves creating, editing, or syncing a fork.
+
 ## Files
 
 - `skills/simple-changelogs/SKILL.md` - the agent skill.
+- `scripts/check-fork-sync.sh` - checks a downstream fork's provenance pin
+  against upstream skill history.
 - `skills/simple-changelogs/references/` - focused guidance loaded only for
   relevant changelog, release-lifecycle, versioning, and release-note tasks.
 - `skills/simple-changelogs/EVAL.md` - trigger and behavior eval prompts for

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Improved fork maintenance guidance:
+  - Forked project skills now get a documented provenance pin so upstream
+    improvements can be reviewed and ported without overwriting intentional
+    project-specific behavior.
+  - Added a helper workflow for checking whether a downstream skill fork is
+    behind upstream.
+  - Internal release-note filters now get clearer guidance for preserving
+    matching nested details and auditing dropped developer changelog entries.
+  <!-- Agent: GPT-5 Codex | 07/05/2026 8:01 AM CDT -->
+
 - Improved skill maintenance guardrails:
   - The skill now keeps detailed changelog rules in focused references so agents
     load a shorter `SKILL.md` body for routine changelog work.

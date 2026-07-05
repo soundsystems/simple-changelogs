@@ -24,6 +24,7 @@ Read only the reference files needed for the task:
 | Version bumping, SemVer, release version fields, package/app metadata, or version-source ambiguity | `references/version-decisions.md` |
 | Release-note data, public release pages, app store notes, or in-app "What's New" surfaces | `references/release-note-surfaces.md` |
 | Final verification, local automation, or checkable changelog rules | `references/automation-verification.md` |
+| Creating, editing, or syncing a downstream fork of this skill | `references/fork-maintenance.md` |
 | Evaluating or changing this skill | `EVAL.md` |
 
 ## Core Workflow
@@ -198,36 +199,25 @@ screens.
 
 ## Verification
 
-Before finalizing, review the diff and confirm:
+Before finalizing, review the diff against these categories, then run the
+exhaustive checklist and automatable checks in
+`references/automation-verification.md` - that file owns the full list; do not
+re-copy it here:
 
-- Every customer changelog bullet answers what a user can see, do, understand,
-  or trust now.
-- No customer bullet is DX-only, a pre-release repair-only note, or purely
-  implementation detail.
-- No customer bullet exposes clone-enabling mechanics or proof-like private
-  details.
-- No copy-only bullet is included unless it changes user understanding, trust,
-  access, legal/compliance meaning, pricing, setup, or error recovery.
-- Customer bullets inside each version are ordered by affected-surface radius.
-- `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
-  like a raw commit log.
-- Raw changelog markdown edits include a nearby hidden agent signature comment
-  with the model name/version and local timestamp.
-- Release intent is established before entries move out of `Unreleased`, version
-  fields change, or release-note surfaces sync.
-- Release-note data, app "What's New" surfaces, and version fields match the
-  changelog when local policy ties them to the same release.
-- When a released version section is created or changed, the final response
-  reports a version map: `Updated`, `Already aligned`, or `Intentionally
-  skipped` for each relevant changelog, release-note, app, package, and store
-  metadata source identified by local repo policy.
-- Empty `Unreleased` sections are removed after release finalization, and
-  `Unreleased` exists only when it contains pending entries.
+- Customer bullets: pass the impact gate and public detail budget, and are
+  ordered by affected-surface radius.
+- Developer changelog: plain technical context, not a raw commit log.
+- Signatures: raw changelog edits carry nearby hidden agent signature comments.
+- Release intent: established before `Unreleased` moves, version fields change,
+  or release-note surfaces sync; empty `Unreleased` sections removed.
+- Version map: when a released version section is created or changed, the final
+  response reports `Updated`, `Already aligned`, or `Intentionally skipped` for
+  each relevant changelog, release-note, app, package, and store metadata
+  source identified by local repo policy.
 
-For the exhaustive checklist and automatable checks, read
-`references/automation-verification.md`. For changelog-only edits, diff review
-is usually enough. When version, package, generated release-note, or code files
-changed as part of the same task, run the repo's relevant checks.
+For changelog-only edits, diff review is usually enough. When version, package,
+generated release-note, or code files changed as part of the same task, run the
+repo's relevant checks.
 
 ## Boundaries
 
