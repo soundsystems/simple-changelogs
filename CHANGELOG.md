@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Clarified visible-copy changelog pruning:
+  - The skill now tells agents that visible wording, labels, helper text,
+    modal text, marketing copy, and tone polish do not need customer-facing
+    changelog entries merely because users can see them.
+  - Copy changes still get customer notes when the wording materially changes
+    access, legal/compliance promises, payment or shopping identity behavior,
+    safety/trust requirements, or durable user capabilities.
+  <!-- Agent: GPT-5 Codex | 07/05/2026 11:30 PM CDT -->
+
 - Improved fork maintenance guidance:
   - Forked project skills now get a documented provenance pin so upstream
     improvements can be reviewed and ported without overwriting intentional

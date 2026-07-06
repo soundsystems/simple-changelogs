@@ -144,6 +144,12 @@ During pre-release:
 - Keep routine hot fixes, regression repairs, test-release churn, temporary
   workarounds, narrow visual fixes, cleanup, and baseline defects that should
   already work out of the user-facing changelog.
+- Keep obvious user-facing copy edits out of the user-facing changelog by
+  default. Visible wording, labels, placeholders, helper text, modal text, and
+  marketing copy do not need a customer note merely because users can see them;
+  add one only when the wording itself creates or materially changes an access
+  rule, legal/compliance promise, payment/shopping identity behavior,
+  safety/trust requirement, or durable user capability.
 - Before adding a customer-facing fix entry, check prior changelog and
   release-note entries for the affected feature, workflow, or promise. Do not
   separately announce fixes that make an already announced feature or baseline

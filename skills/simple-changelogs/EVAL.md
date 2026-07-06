@@ -90,16 +90,20 @@ Expected behavior:
 Prompt:
 
 ```text
-The only change fixes typos and adjusts tone in three labels. Should this go in
-the customer changelog?
+The only change fixes typos, adjusts tone in three labels, rewrites helper text,
+and refreshes a marketing modal headline. Should this go in the customer
+changelog?
 ```
 
 Expected behavior:
 
-- Excludes routine typo, tone, label, and microcopy polish from `CHANGELOG.md`.
+- Excludes routine typo, tone, label, helper text, modal copy, marketing copy,
+  placeholder, and microcopy polish from `CHANGELOG.md` merely because users can
+  see it.
 - Adds no developer changelog entry unless the repo has a documented reason.
 - Escalates only if the wording affects legal/compliance, pricing, access,
-  support obligations, setup, or error recovery.
+  payment/shopping identity behavior, safety/trust requirements, durable user
+  capabilities, support obligations, setup, or error recovery.
 
 ### Terse policy or terms update
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Tightened copy-change classification:
+  - Added SKILL and `entry-classification.md` guidance that obvious visible
+    copy edits are excluded from `CHANGELOG.md` by default unless the wording
+    itself materially changes access, legal/compliance, payment identity,
+    safety/trust, or durable capability behavior.
+  - Extended the routine-copy eval expectations so modal, helper, placeholder,
+    label, and marketing copy changes do not regress into customer-facing
+    changelog noise.
+<!-- Agent: GPT-5 Codex | 07/05/2026 11:30 PM CDT -->
+
 - Added fork-sync maintenance support:
   - Added `references/fork-maintenance.md` and routed downstream fork creation,
     editing, and sync tasks to it from `SKILL.md`.
