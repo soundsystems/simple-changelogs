@@ -1,6 +1,17 @@
 # Developer Changelog
 
-## Unreleased
+## 2026-07-06
+
+- Added release-bearing merge reconciliation safeguards:
+  - Added a required merge workflow checklist to
+    `references/release-lifecycle.md` so agents inspect target-branch
+    `Unreleased` entries before and after release-bearing merge batches.
+  - Updated final verification guidance to require an explicit final statement
+    about whether `Unreleased` is empty or intentionally still pending.
+  - Added eval coverage for the exact failure mode where an agent opens focused
+    pull or merge requests, merges them into a public default branch, and misses
+    existing target-branch `Unreleased` entries.
+<!-- Agent: GPT-5 Codex | 07/06/2026 11:05 AM CDT -->
 
 - Tightened copy-change classification:
   - Added SKILL and `entry-classification.md` guidance that obvious visible

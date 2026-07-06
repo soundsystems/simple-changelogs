@@ -86,6 +86,33 @@ If `Unreleased` mixes entries that are already on the target branch with entries
 that are still local or still pending, split them. Move only the
 target-branch-contained entries into the released section.
 
+### Merge Workflow Reconciliation Checklist
+
+When the task includes merging one or more pull or merge requests into a
+release-bearing target, this checklist is required before the merge workflow is
+complete:
+
+1. Fetch or inspect the release-bearing target branch and read its
+   `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` before merging.
+2. Identify whether the target branch already has non-empty `Unreleased`
+   entries and whether those entries are already contained in the target branch.
+3. After the final merge in the batch, inspect the updated target branch again.
+4. Move target-contained customer entries out of `Unreleased` into the matching
+   version/date heading, and move matching developer notes when they belong to
+   the same release.
+5. Remove empty `Unreleased` headings and sync documented release-note surfaces
+   or version metadata when applicable.
+6. Run the repo-native changelog/release-note checks. If the repo has no
+   automated check, state the manual reconciliation performed.
+7. Do not call the merge cleanup complete while a release-bearing target branch
+   still has non-empty `Unreleased`, unless the repo clearly documents a
+   separate release system and you explicitly state why those entries remain
+   pending.
+
+This reconciliation is separate from ordinary feature-branch checks. A generic
+changelog check may validate structure while still allowing a non-empty
+`Unreleased` section, so agents must inspect release-bearing targets directly.
+
 ## Public Deployments
 
 When the user asks you to push, publish, or run a production or public

@@ -61,6 +61,10 @@ Before finalizing, confirm:
   attribution metadata is not rendered to users.
 - Release intent is established before entries move out of `Unreleased`, version
   fields change, or release-note surfaces sync.
+- Release-bearing pull or merge request workflows ran the release-lifecycle
+  merge reconciliation checklist before completion; the final response states
+  whether `Unreleased` is empty or why any remaining entries are intentionally
+  still pending.
 - Empty `Unreleased` sections are removed after release finalization, and
   `Unreleased` exists only when it contains pending entries.
 - Release-note data, app "What's New" surfaces, and version fields match the
