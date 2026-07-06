@@ -52,6 +52,57 @@ If creating a changelog with no pending unreleased entries yet, omit
 For large histories, produce a short backfill plan first, then work in
 reviewable batches instead of rewriting the whole history in one pass.
 
+## Policy Or Guidance Backfill
+
+Use this workflow when the user explicitly asks to backfill, audit, clean up, or
+realign existing changelogs and release-note history against updated guidance,
+or after the operator approves a proposed released-history cleanup. Do not
+rewrite released changelog or release-note history just because drift is noticed
+during ordinary feature work.
+
+Agents may freely edit pending `Unreleased` entries for the active task and may
+sync generated release-note data after source changelog edits. Released-history
+backfill has a higher bar: first classify the drift by the operation required,
+then separate safe information-preserving repairs from destructive or
+meaning-changing edits.
+
+### Automatic Drift Repairs
+
+Agents may apply drift repairs that preserve or relocate information without
+changing the meaning of released history:
+
+- Sync generated release-note data from the source changelog after source
+  entries change.
+- Add missing release-note surface entries that already exist in the source
+  changelog or developer changelog.
+- Move clearly developer-only detail from public release notes into
+  `DEVELOPER_CHANGELOG.md` or an internal release-note surface, preserving the
+  meaning and provenance of the note.
+- Align section, version, date, or metadata labels across generated surfaces to
+  the source changelog when the source is unambiguous.
+- Remove empty `Unreleased` headings or duplicate generated artifacts after
+  release finalization.
+
+### Permission-Gated Released-History Edits
+
+Ask for explicit operator permission before editing released history in ways
+that delete information, change meaning, or change release boundaries:
+
+- Delete a released note entirely.
+- Reword released customer-facing prose beyond mechanical branding, spelling, or
+  metadata alignment.
+- Collapse multiple released entries into one entry.
+- Change release dates, versions, headings, or release boundaries.
+- Remove a public-facing customer outcome because it now seems too small,
+  noisy, or below the current impact threshold.
+- Reclassify ambiguous entries that could plausibly still have product,
+  support, operator, or customer value.
+
+When unsure whether a repair is safe, report the candidate drift and ask before
+changing released changelog or release-note history. The default principle:
+automatic drift repair preserves or relocates information; destructive or
+meaning-changing released-history edits require explicit operator approval.
+
 ## Backfill Quality Rules
 
 - Preserve release headings and dates when the repo already has an established

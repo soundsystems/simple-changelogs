@@ -2,6 +2,15 @@
 
 ## 2026-07-06
 
+- Added guidance-driven backfill guardrails:
+  - Agents now distinguish safe drift repairs from destructive or
+    meaning-changing released-history edits.
+  - Existing released notes can be synced, filled from source, or moved between
+    public and developer surfaces when information is preserved, while deleting,
+    materially rewording, collapsing, or changing release boundaries requires
+    explicit operator permission.
+  <!-- Agent: GPT-5 Codex | 07/06/2026 2:04 PM CDT -->
+
 - Tightened release-bearing merge guidance:
   - Agents now get an explicit merge reconciliation checklist for public default
     branches and other release-bearing targets.

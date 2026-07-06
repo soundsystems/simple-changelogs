@@ -2,6 +2,18 @@
 
 ## 2026-07-06
 
+- Added guidance-driven released-history backfill rules:
+  - Routed policy/guidance backfill work through `references/backfill.md`.
+  - Defined automatic drift repairs for source-to-generated sync, missing
+    generated-surface entries, clear public-to-developer note relocation,
+    unambiguous metadata alignment, and empty `Unreleased` cleanup.
+  - Defined permission-gated edits for released note deletion, material
+    customer-facing rewording, entry collapsing, release boundary changes,
+    small public outcome removal, and ambiguous reclassification.
+  - Added eval coverage so future skill edits preserve the operator-permission
+    gate for destructive or meaning-changing released-history cleanup.
+<!-- Agent: GPT-5 Codex | 07/06/2026 2:04 PM CDT -->
+
 - Added release-bearing merge reconciliation safeguards:
   - Added a required merge workflow checklist to
     `references/release-lifecycle.md` so agents inspect target-branch

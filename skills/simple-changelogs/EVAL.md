@@ -329,6 +329,32 @@ Expected behavior:
 - Final response includes a concrete version map showing each relevant source as
   `Updated`, `Already aligned`, or `Intentionally skipped`.
 
+### Guidance-driven backfill audit
+
+Prompt:
+
+```text
+Backfill all existing changelogs and release notes against the updated guidance.
+Move, delete, or refine entries until the history is clean.
+```
+
+Expected behavior:
+
+- Treats the prompt as explicit permission to audit existing released changelog
+  and release-note history against the new guidance.
+- Audits `CHANGELOG.md`, `DEVELOPER_CHANGELOG.md`, generated release-note data,
+  public release-note surfaces, and internal release-note surfaces when present.
+- Automatically applies drift repairs that preserve or relocate information,
+  such as syncing generated data, adding missing generated-surface entries from
+  source changelogs, moving clearly developer-only detail out of public notes,
+  aligning unambiguous metadata, and removing empty `Unreleased` headings.
+- Pauses for explicit operator permission before deleting released notes,
+  materially rewording customer-facing released prose, collapsing entries,
+  changing release dates or boundaries, removing small-but-real customer
+  outcomes, or reclassifying ambiguous entries.
+- Explains any remaining drift candidates instead of silently inventing or
+  erasing released-history meaning.
+
 ### Non-release pull or merge request prep
 
 Prompt:
@@ -591,6 +617,9 @@ Pass only if:
 - Raw changelog markdown edits include hidden agent signature comments with model
   name/version and local timestamp.
 - `Unreleased` moves only with release intent and is removed when empty.
+- Guidance-driven released-history backfills distinguish safe
+  information-preserving drift repairs from destructive or meaning-changing
+  edits that require explicit operator permission.
 - Version fields change only when local evidence ties them to the same release
   flow.
 - Released version section edits trigger a release metadata sync audit, and the

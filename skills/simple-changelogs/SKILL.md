@@ -18,7 +18,7 @@ Read only the reference files needed for the task:
 
 | Task context | Read |
 |--------------|------|
-| Missing changelog files or git-history backfill | `references/backfill.md` |
+| Missing changelog files, git-history backfill, or guidance-driven released-history audit | `references/backfill.md` |
 | Customer/developer entry decisions, wording, hot fixes, or grouping | `references/entry-classification.md` |
 | `Unreleased` lifecycle, release finalization, branch/deploy handling, or shipped-entry reconciliation | `references/release-lifecycle.md` |
 | Version bumping, SemVer, release version fields, package/app metadata, or version-source ambiguity | `references/version-decisions.md` |
