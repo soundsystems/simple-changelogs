@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 2026-07-06
+
+- Tightened release-bearing merge guidance:
+  - Agents now get an explicit merge reconciliation checklist for public default
+    branches and other release-bearing targets.
+  - The skill now warns that a generic changelog check can pass while
+    `Unreleased` still needs to be moved into a released section.
+  <!-- Agent: GPT-5 Codex | 07/06/2026 11:05 AM CDT -->
 
 - Clarified visible-copy changelog pruning:
   - The skill now tells agents that visible wording, labels, helper text,

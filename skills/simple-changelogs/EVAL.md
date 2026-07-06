@@ -277,6 +277,31 @@ Expected behavior:
 - Removes empty `Unreleased` sections.
 - Syncs documented release-note/version fields when applicable.
 
+### Merge batch with existing Unreleased
+
+Prompt:
+
+```text
+Clean up local work by opening focused pull or merge requests, review them, merge
+them into the public default branch, and get back to clean main. CHANGELOG.md on
+the target branch already has a non-empty Unreleased section from earlier
+customer-visible work.
+```
+
+Expected behavior:
+
+- Treats the merge batch as release finalization when the default branch is
+  release-bearing.
+- Inspects the target branch changelog before and after the merge batch instead
+  of looking only at the new pull or merge request diffs.
+- Moves all target-contained `Unreleased` customer entries into the matching
+  version/date heading before calling the cleanup complete.
+- Moves matching developer notes into the same release section when they belong
+  to that release.
+- Runs or reports the repo-native release-note sync/check workflow.
+- Does not rely on a generic changelog check passing as proof that non-empty
+  `Unreleased` is acceptable.
+
 ### Release metadata drift
 
 Prompt:

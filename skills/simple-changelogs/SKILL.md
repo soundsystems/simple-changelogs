@@ -64,6 +64,10 @@ Read only the reference files needed for the task:
    release, or deploying publicly, make the changelog decision explicit. If no
    customer-facing update is needed, say so and explain whether the developer
    changelog needs an entry.
+10. When the task includes merging one or more pull or merge requests into a
+    release-bearing target, run the merge reconciliation workflow in
+    `references/release-lifecycle.md` before calling the work complete. A normal
+    changelog check passing is not proof that `Unreleased` has been reconciled.
 
 ## Bootstrap
 
