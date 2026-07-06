@@ -89,6 +89,12 @@ Canonical examples:
   changes what users see or prevents bad data from reaching them.
 - Include copy changes only when they affect user understanding, trust, legal
   meaning, pricing, access, setup, error recovery, or support obligations.
+- Exclude obvious user-facing copy changes by default. Visible wording, labels,
+  placeholders, helper text, modal text, marketing copy, and tone polish do not
+  need a customer changelog note merely because users can see them; include one
+  only when the wording itself materially changes an access rule,
+  legal/compliance promise, payment/shopping identity behavior, safety/trust
+  requirement, or durable user capability.
 - Exclude tests, linting, migrations, refactors, dependency bumps, build config,
   type-only edits, and internal docs with no visible behavior change.
 - Exclude routine typo, tone, label, placeholder, visual-polish, and
