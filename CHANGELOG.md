@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-07
+
+- Added one-time guidance backfill prompts:
+  - Skill updates can now ship with a removable notice that asks whether to
+    audit and update existing released changelogs and release-note surfaces
+    against the new guidance.
+  - The notice is removed after an approved, completed backfill or an explicit
+    opt-out, while deferred or incomplete audits remain visible for the next
+    changelog task.
+  <!-- Agent: GPT-5 Codex | 07/07/2026 2:48 PM CDT -->
+
 ## 2026-07-06
 
 - Added guidance-driven backfill guardrails:
