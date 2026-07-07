@@ -1,5 +1,17 @@
 # Developer Changelog
 
+## 2026-07-07
+
+- Added a removable one-time backfill sentinel:
+  - Added `One-Time Guidance Backfill Notice` instructions to `SKILL.md` with a
+    stable hidden marker comment.
+  - Updated `references/backfill.md` so the notice is treated as a prompt for
+    operator approval, not as automatic permission to rewrite released history.
+  - Added eval coverage for prompting, approval handling, completed-backfill
+    notice removal, explicit opt-out removal, and leaving the notice in place
+    after deferred or incomplete audits.
+<!-- Agent: GPT-5 Codex | 07/07/2026 2:48 PM CDT -->
+
 ## 2026-07-06
 
 - Added guidance-driven released-history backfill rules:

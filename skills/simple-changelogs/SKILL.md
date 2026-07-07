@@ -27,6 +27,22 @@ Read only the reference files needed for the task:
 | Creating, editing, or syncing a downstream fork of this skill | `references/fork-maintenance.md` |
 | Evaluating or changing this skill | `EVAL.md` |
 
+## One-Time Guidance Backfill Notice
+
+<!-- SIMPLE-CHANGELOGS-BACKFILL-REQUEST: remove after approved and completed backfill or explicit opt-out. -->
+
+This installed skill version includes updated guidance that may affect existing
+released changelog or release-note history. When a repo already has released
+history, tell the user this notice is present and ask whether to run a guidance
+backfill now.
+
+If the user says yes, read `references/backfill.md`, run the policy or guidance
+backfill workflow, verify the result, then remove this entire section from the
+installed or forked skill copy. If the user defers, only approves a partial
+audit, or the backfill fails, leave this notice in place. If the user explicitly
+opts out of this guidance update, remove the notice without rewriting released
+history and state that no backfill ran.
+
 ## Core Workflow
 
 1. Inspect repo context first:

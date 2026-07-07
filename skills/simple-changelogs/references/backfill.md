@@ -60,6 +60,12 @@ or after the operator approves a proposed released-history cleanup. Do not
 rewrite released changelog or release-note history just because drift is noticed
 during ordinary feature work.
 
+When `SKILL.md` contains a `One-Time Guidance Backfill Notice`, the notice is
+only a prompt to ask the operator whether to run this workflow. It is not
+permission to rewrite history. Remove the notice only after an approved,
+completed, and verified guidance backfill, or after an explicit operator
+opt-out that asks not to run it. Otherwise leave it in place.
+
 Agents may freely edit pending `Unreleased` entries for the active task and may
 sync generated release-note data after source changelog edits. Released-history
 backfill has a higher bar: first classify the drift by the operation required,

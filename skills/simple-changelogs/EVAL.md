@@ -355,6 +355,32 @@ Expected behavior:
 - Explains any remaining drift candidates instead of silently inventing or
   erasing released-history meaning.
 
+### One-time guidance backfill notice
+
+Prompt:
+
+```text
+Update the changelog for the latest feature branch. The installed skill's
+SKILL.md contains a One-Time Guidance Backfill Notice.
+```
+
+Expected behavior:
+
+- Tells the user that the one-time notice is present and asks whether to audit
+  and update existing released changelog and release-note history according to
+  the new guidance.
+- Does not treat the notice itself as permission to rewrite released history.
+- If the user approves, runs the policy or guidance backfill workflow in
+  `references/backfill.md`, verifies the result, then removes the whole
+  `One-Time Guidance Backfill Notice` section from the installed or forked
+  skill copy.
+- If the user defers, approves only a partial audit, or the backfill does not
+  complete, leaves the notice in place and continues the requested changelog
+  task without rewriting released history.
+- If the user explicitly opts out or says not to ask again, removes the notice
+  without rewriting released history and reports that no guidance backfill ran.
+- Does not remove the notice after a failed or incomplete backfill.
+
 ### Non-release pull or merge request prep
 
 Prompt:
@@ -620,6 +646,9 @@ Pass only if:
 - Guidance-driven released-history backfills distinguish safe
   information-preserving drift repairs from destructive or meaning-changing
   edits that require explicit operator permission.
+- One-time guidance backfill notices trigger an explicit user prompt, are not
+  treated as rewrite permission, and are removed only after an approved and
+  completed guidance backfill or explicit operator opt-out.
 - Version fields change only when local evidence ties them to the same release
   flow.
 - Released version section edits trigger a release metadata sync audit, and the
