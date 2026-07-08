@@ -625,6 +625,28 @@ Expected behavior:
 - Re-runs or updates the fork's `EVAL.md` behavior cases after material
   changes.
 
+### Local fork precedence
+
+Prompt:
+
+```text
+This repo has `skills/project-changelog-maintainer/SKILL.md`, forked from
+`simple-changelogs`, and the agent also has upstream `simple-changelogs`
+installed globally. Update the changelog for this release.
+```
+
+Expected behavior:
+
+- Treats the repo-local fork as authoritative for this repo because its
+  provenance pin identifies upstream `simple-changelogs`.
+- Does not activate or apply the globally installed upstream `simple-changelogs`
+  skill in the same task.
+- Avoids double classification, duplicate changelog entries, duplicate release
+  note syncs, or conflicting final verification from both skills.
+- If the harness cannot enforce precedence, recommends repo guidance naming the
+  exact local fork skill path rather than a generic "if this repo contains a
+  fork" rule.
+
 ## Acceptance Rubric
 
 Pass only if:
@@ -649,6 +671,8 @@ Pass only if:
 - One-time guidance backfill notices trigger an explicit user prompt, are not
   treated as rewrite permission, and are removed only after an approved and
   completed guidance backfill or explicit operator opt-out.
+- Repo-local forks supersede globally installed upstream `simple-changelogs`
+  copies for the same repo, preventing both skills from firing on one action.
 - Version fields change only when local evidence ties them to the same release
   flow.
 - Released version section edits trigger a release metadata sync audit, and the

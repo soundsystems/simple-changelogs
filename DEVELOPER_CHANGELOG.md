@@ -1,5 +1,16 @@
 # Developer Changelog
 
+## 2026-07-08
+
+- Added fork activation precedence guidance:
+  - Updated `references/fork-maintenance.md` and `README.md` so repo-local
+    forks are authoritative over globally installed upstream
+    `simple-changelogs` copies.
+  - Added eval coverage for deduplicating by the upstream provenance pin,
+    avoiding double classification/write/verification, and using explicit
+    repo guidance when a harness cannot enforce precedence.
+<!-- Agent: GPT-5 Codex | 07/08/2026 12:39 PM CDT -->
+
 ## 2026-07-07
 
 - Added a removable one-time backfill sentinel:

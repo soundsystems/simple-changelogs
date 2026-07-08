@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-08
+
+- Clarified fork activation precedence:
+  - Repo-local forks of this skill should supersede globally installed upstream
+    `simple-changelogs` copies for that repo.
+  - Agent harnesses should deduplicate by the fork provenance pin so the local
+    fork and global upstream skill do not both classify or write changelog
+    updates for the same task.
+  <!-- Agent: GPT-5 Codex | 07/08/2026 12:39 PM CDT -->
+
 ## 2026-07-07
 
 - Added one-time guidance backfill prompts:
