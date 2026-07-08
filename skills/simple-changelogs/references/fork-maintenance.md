@@ -23,6 +23,18 @@ changes. Keep both current:
 - When a fork improvement is not project-specific, offer it upstream as a
   merge request instead of letting the fork silently diverge.
 
+## Activation Precedence
+
+When a repo-local fork of this skill is installed, that fork is authoritative
+for that repo and supersedes any globally installed upstream `simple-changelogs`
+copy. Agent harnesses and skill loaders should deduplicate by the upstream
+identity in the provenance pin and activate only the closest matching fork.
+
+If the harness cannot enforce that, add repo guidance that names the exact local
+fork skill path and tells agents not to apply the global upstream skill in the
+same task. Do not let the fork and upstream skill both classify, write, or
+verify changelog work for one repo action.
+
 ## Checking Drift
 
 From the upstream repo, `scripts/check-fork-sync.sh <fork-SKILL.md>` reads the

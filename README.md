@@ -160,6 +160,13 @@ release surfaces baked in). To keep a fork syncable with upstream:
    <audiences, policy sources, CLI workflows, release surfaces, ...>
    ```
 
+   A repo-local fork should supersede any globally installed upstream
+   `simple-changelogs` skill for that repo. Skill loaders should deduplicate by
+   the upstream identity in this provenance line and activate only the local
+   fork. For agents without loader-level precedence, add repo guidance that
+   names the exact fork skill path and says not to apply the global upstream
+   skill in the same task.
+
 2. When upstream improves, check what your fork is missing:
 
    ```bash
