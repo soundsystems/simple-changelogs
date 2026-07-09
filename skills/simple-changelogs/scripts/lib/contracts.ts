@@ -56,7 +56,7 @@ const CANONICAL_SIGNATURE_PATTERN =
   /<!--\s*simple-changelogs-signature\s+agent="[^"]*"\s+at="[^"]*"\s*-->/g;
 const NORMALIZED_WORD_PATTERN = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
 const ROUTED_PATH_PATTERN =
-  /(?<![A-Za-z0-9_.-])((?:\/(?!\/)|(?:\.\.?\/)*)(?:references|scripts|evals)\/[^\s`"'()<>{}[\],;:]+)/g;
+  /(?<![A-Za-z0-9_.-])((?:\/(?!\/)|(?:\.\.?\/)*)(?:references|scripts|evals)\/[^\s`"'<>{}[\],;:]+)/g;
 const POLICY_MARKER_PATTERN = /<!-- simple-changelogs-policy-example -->/g;
 const POLICY_BLOCK_PATTERN =
   /<!-- simple-changelogs-policy-example -->[\t ]*\r?\n[\t ]*(```|~~~)(jsonc?)[\t ]*\r?\n([\s\S]*?)\r?\n\1[\t ]*(?=\r?\n|$)/gi;
@@ -75,10 +75,12 @@ const PROHIBITION_PATTERN =
 const PASSIVE_PROHIBITION_PATTERN =
   /\b(?:is|are|was|were) not (?:allowed|permitted)\b/i;
 const NEGATED_AUTHORIZATION_PATTERN =
-  /(?:\bwithout\b.{0,60}\b(?:explicit (?:authorization|approval)|documented (?:repository|repo) policy|stored (?:repository )?policy)\b|\bnot explicitly (?:authorized|approved|requested)\b)/i;
+  /(?:\bwithout\b.{0,60}\b(?:explicit (?:user |task )?(?:authorization|approval|request)|documented (?:repository|repo) policy|stored (?:repository )?policy)\b|\bnot explicitly (?:(?:user|task)-)?(?:authorized|approved|requested)\b|\b(?:documented (?:repository|repo) policy|stored (?:repository )?policy)\b.{0,80}\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b)/i;
+const NEGATED_PERMISSION_CLAUSE_PATTERN =
+  /\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i;
 const AUTHORIZATION_PATTERNS = [
   /\bcurrent (?:user )?request\b.{0,100}\bexplicitly authoriz(?:e|es|ed|ation)\b/i,
-  /\bexplicitly (?:authorized|approved|requested) by (?:the )?current (?:user )?request\b/i,
+  /\bexplicitly (?:(?:user|task)-)?(?:authorized|approved|requested) by (?:the )?current (?:user )?request\b/i,
   /\bexplicit(?: user| task)? (?:authorization|approval|request)\b/i,
   /\bdocumented (?:repository|repo) policy\b.{0,100}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i,
   /\b(?:allowed|authorized|granted) by (?:a |the )?documented (?:repository|repo) policy\b/i,
@@ -474,8 +476,12 @@ const isProhibition = (sentence: string, action: RegExp): boolean => {
     return false;
   }
   const prohibitionIndex = sentence.search(PROHIBITION_PATTERN);
+  const prohibitionClause =
+    prohibitionIndex < 0 ? "" : sentence.slice(prohibitionIndex, mutationIndex);
   return Boolean(
-    (prohibitionIndex >= 0 && prohibitionIndex <= mutationIndex) ||
+    (prohibitionIndex >= 0 &&
+      prohibitionIndex <= mutationIndex &&
+      !NEGATED_PERMISSION_CLAUSE_PATTERN.test(prohibitionClause)) ||
       PASSIVE_PROHIBITION_PATTERN.test(sentence)
   );
 };
@@ -561,14 +567,13 @@ const checkUnreadableCoreFiles = (
 const checkVendorAssumptions = (
   context: ContractContext
 ): ContractFinding[] => {
-  const markers = [
-    ["Co", "dex"].join(""),
-    ["Claude", " Code"].join(""),
-    ["Cur", "sor"].join(""),
-    ["Open", "AI"].join(""),
-    ["Anthro", "pic"].join(""),
+  const patterns = [
+    new RegExp(`\\b${["Co", "dex"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Claude", " Code"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Cur", "sor"].join("")}\\b`),
+    new RegExp(`\\b${["Open", "AI"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Anthro", "pic"].join("")}\\b`, "i"),
   ];
-  const pattern = new RegExp(`\\b(?:${markers.join("|")})\\b`, "i");
   return compact(
     Array.from(context.entries.values())
       .filter(
@@ -582,7 +587,7 @@ const checkVendorAssumptions = (
           CANONICAL_SIGNATURE_PATTERN,
           " "
         );
-        return pattern.test(source)
+        return patterns.some((pattern) => pattern.test(source))
           ? finding(
               "VENDOR_ASSUMPTION",
               entry.path,

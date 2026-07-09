@@ -293,6 +293,11 @@ one two three four five six seven eight nine ten eleven twelve thirteen fourteen
     );
     await writeFixtureFile(
       skillDirectory,
+      "scripts/parser.ts",
+      "let cursor = 0;\ncursor += 1;\n"
+    );
+    await writeFixtureFile(
+      skillDirectory,
       "references/guidance-updates.md",
       `${await readFile(join(skillDirectory, "references/guidance-updates.md"), "utf8")}\n<!-- simple-changelogs-signature agent="${TEST_VENDOR}" at="unreported" -->\n`
     );
@@ -950,6 +955,46 @@ Current guidance version: 2
     }
   });
 
+  test("matches qualified authorization controls and rejects equivalent negations", async () => {
+    const positiveResults = await Promise.all(
+      [
+        "With explicit task authorization, create a release-note UI.",
+        "When explicitly user-authorized by the current request, create a release-note UI.",
+        "Documented repository policy explicitly allows creation, so create a release-note UI.",
+      ].map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+    const negativeResults = await Promise.all(
+      [
+        "Without explicit task authorization, create a release-note UI.",
+        "When not explicitly user-authorized by the current request, create a release-note UI.",
+        "Documented repository policy does not allow creation, so create a release-note UI.",
+      ].map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    for (const codes of positiveResults) {
+      expect(codes).not.toContain("IMPLICIT_UI_CREATION");
+    }
+    for (const codes of negativeResults) {
+      expect(codes).toContain("IMPLICIT_UI_CREATION");
+    }
+  });
+
   test("reports unreadable scoped core files and required files as findings", async () => {
     const scopedPaths = [
       "references/unreadable.md",
@@ -1047,6 +1092,69 @@ https://example.test/references/bare.md
       {
         code: "ROUTED_FILE_MISSING",
         message: "Routed package file is missing: references/local-missing.md",
+        path: "SKILL.md",
+      },
+    ]);
+  });
+
+  test("inspects unresolved reference labels while honoring defined remote and local references", async () => {
+    const skillDirectory = await createValidSkill();
+    await writeFixtureFile(
+      skillDirectory,
+      "SKILL.md",
+      `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}
+[references/unresolved.md][undefined]
+[references/collapsed.md][]
+[references/remote.md][remote]
+[remote]: https://example.test/references/remote-target.md
+[Defined local][local]
+[local]: references/defined-local.md
+`
+    );
+
+    const messages = (await evaluateContracts(skillDirectory))
+      .filter((item) => item.code === "ROUTED_FILE_MISSING")
+      .map((item) => item.message);
+    expect(messages).toContain(
+      "Routed package file is missing: references/unresolved.md"
+    );
+    expect(messages).toContain(
+      "Routed package file is missing: references/collapsed.md"
+    );
+    expect(messages).toContain(
+      "Routed package file is missing: references/defined-local.md"
+    );
+    expect(messages.some((message) => message.includes("remote"))).toBe(false);
+  });
+
+  test("handles balanced parentheses in remote and local Markdown destinations", async () => {
+    const skillDirectory = await createValidSkill();
+    await writeFixtureFile(
+      skillDirectory,
+      "references/a_(b)/existing.md",
+      "# Existing\n"
+    );
+    await writeFixtureFile(
+      skillDirectory,
+      "SKILL.md",
+      `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}
+[Remote](https://example.test/a_(b)/references/inline.md)
+<https://example.test/a_(b)/references/autolink.md>
+https://example.test/a_(b)/scripts/bare.ts
+[Existing local](references/a_(b)/existing.md?source=docs#section)
+[Missing local](references/a_(b)/missing.md?source=docs#section)
+`
+    );
+
+    const routeFindings = (await evaluateContracts(skillDirectory)).filter(
+      (item) =>
+        item.code === "ROUTED_FILE_MISSING" ||
+        item.code === "ROUTED_PATH_INVALID"
+    );
+    expect(routeFindings).toEqual([
+      {
+        code: "ROUTED_FILE_MISSING",
+        message: "Routed package file is missing: references/a_(b)/missing.md",
         path: "SKILL.md",
       },
     ]);
