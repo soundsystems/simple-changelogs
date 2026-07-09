@@ -1,5 +1,13 @@
 # Developer Changelog
 
+## Unreleased
+
+- Added the approved portability and evaluation design for the next skill
+  revision, covering repo-local guidance state, explicit release-note surface
+  authorization, portable signatures, instruction ownership, bundled fork
+  tooling, and a harness-neutral hybrid eval protocol.
+<!-- Agent: GPT-5 Codex | 07/09/2026 3:39 PM CDT -->
+
 ## 2026-07-08
 
 - Added fork activation precedence guidance:
