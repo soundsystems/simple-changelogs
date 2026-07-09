@@ -3,10 +3,19 @@ import { chmod, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { write } from "bun";
-import { runAdapter } from "../lib/adapter.ts";
+import {
+  resolveAdapterCommand,
+  resolveProcessTreeKillCommand,
+  runAdapter,
+} from "../lib/adapter.ts";
 import type { RunnerRequest, RunnerResponse } from "../lib/types.ts";
 
 const temporaryDirectories: string[] = [];
+
+const delay = (milliseconds: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
 
 const response: RunnerResponse = {
   evaluationReport: {
@@ -72,12 +81,75 @@ const resultError = (
   return result.error;
 };
 
+const readRecordedPids = async (path: string): Promise<number[]> => {
+  try {
+    return JSON.parse(await readFile(path, "utf8")) as number[];
+  } catch {
+    return [];
+  }
+};
+
+const killProcesses = (pids: number[]): void => {
+  for (const pid of pids) {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // The timeout cleanup may already have removed the process.
+    }
+  }
+};
+
+const processHasExited = async (
+  pid: number,
+  deadline = performance.now() + 500
+): Promise<boolean> => {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return true;
+  }
+  if (performance.now() >= deadline) {
+    return false;
+  }
+  await delay(10);
+  return processHasExited(pid, deadline);
+};
+
 afterEach(async () => {
   await Promise.all(
     temporaryDirectories
       .splice(0)
       .map((directory) => rm(directory, { force: true, recursive: true }))
   );
+});
+
+describe("adapter command resolution", () => {
+  test("resolves TypeScript adapters through the current Bun executable", () => {
+    const adapterPath = "/tmp/adapter;false;.ts";
+
+    expect(resolveAdapterCommand(adapterPath)).toEqual([
+      process.execPath,
+      adapterPath,
+    ]);
+  });
+
+  test("resolves native adapters without a shell", () => {
+    const adapterPath = "/tmp/native adapter";
+
+    expect(resolveAdapterCommand(adapterPath)).toEqual([adapterPath]);
+  });
+
+  test("resolves Windows tree termination without a shell", () => {
+    expect(resolveProcessTreeKillCommand(4321, "win32")).toEqual([
+      "taskkill.exe",
+      "/PID",
+      "4321",
+      "/T",
+      "/F",
+    ]);
+    expect(resolveProcessTreeKillCommand(4321, "darwin")).toBeUndefined();
+    expect(resolveProcessTreeKillCommand(4321, "linux")).toBeUndefined();
+  });
 });
 
 describe("runAdapter", () => {
@@ -225,6 +297,34 @@ process.stdout.write(${JSON.stringify(
     expect(resultError(result)).toMatchObject({ kind: "configuration" });
   });
 
+  test("accepts the runtime timer ceiling without scheduling the adapter", async () => {
+    const directory = await createTemporaryDirectory();
+
+    const result = await runAdapter(
+      join(directory, "missing-adapter"),
+      createRequest(directory, 2_147_483_647)
+    );
+
+    expect(resultError(result)).toEqual({
+      kind: "configuration",
+      message: `Adapter does not exist: ${join(directory, "missing-adapter")}`,
+    });
+  });
+
+  test("rejects a timeout above the runtime timer ceiling", async () => {
+    const directory = await createTemporaryDirectory();
+
+    const result = await runAdapter(
+      join(directory, "missing-adapter"),
+      createRequest(directory, 2_147_483_648)
+    );
+
+    expect(resultError(result)).toEqual({
+      kind: "configuration",
+      message: "Adapter timeout must not exceed 2147483647 ms",
+    });
+  });
+
   test("kills and reaps an adapter that exceeds its timeout", async () => {
     const directory = await createTemporaryDirectory();
     const pidPath = join(directory, "adapter.pid");
@@ -245,5 +345,59 @@ setInterval(() => {}, 1_000);
     });
     const pid = Number.parseInt(await readFile(pidPath, "utf8"), 10);
     expect(() => process.kill(pid, 0)).toThrow();
+  });
+
+  test("bounds timeout cleanup when a descendant inherits output pipes", async () => {
+    const directory = await createTemporaryDirectory();
+    const pidsPath = join(directory, "processes.json");
+    const adapterPath = await writeTypeScriptAdapter(
+      directory,
+      `
+await Bun.stdin.text();
+const descendant = Bun.spawn({
+  cmd: [process.execPath, "-e", "setInterval(() => {}, 1_000)"],
+  stdin: "ignore",
+  stdout: "inherit",
+  stderr: "inherit",
+});
+await Bun.write(
+  ${JSON.stringify(pidsPath)},
+  JSON.stringify([process.pid, descendant.pid])
+);
+setInterval(() => {}, 1_000);
+`
+    );
+    const timeoutMs = 300;
+    const deadlineMs = timeoutMs + 700;
+    const startedAt = performance.now();
+    const runPromise = runAdapter(
+      adapterPath,
+      createRequest(directory, timeoutMs)
+    );
+    let pids: number[] = [];
+
+    try {
+      const outcome = await Promise.race([
+        runPromise.then((result) => ({ kind: "result" as const, result })),
+        delay(deadlineMs).then(() => ({ kind: "deadline" as const })),
+      ]);
+      pids = await readRecordedPids(pidsPath);
+
+      expect(outcome.kind).toBe("result");
+      expect(performance.now() - startedAt).toBeLessThan(deadlineMs);
+      expect(pids).toHaveLength(2);
+      if (outcome.kind === "result") {
+        expect(resultError(outcome.result)).toMatchObject({
+          kind: "configuration",
+          timeoutMs,
+        });
+      }
+      expect(
+        await Promise.all(pids.map((pid) => processHasExited(pid)))
+      ).toEqual(pids.map(() => true));
+    } finally {
+      killProcesses(pids);
+      await Promise.race([runPromise, delay(500)]);
+    }
   });
 });

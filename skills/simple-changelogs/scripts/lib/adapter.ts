@@ -33,6 +33,21 @@ export type AdapterRunResult =
   | { ok: true; response: RunnerResponse; stderr: string }
   | { error: AdapterRunError; ok: false; stderr: string };
 
+const OUTPUT_DRAIN_GRACE_MS = 250;
+const RUNTIME_TIMER_MAX_MS = 2_147_483_647;
+const USE_POSIX_PROCESS_GROUP = process.platform !== "win32";
+
+export const resolveAdapterCommand = (adapterPath: string): string[] =>
+  adapterPath.endsWith(".ts") ? [process.execPath, adapterPath] : [adapterPath];
+
+export const resolveProcessTreeKillCommand = (
+  pid: number,
+  platform = process.platform
+): string[] | undefined =>
+  platform === "win32"
+    ? ["taskkill.exe", "/PID", String(pid), "/T", "/F"]
+    : undefined;
+
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -50,9 +65,29 @@ const configurationFailure = (
   stderr,
 });
 
+const validateRunConfiguration = (
+  adapterPath: string,
+  timeoutMs: number
+): AdapterRunResult | undefined => {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
+    return configurationFailure(
+      "Adapter timeout must be a positive safe integer"
+    );
+  }
+  if (timeoutMs > RUNTIME_TIMER_MAX_MS) {
+    return configurationFailure(
+      `Adapter timeout must not exceed ${RUNTIME_TIMER_MAX_MS} ms`
+    );
+  }
+  if (adapterPath.length === 0) {
+    return configurationFailure("Adapter path must not be empty");
+  }
+};
+
 const spawnAdapter = (cmd: string[]) =>
   spawn({
     cmd,
+    detached: USE_POSIX_PROCESS_GROUP,
     stderr: "pipe",
     stdin: "pipe",
     stdout: "pipe",
@@ -60,30 +95,155 @@ const spawnAdapter = (cmd: string[]) =>
 
 type AdapterSubprocess = ReturnType<typeof spawnAdapter>;
 
-const killAndReap = async (subprocess: AdapterSubprocess): Promise<void> => {
+interface OutputCapture {
+  cancel: () => Promise<void>;
+  completed: Promise<void>;
+  text: () => string;
+}
+
+const captureOutput = (stream: ReadableStream<Uint8Array>): OutputCapture => {
+  const decoder = new TextDecoder();
+  const reader = stream.getReader();
+  let output = "";
+  const readNextChunk = async (): Promise<void> => {
+    const { done, value } = await reader.read();
+    if (done) {
+      output += decoder.decode();
+      return;
+    }
+    output += decoder.decode(value, { stream: true });
+    await readNextChunk();
+  };
+  const completed = readNextChunk()
+    .catch(() => undefined)
+    .finally(() => {
+      try {
+        reader.releaseLock();
+      } catch {
+        // Cancellation may already have released the reader.
+      }
+    });
+
+  return {
+    cancel: async () => {
+      try {
+        await reader.cancel();
+      } catch {
+        // The reader may already be released after normal completion.
+      }
+    },
+    completed,
+    text: () => output,
+  };
+};
+
+const killDirectProcess = (subprocess: AdapterSubprocess): void => {
   try {
     subprocess.kill("SIGKILL");
   } catch {
     // The process may already have exited.
   }
+};
+
+const killProcessTree = async (
+  subprocess: AdapterSubprocess
+): Promise<void> => {
+  if (USE_POSIX_PROCESS_GROUP) {
+    try {
+      process.kill(-subprocess.pid, "SIGKILL");
+      return;
+    } catch {
+      killDirectProcess(subprocess);
+      return;
+    }
+  }
+
+  const cmd = resolveProcessTreeKillCommand(subprocess.pid);
+  if (cmd) {
+    try {
+      const terminator = spawn({
+        cmd,
+        stderr: "ignore",
+        stdin: "ignore",
+        stdout: "ignore",
+      });
+      if ((await terminator.exited) === 0) {
+        return;
+      }
+    } catch {
+      // Fall through to Bun's direct-child termination.
+    }
+  }
+  killDirectProcess(subprocess);
+};
+
+const waitForOutput = async (
+  captures: OutputCapture[],
+  graceMs: number
+): Promise<boolean> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const graceElapsed = new Promise<false>((resolve) => {
+    timer = setTimeout(() => resolve(false), graceMs);
+  });
+  const completed = Promise.all(
+    captures.map((capture) => capture.completed)
+  ).then(() => true as const);
+  const drained = await Promise.race([completed, graceElapsed]);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+  }
+  return drained;
+};
+
+const terminateAndCollect = async (
+  subprocess: AdapterSubprocess,
+  stdout: OutputCapture,
+  stderr: OutputCapture,
+  termination?: Promise<void>
+): Promise<string> => {
+  await (termination ?? killProcessTree(subprocess));
   try {
     await subprocess.exited;
   } catch {
     // Reaping is best-effort after Bun reports a process error.
   }
+  const captures = [stdout, stderr];
+  if (!(await waitForOutput(captures, OUTPUT_DRAIN_GRACE_MS))) {
+    await Promise.all(captures.map((capture) => capture.cancel()));
+  }
+  return stderr.text();
 };
 
-const readOutput = async (
-  output: Promise<string> | undefined
-): Promise<string> => {
-  if (!output) {
-    return "";
-  }
+type ProcessExecutionOutcome =
+  | { exitCode: number; kind: "completed" }
+  | { kind: "configuration"; message: string };
+
+const executeSubprocess = async (
+  subprocess: AdapterSubprocess,
+  serializedRequest: string,
+  captures: OutputCapture[]
+): Promise<ProcessExecutionOutcome> => {
   try {
-    return await output;
-  } catch {
-    return "";
+    await subprocess.stdin.write(serializedRequest);
+    await subprocess.stdin.end();
+  } catch (error) {
+    return {
+      kind: "configuration",
+      message: `Unable to write adapter request: ${errorMessage(error)}`,
+    };
   }
+
+  let exitCode: number;
+  try {
+    exitCode = await subprocess.exited;
+  } catch (error) {
+    return {
+      kind: "configuration",
+      message: `Unable to wait for adapter: ${errorMessage(error)}`,
+    };
+  }
+  await Promise.all(captures.map((capture) => capture.completed));
+  return { exitCode, kind: "completed" };
 };
 
 export const runAdapter = async (
@@ -92,13 +252,9 @@ export const runAdapter = async (
   options: AdapterRunOptions = {}
 ): Promise<AdapterRunResult> => {
   const timeoutMs = options.timeoutMs ?? request.timeoutMs;
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
-    return configurationFailure(
-      "Adapter timeout must be a positive safe integer"
-    );
-  }
-  if (adapterPath.length === 0) {
-    return configurationFailure("Adapter path must not be empty");
+  const configurationError = validateRunConfiguration(adapterPath, timeoutMs);
+  if (configurationError) {
+    return configurationError;
   }
 
   let serializedRequest: string;
@@ -124,9 +280,7 @@ export const runAdapter = async (
     );
   }
 
-  const cmd = adapterPath.endsWith(".ts")
-    ? [process.execPath, adapterPath]
-    : [adapterPath];
+  const cmd = resolveAdapterCommand(adapterPath);
   let subprocess: AdapterSubprocess;
   try {
     subprocess = spawnAdapter(cmd);
@@ -136,68 +290,59 @@ export const runAdapter = async (
     );
   }
 
-  const stdoutPromise = new Response(subprocess.stdout).text();
-  const stderrPromise = new Response(subprocess.stderr).text();
-  let timedOut = false;
+  const stdoutCapture = captureOutput(subprocess.stdout);
+  const stderrCapture = captureOutput(subprocess.stderr);
+  let timeoutTermination: Promise<void> | undefined;
+  let signalTimeout: () => void = () => undefined;
+  const timeoutSignal = new Promise<{ kind: "timeout" }>((resolve) => {
+    signalTimeout = () => resolve({ kind: "timeout" });
+  });
   const timer = setTimeout(() => {
-    timedOut = true;
-    try {
-      subprocess.kill("SIGKILL");
-    } catch {
-      // The process may have exited while the timer callback was queued.
-    }
+    timeoutTermination = killProcessTree(subprocess).catch(() => undefined);
+    signalTimeout();
   }, timeoutMs);
-
-  try {
-    await subprocess.stdin.write(serializedRequest);
-    await subprocess.stdin.end();
-  } catch (error) {
-    clearTimeout(timer);
-    await killAndReap(subprocess);
-    const stderr = await readOutput(stderrPromise);
-    if (timedOut) {
-      return configurationFailure(
-        `Adapter timed out after ${timeoutMs} ms`,
-        stderr,
-        timeoutMs
-      );
-    }
-    return configurationFailure(
-      `Unable to write adapter request: ${errorMessage(error)}`,
-      stderr
-    );
-  }
-
-  let exitCode: number;
-  try {
-    exitCode = await subprocess.exited;
-  } catch (error) {
-    clearTimeout(timer);
-    await killAndReap(subprocess);
-    return configurationFailure(
-      `Unable to wait for adapter: ${errorMessage(error)}`,
-      await readOutput(stderrPromise)
-    );
-  }
+  const captures = [stdoutCapture, stderrCapture];
+  const execution = executeSubprocess(
+    subprocess,
+    serializedRequest,
+    captures
+  ).catch((error) => ({
+    kind: "configuration" as const,
+    message: `Adapter execution failed: ${errorMessage(error)}`,
+  }));
+  const outcome = await Promise.race([execution, timeoutSignal]);
   clearTimeout(timer);
 
-  const [stdout, stderr] = await Promise.all([
-    readOutput(stdoutPromise),
-    readOutput(stderrPromise),
-  ]);
-  if (timedOut) {
+  if (outcome.kind === "timeout" || timeoutTermination) {
+    const stderr = await terminateAndCollect(
+      subprocess,
+      stdoutCapture,
+      stderrCapture,
+      timeoutTermination
+    );
     return configurationFailure(
       `Adapter timed out after ${timeoutMs} ms`,
       stderr,
       timeoutMs
     );
   }
-  if (exitCode !== 0) {
+  if (outcome.kind === "configuration") {
+    const stderr = await terminateAndCollect(
+      subprocess,
+      stdoutCapture,
+      stderrCapture
+    );
+    return configurationFailure(outcome.message, stderr);
+  }
+
+  const stdout = stdoutCapture.text();
+  const stderr = stderrCapture.text();
+  if (outcome.exitCode !== 0) {
     return {
       error: {
-        exitCode,
+        exitCode: outcome.exitCode,
         kind: "process",
-        message: `Adapter exited with status ${exitCode}`,
+        message: `Adapter exited with status ${outcome.exitCode}`,
       },
       ok: false,
       stderr,
