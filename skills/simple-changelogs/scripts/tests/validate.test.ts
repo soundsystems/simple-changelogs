@@ -1,0 +1,233 @@
+import { describe, expect, test } from "bun:test";
+import type {
+  EvalCase,
+  EvalManifest,
+  EvaluationReport,
+  RunnerRequest,
+  RunnerResponse,
+} from "../lib/types.ts";
+import {
+  validateManifest,
+  validateRepoPolicy,
+  validateRunnerRequest,
+  validateRunnerResponse,
+} from "../lib/validate.ts";
+
+const behaviorCase: EvalCase = {
+  activationMode: "explicit",
+  fixture: "dual-changelog",
+  id: "behavior-policy",
+  suite: "behavior",
+  tags: ["setup"],
+  turns: [
+    {
+      assertions: [{ expected: "CHANGELOG_REQUIRED", kind: "decision-code" }],
+      prompt: "Update the pending changelogs.",
+    },
+  ],
+};
+
+const evaluationReport: EvaluationReport = {
+  authorizationRecords: [
+    {
+      code: "EDIT_PENDING_CHANGELOG",
+      source: "current-request",
+      status: "granted",
+    },
+  ],
+  decisionCodes: ["CHANGELOG_REQUIRED"],
+  nativeActivationEvidence: {
+    activated: true,
+    trace: ["simple-changelogs"],
+  },
+  reasonCodes: ["USER_VISIBLE_CHANGE"],
+  verificationResults: [{ code: "CHANGELOG_FORMAT", status: "passed" }],
+  versionMap: [{ path: "CHANGELOG.md", role: "source", version: "Unreleased" }],
+};
+
+describe("repo policy", () => {
+  test("accepts the portable version-one policy", () => {
+    const result = validateRepoPolicy({
+      developerChangelog: "required",
+      guidance: { backfillStatus: "completed", version: 2 },
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  test("rejects unknown status and preserves the original object", () => {
+    const input = {
+      guidance: { backfillStatus: "done", version: 2 },
+      schemaVersion: 1,
+    };
+    const snapshot = structuredClone(input);
+    const result = validateRepoPolicy(input);
+    expect(result.ok).toBe(false);
+    expect(input).toEqual(snapshot);
+  });
+});
+
+test("runner contracts reject incompatible protocol versions", () => {
+  expect(validateRunnerRequest({ protocolVersion: 2 }).ok).toBe(false);
+  expect(validateRunnerResponse({ protocolVersion: 2 }).ok).toBe(false);
+});
+
+describe("manifest", () => {
+  test("accepts discover and explicit activation without vendor fields", () => {
+    const input: EvalManifest = {
+      cases: [
+        {
+          ...behaviorCase,
+          activationMode: "discover",
+          id: "trigger-discovery",
+          suite: "trigger",
+        },
+        behaviorCase,
+      ],
+      manifestVersion: 1,
+    };
+    const result = validateManifest(input);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).not.toBe(input);
+      expect(result.value).toEqual(input);
+    }
+  });
+
+  test("reports nested JSON paths and unknown keys", () => {
+    const result = validateManifest({
+      cases: [
+        {
+          ...behaviorCase,
+          activationMode: "forced",
+          runtimeVendor: "specific-runtime",
+        },
+      ],
+      manifestVersion: 1,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.errors.some((error) =>
+          error.startsWith("$.cases[0].activationMode")
+        )
+      ).toBe(true);
+      expect(
+        result.errors.some((error) =>
+          error.startsWith("$.cases[0].runtimeVendor")
+        )
+      ).toBe(true);
+    }
+  });
+});
+
+describe("runner request", () => {
+  test("accepts the version-one portable request", () => {
+    const input: RunnerRequest = {
+      activationMode: "explicit",
+      case: behaviorCase,
+      prompt: "Update the pending changelogs.",
+      protocolVersion: 1,
+      responseSchema: "/tmp/runner-response.schema.json",
+      skillDirectory: "/tmp/skill",
+      timeoutMs: 30_000,
+      turnIndex: 0,
+      workspace: "/tmp/workspace",
+    };
+
+    expect(validateRunnerRequest(input)).toEqual({ ok: true, value: input });
+  });
+
+  test("rejects unknown keys without changing the request", () => {
+    const input = {
+      activationMode: "explicit",
+      case: behaviorCase,
+      command: "runtime-specific-command",
+      prompt: "Update the pending changelogs.",
+      protocolVersion: 1,
+      responseSchema: "/tmp/runner-response.schema.json",
+      skillDirectory: "/tmp/skill",
+      timeoutMs: 30_000,
+      turnIndex: -1,
+      workspace: "/tmp/workspace",
+    };
+    const snapshot = structuredClone(input);
+    const result = validateRunnerRequest(input);
+
+    expect(result.ok).toBe(false);
+    expect(input).toEqual(snapshot);
+    if (!result.ok) {
+      expect(
+        result.errors.some((error) => error.startsWith("$.turnIndex"))
+      ).toBe(true);
+      expect(result.errors.some((error) => error.startsWith("$.command"))).toBe(
+        true
+      );
+    }
+  });
+});
+
+describe("runner response", () => {
+  test("keeps evaluation data separate from normal final prose", () => {
+    const input: RunnerResponse = {
+      diagnostics: [{ code: "TRACE_CAPTURED", message: "Trace captured." }],
+      evaluationReport,
+      finalResponse: "Updated the pending changelogs.",
+      protocolVersion: 1,
+      runtimeIdentity: "Example Agent",
+      status: "completed",
+    };
+
+    expect(validateRunnerResponse(input)).toEqual({ ok: true, value: input });
+  });
+
+  test("rejects lowercase codes and claimed mutation evidence", () => {
+    const result = validateRunnerResponse({
+      evaluationReport: {
+        ...evaluationReport,
+        changedFiles: ["CHANGELOG.md"],
+        reasonCodes: ["user_visible_change"],
+      },
+      finalResponse: "Updated the pending changelogs.",
+      protocolVersion: 1,
+      status: "completed",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.errors.some((error) =>
+          error.startsWith("$.evaluationReport.reasonCodes[0]")
+        )
+      ).toBe(true);
+      expect(
+        result.errors.some((error) =>
+          error.startsWith("$.evaluationReport.changedFiles")
+        )
+      ).toBe(true);
+    }
+  });
+
+  test("rejects final prose nested inside the evaluation report", () => {
+    const result = validateRunnerResponse({
+      evaluationReport: {
+        ...evaluationReport,
+        finalResponse: "Duplicated prose.",
+      },
+      finalResponse: "Normal prose.",
+      protocolVersion: 1,
+      status: "completed",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.errors[0]?.startsWith("$.evaluationReport.finalResponse")
+      ).toBe(true);
+    }
+  });
+});
