@@ -1001,8 +1001,11 @@ Current guidance version: 2
         "Repository policy does not allow editing the installed skill copy.",
         "Documented policy does not allow creating a release-note UI.",
         "Policy does not allow creating a release-note UI, adding a changelog page, or building a What's New modal.",
+        "Policy does not allow the following: editing the installed skill copy.",
+        "Policy does not allow creating a release-note UI; nor adding a changelog page.",
         "Policy does not allow creation, so create a release-note UI anyway.",
         "Policy does not allow editing the installed copy, but update the installed skill copy anyway.",
+        "Policy does not allow creation; create a release-note UI anyway.",
       ].map(async (instruction) => {
         const skillDirectory = await createValidSkill();
         await writeFixtureFile(
@@ -1017,8 +1020,11 @@ Current guidance version: 2
     expect(results[0]).not.toContain("INSTALLED_SKILL_SELF_MODIFICATION");
     expect(results[1]).not.toContain("IMPLICIT_UI_CREATION");
     expect(results[2]).not.toContain("IMPLICIT_UI_CREATION");
-    expect(results[3]).toContain("IMPLICIT_UI_CREATION");
-    expect(results[4]).toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+    expect(results[3]).not.toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+    expect(results[4]).not.toContain("IMPLICIT_UI_CREATION");
+    expect(results[5]).toContain("IMPLICIT_UI_CREATION");
+    expect(results[6]).toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+    expect(results[7]).toContain("IMPLICIT_UI_CREATION");
   });
 
   test("reports unreadable scoped core files and required files as findings", async () => {

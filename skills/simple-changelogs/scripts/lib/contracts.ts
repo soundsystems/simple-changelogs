@@ -78,8 +78,10 @@ const NEGATED_AUTHORIZATION_PATTERN =
   /(?:\bwithout\b.{0,60}\b(?:explicit (?:user |task )?(?:authorization|approval|request)|documented (?:repository|repo) policy|stored (?:repository )?policy)\b|\bnot explicitly (?:(?:user|task)-)?(?:authorized|approved|requested)\b|\b(?:documented (?:repository|repo) policy|stored (?:repository )?policy)\b.{0,80}\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b)/i;
 const NEGATED_PERMISSION_CLAUSE_PATTERN =
   /\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i;
-const INDEPENDENT_CLAUSE_BOUNDARY_PATTERN =
-  /(?:,\s*(?:but|yet|so|then)\s+|[;:—–]\s*(?:(?:but|yet|so|then)\s+)?|\b(?:but|yet|so|then)\s+)/gi;
+const OPPOSING_TRANSITION_PATTERN =
+  /\b(?:anyway|but|however|nevertheless|so|still|yet)\b/gi;
+const ANYWAY_CLAUSE_BOUNDARY_PATTERN = /[,;:—–]|\b(?:and|but)\b/gi;
+const ANYWAY_PATTERN = /\banyway\b/i;
 const AUTHORIZATION_PATTERNS = [
   /\bcurrent (?:user )?request\b.{0,100}\bexplicitly authoriz(?:e|es|ed|ation)\b/i,
   /\bexplicitly (?:(?:user|task)-)?(?:authorized|approved|requested) by (?:the )?current (?:user )?request\b/i,
@@ -498,12 +500,22 @@ const isProhibition = (sentence: string, action: RegExp): boolean => {
   }
   const permissionEnd = permissionIndex + negatedPermission[0].length;
   const trailingSource = sentence.slice(permissionEnd);
-  const independentAction = Array.from(
-    trailingSource.matchAll(INDEPENDENT_CLAUSE_BOUNDARY_PATTERN)
+  const actionAfterTransition = Array.from(
+    trailingSource.matchAll(OPPOSING_TRANSITION_PATTERN)
   ).some((match) =>
     action.test(trailingSource.slice((match.index ?? 0) + match[0].length))
   );
-  return !independentAction;
+  const actionBeforeAnyway = Array.from(
+    trailingSource.matchAll(ANYWAY_CLAUSE_BOUNDARY_PATTERN)
+  ).some((match) => {
+    const clause = trailingSource.slice((match.index ?? 0) + match[0].length);
+    const clauseActionIndex = clause.search(action);
+    return (
+      clauseActionIndex >= 0 &&
+      ANYWAY_PATTERN.test(clause.slice(clauseActionIndex))
+    );
+  });
+  return !(actionAfterTransition || actionBeforeAnyway);
 };
 
 const instructionSentences = (source: string): string[] =>
