@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -9,7 +10,10 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { ContractConfigurationError } from "../lib/contract-files.ts";
+import {
+  ContractConfigurationError,
+  createContractContext,
+} from "../lib/contract-files.ts";
 import { evaluateContracts } from "../lib/contracts.ts";
 
 const temporaryDirectories: string[] = [];
@@ -765,5 +769,198 @@ git status git log git diff git show bun test bun run typecheck bun run lint sh 
       "Routed package file is missing: references/Z.md",
       "Routed package file is missing: references/a.md",
     ]);
+  });
+
+  test("ignores guidance declarations inside fences and HTML comments", async () => {
+    const skillDirectory = await createValidSkill();
+    const skillPath = join(skillDirectory, "SKILL.md");
+    await writeFile(
+      skillPath,
+      (await readFile(skillPath, "utf8")).replace(
+        "Current guidance version: 2",
+        `\`\`\`text
+Current guidance version: 2
+\`\`\`
+
+<!-- Current guidance version: 2 -->`
+      )
+    );
+
+    expect(findingCodes(await evaluateContracts(skillDirectory))).toContain(
+      "GUIDANCE_VERSION_MISSING"
+    );
+  });
+
+  test("normalizes linked labels and image alt text before duplication matching", async () => {
+    const plain =
+      "agents inspect repository context before editing release history so every durable decision remains reviewable by maintainers after the original task ends";
+    const linked = plain.replace(
+      "context",
+      "[context](https://example.test/references/destination-noise.md)"
+    );
+    const imaged = plain.replace(
+      "context",
+      "![context](https://example.test/scripts/destination-noise.ts)"
+    );
+    const results = await Promise.all(
+      [linked, imaged].map(async (referenceProse) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${plain}\n`
+        );
+        await writeFixtureFile(
+          skillDirectory,
+          "references/setup.md",
+          `${await readFile(join(skillDirectory, "references/setup.md"), "utf8")}\n${referenceProse}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    for (const codes of results) {
+      expect(codes).toContain("PROSE_DUPLICATION");
+    }
+  });
+
+  test("recognizes replace and clear installed-copy mutations", async () => {
+    const results = await Promise.all(
+      [
+        "Replace the installed skill file after the audit.",
+        "The globally installed skill copy clears its notice after approval.",
+      ].map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    for (const codes of results) {
+      expect(codes).toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+    }
+  });
+
+  test("recognizes explicit and policy authorization before UI creation", async () => {
+    const authorizedInstructions = [
+      "When explicitly authorized by the current request, create a release-note UI.",
+      "When allowed by documented repository policy, add a What's New route.",
+      "When granted by stored policy, build an internal release-note panel.",
+    ];
+    const results = await Promise.all(
+      authorizedInstructions.map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    for (const codes of results) {
+      expect(codes).not.toContain("IMPLICIT_UI_CREATION");
+    }
+  });
+
+  test("reports unreadable scoped core files and required files as findings", async () => {
+    const scopedPaths = [
+      "references/unreadable.md",
+      "evals/fixtures/unreadable.txt",
+      "scripts/unreadable.ts",
+    ];
+    const scopedResults = await Promise.all(
+      scopedPaths.map(async (path) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(skillDirectory, path, "unreadable\n");
+        const fullPath = join(skillDirectory, path);
+        await chmod(fullPath, 0o000);
+        try {
+          return findingCodes(await evaluateContracts(skillDirectory));
+        } finally {
+          await chmod(fullPath, 0o600);
+        }
+      })
+    );
+    for (const codes of scopedResults) {
+      expect(codes).toContain("CORE_FILE_UNREADABLE");
+    }
+
+    const requiredSkill = await createValidSkill();
+    const requiredPath = join(requiredSkill, "references/setup.md");
+    await chmod(requiredPath, 0o000);
+    let requiredCodes: string[];
+    try {
+      requiredCodes = findingCodes(await evaluateContracts(requiredSkill));
+    } finally {
+      await chmod(requiredPath, 0o600);
+    }
+    expect(requiredCodes).toContain("CORE_FILE_UNREADABLE");
+    expect(requiredCodes).toContain("BUNDLED_FILE_INVALID");
+  });
+
+  test("treats an unspawnable shell checker as invalid configuration", async () => {
+    const skillDirectory = await createValidSkill();
+    const missingShell = join(skillDirectory, "missing-shell");
+    let captured: unknown;
+    try {
+      await evaluateContracts(skillDirectory, { shellCommand: missingShell });
+    } catch (error) {
+      captured = error;
+    }
+
+    expect(captured).toBeInstanceOf(ContractConfigurationError);
+  });
+
+  test("ignores remote URL destinations while preserving local Markdown targets", async () => {
+    const skillDirectory = await createValidSkill();
+    await writeFixtureFile(
+      skillDirectory,
+      "SKILL.md",
+      `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}
+[Remote reference](https://example.test/references/missing.md)
+![Remote script](https://example.test/scripts/missing.ts)
+[Local setup](references/setup.md)
+`
+    );
+
+    const routeFindings = (await evaluateContracts(skillDirectory)).filter(
+      (item) =>
+        item.code === "ROUTED_FILE_MISSING" ||
+        item.code === "ROUTED_PATH_INVALID"
+    );
+    expect(routeFindings).toEqual([]);
+  });
+
+  test("sorts context entries and selects the lexical policy diagnostic path", async () => {
+    const skillDirectory = await createValidSkill();
+    await writeFixtureFile(
+      skillDirectory,
+      "references/z-policy.md",
+      "<!-- simple-changelogs-policy-example -->\n"
+    );
+    await writeFixtureFile(
+      skillDirectory,
+      "references/A-policy.md",
+      "<!-- simple-changelogs-policy-example -->\n"
+    );
+
+    const context = await createContractContext(skillDirectory);
+    const referencePaths = Array.from(context.entries.keys()).filter((path) =>
+      path.startsWith("references/")
+    );
+    const policyFinding = (await evaluateContracts(skillDirectory)).find(
+      (item) => item.code === "POLICY_EXAMPLE_INVALID"
+    );
+
+    expect(referencePaths.indexOf("references/A-policy.md")).toBeLessThan(
+      referencePaths.indexOf("references/z-policy.md")
+    );
+    expect(policyFinding?.path).toBe("references/A-policy.md");
   });
 });

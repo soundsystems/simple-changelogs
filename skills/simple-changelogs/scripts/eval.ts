@@ -9,6 +9,7 @@ import { type ContractFinding, evaluateContracts } from "./lib/contracts.ts";
 const REPORT_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 2_147_483_647;
+const SHELL_COMMAND_ENVIRONMENT_VARIABLE = "SIMPLE_CHANGELOGS_EVAL_SHELL";
 const COMMANDS = ["contract", "trigger", "behavior", "all"] as const;
 const FORMATS = ["text", "json"] as const;
 
@@ -263,7 +264,9 @@ export const runCli = async (args: string[]): Promise<number> => {
   }
 
   try {
-    const findings = await evaluateContracts(parsed.options.skillDirectory);
+    const findings = await evaluateContracts(parsed.options.skillDirectory, {
+      shellCommand: process.env[SHELL_COMMAND_ENVIRONMENT_VARIABLE] ?? "sh",
+    });
     writeReport(
       reportFor(parsed.options.command, findings),
       parsed.options.format

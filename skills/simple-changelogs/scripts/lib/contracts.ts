@@ -1,6 +1,7 @@
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { JSONC, spawn, YAML } from "bun";
 import {
+  ContractConfigurationError,
   type ContractContext,
   createContractContext,
   entryText,
@@ -13,6 +14,10 @@ export interface ContractFinding {
   code: string;
   message: string;
   path: string;
+}
+
+export interface ContractEvaluationOptions {
+  shellCommand?: string;
 }
 
 interface FrontmatterResult {
@@ -44,6 +49,9 @@ const ALL_HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
 const CANONICAL_SIGNATURE_PATTERN =
   /<!--\s*simple-changelogs-signature\s+agent="[^"]*"\s+at="[^"]*"\s*-->/g;
 const NORMALIZED_WORD_PATTERN = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
+const MARKDOWN_LINK_PATTERN =
+  /!?\[([^\]]*)\]\(\s*(?:<([^>]+)>|([^)\s]+))(?:\s+["'][^"']*["'])?\s*\)/g;
+const REMOTE_DESTINATION_PATTERN = /^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/;
 const ROUTED_PATH_PATTERN =
   /(?<![A-Za-z0-9_.-])((?:\/(?!\/)|(?:\.\.?\/)*)(?:references|scripts|evals)\/[^\s`"'()<>{}[\],;:]+)/g;
 const POLICY_MARKER_PATTERN = /<!-- simple-changelogs-policy-example -->/g;
@@ -54,7 +62,7 @@ const GUIDANCE_HEADING_PATTERN = /^## Guidance ([1-9]\d*)[\t ]*$/gm;
 const INSTALLED_TARGET_PATTERN =
   /(?:\b(?:globally[- ]installed|installed)\b.{0,80}\b(?:skill|copy|directory|file)\b|\b(?:skill|copy|directory|file)\b.{0,80}\b(?:globally[- ]installed|installed)\b)/i;
 const MUTATION_ACTION_PATTERN =
-  /\b(?:remov(?:e|es|ed|ing)|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|writ(?:e|es|ten|ing)|mutat(?:e|es|ed|ing))\b/i;
+  /\b(?:remov(?:e|es|ed|ing)|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|replac(?:e|es|ed|ing)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|clear(?:s|ed|ing)?|writ(?:e|es|ten|ing)|mutat(?:e|es|ed|ing))\b/i;
 const UI_ACTION_PATTERN =
   /\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|build(?:s|ing)?|built|wir(?:e|es|ed|ing))\b/i;
 const UI_TARGET_PATTERN =
@@ -65,9 +73,12 @@ const PASSIVE_PROHIBITION_PATTERN =
   /\b(?:is|are|was|were) not (?:allowed|permitted)\b/i;
 const AUTHORIZATION_PATTERNS = [
   /\bcurrent (?:user )?request\b.{0,100}\bexplicitly authoriz(?:e|es|ed|ation)\b/i,
+  /\bexplicitly (?:authorized|approved|requested) by (?:the )?current (?:user )?request\b/i,
   /\bexplicit(?: user| task)? (?:authorization|approval|request)\b/i,
   /\bdocumented (?:repository|repo) policy\b.{0,100}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i,
+  /\b(?:allowed|authorized|granted) by (?:a |the )?documented (?:repository|repo) policy\b/i,
   /\bstored (?:repository )?policy\b.{0,100}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i,
+  /\b(?:allowed|authorized|granted) by (?:a |the )?stored (?:repository )?policy\b/i,
 ] as const;
 const SENTENCE_BOUNDARY_PATTERN = /(?<=[.!?])\s+|\r?\n+/;
 const NORMALIZED_SPACE_PATTERN = /\s+/g;
@@ -82,6 +93,13 @@ const finding = (
 
 const compact = <Value>(values: (Value | undefined)[]): Value[] =>
   values.filter((value): value is Value => value !== undefined);
+
+const compareText = (left: string, right: string): number => {
+  if (left < right) {
+    return -1;
+  }
+  return left > right ? 1 : 0;
+};
 
 const parseFrontmatter = (source: string): FrontmatterResult => {
   const block = FRONTMATTER_PATTERN.exec(source)?.[1];
@@ -183,9 +201,29 @@ const checkBundleEntries = (context: ContractContext): ContractFinding[] => {
   return findings;
 };
 
+const visibleMarkdownText = (source: string): string =>
+  source.replace(MARKDOWN_LINK_PATTERN, (_match, label: string) => label);
+
+const markdownWithLocalTargets = (source: string): string =>
+  source.replace(
+    MARKDOWN_LINK_PATTERN,
+    (
+      _match,
+      _label: string,
+      angleDestination?: string,
+      bareDestination?: string
+    ) => {
+      const destination = angleDestination ?? bareDestination ?? "";
+      return REMOTE_DESTINATION_PATTERN.test(destination)
+        ? " "
+        : ` ${destination} `;
+    }
+  );
+
 const routedPaths = (source: string): string[] =>
-  Array.from(source.matchAll(ROUTED_PATH_PATTERN), (match) =>
-    (match[1] ?? "").replace(ROUTED_TRAILING_PUNCTUATION_PATTERN, "")
+  Array.from(
+    markdownWithLocalTargets(source).matchAll(ROUTED_PATH_PATTERN),
+    (match) => (match[1] ?? "").replace(ROUTED_TRAILING_PUNCTUATION_PATTERN, "")
   );
 
 const safeRoutedPath = (root: string, path: string): boolean => {
@@ -240,11 +278,11 @@ const checkRoutedFiles = (context: ContractContext): ContractFinding[] => {
 
 const checkPolicyExample = (context: ContractContext): ContractFinding[] => {
   const markdown = markdownEntries(context);
-  const markerCount = markdown.reduce(
-    (count, entry) =>
-      count +
-      Array.from((entry.text ?? "").matchAll(POLICY_MARKER_PATTERN)).length,
-    0
+  const markerPaths = markdown.flatMap((entry) =>
+    Array.from(
+      (entry.text ?? "").matchAll(POLICY_MARKER_PATTERN),
+      () => entry.path
+    )
   );
   const blocks = markdown.flatMap((entry) =>
     Array.from((entry.text ?? "").matchAll(POLICY_BLOCK_PATTERN), (match) => ({
@@ -252,7 +290,7 @@ const checkPolicyExample = (context: ContractContext): ContractFinding[] => {
       path: entry.path,
     }))
   );
-  if (markerCount === 0) {
+  if (markerPaths.length === 0) {
     return [
       finding(
         "POLICY_EXAMPLE_MISSING",
@@ -261,11 +299,15 @@ const checkPolicyExample = (context: ContractContext): ContractFinding[] => {
       ),
     ];
   }
-  if (markerCount !== 1 || blocks.length !== 1) {
+  if (markerPaths.length !== 1 || blocks.length !== 1) {
+    const diagnosticPaths = Array.from(
+      new Set([...markerPaths, ...blocks.map((candidate) => candidate.path)])
+    ).sort(compareText);
+    const [diagnosticPath] = diagnosticPaths;
     return [
       finding(
         "POLICY_EXAMPLE_INVALID",
-        blocks[0]?.path ?? "references/setup.md",
+        diagnosticPath ?? "references/setup.md",
         "The policy marker must appear exactly once and directly precede one JSON or JSONC fence"
       ),
     ];
@@ -306,7 +348,7 @@ const withoutFencesAndComments = (source: string): string =>
     .replace(ALL_HTML_COMMENT_PATTERN, " ");
 
 const checkGuidanceCoverage = (context: ContractContext): ContractFinding[] => {
-  const skill = entryText(context, "SKILL.md");
+  const skill = withoutFencesAndComments(entryText(context, "SKILL.md"));
   const declaration = GUIDANCE_DECLARATION_PATTERN.exec(skill)?.[1];
   if (declaration === undefined) {
     return [
@@ -393,7 +435,7 @@ const checkGuidanceCoverage = (context: ContractContext): ContractFinding[] => {
 };
 
 const proseForDuplication = (source: string): string =>
-  source
+  visibleMarkdownText(source)
     .replace(FRONTMATTER_ONLY_PATTERN, " ")
     .replace(BACKTICK_FENCE_PATTERN, " ")
     .replace(TILDE_FENCE_PATTERN, " ")
@@ -498,12 +540,28 @@ const checkInstructionBoundaries = (
   return findings;
 };
 
-const isVendorScanPath = (path: string): boolean =>
+const isScopedCorePath = (path: string): boolean =>
   path === "SKILL.md" ||
   path === "EVAL.md" ||
   path.startsWith("references/") ||
   path.startsWith("evals/") ||
   (path.startsWith("scripts/") && !path.startsWith("scripts/adapters/"));
+
+const checkUnreadableCoreFiles = (
+  context: ContractContext
+): ContractFinding[] =>
+  Array.from(context.entries.values())
+    .filter(
+      (entry) =>
+        entry.kind === "file" && !entry.readable && isScopedCorePath(entry.path)
+    )
+    .map((entry) =>
+      finding(
+        "CORE_FILE_UNREADABLE",
+        entry.path,
+        `Scoped core file is not readable: ${entry.path}`
+      )
+    );
 
 const checkVendorAssumptions = (
   context: ContractContext
@@ -522,7 +580,7 @@ const checkVendorAssumptions = (
         (entry) =>
           entry.kind === "file" &&
           entry.readable &&
-          isVendorScanPath(entry.path)
+          isScopedCorePath(entry.path)
       )
       .map((entry) => {
         const source = (entry.text ?? "").replace(
@@ -541,7 +599,8 @@ const checkVendorAssumptions = (
 };
 
 const checkShellSyntax = async (
-  context: ContractContext
+  context: ContractContext,
+  shellCommand: string
 ): Promise<ContractFinding[]> => {
   const results = await Promise.all(
     Array.from(context.entries.values())
@@ -554,10 +613,13 @@ const checkShellSyntax = async (
       )
       .map(async (entry) => {
         try {
-          const child = spawn(["sh", "-n", join(context.root, entry.path)], {
-            stderr: "pipe",
-            stdout: "ignore",
-          });
+          const child = spawn(
+            [shellCommand, "-n", join(context.root, entry.path)],
+            {
+              stderr: "pipe",
+              stdout: "ignore",
+            }
+          );
           const [exitCode] = await Promise.all([
             child.exited,
             new Response(child.stderr).text(),
@@ -569,11 +631,10 @@ const checkShellSyntax = async (
                 entry.path,
                 `POSIX shell syntax check failed for ${entry.path}`
               );
-        } catch {
-          return finding(
-            "SHELL_SYNTAX_INVALID",
-            entry.path,
-            `POSIX shell syntax could not be checked for ${entry.path}`
+        } catch (error) {
+          throw new ContractConfigurationError(
+            `Could not start POSIX shell syntax checker: ${shellCommand}`,
+            { cause: error }
           );
         }
       })
@@ -623,7 +684,8 @@ const lexicalCompare = (
 };
 
 export const evaluateContracts = async (
-  skillDirectory: string
+  skillDirectory: string,
+  options: ContractEvaluationOptions = {}
 ): Promise<ContractFinding[]> => {
   const context = await createContractContext(skillDirectory);
   const checks = await Promise.all([
@@ -634,8 +696,9 @@ export const evaluateContracts = async (
     checkGuidanceCoverage(context),
     checkProseDuplication(context),
     checkInstructionBoundaries(context),
+    checkUnreadableCoreFiles(context),
     checkVendorAssumptions(context),
-    checkShellSyntax(context),
+    checkShellSyntax(context, options.shellCommand ?? "sh"),
     checkManifest(context),
   ]);
   return checks.flat().sort(lexicalCompare);

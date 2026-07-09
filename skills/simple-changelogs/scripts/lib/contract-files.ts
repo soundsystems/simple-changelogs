@@ -42,9 +42,24 @@ const configurationError = (path: string, error: unknown): never => {
   );
 };
 
+const compareText = (left: string, right: string): number => {
+  if (left < right) {
+    return -1;
+  }
+  return left > right ? 1 : 0;
+};
+
+const isPermissionError = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error.code === "EACCES" || error.code === "EPERM");
+
 const readDirectory = async (path: string): Promise<Dirent[]> => {
   try {
-    return await readdir(path, { withFileTypes: true });
+    return (await readdir(path, { withFileTypes: true })).sort((left, right) =>
+      compareText(left.name, right.name)
+    );
   } catch (error) {
     return configurationError(path, error);
   }
@@ -74,6 +89,14 @@ const inspectEntry = async (
   try {
     canonicalPath = await realpath(fullPath);
   } catch (error) {
+    if (metadata.isFile() && isPermissionError(error)) {
+      return {
+        canonical: isContained(root, fullPath),
+        kind: "file",
+        path: localPath,
+        readable: false,
+      };
+    }
     return configurationError(fullPath, error);
   }
   const canonical = isContained(root, canonicalPath);

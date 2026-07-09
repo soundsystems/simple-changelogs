@@ -112,8 +112,12 @@ interface CliResult {
   stdout: string;
 }
 
-const runCli = async (...args: string[]): Promise<CliResult> => {
+const runCliWithEnvironment = async (
+  environment: Record<string, string>,
+  ...args: string[]
+): Promise<CliResult> => {
   const child = spawn([process.execPath, evalPath, ...args], {
+    env: { ...process.env, ...environment },
     stderr: "pipe",
     stdout: "pipe",
   });
@@ -124,6 +128,9 @@ const runCli = async (...args: string[]): Promise<CliResult> => {
   ]);
   return { exitCode, stderr, stdout };
 };
+
+const runCli = (...args: string[]): Promise<CliResult> =>
+  runCliWithEnvironment({}, ...args);
 
 afterEach(async () => {
   await Promise.all(
@@ -249,5 +256,29 @@ describe("evaluation CLI", () => {
         status: "error",
       });
     }
+  });
+
+  test("reports an unspawnable shell checker as configuration exit two", async () => {
+    const skillDirectory = await createValidSkill();
+    const result = await runCliWithEnvironment(
+      {
+        SIMPLE_CHANGELOGS_EVAL_SHELL: join(skillDirectory, "missing-shell"),
+      },
+      "contract",
+      "--format",
+      "json",
+      "--skill-directory",
+      skillDirectory
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: {
+        code: "INVALID_CONFIGURATION",
+        message: expect.stringContaining("shell syntax checker"),
+      },
+      reportVersion: 1,
+      status: "error",
+    });
   });
 });
