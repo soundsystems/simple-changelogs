@@ -84,8 +84,8 @@ Ultracite, POSIX shell, Git.
 
 **Interfaces:**
 
-- Produces scripts `test`, `typecheck`, `lint`, `format`, `eval`, and
-  `validate:biome` for every later task.
+- Produces scripts `test`, `typecheck`, `lint`, `format`, and `eval` for every
+  later task.
 
 - [ ] **Step 1: Add repository metadata and scripts**
 
