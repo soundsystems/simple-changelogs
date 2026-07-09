@@ -3,6 +3,7 @@
 import { stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ContractConfigurationError } from "./lib/contract-files.ts";
 import { type ContractFinding, evaluateContracts } from "./lib/contracts.ts";
 
 const REPORT_VERSION = 1;
@@ -163,7 +164,7 @@ const parseArguments = (args: string[]): ParseResult => {
     if (!result.ok) {
       return {
         error: result.error,
-        format: options.format,
+        format: requestedFormat,
         ok: false,
       };
     }
@@ -270,7 +271,9 @@ export const runCli = async (args: string[]): Promise<number> => {
     return findings.length === 0 ? 0 : 1;
   } catch (error) {
     writeConfigurationError(
-      `Contract evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof ContractConfigurationError
+        ? error.message
+        : `Contract evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
       parsed.options.format
     );
     return 2;

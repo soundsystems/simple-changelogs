@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawn } from "bun";
@@ -62,6 +62,7 @@ Read \`references/setup.md\` and \`references/guidance-updates.md\`.
       "references/setup.md",
       `# Setup
 
+<!-- simple-changelogs-policy-example -->
 \`\`\`json
 {
   "schemaVersion": 1,
@@ -76,7 +77,7 @@ Read \`references/setup.md\` and \`references/guidance-updates.md\`.
     writeFixtureFile(
       skillDirectory,
       "references/guidance-updates.md",
-      "# Guidance Updates\n\n## Version 1\n\nInitial guidance.\n"
+      "# Guidance Updates\n\n## Guidance 1\n\nInitial guidance.\n"
     ),
     writeFixtureFile(
       skillDirectory,
@@ -199,5 +200,54 @@ describe("evaluation CLI", () => {
     expect(behavior.exitCode).toBe(2);
     expect(behavior.stderr).toContain("Adapter does not exist");
     expect(all.exitCode).toBe(2);
+  });
+
+  test("reports invalid skill roots as configuration errors", async () => {
+    const root = await mkdtemp(join(tmpdir(), "simple-changelogs-cli-root-"));
+    temporaryDirectories.push(root);
+    const missingRoot = join(root, "missing");
+    const fileRoot = join(root, "file");
+    const unreadableRoot = await createValidSkill();
+    await writeFile(fileRoot, "not a directory\n");
+    await chmod(unreadableRoot, 0o000);
+
+    const results = await Promise.all(
+      [missingRoot, fileRoot, unreadableRoot].map((skillDirectory) =>
+        runCli(
+          "contract",
+          "--format",
+          "json",
+          "--skill-directory",
+          skillDirectory
+        )
+      )
+    );
+    await chmod(unreadableRoot, 0o700);
+
+    for (const result of results) {
+      expect(result.exitCode).toBe(2);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        error: { code: "INVALID_CONFIGURATION" },
+        reportVersion: 1,
+        status: "error",
+      });
+    }
+  });
+
+  test("honors JSON format for parse errors even when the error comes first", async () => {
+    const [unknown, invalidTimeout] = await Promise.all([
+      runCli("contract", "--unknown", "--format", "json"),
+      runCli("contract", "--timeout-ms", "invalid", "--format", "json"),
+    ]);
+
+    for (const result of [unknown, invalidTimeout]) {
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toBe("");
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        error: { code: "INVALID_CONFIGURATION" },
+        reportVersion: 1,
+        status: "error",
+      });
+    }
   });
 });
