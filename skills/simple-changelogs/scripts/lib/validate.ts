@@ -1,11 +1,22 @@
+import { types as utilTypes } from "node:util";
 import {
+  ACTIVATION_MODES,
+  AUTHORIZATION_SOURCES,
+  AUTHORIZATION_STATUSES,
+  BACKFILL_STATUSES,
+  EVAL_SUITES,
   type EvalManifest,
   MANIFEST_VERSION,
   PROTOCOL_VERSION,
   type RepoPolicy,
+  RUNNER_MESSAGE_ROLES,
+  RUNNER_STATUSES,
   type RunnerRequest,
   type RunnerResponse,
+  SURFACE_POLICIES,
   type ValidationResult,
+  VERIFICATION_STATUSES,
+  VERSION_ROLES,
 } from "./types.ts";
 
 type JsonRecord = Record<string, unknown>;
@@ -15,6 +26,7 @@ type Shape = Record<string, Rule>;
 
 const UPPERCASE_CODE = /^[A-Z][A-Z0-9_]*$/;
 const JSON_PATH_IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
 
 const childPath = (path: string, key: string): string =>
   JSON_PATH_IDENTIFIER.test(key)
@@ -207,11 +219,11 @@ const turn = objectOf({
 });
 
 const evalCase = objectOf({
-  activationMode: enumOf(["discover", "explicit"]),
+  activationMode: enumOf(ACTIVATION_MODES),
   fixture: nonEmptyString,
   id: nonEmptyString,
   skip: optional(nonEmptyString),
-  suite: enumOf(["trigger", "behavior"]),
+  suite: enumOf(EVAL_SUITES),
   tags: stringArray,
   turns: arrayOf(turn, { minItems: 1 }),
 });
@@ -219,17 +231,10 @@ const evalCase = objectOf({
 const repoPolicy = objectOf({
   developerChangelog: literal("required"),
   guidance: objectOf({
-    backfillStatus: enumOf([
-      "not-applicable",
-      "completed",
-      "declined",
-      "deferred",
-      "partial",
-      "failed",
-    ]),
+    backfillStatus: enumOf(BACKFILL_STATUSES),
     version: integer(1),
   }),
-  newReleaseNoteSurfaces: enumOf(["ask", "allow", "existing-only"]),
+  newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
   schemaVersion: literal(1),
   signatures: literal("agent-and-timestamp"),
 });
@@ -241,11 +246,11 @@ const manifest = objectOf({
 
 const runnerMessage = objectOf({
   content: anyString,
-  role: enumOf(["user", "assistant"]),
+  role: enumOf(RUNNER_MESSAGE_ROLES),
 });
 
 const runnerRequest = objectOf({
-  activationMode: enumOf(["discover", "explicit"]),
+  activationMode: enumOf(ACTIVATION_MODES),
   case: evalCase,
   prompt: nonEmptyString,
   protocolVersion: literal(PROTOCOL_VERSION),
@@ -259,26 +264,20 @@ const runnerRequest = objectOf({
 
 const authorizationRecord = objectOf({
   code: uppercaseCode,
-  source: enumOf([
-    "current-request",
-    "repository-policy",
-    "repository-instructions",
-    "user-response",
-    "none",
-  ]),
-  status: enumOf(["granted", "denied", "required", "not-applicable"]),
+  source: enumOf(AUTHORIZATION_SOURCES),
+  status: enumOf(AUTHORIZATION_STATUSES),
 });
 
 const versionMapRecord = objectOf({
   path: nonEmptyString,
-  role: enumOf(["source", "mirror", "package", "application", "store"]),
+  role: enumOf(VERSION_ROLES),
   version: nonEmptyString,
 });
 
 const verificationResult = objectOf({
   code: uppercaseCode,
   detail: optional(anyString),
-  status: enumOf(["passed", "failed", "not-run"]),
+  status: enumOf(VERIFICATION_STATUSES),
 });
 
 const nativeActivationEvidence = objectOf({
@@ -306,18 +305,151 @@ const runnerResponse = objectOf({
   finalResponse: anyString,
   protocolVersion: literal(PROTOCOL_VERSION),
   runtimeIdentity: optional(nonEmptyString),
-  status: enumOf(["completed", "skipped", "error"]),
+  status: enumOf(RUNNER_STATUSES),
 });
+
+type NormalizationResult =
+  | { ok: true; value: unknown }
+  | { errors: string[]; ok: false };
+
+const symbolPath = (path: string, key: symbol): string =>
+  `${path}[${JSON.stringify(`symbol:${key.description ?? ""}`)}]`;
+
+const isPortableArrayIndex = (key: string, length: number): boolean => {
+  const index = Number(key);
+  return ARRAY_INDEX.test(key) && Number.isSafeInteger(index) && index < length;
+};
+
+const inspectPortableValue = (
+  value: unknown,
+  path: string,
+  errors: string[],
+  ancestors: WeakSet<object>
+): void => {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "string"
+  ) {
+    return;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      errors.push(`${path} must be a finite JSON number`);
+    }
+    return;
+  }
+  if (typeof value !== "object") {
+    errors.push(`${path} must be a portable JSON value`);
+    return;
+  }
+  if (utilTypes.isProxy(value)) {
+    errors.push(`${path} must not be a Proxy`);
+    return;
+  }
+  if (ancestors.has(value)) {
+    errors.push(`${path} must not contain a circular reference`);
+    return;
+  }
+
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    const isArray = Array.isArray(value);
+    if (
+      (isArray && prototype !== Array.prototype) ||
+      (!isArray && prototype !== Object.prototype && prototype !== null)
+    ) {
+      errors.push(`${path} must have a portable prototype`);
+      return;
+    }
+
+    ancestors.add(value);
+    inspectPortableProperties(value, path, errors, ancestors, isArray);
+    ancestors.delete(value);
+  } catch {
+    ancestors.delete(value);
+    errors.push(`${path} could not be inspected safely`);
+  }
+};
+
+const inspectPortableProperties = (
+  value: object,
+  path: string,
+  errors: string[],
+  ancestors: WeakSet<object>,
+  isArray: boolean
+): void => {
+  let arrayItemCount = 0;
+  for (const key of Reflect.ownKeys(value)) {
+    if (isArray && key === "length") {
+      continue;
+    }
+    if (typeof key === "symbol") {
+      errors.push(`${symbolPath(path, key)} is not allowed`);
+      continue;
+    }
+
+    const propertyPath = childPath(path, key);
+    if (isArray) {
+      if (!isPortableArrayIndex(key, (value as unknown[]).length)) {
+        errors.push(`${propertyPath} is not a portable array index`);
+        continue;
+      }
+      arrayItemCount += 1;
+    }
+
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor) {
+      errors.push(`${propertyPath} could not be inspected safely`);
+      continue;
+    }
+    if (!descriptor.enumerable) {
+      errors.push(`${propertyPath} must be enumerable`);
+      continue;
+    }
+    if (!("value" in descriptor)) {
+      errors.push(`${propertyPath} must be a data property`);
+      continue;
+    }
+    inspectPortableValue(descriptor.value, propertyPath, errors, ancestors);
+  }
+
+  if (isArray && arrayItemCount !== (value as unknown[]).length) {
+    errors.push(`${path} must not be a sparse array`);
+  }
+};
+
+const normalizePortableInput = (value: unknown): NormalizationResult => {
+  const errors: string[] = [];
+  try {
+    inspectPortableValue(value, "$", errors, new WeakSet<object>());
+    if (errors.length > 0) {
+      return { errors, ok: false };
+    }
+    return { ok: true, value: structuredClone(value) };
+  } catch {
+    return { errors: ["$ could not be inspected or cloned safely"], ok: false };
+  }
+};
 
 const validateWith = <T>(
   value: unknown,
   validate: Validator
 ): ValidationResult<T> => {
+  const normalized = normalizePortableInput(value);
+  if (!normalized.ok) {
+    return normalized;
+  }
+
   const errors: string[] = [];
-  validate(value, "$", errors);
-  return errors.length > 0
-    ? { errors, ok: false }
-    : { ok: true, value: structuredClone(value) as T };
+  try {
+    validate(normalized.value, "$", errors);
+    return errors.length > 0
+      ? { errors, ok: false }
+      : { ok: true, value: normalized.value as T };
+  } catch {
+    return { errors: ["$ could not be validated safely"], ok: false };
+  }
 };
 
 export const validateRepoPolicy = (

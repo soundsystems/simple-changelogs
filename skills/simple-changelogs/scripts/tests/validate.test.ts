@@ -45,6 +45,14 @@ const evaluationReport: EvaluationReport = {
   versionMap: [{ path: "CHANGELOG.md", role: "source", version: "Unreleased" }],
 };
 
+const portableRepoPolicy = () => ({
+  developerChangelog: "required",
+  guidance: { backfillStatus: "completed", version: 2 },
+  newReleaseNoteSurfaces: "ask",
+  schemaVersion: 1,
+  signatures: "agent-and-timestamp",
+});
+
 describe("repo policy", () => {
   test("accepts the portable version-one policy", () => {
     const result = validateRepoPolicy({
@@ -66,6 +74,94 @@ describe("repo policy", () => {
     const result = validateRepoPolicy(input);
     expect(result.ok).toBe(false);
     expect(input).toEqual(snapshot);
+  });
+});
+
+describe("portable inputs", () => {
+  test("rejects a non-enumerable required property", () => {
+    const input = {
+      developerChangelog: "required",
+      guidance: { backfillStatus: "completed", version: 2 },
+      newReleaseNoteSurfaces: "ask",
+      signatures: "agent-and-timestamp",
+    };
+    Object.defineProperty(input, "schemaVersion", { value: 1 });
+
+    const result = validateRepoPolicy(input);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors[0]?.startsWith("$.schemaVersion")).toBe(true);
+    }
+  });
+
+  test("rejects a non-enumerable unknown property", () => {
+    const input = portableRepoPolicy();
+    Object.defineProperty(input, "hiddenState", { value: "not-portable" });
+
+    const result = validateRepoPolicy(input);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors[0]?.startsWith("$.hiddenState")).toBe(true);
+    }
+  });
+
+  test("rejects accessors without invoking them", () => {
+    const input = portableRepoPolicy();
+    let reads = 0;
+    Object.defineProperty(input, "schemaVersion", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return 1;
+      },
+    });
+
+    const result = validateRepoPolicy(input);
+
+    expect(result.ok).toBe(false);
+    expect(reads).toBe(0);
+  });
+
+  test("rejects symbol keys and unsafe prototypes", () => {
+    const withSymbol = portableRepoPolicy();
+    Object.defineProperty(withSymbol, Symbol("hidden"), {
+      enumerable: true,
+      value: "not-portable",
+    });
+    const withPrototype = portableRepoPolicy();
+    Object.setPrototypeOf(withPrototype, { inherited: true });
+
+    expect(validateRepoPolicy(withSymbol).ok).toBe(false);
+    expect(validateRepoPolicy(withPrototype).ok).toBe(false);
+  });
+
+  test("returns validation failures for proxies instead of throwing", () => {
+    const transparent = new Proxy(portableRepoPolicy(), {});
+    const throwing = new Proxy(portableRepoPolicy(), {
+      ownKeys: () => {
+        throw new Error("inspection failed");
+      },
+    });
+    const descriptorThrowing = new Proxy(portableRepoPolicy(), {
+      getOwnPropertyDescriptor: () => {
+        throw new Error("descriptor inspection failed");
+      },
+    });
+    let transparentResult: ReturnType<typeof validateRepoPolicy> | undefined;
+    let throwingResult: ReturnType<typeof validateRepoPolicy> | undefined;
+    let descriptorResult: ReturnType<typeof validateRepoPolicy> | undefined;
+
+    expect(() => {
+      transparentResult = validateRepoPolicy(transparent);
+      throwingResult = validateRepoPolicy(throwing);
+      descriptorResult = validateRepoPolicy(descriptorThrowing);
+    }).not.toThrow();
+    expect(transparentResult?.ok).toBe(false);
+    expect(throwingResult?.ok).toBe(false);
+    expect(descriptorResult?.ok).toBe(false);
   });
 });
 

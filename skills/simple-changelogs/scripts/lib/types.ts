@@ -1,18 +1,47 @@
 export const MANIFEST_VERSION = 1;
 export const PROTOCOL_VERSION = 1;
 
-export type BackfillStatus =
-  | "not-applicable"
-  | "completed"
-  | "declined"
-  | "deferred"
-  | "partial"
-  | "failed";
+export const BACKFILL_STATUSES = [
+  "not-applicable",
+  "completed",
+  "declined",
+  "deferred",
+  "partial",
+  "failed",
+] as const;
+export const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+export const ACTIVATION_MODES = ["discover", "explicit"] as const;
+export const EVAL_SUITES = ["trigger", "behavior"] as const;
+export const RUNNER_STATUSES = ["completed", "skipped", "error"] as const;
+export const RUNNER_MESSAGE_ROLES = ["user", "assistant"] as const;
+export const AUTHORIZATION_STATUSES = [
+  "granted",
+  "denied",
+  "required",
+  "not-applicable",
+] as const;
+export const AUTHORIZATION_SOURCES = [
+  "current-request",
+  "repository-policy",
+  "repository-instructions",
+  "user-response",
+  "none",
+] as const;
+export const VERSION_ROLES = [
+  "source",
+  "mirror",
+  "package",
+  "application",
+  "store",
+] as const;
+export const VERIFICATION_STATUSES = ["passed", "failed", "not-run"] as const;
 
-export type SurfacePolicy = "ask" | "allow" | "existing-only";
-export type ActivationMode = "discover" | "explicit";
-export type EvalSuite = "trigger" | "behavior";
-export type RunnerStatus = "completed" | "skipped" | "error";
+export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
+export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+export type ActivationMode = (typeof ACTIVATION_MODES)[number];
+export type EvalSuite = (typeof EVAL_SUITES)[number];
+export type RunnerStatus = (typeof RUNNER_STATUSES)[number];
+export type RunnerMessageRole = (typeof RUNNER_MESSAGE_ROLES)[number];
 
 export type JsonValue =
   | boolean
@@ -61,7 +90,7 @@ export interface EvalManifest {
 
 export interface RunnerMessage {
   content: string;
-  role: "user" | "assistant";
+  role: RunnerMessageRole;
 }
 
 export interface RunnerRequest {
@@ -77,18 +106,9 @@ export interface RunnerRequest {
   workspace: string;
 }
 
-export type AuthorizationStatus =
-  | "granted"
-  | "denied"
-  | "required"
-  | "not-applicable";
+export type AuthorizationStatus = (typeof AUTHORIZATION_STATUSES)[number];
 
-export type AuthorizationSource =
-  | "current-request"
-  | "repository-policy"
-  | "repository-instructions"
-  | "user-response"
-  | "none";
+export type AuthorizationSource = (typeof AUTHORIZATION_SOURCES)[number];
 
 export interface AuthorizationRecord {
   code: string;
@@ -96,12 +116,7 @@ export interface AuthorizationRecord {
   status: AuthorizationStatus;
 }
 
-export type VersionRole =
-  | "source"
-  | "mirror"
-  | "package"
-  | "application"
-  | "store";
+export type VersionRole = (typeof VERSION_ROLES)[number];
 
 export interface VersionMapRecord {
   path: string;
@@ -109,7 +124,7 @@ export interface VersionMapRecord {
   version: string;
 }
 
-export type VerificationStatus = "passed" | "failed" | "not-run";
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
 export interface VerificationResult {
   code: string;
