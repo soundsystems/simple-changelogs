@@ -8,6 +8,10 @@ import {
   isContained,
   markdownEntries,
 } from "./contract-files.ts";
+import {
+  normalizeContractMarkdown,
+  normalizeLocalTarget,
+} from "./contract-markdown.ts";
 import { validateManifest, validateRepoPolicy } from "./validate.ts";
 
 export interface ContractFinding {
@@ -17,8 +21,10 @@ export interface ContractFinding {
 }
 
 export interface ContractEvaluationOptions {
-  shellCommand?: string;
+  shellSyntaxCheck?: ShellSyntaxCheck;
 }
+
+export type ShellSyntaxCheck = (scriptPath: string) => Promise<number>;
 
 interface FrontmatterResult {
   errors: string[];
@@ -49,9 +55,6 @@ const ALL_HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
 const CANONICAL_SIGNATURE_PATTERN =
   /<!--\s*simple-changelogs-signature\s+agent="[^"]*"\s+at="[^"]*"\s*-->/g;
 const NORMALIZED_WORD_PATTERN = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
-const MARKDOWN_LINK_PATTERN =
-  /!?\[([^\]]*)\]\(\s*(?:<([^>]+)>|([^)\s]+))(?:\s+["'][^"']*["'])?\s*\)/g;
-const REMOTE_DESTINATION_PATTERN = /^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/;
 const ROUTED_PATH_PATTERN =
   /(?<![A-Za-z0-9_.-])((?:\/(?!\/)|(?:\.\.?\/)*)(?:references|scripts|evals)\/[^\s`"'()<>{}[\],;:]+)/g;
 const POLICY_MARKER_PATTERN = /<!-- simple-changelogs-policy-example -->/g;
@@ -62,7 +65,7 @@ const GUIDANCE_HEADING_PATTERN = /^## Guidance ([1-9]\d*)[\t ]*$/gm;
 const INSTALLED_TARGET_PATTERN =
   /(?:\b(?:globally[- ]installed|installed)\b.{0,80}\b(?:skill|copy|directory|file)\b|\b(?:skill|copy|directory|file)\b.{0,80}\b(?:globally[- ]installed|installed)\b)/i;
 const MUTATION_ACTION_PATTERN =
-  /\b(?:remov(?:e|es|ed|ing)|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|replac(?:e|es|ed|ing)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|clear(?:s|ed|ing)?|writ(?:e|es|ten|ing)|mutat(?:e|es|ed|ing))\b/i;
+  /\b(?:append(?:s|ed|ing)?|clear(?:s|ed|ing)?|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|inject(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|mutat(?:e|es|ed|ing)|overwrit(?:e|es|ten|ing)|patch(?:es|ed|ing)?|replac(?:e|es|ed|ing)|remov(?:e|es|ed|ing)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|writ(?:e|es|ten|ing))\b/i;
 const UI_ACTION_PATTERN =
   /\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|build(?:s|ing)?|built|wir(?:e|es|ed|ing))\b/i;
 const UI_TARGET_PATTERN =
@@ -71,6 +74,8 @@ const PROHIBITION_PATTERN =
   /\b(?:do not|does not|did not|must not|should not|may not|cannot|can't|never)\b/i;
 const PASSIVE_PROHIBITION_PATTERN =
   /\b(?:is|are|was|were) not (?:allowed|permitted)\b/i;
+const NEGATED_AUTHORIZATION_PATTERN =
+  /(?:\bwithout\b.{0,60}\b(?:explicit (?:authorization|approval)|documented (?:repository|repo) policy|stored (?:repository )?policy)\b|\bnot explicitly (?:authorized|approved|requested)\b)/i;
 const AUTHORIZATION_PATTERNS = [
   /\bcurrent (?:user )?request\b.{0,100}\bexplicitly authoriz(?:e|es|ed|ation)\b/i,
   /\bexplicitly (?:authorized|approved|requested) by (?:the )?current (?:user )?request\b/i,
@@ -201,29 +206,15 @@ const checkBundleEntries = (context: ContractContext): ContractFinding[] => {
   return findings;
 };
 
-const visibleMarkdownText = (source: string): string =>
-  source.replace(MARKDOWN_LINK_PATTERN, (_match, label: string) => label);
-
-const markdownWithLocalTargets = (source: string): string =>
-  source.replace(
-    MARKDOWN_LINK_PATTERN,
-    (
-      _match,
-      _label: string,
-      angleDestination?: string,
-      bareDestination?: string
-    ) => {
-      const destination = angleDestination ?? bareDestination ?? "";
-      return REMOTE_DESTINATION_PATTERN.test(destination)
-        ? " "
-        : ` ${destination} `;
-    }
-  );
-
 const routedPaths = (source: string): string[] =>
   Array.from(
-    markdownWithLocalTargets(source).matchAll(ROUTED_PATH_PATTERN),
-    (match) => (match[1] ?? "").replace(ROUTED_TRAILING_PUNCTUATION_PATTERN, "")
+    normalizeContractMarkdown(source).localRouteText.matchAll(
+      ROUTED_PATH_PATTERN
+    ),
+    (match) =>
+      normalizeLocalTarget(
+        (match[1] ?? "").replace(ROUTED_TRAILING_PUNCTUATION_PATTERN, "")
+      )
   );
 
 const safeRoutedPath = (root: string, path: string): boolean => {
@@ -435,8 +426,8 @@ const checkGuidanceCoverage = (context: ContractContext): ContractFinding[] => {
 };
 
 const proseForDuplication = (source: string): string =>
-  visibleMarkdownText(source)
-    .replace(FRONTMATTER_ONLY_PATTERN, " ")
+  normalizeContractMarkdown(source)
+    .visibleText.replace(FRONTMATTER_ONLY_PATTERN, " ")
     .replace(BACKTICK_FENCE_PATTERN, " ")
     .replace(TILDE_FENCE_PATTERN, " ")
     .replace(CANONICAL_SIGNATURE_PATTERN, " ");
@@ -498,6 +489,10 @@ const instructionSentences = (source: string): string[] =>
     .map((sentence) => sentence.replace(NORMALIZED_SPACE_PATTERN, " ").trim())
     .filter(Boolean);
 
+const hasConcreteAuthorization = (sentence: string): boolean =>
+  !NEGATED_AUTHORIZATION_PATTERN.test(sentence) &&
+  AUTHORIZATION_PATTERNS.some((pattern) => pattern.test(sentence));
+
 const checkInstructionBoundaries = (
   context: ContractContext
 ): ContractFinding[] => {
@@ -525,7 +520,7 @@ const checkInstructionBoundaries = (
         UI_TARGET_PATTERN.test(sentence) &&
         UI_ACTION_PATTERN.test(sentence) &&
         !isProhibition(sentence, UI_ACTION_PATTERN) &&
-        !AUTHORIZATION_PATTERNS.some((pattern) => pattern.test(sentence))
+        !hasConcreteAuthorization(sentence)
     );
     if (implicitUi) {
       findings.push(
@@ -598,9 +593,21 @@ const checkVendorAssumptions = (
   );
 };
 
+const runPosixShellSyntaxCheck: ShellSyntaxCheck = async (scriptPath) => {
+  const child = spawn(["sh", "-n", scriptPath], {
+    stderr: "pipe",
+    stdout: "ignore",
+  });
+  const [exitCode] = await Promise.all([
+    child.exited,
+    new Response(child.stderr).text(),
+  ]);
+  return exitCode;
+};
+
 const checkShellSyntax = async (
   context: ContractContext,
-  shellCommand: string
+  shellSyntaxCheck: ShellSyntaxCheck
 ): Promise<ContractFinding[]> => {
   const results = await Promise.all(
     Array.from(context.entries.values())
@@ -613,17 +620,9 @@ const checkShellSyntax = async (
       )
       .map(async (entry) => {
         try {
-          const child = spawn(
-            [shellCommand, "-n", join(context.root, entry.path)],
-            {
-              stderr: "pipe",
-              stdout: "ignore",
-            }
+          const exitCode = await shellSyntaxCheck(
+            join(context.root, entry.path)
           );
-          const [exitCode] = await Promise.all([
-            child.exited,
-            new Response(child.stderr).text(),
-          ]);
           return exitCode === 0
             ? undefined
             : finding(
@@ -633,7 +632,7 @@ const checkShellSyntax = async (
               );
         } catch (error) {
           throw new ContractConfigurationError(
-            `Could not start POSIX shell syntax checker: ${shellCommand}`,
+            "Could not start POSIX shell syntax checker: sh -n",
             { cause: error }
           );
         }
@@ -698,7 +697,10 @@ export const evaluateContracts = async (
     checkInstructionBoundaries(context),
     checkUnreadableCoreFiles(context),
     checkVendorAssumptions(context),
-    checkShellSyntax(context, options.shellCommand ?? "sh"),
+    checkShellSyntax(
+      context,
+      options.shellSyntaxCheck ?? runPosixShellSyntaxCheck
+    ),
     checkManifest(context),
   ]);
   return checks.flat().sort(lexicalCompare);

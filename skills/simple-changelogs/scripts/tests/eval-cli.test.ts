@@ -258,9 +258,9 @@ describe("evaluation CLI", () => {
     }
   });
 
-  test("reports an unspawnable shell checker as configuration exit two", async () => {
+  test("injects shell spawn failure without a runtime language override", async () => {
     const skillDirectory = await createValidSkill();
-    const result = await runCliWithEnvironment(
+    const environmentResult = await runCliWithEnvironment(
       {
         SIMPLE_CHANGELOGS_EVAL_SHELL: join(skillDirectory, "missing-shell"),
       },
@@ -270,9 +270,40 @@ describe("evaluation CLI", () => {
       "--skill-directory",
       skillDirectory
     );
+    const wrapperRoot = await mkdtemp(
+      join(tmpdir(), "simple-changelogs-cli-injected-")
+    );
+    temporaryDirectories.push(wrapperRoot);
+    const wrapperPath = join(wrapperRoot, "injected-cli.ts");
+    await writeFile(
+      wrapperPath,
+      `import { runCli } from ${JSON.stringify(evalPath)};
+process.exitCode = await runCli(${JSON.stringify([
+        "contract",
+        "--format",
+        "json",
+        "--skill-directory",
+        skillDirectory,
+      ])}, {
+  contractOptions: {
+    shellSyntaxCheck: async () => { throw new Error("injected spawn failure"); }
+  }
+});
+`
+    );
+    const child = spawn([process.execPath, wrapperPath], {
+      stderr: "pipe",
+      stdout: "pipe",
+    });
+    const [exitCode, stdout] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
 
-    expect(result.exitCode).toBe(2);
-    expect(JSON.parse(result.stdout)).toMatchObject({
+    expect(environmentResult.exitCode).toBe(0);
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(stdout)).toMatchObject({
       error: {
         code: "INVALID_CONFIGURATION",
         message: expect.stringContaining("shell syntax checker"),

@@ -824,11 +824,63 @@ Current guidance version: 2
     }
   });
 
+  test("normalizes full and collapsed reference labels before duplication matching", async () => {
+    const plain =
+      "agents inspect repository context before editing release history so every durable decision remains reviewable by maintainers after the original task ends";
+    const referenceVariants = [
+      `${plain.replace("context", "[context][docs]")}\n\n[docs]: https://example.test/references/noise.md`,
+      `${plain.replace("context", "[context][]")}\n\n[context]: references/setup.md`,
+    ];
+    const results = await Promise.all(
+      referenceVariants.map(async (referenceProse) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${plain}\n`
+        );
+        await writeFixtureFile(
+          skillDirectory,
+          "references/setup.md",
+          `${await readFile(join(skillDirectory, "references/setup.md"), "utf8")}\n${referenceProse}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    for (const codes of results) {
+      expect(codes).toContain("PROSE_DUPLICATION");
+    }
+  });
+
   test("recognizes replace and clear installed-copy mutations", async () => {
     const results = await Promise.all(
       [
         "Replace the installed skill file after the audit.",
         "The globally installed skill copy clears its notice after approval.",
+      ].map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    for (const codes of results) {
+      expect(codes).toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+    }
+  });
+
+  test("recognizes append, overwrite, patch, and inject installed-copy mutations", async () => {
+    const results = await Promise.all(
+      [
+        "Append the audit marker to the installed skill file.",
+        "The installed skill copy is overwritten after setup.",
+        "Patch the globally installed skill directory after release.",
+        "The installed skill file injects repository state after each task.",
       ].map(async (instruction) => {
         const skillDirectory = await createValidSkill();
         await writeFixtureFile(
@@ -865,6 +917,36 @@ Current guidance version: 2
 
     for (const codes of results) {
       expect(codes).not.toContain("IMPLICIT_UI_CREATION");
+    }
+  });
+
+  test("accepts authorization after UI creation and rejects negated authorization", async () => {
+    const authorizedSkill = await createValidSkill();
+    await writeFixtureFile(
+      authorizedSkill,
+      "SKILL.md",
+      `${await readFile(join(authorizedSkill, "SKILL.md"), "utf8")}\nCreate a release-note UI only when explicitly authorized by the current request.\n`
+    );
+    const negativeResults = await Promise.all(
+      [
+        "Without explicit authorization, create a release-note UI.",
+        "When not explicitly authorized by the current request, create a release-note UI.",
+      ].map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    expect(
+      findingCodes(await evaluateContracts(authorizedSkill))
+    ).not.toContain("IMPLICIT_UI_CREATION");
+    for (const codes of negativeResults) {
+      expect(codes).toContain("IMPLICIT_UI_CREATION");
     }
   });
 
@@ -909,7 +991,10 @@ Current guidance version: 2
     const missingShell = join(skillDirectory, "missing-shell");
     let captured: unknown;
     try {
-      await evaluateContracts(skillDirectory, { shellCommand: missingShell });
+      await evaluateContracts(skillDirectory, {
+        shellSyntaxCheck: () =>
+          Promise.reject(new Error(`Cannot spawn ${missingShell}`)),
+      });
     } catch (error) {
       captured = error;
     }
@@ -935,6 +1020,36 @@ Current guidance version: 2
         item.code === "ROUTED_PATH_INVALID"
     );
     expect(routeFindings).toEqual([]);
+  });
+
+  test("ignores remote reference, autolink, and bare URLs but routes normalized local targets", async () => {
+    const skillDirectory = await createValidSkill();
+    await writeFixtureFile(
+      skillDirectory,
+      "SKILL.md",
+      `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}
+[Remote reference][remote]
+[remote]: https://example.test/references/remote.md
+<https://example.test/scripts/autolink.ts>
+https://example.test/references/bare.md
+[Local setup](references/setup.md?source=docs#setup)
+[Missing local][missing]
+[missing]: references/local-missing.md?source=docs#missing
+`
+    );
+
+    const routeFindings = (await evaluateContracts(skillDirectory)).filter(
+      (item) =>
+        item.code === "ROUTED_FILE_MISSING" ||
+        item.code === "ROUTED_PATH_INVALID"
+    );
+    expect(routeFindings).toEqual([
+      {
+        code: "ROUTED_FILE_MISSING",
+        message: "Routed package file is missing: references/local-missing.md",
+        path: "SKILL.md",
+      },
+    ]);
   });
 
   test("sorts context entries and selects the lexical policy diagnostic path", async () => {

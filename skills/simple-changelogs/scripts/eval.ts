@@ -4,12 +4,15 @@ import { stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ContractConfigurationError } from "./lib/contract-files.ts";
-import { type ContractFinding, evaluateContracts } from "./lib/contracts.ts";
+import {
+  type ContractEvaluationOptions,
+  type ContractFinding,
+  evaluateContracts,
+} from "./lib/contracts.ts";
 
 const REPORT_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 2_147_483_647;
-const SHELL_COMMAND_ENVIRONMENT_VARIABLE = "SIMPLE_CHANGELOGS_EVAL_SHELL";
 const COMMANDS = ["contract", "trigger", "behavior", "all"] as const;
 const FORMATS = ["text", "json"] as const;
 
@@ -24,6 +27,10 @@ interface CliOptions {
   keepFailures: boolean;
   skillDirectory: string;
   timeoutMs: number;
+}
+
+export interface EvalCliDependencies {
+  contractOptions?: ContractEvaluationOptions;
 }
 
 interface EvaluationReport {
@@ -250,7 +257,10 @@ const writeConfigurationError = (
   process.stderr.write(`Configuration error: ${message}\n`);
 };
 
-export const runCli = async (args: string[]): Promise<number> => {
+export const runCli = async (
+  args: string[],
+  dependencies: EvalCliDependencies = {}
+): Promise<number> => {
   const parsed = parseArguments(args);
   if (!parsed.ok) {
     writeConfigurationError(parsed.error, parsed.format);
@@ -264,9 +274,10 @@ export const runCli = async (args: string[]): Promise<number> => {
   }
 
   try {
-    const findings = await evaluateContracts(parsed.options.skillDirectory, {
-      shellCommand: process.env[SHELL_COMMAND_ENVIRONMENT_VARIABLE] ?? "sh",
-    });
+    const findings = await evaluateContracts(
+      parsed.options.skillDirectory,
+      dependencies.contractOptions
+    );
     writeReport(
       reportFor(parsed.options.command, findings),
       parsed.options.format
