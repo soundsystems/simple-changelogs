@@ -78,6 +78,8 @@ const NEGATED_AUTHORIZATION_PATTERN =
   /(?:\bwithout\b.{0,60}\b(?:explicit (?:user |task )?(?:authorization|approval|request)|documented (?:repository|repo) policy|stored (?:repository )?policy)\b|\bnot explicitly (?:(?:user|task)-)?(?:authorized|approved|requested)\b|\b(?:documented (?:repository|repo) policy|stored (?:repository )?policy)\b.{0,80}\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b)/i;
 const NEGATED_PERMISSION_CLAUSE_PATTERN =
   /\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i;
+const INDEPENDENT_CLAUSE_BOUNDARY_PATTERN =
+  /(?:,\s*(?:but|yet|so|then)\s+|[;:—–]\s*(?:(?:but|yet|so|then)\s+)?|\b(?:but|yet|so|then)\s+)/gi;
 const AUTHORIZATION_PATTERNS = [
   /\bcurrent (?:user )?request\b.{0,100}\bexplicitly authoriz(?:e|es|ed|ation)\b/i,
   /\bexplicitly (?:(?:user|task)-)?(?:authorized|approved|requested) by (?:the )?current (?:user )?request\b/i,
@@ -471,19 +473,37 @@ const checkProseDuplication = (context: ContractContext): ContractFinding[] => {
 };
 
 const isProhibition = (sentence: string, action: RegExp): boolean => {
-  const mutationIndex = sentence.search(action);
-  if (mutationIndex < 0) {
+  const actionIndex = sentence.search(action);
+  if (actionIndex < 0) {
     return false;
   }
+  if (PASSIVE_PROHIBITION_PATTERN.test(sentence)) {
+    return true;
+  }
   const prohibitionIndex = sentence.search(PROHIBITION_PATTERN);
-  const prohibitionClause =
-    prohibitionIndex < 0 ? "" : sentence.slice(prohibitionIndex, mutationIndex);
-  return Boolean(
-    (prohibitionIndex >= 0 &&
-      prohibitionIndex <= mutationIndex &&
-      !NEGATED_PERMISSION_CLAUSE_PATTERN.test(prohibitionClause)) ||
-      PASSIVE_PROHIBITION_PATTERN.test(sentence)
+  if (prohibitionIndex < 0 || prohibitionIndex > actionIndex) {
+    return false;
+  }
+  const prohibitedSource = sentence.slice(prohibitionIndex);
+  const negatedPermission = prohibitedSource.match(
+    NEGATED_PERMISSION_CLAUSE_PATTERN
   );
+  if (negatedPermission === null) {
+    return true;
+  }
+  const permissionIndex =
+    prohibitionIndex + (negatedPermission.index ?? Number.POSITIVE_INFINITY);
+  if (permissionIndex > actionIndex) {
+    return true;
+  }
+  const permissionEnd = permissionIndex + negatedPermission[0].length;
+  const trailingSource = sentence.slice(permissionEnd);
+  const independentAction = Array.from(
+    trailingSource.matchAll(INDEPENDENT_CLAUSE_BOUNDARY_PATTERN)
+  ).some((match) =>
+    action.test(trailingSource.slice((match.index ?? 0) + match[0].length))
+  );
+  return !independentAction;
 };
 
 const instructionSentences = (source: string): string[] =>

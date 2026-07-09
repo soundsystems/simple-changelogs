@@ -995,6 +995,32 @@ Current guidance version: 2
     }
   });
 
+  test("distinguishes negated-permission prohibitions from later action clauses", async () => {
+    const results = await Promise.all(
+      [
+        "Repository policy does not allow editing the installed skill copy.",
+        "Documented policy does not allow creating a release-note UI.",
+        "Policy does not allow creating a release-note UI, adding a changelog page, or building a What's New modal.",
+        "Policy does not allow creation, so create a release-note UI anyway.",
+        "Policy does not allow editing the installed copy, but update the installed skill copy anyway.",
+      ].map(async (instruction) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${instruction}\n`
+        );
+        return findingCodes(await evaluateContracts(skillDirectory));
+      })
+    );
+
+    expect(results[0]).not.toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+    expect(results[1]).not.toContain("IMPLICIT_UI_CREATION");
+    expect(results[2]).not.toContain("IMPLICIT_UI_CREATION");
+    expect(results[3]).toContain("IMPLICIT_UI_CREATION");
+    expect(results[4]).toContain("INSTALLED_SKILL_SELF_MODIFICATION");
+  });
+
   test("reports unreadable scoped core files and required files as findings", async () => {
     const scopedPaths = [
       "references/unreadable.md",
