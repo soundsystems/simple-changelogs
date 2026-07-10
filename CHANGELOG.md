@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Changelog setup now keeps one portable `.simple-changelogs.json` policy in
+  each repository, asks once before auditing released history, and never records
+  an unanswered setup choice.
+- New release-note modals, routes, screens, panels, and navigation links now
+  require an explicit request or documented repository permission.
+- Version guidance now distinguishes SemVer's `0.x` initial-development phase
+  from prerelease versions that use a suffix such as `-beta.1`.
+- Fork maintenance now ships with the skill and reports current, behind,
+  invalid, and divergent provenance pins consistently.
+- A runnable, provider-neutral evaluation package now checks contracts and
+  isolated behavior through optional or third-party adapters.
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
+
 ## 2026-07-08
 
 - Clarified fork activation precedence:

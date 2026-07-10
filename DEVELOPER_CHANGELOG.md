@@ -2,11 +2,37 @@
 
 ## Unreleased
 
-- Added the approved portability and evaluation design for the next skill
-  revision, covering repo-local guidance state, explicit release-note surface
-  authorization, portable signatures, instruction ownership, bundled fork
-  tooling, and a harness-neutral hybrid eval protocol.
+- Reworked policy and instruction ownership:
+  - Added the closed `.simple-changelogs.json` schema and first-use workflow for
+    repo-local guidance version, backfill disposition, required developer
+    history, signature mode, and release-note surface authorization.
+  - Replaced installed-skill mutation and sentinel state with simple,
+    prospective guidance updates plus one prompt per new guidance version.
+  - Kept customer classification, release lifecycle, versioning, backfill,
+    surface authorization, fork maintenance, and automation verification in
+    focused references behind a concise `SKILL.md` router.
+  - Standardized raw Markdown attribution on an escaped, machine-readable
+    identity and ISO 8601 timestamp comment while documenting its non-
+    cryptographic limits.
+- Added a portable evaluation package:
+  - Added closed schemas for manifests, repository policy, runner requests, and
+    runner responses, plus runtime validators and parity tests.
+  - Added a shell-free adapter runner with timeouts, process-tree termination,
+    JSON framing, normalized configuration errors, and isolated Git fixtures.
+  - Added 45 canonical trigger and behavior cases with multi-turn assertions for
+    setup, backfills, classification, authorization, release lifecycle, fork
+    precedence, and skill-maintenance boundaries.
+  - Added optional sandboxed Codex and Claude Code CLI adapters while keeping
+    the core contract free of vendor terms and authentication requirements.
+  - Added deterministic text and JSON reports, stable exit codes, failure
+    workspace retention, and a contributor-facing `EVAL.md` protocol guide.
+- Moved `check-fork-sync.sh` into the distributable skill and hardened default-
+  branch resolution, ancestry checks, invalid inputs, and divergent pins.
+- Updated public installation guidance to copy the complete skill package,
+  document agent-neutral evaluation, and treat Codex, Claude Code, Cursor,
+  Hermes, and Eve as optional runtime examples.
 <!-- Agent: GPT-5 Codex | 07/09/2026 3:39 PM CDT -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
 
 ## 2026-07-08
 
