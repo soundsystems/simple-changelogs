@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "guidance": {
+    "version": 1,
+    "backfillStatus": "deferred"
+  },
+  "developerChangelog": "required",
+  "signatures": "agent-and-timestamp",
+  "newReleaseNoteSurfaces": "ask"
+}

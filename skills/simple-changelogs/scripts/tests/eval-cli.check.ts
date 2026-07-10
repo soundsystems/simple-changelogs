@@ -31,7 +31,7 @@ const createValidSkill = async (): Promise<string> => {
         tags: [],
         turns: [
           {
-            assertions: [{ expected: true, kind: "report-status" }],
+            assertions: [{ expected: "completed", kind: "report.status" }],
             prompt: "Update pending changelogs.",
           },
         ],

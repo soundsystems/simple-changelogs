@@ -1,6 +1,8 @@
 import { types as utilTypes } from "node:util";
 import {
   ACTIVATION_MODES,
+  ASSERTION_KINDS,
+  type AssertionKind,
   AUTHORIZATION_SOURCES,
   AUTHORIZATION_STATUSES,
   BACKFILL_STATUSES,
@@ -207,11 +209,120 @@ const anyString = stringValue(true);
 const codeArray = arrayOf(uppercaseCode, { uniqueStrings: true });
 const stringArray = arrayOf(nonEmptyString, { uniqueStrings: true });
 
-const assertion = objectOf({
+const oneOf =
+  (description: string, ...validators: Validator[]): Validator =>
+  (value, path, errors) => {
+    const valid = validators.some((validator) => {
+      const candidateErrors: string[] = [];
+      validator(value, path, candidateErrors);
+      return candidateErrors.length === 0;
+    });
+    if (!valid) {
+      errors.push(`${path} must be ${description}`);
+    }
+  };
+
+const activationExpectation = oneOf(
+  "a boolean or activation expectation",
+  booleanValue,
+  objectOf({
+    activated: booleanValue,
+    excludes: optional(stringArray),
+    includes: optional(stringArray),
+  })
+);
+const repoStateExpectation = objectOf({
+  branch: optional(nonEmptyString),
+  clean: optional(booleanValue),
+});
+const changedPathsExpectation = objectOf({
+  allowed: optional(stringArray),
+  forbidden: optional(stringArray),
+  required: optional(stringArray),
+});
+const authorizationExpectation = oneOf(
+  "an authorization code or expectation",
+  uppercaseCode,
+  objectOf({
+    code: uppercaseCode,
+    source: optional(enumOf(AUTHORIZATION_SOURCES)),
+    status: optional(enumOf(AUTHORIZATION_STATUSES)),
+  })
+);
+const versionMapExpectation = oneOf(
+  "a version-map path or expectation",
+  nonEmptyString,
+  objectOf({
+    path: nonEmptyString,
+    role: optional(enumOf(VERSION_ROLES)),
+    version: optional(nonEmptyString),
+  })
+);
+const verificationExpectation = oneOf(
+  "a verification code or expectation",
+  nonEmptyString,
+  objectOf({
+    code: nonEmptyString,
+    status: optional(enumOf(VERIFICATION_STATUSES)),
+  })
+);
+
+const expectedByAssertionKind: Record<AssertionKind, Validator> = {
+  activation: activationExpectation,
+  "file.changed": booleanValue,
+  "file.unchanged": booleanValue,
+  "git.changedPaths": changedPathsExpectation,
+  "json.path": jsonValue,
+  "path.absent": booleanValue,
+  "path.exists": booleanValue,
+  "repo.state": repoStateExpectation,
+  "report.authorization": authorizationExpectation,
+  "report.decision": uppercaseCode,
+  "report.status": enumOf(RUNNER_STATUSES),
+  "report.verification": verificationExpectation,
+  "report.versionMap": versionMapExpectation,
+  "text.match": nonEmptyString,
+  "text.notMatch": nonEmptyString,
+};
+
+const targetedAssertionKinds = new Set<AssertionKind>([
+  "file.changed",
+  "file.unchanged",
+  "json.path",
+  "path.absent",
+  "path.exists",
+  "text.match",
+  "text.notMatch",
+]);
+
+const assertionBase = objectOf({
   expected: jsonValue,
-  kind: nonEmptyString,
+  kind: enumOf(ASSERTION_KINDS),
   target: optional(nonEmptyString),
 });
+
+const assertion: Validator = (value, path, errors) => {
+  assertionBase(value, path, errors);
+  if (
+    !isPlainObject(value) ||
+    typeof value.kind !== "string" ||
+    !ASSERTION_KINDS.includes(value.kind as AssertionKind)
+  ) {
+    return;
+  }
+  const kind = value.kind as AssertionKind;
+  const hasTarget = Object.hasOwn(value, "target");
+  if (targetedAssertionKinds.has(kind) && !hasTarget) {
+    errors.push(`${childPath(path, "target")} is required for ${kind}`);
+  } else if (!targetedAssertionKinds.has(kind) && hasTarget) {
+    errors.push(`${childPath(path, "target")} is not allowed for ${kind}`);
+  }
+  expectedByAssertionKind[kind](
+    value.expected,
+    childPath(path, "expected"),
+    errors
+  );
+};
 
 const turn = objectOf({
   assertions: arrayOf(assertion, { minItems: 1 }),

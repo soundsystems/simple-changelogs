@@ -1,3 +1,4 @@
 # Minimal Git Fixture
 
-Base repository for trigger and routing evaluations.
+Small neutral repository for activation and negative-trigger evaluations. It
+does not have changelogs or Simple Changelogs policy state.
