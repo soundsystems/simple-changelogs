@@ -31,8 +31,16 @@
 - Updated public installation guidance to copy the complete skill package,
   document agent-neutral evaluation, and treat Codex, Claude Code, Cursor,
   Hermes, and Eve as optional runtime examples.
+- Closed final review gaps around duplicate setup permission, one-off versus
+  ongoing surface authorization, deterministic metadata mirrors, fork-checker
+  invocation, eval exit statuses, assertion documentation, and unanswered
+  guidance prompts.
+- Renamed executable checks from auto-discoverable `*.test.ts` filenames to
+  explicit `*.check.ts` inputs, retaining the runnable Bun suite without letting
+  unrelated JavaScript test runners execute installed skill code implicitly.
 <!-- Agent: GPT-5 Codex | 07/09/2026 3:39 PM CDT -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:31:35-05:00" -->
 
 ## 2026-07-08
 

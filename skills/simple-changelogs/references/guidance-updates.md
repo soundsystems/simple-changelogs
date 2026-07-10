@@ -21,8 +21,9 @@ Moved all durable decisions into the repository-local
 state, so one installation can serve unrelated repositories safely.
 
 Made initial setup require both changelog files and one recorded historical
-audit disposition. Guidance prompts occur at most once per version; unfinished
-or failed audits resume only when explicitly requested.
+audit disposition. Guidance prompts stop repeating for a version once a
+disposition is recorded; an unanswered prompt records nothing and may be asked
+again later. Unfinished or failed audits resume only when explicitly requested.
 
 Added stored authorization for missing release-note destinations. Existing
 destinations may stay synchronized during release work, while product UI and

@@ -65,10 +65,13 @@ For authorized setup:
    adopting this skill maintain both histories.
 3. When no released history exists, write the current guidance version with
    `backfillStatus: "not-applicable"`.
-4. When released history exists, explain the current guidance briefly and ask
-   once whether to audit that history.
+4. When released history exists, first check whether the current request already
+   and explicitly decides the audit. Use that decision when its scope is clear;
+   otherwise explain the current guidance briefly and ask once whether to audit
+   that history. Do not repeat permission the user already granted.
 5. Record the user's actual disposition and set `newReleaseNoteSurfaces` to
-   `ask`, then continue the originally requested task.
+   `ask`, then continue the originally requested task. An authorized audit starts
+   as `partial` and becomes `completed` only after verification.
 
 Setup does not authorize a new modal, route, screen, panel, navigation entry, or
 other product UI. Follow `references/release-note-surfaces.md` when later work
@@ -97,8 +100,10 @@ because the question was prepared or displayed.
 ## Surface Authorization State
 
 When policy is `ask` and a missing destination becomes relevant, ask one
-authorization question before product implementation. Record ongoing approval
-as `allow` and rejection as `existing-only`.
+authorization question before product implementation. Distinguish permission
+for the named destination in this task from an ongoing repository preference.
+A one-off approval or rejection leaves policy at `ask`; record `allow` or
+`existing-only` only when the user explicitly chooses that ongoing policy.
 
 An explicit current request for one new release-note destination overrides
 `existing-only` for that task. Keep the stored preference unchanged unless the

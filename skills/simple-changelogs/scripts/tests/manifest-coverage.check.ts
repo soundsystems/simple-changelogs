@@ -11,6 +11,8 @@ import type {
 import { validateManifest } from "../lib/validate.ts";
 
 const MANIFEST_PATH = join(import.meta.dir, "..", "..", "evals", "cases.json");
+const SKILL_ROOT = join(import.meta.dir, "..", "..");
+const RECORDED_DISPOSITION_PATTERN = /once a\s+disposition is recorded/;
 
 const FIXTURE_IDS = new Set([
   "dual-changelog",
@@ -439,5 +441,64 @@ describe("canonical evaluation manifest", () => {
         "skills/project-changelog-maintainer/EVAL.md"
       )
     ).toBe(true);
+  });
+});
+
+describe("portable guidance consistency", () => {
+  test("does not repeat explicit audit authority or broaden one-off surface answers", async () => {
+    const setup = await readFile(
+      join(SKILL_ROOT, "references", "setup.md"),
+      "utf8"
+    );
+
+    expect(setup).toContain("current request already");
+    expect(setup).toContain("Do not repeat permission");
+    expect(setup).toContain(
+      "one-off approval or rejection leaves policy at `ask`"
+    );
+    expect(setup).toContain("explicitly chooses that ongoing policy");
+  });
+
+  test("keeps deterministic mirrors distinct from semantic backfill edits", async () => {
+    const backfill = await readFile(
+      join(SKILL_ROOT, "references", "backfill.md"),
+      "utf8"
+    );
+
+    expect(backfill).toContain("copying the same unambiguous value");
+    expect(backfill).toContain("established mirror");
+  });
+
+  test("routes fork drift through the location-independent bundled checker", async () => {
+    const forkMaintenance = await readFile(
+      join(SKILL_ROOT, "references", "fork-maintenance.md"),
+      "utf8"
+    );
+
+    expect(forkMaintenance).toContain(
+      "/absolute/path/to/simple-changelogs/scripts/check-fork-sync.sh"
+    );
+    expect(forkMaintenance).toContain("Use the bundled checker");
+    expect(forkMaintenance).not.toContain("Without the script");
+  });
+
+  test("documents all statuses and assertion families without overstating prompt deduplication", async () => {
+    const [evaluationGuide, guidanceUpdates] = await Promise.all([
+      readFile(join(SKILL_ROOT, "EVAL.md"), "utf8"),
+      readFile(join(SKILL_ROOT, "references", "guidance-updates.md"), "utf8"),
+    ]);
+
+    for (const value of [
+      "`failed`",
+      "`unsupported`",
+      "`skipped`",
+      "adapter-returned `error`",
+      "`repo.state`",
+      "`git.changedPaths`",
+    ]) {
+      expect(evaluationGuide).toContain(value);
+    }
+    expect(guidanceUpdates).toMatch(RECORDED_DISPOSITION_PATTERN);
+    expect(guidanceUpdates).toContain("an unanswered prompt records nothing");
   });
 });

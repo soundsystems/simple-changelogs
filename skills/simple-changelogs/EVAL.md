@@ -59,7 +59,9 @@ The default timeout is 30000 milliseconds. Text is the default format.
 ## Exit Status and Interpretation
 
 - `0`: every selected contract and case passed.
-- `1`: a deterministic finding or behavior assertion failed.
+- `1`: a deterministic finding exists or at least one selected case did not
+  pass. Preserve the case's specific `failed`, `unsupported`, `skipped`, or
+  adapter-returned `error` status when interpreting the report.
 - `2`: the harness, manifest, adapter, authentication, or configuration was
   invalid.
 
@@ -124,6 +126,7 @@ are:
 - `text.match` and `text.notMatch`;
 - `json.path`;
 - `command.exit`;
+- `repo.state` and `git.changedPaths`;
 - `report.status`, `report.decision`, `report.authorization`,
   `report.versionMap`, and `report.verification`.
 
@@ -145,9 +148,16 @@ cases to remain runnable.
 4. Use ordered turns when an authorization answer or follow-up must reuse the
    same workspace and transcript.
 5. Add a new assertion kind only with focused tests in
-   `scripts/tests/fixtures.test.ts` and aligned manifest validation.
-6. Run the manifest coverage test, full script tests, contract suite, typecheck,
-   and lint.
+   `scripts/tests/fixtures.check.ts` and aligned manifest validation.
+6. From the source repository root, run its explicit non-auto-discoverable test
+   command plus the remaining checks:
+
+   ```bash
+   bun run test
+   bun run eval
+   bun run typecheck
+   bun run lint
+   ```
 
 New normative skill behavior is protected only after a structured case or a
 deterministic contract assertion covers it. Keep prose examples here minimal so

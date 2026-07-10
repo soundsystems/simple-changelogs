@@ -70,7 +70,8 @@ any released-history operation that would:
 - delete information;
 - reword more than mechanical spelling, branding, or exact metadata copying;
 - combine entries in a way that changes their meaning;
-- alter a date, version, heading, or release boundary;
+- change a canonical date, version, heading, or release boundary, rather than
+  copying the same unambiguous value into an established mirror;
 - reclassify an ambiguous outcome;
 - change who can see the information.
 

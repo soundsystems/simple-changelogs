@@ -582,7 +582,7 @@ const isScopedCorePath = (path: string): boolean =>
 
 const isVendorAdapterPath = (path: string): boolean =>
   path.startsWith("scripts/adapters/") ||
-  path === "scripts/tests/adapters.test.ts";
+  path === "scripts/tests/adapters.check.ts";
 
 const checkUnreadableCoreFiles = (
   context: ContractContext

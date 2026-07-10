@@ -293,7 +293,7 @@ one two three four five six seven eight nine ten eleven twelve thirteen fourteen
     );
     await writeFixtureFile(
       skillDirectory,
-      "scripts/tests/adapters.test.ts",
+      "scripts/tests/adapters.check.ts",
       `// ${TEST_VENDOR}-specific adapter contract test.\n`
     );
     await writeFixtureFile(
