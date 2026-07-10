@@ -195,6 +195,26 @@ describe("bundled fork sync checker", () => {
     expect(result.stdout).toContain("origin/main");
   });
 
+  test("uses a selected non-origin remote main ref without a symbolic default", async () => {
+    const fixture = await setupRepository();
+    const remoteUrl = git(fixture.repository, "remote", "get-url", "origin");
+    git(fixture.repository, "remote", "add", "upstream", remoteUrl);
+    git(
+      fixture.repository,
+      "fetch",
+      "upstream",
+      "main:refs/remotes/upstream/main"
+    );
+    git(fixture.repository, "remote", "remove", "origin");
+    git(fixture.repository, "update-ref", "-d", "refs/remotes/upstream/HEAD");
+    await pinFork(fixture.forkSkill, fixture.main);
+
+    const result = check(fixture.repository, fixture.forkSkill);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("upstream/main");
+  });
+
   test("reports merge-base operational failures as invalid", async () => {
     const fixture = await setupRepository();
     await pinFork(fixture.forkSkill, fixture.base);

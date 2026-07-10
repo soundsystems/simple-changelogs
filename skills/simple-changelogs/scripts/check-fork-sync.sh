@@ -32,6 +32,14 @@ default_ref() {
       echo "${SYMBOLIC#refs/remotes/}"
       return
     fi
+
+    for BRANCH in main master; do
+      CANDIDATE="refs/remotes/$REMOTE/$BRANCH"
+      if has_ref "$CANDIDATE"; then
+        echo "$REMOTE/$BRANCH"
+        return
+      fi
+    done
   fi
 
   for CANDIDATE in refs/remotes/origin/main refs/heads/main refs/remotes/origin/master refs/heads/master; do
