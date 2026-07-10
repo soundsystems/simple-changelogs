@@ -1,109 +1,113 @@
-# Automation And Verification
+# Automation and Verification
 
-Use this reference for final checks, repo-local automation, and rules that are
-better enforced by scripts or tests than by prose.
+Use this reference for final review and repository-native checks. Verification
+must examine actual state; a response or evaluation report cannot prove its own
+filesystem claims.
 
-## Commands
+## Choose Proportionate Evidence
 
-For changelog-only markdown edits, diff review is usually enough. When version,
-package, generated release-note, app-store metadata, parser, or product code
-changed as part of the same task, run the repo's relevant checks.
+For Markdown-only changes, inspect the diff and render-sensitive structure. If
+the task also changes parsers, generated data, product code, packages, store
+metadata, or version fields, run the relevant repository tests and consistency
+commands.
 
-Prefer existing repo-native checks over adding ad hoc scripts. Look for commands
-or tests that already validate:
+Prefer existing checks. Search project scripts, tests, CI, release automation,
+and instructions before introducing a new command. A small permanent check is
+useful when it protects a stable relationship that repeatedly drifts; do not
+encode an uncertain or independently versioned relationship.
 
-- empty `Unreleased` sections
-- hidden agent signature comments being ignored by generated release-note data
-  and UI parsers
-- latest `CHANGELOG.md` section alignment with release-note data
-- package/app/store metadata alignment with the current release version
-- customer-visible diffs requiring customer changelog coverage
+## Policy and Setup
 
-If a repo has stable generated release-note data and no existing check for a
-known drift class, consider adding the smallest focused check that fits the
-repo's test style.
+- `.simple-changelogs.json` validates against the bundled schema.
+- Its recorded values match an actual user disposition or documented policy.
+- The repository maintains both customer and developer histories after adoption.
+- Guidance state lives in the repository and no packaged skill files were used
+  as per-repository storage.
+- Unanswered prompts did not produce an invented status.
 
-## Final Review
+## Customer History
 
-Before finalizing, confirm:
+- Each customer item describes a durable visible outcome for its real audience.
+- Copy excludes implementation recipes, hidden criteria, private incident
+  details, and clone-enabling mechanics.
+- Legal, privacy, trust, payment, access, and safety wording is accurate and no
+  more detailed than users need.
+- Feature groups and bullets follow product importance rather than commit order.
+- Routine initial-development repairs remain quiet unless they meet the material
+  disclosure threshold.
+- Links are useful to readers rather than raw commit evidence.
 
-- Every customer changelog bullet answers what a user can see, do, understand,
-  or trust now.
-- No customer bullet is DX-only, pre-release repair-only, or purely
-  implementation detail.
-- Pre-release fixes to already announced features, workflows, or baseline
-  expectations are not announced separately; still-unreleased prior entries are
-  revised instead when needed.
-- No customer bullet exposes clone-enabling mechanics, hidden heuristics, source
-  precedence, parser rules, taxonomy aliases, provider quirks, operational
-  cadence, AI/moderation criteria, security-control mechanics, private vendor
-  details, or roadmap sequencing.
-- No copy-only bullet is included unless it changes user understanding, trust,
-  access, legal/compliance meaning, pricing, setup, or error recovery.
-- Customer-facing entries use the minimum detail needed to communicate the
-  change, except major feature launches or workflow overhauls include enough
-  detail for users to understand what changed and how to use it.
-- Customer bullets inside each version are ordered by affected-surface radius.
-- First-time feature launches use a feature name plus what users can now do,
-  instead of comparative wording such as `easier to`, `clearer`, `better`, or
-  `improved`.
-- Multiple post-`1.0.0` public bug fixes are grouped under `Bug Fixes` after
-  larger feature, workflow, trust, and data-quality entries.
-- Customer wording is plain, concise, and audience-appropriate.
-- `DEVELOPER_CHANGELOG.md` explains technical changes plainly and does not read
-  like a raw commit log.
-- Superseded developer notes are removed when no longer useful, or moved to a
-  bottom-of-section `Superseded` subsection with obsolete claims struck through
-  and concise replacement context.
-- Raw changelog markdown edits include a nearby hidden agent signature comment
-  with the model name/version and local timestamp.
-- Generated release-note data and UI parsers ignore hidden signature comments so
-  attribution metadata is not rendered to users.
-- Release intent is established before entries move out of `Unreleased`, version
-  fields change, or release-note surfaces sync.
-- Release-bearing pull or merge request workflows ran the release-lifecycle
-  merge reconciliation checklist before completion; the final response states
-  whether `Unreleased` is empty or why any remaining entries are intentionally
-  still pending.
-- Empty `Unreleased` sections are removed after release finalization, and
-  `Unreleased` exists only when it contains pending entries.
-- Release-note data, app "What's New" surfaces, and version fields match the
-  changelog when the repo already has a visible release-note flow or release
-  prep adds one by default for an app with returning users.
-- Mobile store release notes are updated or drafted during mobile release prep
-  when App Store, Google Play, TestFlight, internal testing, closed testing, or
-  marketplace metadata is part of the release flow.
-- Mobile store release notes stay mobile-scoped, concise, non-promotional, and
-  free of web-only/admin-only/developer-only notes and implementation mechanics.
-- When a released version section is created or changed, the final response
-  reports a version map: `Updated`, `Already aligned`, or `Intentionally
-  skipped` for each relevant changelog, release-note, app, package, and store
-  metadata source identified by local repo policy.
-- Major feature groups stand out above minor fixes in app "What's New" surfaces
-  and public release-note pages.
-- Non-developer-facing apps without an existing public changelog source have a
-  real changelog route or page for full history instead of using one ever-growing
-  modal as the archive.
-- Major-release modals or detail views use a concise summary, scannable
-  highlights, and one clear full-changelog action without duplicating identical
-  links.
-- Auto-shown release-note modals default to the latest release; manual modal or
-  compact detail surfaces show only the current major or last 2-3 short releases
-  while readable, then link to the full changelog route/page for older history.
-- Auto-shown release-note modals appear only after higher-priority gates such as
-  auth, age gates, consent, onboarding, account recovery, payment, safety, or
-  mandatory migration flows.
-- In monorepos, web, mobile, admin, developer, and portal release-note surfaces
-  are scoped to the audience and platform that can use them instead of crowding
-  one web modal with unrelated notes.
-- Internal admin/developer release-note surfaces, when added, pull from
-  `DEVELOPER_CHANGELOG.md` or equivalent internal history and exclude
-  frontend-only UI polish or customer-only notes unless relevant to that
-  internal audience.
-- Internal admin/developer release-note surfaces use `Release Notes` as the
-  user-visible label unless the repo already has a stronger local convention.
-- Internal admin/developer full-history surfaces prefer a dedicated route or
-  panel, such as `/admin/dev/release-notes` or `/admin/release-notes`, while
-  admin modals stay short and link to the full internal surface.
-- Hidden, disabled, preview, prototype, or internal-only surfaces are not treated
-  as customer-facing without evidence of real user or operator visibility.
+## Developer History
+
+- Technical notes explain why future maintainers will care.
+- Migrations, contracts, pipelines, operational changes, architecture, release
+  plumbing, and important tests are captured when relevant.
+- Current truth stays in the main flow; preserved obsolete context is clearly
+  marked as superseded.
+- Raw hashes, diff narration, and trivia are absent.
+
+## Release Lifecycle
+
+- Release intent came from repository evidence before pending entries moved.
+- `Unreleased` contains only genuine pending work and no empty placeholder.
+- Merge reconciliation accounted for all release-bearing inputs.
+- Released headings, dates, and established mirrors agree.
+- A deploy was not mistaken for a release without evidence connecting them.
+
+## Version Alignment
+
+- The selected bump follows local convention and the shipped contract.
+- Initial-development versions and SemVer suffix pre-releases use accurate
+  terminology.
+- Only app, package, store, and feed fields proven to share the release changed.
+- Independently versioned packages, build identifiers, and remote-only values
+  were not guessed.
+- The handoff gives a concrete source-by-source version map.
+
+## Release-Note Destinations
+
+- Existing public, mobile, documentation, and internal destinations use copy
+  appropriate to their audience and platform.
+- Renderers ignore raw HTML attribution comments.
+- Missing product UI was not created or wired without explicit current-request
+  authorization, documented repository policy, or stored permission.
+- Internal technical notes appear only where access policy authorizes the
+  intended roles.
+- Store copy respects local submission and localization workflows.
+- Remote metadata is reported honestly when credentials or release authority
+  were unavailable.
+- Auto-shown summaries wait for higher-priority gates and retain suitable manual
+  access.
+
+## Backfills
+
+- The inspected ranges and release boundaries are named.
+- Automatic repairs were deterministic and preserved meaning, visibility, and
+  release boundaries.
+- Semantic candidates had the required authority or remained unchanged.
+- Public-to-internal movement was treated as a visibility change.
+- Interrupted, failed, and complete audits recorded honest resumable state.
+
+## Signatures
+
+- Each contiguous raw changelog edit has the canonical nearby HTML comment.
+- Runtime identity and timestamp were copied exactly or recorded as
+  `unreported`.
+- HTML attribute characters are escaped.
+- Existing signatures remain intact and generated customer copy does not render
+  them.
+
+## Useful Automated Checks
+
+When local architecture supports them, tests may enforce:
+
+- no empty pending headings;
+- signature comments are ignored by parsers;
+- latest released heading matches canonical release-note data;
+- product metadata known to share one version remains aligned;
+- customer-visible code paths trigger the repository's established changelog
+  coverage rule;
+- authorized surfaces render only the intended audience's entries.
+
+Run final commands after the last edit. Record command, outcome, and any skipped
+check with its reason; do not summarize stale evidence as current verification.

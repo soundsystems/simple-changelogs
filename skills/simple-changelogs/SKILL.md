@@ -1,253 +1,136 @@
 ---
 name: simple-changelogs
-description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer/developer changelogs, release notes, "What's New" surfaces, app-store notes, release metadata, version fields, or changelog decisions for push/merge/release/deploy prep. Do not use for generic deploys, package bumps, commit summaries, UI work, code review, or implementation work unless the request or repo policy explicitly ties them to changelog, release-note, or release-version handling.
+description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer or developer changelogs, release notes, "What's New" content, store notes, release metadata, version fields, or explicit changelog decisions during push, merge, release, or deploy preparation.
 ---
 
 # Simple Changelogs
 
 Maintain two complementary histories:
 
-- `CHANGELOG.md` for customers, users, stakeholders, or operators who need to
-  understand visible product changes without reading implementation details.
-- `DEVELOPER_CHANGELOG.md` for maintainers who need plain technical context
-  without reading raw commit logs.
+- `CHANGELOG.md` communicates durable visible outcomes to customers, users,
+  stakeholders, and operators.
+- `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
+  should not have to reconstruct from commits.
 
-## Load References
+Current guidance version: 2
 
-Read only the reference files needed for the task:
+## Setup Checkpoint
 
-| Task context | Read |
-|--------------|------|
-| Missing changelog files, git-history backfill, or guidance-driven released-history audit | `references/backfill.md` |
-| Customer/developer entry decisions, wording, hot fixes, or grouping | `references/entry-classification.md` |
-| `Unreleased` lifecycle, release finalization, branch/deploy handling, or shipped-entry reconciliation | `references/release-lifecycle.md` |
-| Version bumping, SemVer, release version fields, package/app metadata, or version-source ambiguity | `references/version-decisions.md` |
-| Release-note data, public release pages, app store notes, or in-app "What's New" surfaces | `references/release-note-surfaces.md` |
-| Final verification, local automation, or checkable changelog rules | `references/automation-verification.md` |
-| Creating, editing, or syncing a downstream fork of this skill | `references/fork-maintenance.md` |
-| Evaluating or changing this skill | `EVAL.md` |
+Before a write-capable changelog task, look for `.simple-changelogs.json` at the
+repository root.
 
-## One-Time Guidance Backfill Notice
+- When it exists, validate it before relying on its decisions. Report malformed
+  or unsupported state; do not silently replace it.
+- When it is absent and the request authorizes changelog work, follow
+  `references/setup.md`, then continue the original task.
+- If released history exists and the request does not decide its audit, ask and
+  stop before writing policy or changelogs. Silence is not `deferred` or
+  `declined`.
+- When the request is read-only, answer without writing policy or changelog
+  files. Offer setup as a possible next action.
+- When recorded guidance is older than version 2, read
+  `references/guidance-updates.md` and follow its one-time disposition flow.
 
-<!-- SIMPLE-CHANGELOGS-BACKFILL-REQUEST: remove after approved and completed backfill or explicit opt-out. -->
+Repository instructions take precedence when they establish a stricter scope,
+audience, release process, or source of truth.
 
-This installed skill version includes updated guidance that may affect existing
-released changelog or release-note history. When a repo already has released
-history, tell the user this notice is present and ask whether to run a guidance
-backfill now.
+## Reference Router
 
-If the user says yes, read `references/backfill.md`, run the policy or guidance
-backfill workflow, verify the result, then remove this entire section from the
-installed or forked skill copy. If the user defers, only approves a partial
-audit, or the backfill fails, leave this notice in place. If the user explicitly
-opts out of this guidance update, remove the notice without rewriting released
-history and state that no backfill ran.
+Read only the references needed for the current branch of work:
+
+| Concern | Canonical reference |
+| --- | --- |
+| First use, policy state, setup prompts, or raw-markdown signatures | `references/setup.md` |
+| Guidance-version changes and their user-readable effects | `references/guidance-updates.md` |
+| Customer/developer classification, wording, grouping, or hot fixes | `references/entry-classification.md` |
+| Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
+| `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
+| SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
+| Existing release-note sync or authorized product surfaces | `references/release-note-surfaces.md` |
+| Final checks and repository-native automation | `references/automation-verification.md` |
+| Fork provenance, selection convention, or upstream drift | `references/fork-maintenance.md` |
+| Running or extending the evaluation harness | `EVAL.md` |
 
 ## Core Workflow
 
-1. Inspect repo context first:
-   - `git status --short --branch`
-   - `git log --oneline --decorate --max-count=25`
-   - existing `CHANGELOG.md`, or create it if missing and needed
-   - existing `DEVELOPER_CHANGELOG.md`, or create it if missing and useful
-   - affected app/package versions and release-note version fields when version
-     tracking is part of the task
-   - pushed refs when the task involves pushing, merging, creating a pull or
-     merge request, publishing, or deploying
-   - deployment target and pending release contents when deploying publicly
-2. Load the reference file for any branch of the work that is not routine.
-3. Triage recent commits with `git show --stat --summary --format=fuller <sha>`.
-   When commit messages are vague, incomplete, or impact is unclear, read the
-   actual diff. For uncommitted work, inspect the changed files directly. When
-   a pull or merge request description and linked issues are available, use them
-   as context, but verify impact against the code and changelog files.
-4. Apply the customer impact gate before writing a customer changelog bullet.
-   Include a change only when it changes what a user, customer, stakeholder, or
-   operator can see, do, understand, or trust in a durable or broadly noticeable
-   way.
-5. Apply the public detail budget before writing a customer changelog bullet.
-   Public changelog, release-page, app-store, email, and in-app "What's New"
-   copy should explain the visible outcome and user benefit, not the private
-   mechanics that make it work.
-6. Keep developer-only work out of `CHANGELOG.md`. Put useful technical context
-   in `DEVELOPER_CHANGELOG.md` instead.
-7. If a change mixes technical work with visible behavior, write only the
-   visible outcome in `CHANGELOG.md` and put implementation details in
-   `DEVELOPER_CHANGELOG.md`.
-8. Order customer-facing entries inside each version by affected-surface radius,
-   not commit order.
-9. Before pushing, merging, opening a pull or merge request, publishing a
-   release, or deploying publicly, make the changelog decision explicit. If no
-   customer-facing update is needed, say so and explain whether the developer
-   changelog needs an entry.
-10. When the task includes merging one or more pull or merge requests into a
-    release-bearing target, run the merge reconciliation workflow in
-    `references/release-lifecycle.md` before calling the work complete. A normal
-    changelog check passing is not proof that `Unreleased` has been reconciled.
+### 1. Inspect
 
-## Bootstrap
+Read repository instructions, Git state, recent history, both changelogs, and
+the files changed by the task. Inspect diffs when commit subjects do not reveal
+visible impact. Establish release intent before touching released headings or
+release metadata.
 
-When `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md` does not exist, create it. Do
-not stop at "file not found" if the user asked for changelog work.
+### 2. Classify
 
-Use `Unreleased` only for meaningful pending work. If creating a changelog with
-no pending entries yet, omit `## Unreleased` until the first pending change
-exists. For history reconstruction, read `references/backfill.md`.
+Decide whether each outcome belongs in the customer history, developer history,
+both, or neither. Base customer inclusion on durable audience impact, then apply
+the public detail budget. Preserve useful implementation context separately.
 
-## Customer Impact Gate
+### 3. Edit
 
-Use `CHANGELOG.md` only when the change alters what users, customers,
-stakeholders, or operators can see, do, understand, or trust now. Use
-`DEVELOPER_CHANGELOG.md` for useful internal context that does not meet that
-gate.
+Use the repository's established Markdown structure. Keep pending work under a
+nonempty `Unreleased` section, combine related outcomes, and attach the signature
+format owned by `references/setup.md` to each contiguous raw-markdown block you
+change.
 
-Canonical examples:
+### 4. Reconcile
 
-- Include a new saved-search screen, changed checkout flow, visible permission
-  behavior, or admin/operator control.
-- Include backend, ingest, search, sync, or data-quality work only when it
-  changes what users see or prevents bad data from reaching them.
-- Include copy changes only when they affect user understanding, trust, legal
-  meaning, pricing, access, setup, error recovery, or support obligations.
-- Exclude obvious user-facing copy changes by default. Visible wording, labels,
-  placeholders, helper text, modal text, marketing copy, and tone polish do not
-  need a customer changelog note merely because users can see them; include one
-  only when the wording itself materially changes an access rule,
-  legal/compliance promise, payment/shopping identity behavior, safety/trust
-  requirement, or durable user capability.
-- Exclude tests, linting, migrations, refactors, dependency bumps, build config,
-  type-only edits, and internal docs with no visible behavior change.
-- Exclude routine typo, tone, label, placeholder, visual-polish, and
-  pre-release hot-fix churn unless the material-impact gate is met.
+For release-bearing work, reconcile pending entries with the intended release
+boundary. Update only metadata and existing release-note destinations proven to
+belong to that same release flow.
 
-For the full inclusion/exclusion matrix, hot-fix rules, and wording examples,
-read `references/entry-classification.md`.
+### 5. Verify
 
-## Public Detail Budget
+Review the actual diff, apply the checklist in
+`references/automation-verification.md`, and run relevant repository checks.
+Treat reported claims as context; filesystem and command evidence establish
+what changed.
 
-Customer changelog, release-page, app-store, email, and in-app "What's New"
-copy should explain visible outcomes and user benefit without publishing the
-private mechanics that make the product work.
+### 6. Hand Off
 
-Use broad product phrasing when implementation detail would mostly help another
-team copy, bypass, or attack the system:
+State the customer-changelog decision, developer-changelog decision, release
+state, checks run, and any authorization or credential still needed. When
+released metadata was examined, identify each relevant source and its outcome.
 
-- Prefer "Search results now surface more relevant matches first" over ranking
-  weights, fallback order, or source precedence.
-- Prefer "Imported records are cleaner and easier to compare" over parser
-  rules, taxonomy aliases, data-source mappings, or repair examples.
-- Prefer "Account recovery now gives users clearer next steps" over hidden
-  security, review, fraud, or enforcement heuristics.
-- Prefer "What's New focuses on the latest user-facing updates" over release
-  parser internals, queue names, schema fields, package names, or cron cadence.
+## Non-Negotiable Boundaries
 
-Major feature launches still need enough detail for users to understand what
-changed, where to find it, and how to benefit. The constraint is against hidden
-decision trees and implementation recipes, not useful product education.
+Do not rewrite released history merely because newer guidance would word it
+differently. Historical audits and meaning-changing edits follow
+`references/backfill.md`.
 
-For the complete public-detail budget, read
-`references/entry-classification.md`.
+Do not create or wire a new release-note modal, route, screen, page, navigation
+entry, dismissal store, or internal operator surface unless the current request
+explicitly authorizes it, documented repository policy permits it, or stored
+policy grants ongoing permission.
 
-## Developer Changelog Gate
+Updating an existing documented release-note destination is ordinary sync work
+when it belongs to the active release. A one-off explicit request can authorize
+one new destination without changing the repository's ongoing preference.
 
-Maintain `DEVELOPER_CHANGELOG.md` alongside the customer changelog. Include
-technical changes that will matter later:
+Do not render developer, security, or operational notes into an authenticated
+area until local access policy proves that its audience is authorized.
 
-- Database migrations, schema changes, data model updates, seed changes, and
-  backfills.
-- Parser, scraper, ingestion, sync, queue, cache, pipeline, or API behavior.
-- Shared types, validation rules, generated data, release-note data structures,
-  package versions, and cross-app contracts.
-- Tests added for important behavior, especially parser, data, migration,
-  release-note, or UI regression coverage.
-- Operational changes, deployment process changes, agent instructions, repo
-  workflow changes, and release process changes.
-- Refactors or dependency changes when they affect architecture, build behavior,
-  runtime behavior, or future maintenance.
+Do not invent agent identity, model version, timestamp, timezone, release
+version, shipped state, audience, or repository policy. Use the documented
+unknown value or report the missing evidence.
 
-Keep entries simple and matter-of-fact. Mention file or package areas when
-helpful, but do not dump commit hashes, raw diffs, or implementation trivia.
+Do not mutate a globally installed or packaged skill to remember repository
+decisions. All durable guidance and authorization state belongs in the target
+repository.
 
-## Entry Lifecycle
+A repository-local fork is preferred by project convention when both local and
+global copies are discoverable. Never claim the runtime loader enforces that
+choice; use repository instructions when explicit selection is necessary.
 
-Use `Unreleased` for meaningful work that has not been assigned to a release
-yet. Keep `Unreleased` present only while it has at least one real entry. When
-no pending changes exist, omit the section entirely instead of writing
-placeholder text such as "No unreleased changes."
+Do not create tags, hosted releases, deployments, screenshots, or unrelated
+product implementation unless the current request separately authorizes that
+work.
 
-Do not move entries out of `Unreleased`, bump versions, or sync release-note
-surfaces merely because a task touches git, a branch, a preview, or a deploy
-command. First establish release intent from local evidence. For release-bearing
-branch, merge, deploy, and shipped-entry reconciliation rules, read
-`references/release-lifecycle.md`.
+## Completion Standard
 
-## Release Ordering
+The task is complete only when the changelog decision is explicit, affected raw
+files and established mirrors agree, pending/released boundaries are honest,
+required signatures are present, and relevant verification has fresh evidence.
 
-Order customer-facing bullets inside each version by affected-surface radius,
-not by commit order or implementation order:
-
-1. Trust, safety, privacy, legal, compliance, onboarding, payment, or release
-   boundary behavior.
-2. Cross-surface or multi-role capabilities that change a primary workflow.
-3. Data-quality, ingest, sync, search, taxonomy, or backend behavior that changes
-   what users see or prevents bad data from reaching them.
-4. Surface-specific feature work.
-5. Polish, wording refinements, visual cleanup, and narrow bug fixes.
-
-Group related entries under a plain feature heading when a feature area has
-multiple visible changes. Use flat bullets only when changes are unrelated or
-too small to benefit from grouping.
-
-## Version And Release Notes
-
-Treat changelog versions as release boundaries, not commit batches, date
-changes, or measures of implementation time. A new day, a long-running branch,
-or several commits is not enough reason to bump a version.
-
-Read `references/version-decisions.md` before changing app/package versions,
-release-note version fields, or SemVer headings.
-
-When creating, renaming, or editing a released version section, run a release
-metadata sync audit before finalizing. Compare the latest `CHANGELOG.md` version
-to release-note data and every app/package/store metadata field that local docs,
-config, tests, or release automation identify as part of that product release.
-If an automated version-consistency check exists, run it. If none exists and the
-repo has a generated release-note feed, consider adding a focused check that
-fails when the latest release-note version drifts from the product metadata that
-is known to share that release version.
-
-When a release has customer-facing changelog bullets, update existing
-user-facing release-note surfaces used by the product, or add one only when no
-visible equivalent exists. Read
-`references/release-note-surfaces.md` before editing release-note data, public
-release pages, marketplace notes, email summaries, or in-app "What's New"
-screens.
-
-## Verification
-
-Before finalizing, review the diff against these categories, then run the
-exhaustive checklist and automatable checks in
-`references/automation-verification.md` - that file owns the full list; do not
-re-copy it here:
-
-- Customer bullets: pass the impact gate and public detail budget, and are
-  ordered by affected-surface radius.
-- Developer changelog: plain technical context, not a raw commit log.
-- Signatures: raw changelog edits carry nearby hidden agent signature comments.
-- Release intent: established before `Unreleased` moves, version fields change,
-  or release-note surfaces sync; empty `Unreleased` sections removed.
-- Version map: when a released version section is created or changed, the final
-  response reports `Updated`, `Already aligned`, or `Intentionally skipped` for
-  each relevant changelog, release-note, app, package, and store metadata
-  source identified by local repo policy.
-
-For changelog-only edits, diff review is usually enough. When version, package,
-generated release-note, or code files changed as part of the same task, run the
-repo's relevant checks.
-
-## Boundaries
-
-Use this skill for human-readable changelogs and release notes. Do not use it to
-generate screenshots, create Git tags, create hosted repository releases,
-replace dedicated release automation, or invent version policy that the repo
-does not document.
+If blocked, leave resumable repository state and name the exact decision,
+authority, credential, or source-of-truth evidence that is missing.

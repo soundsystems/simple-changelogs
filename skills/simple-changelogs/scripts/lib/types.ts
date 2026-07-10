@@ -35,6 +35,23 @@ export const VERSION_ROLES = [
   "store",
 ] as const;
 export const VERIFICATION_STATUSES = ["passed", "failed", "not-run"] as const;
+export const ASSERTION_KINDS = [
+  "activation",
+  "file.changed",
+  "file.unchanged",
+  "git.changedPaths",
+  "json.path",
+  "path.absent",
+  "path.exists",
+  "repo.state",
+  "report.authorization",
+  "report.decision",
+  "report.status",
+  "report.verification",
+  "report.versionMap",
+  "text.match",
+  "text.notMatch",
+] as const;
 
 export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
@@ -42,6 +59,7 @@ export type ActivationMode = (typeof ACTIVATION_MODES)[number];
 export type EvalSuite = (typeof EVAL_SUITES)[number];
 export type RunnerStatus = (typeof RUNNER_STATUSES)[number];
 export type RunnerMessageRole = (typeof RUNNER_MESSAGE_ROLES)[number];
+export type AssertionKind = (typeof ASSERTION_KINDS)[number];
 
 export type JsonValue =
   | boolean
@@ -64,7 +82,7 @@ export interface RepoPolicy {
 
 export interface EvalAssertion {
   expected: JsonValue;
-  kind: string;
+  kind: AssertionKind;
   target?: string;
 }
 

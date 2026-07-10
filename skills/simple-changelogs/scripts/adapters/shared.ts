@@ -19,7 +19,7 @@ import {
 const AUTHENTICATION_FAILURE_PATTERN =
   /authenticat|not logged in|log[ -]?in required|unauthorized|api[ _-]?key|oauth|credential/i;
 const CONFIGURATION_FAILURE_PATTERN =
-  /configuration|config file|invalid config|settings file/i;
+  /configuration|config file|invalid config|settings file|requires a newer version|upgrade to the latest|unsupported model|model.*(?:not available|not supported)/i;
 
 export interface VendorProcessSpec {
   cmd: string[];

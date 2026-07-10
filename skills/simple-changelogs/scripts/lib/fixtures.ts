@@ -1,5 +1,6 @@
 import type { Stats } from "node:fs";
 import {
+  chmod,
   cp,
   lstat,
   mkdtemp,
@@ -35,6 +36,23 @@ const compareText = (left: string, right: string): number => {
   return 0;
 };
 
+const isPermissionError = (error: unknown): boolean =>
+  isRecord(error) && (error.code === "EACCES" || error.code === "EPERM");
+
+const makeDirectoriesWritable = async (root: string): Promise<void> => {
+  const metadata = await lstat(root);
+  if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
+    return;
+  }
+  await chmod(root, 0o700);
+  const entries = await readdir(root, { withFileTypes: true });
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
+      .map((entry) => makeDirectoriesWritable(join(root, entry.name)))
+  );
+};
+
 export interface AssertionContext {
   response: RunnerResponse;
   workspace: string;
@@ -51,14 +69,6 @@ export interface AssertionResult {
 export interface CleanupOptions {
   failed: boolean;
   keepFailures: boolean;
-}
-
-interface CommandExpectation {
-  argv: string[];
-  exitCode: number;
-  stderrMatches?: string;
-  stdoutMatches?: string;
-  timeoutMs?: number;
 }
 
 interface ChangedPathsExpectation {
@@ -596,45 +606,6 @@ const repoExpectation = (
   };
 };
 
-const commandExpectation = (
-  value: JsonValue
-): CommandExpectation | undefined => {
-  if (
-    !isRecordWithOnlyKeys(value, [
-      "argv",
-      "exitCode",
-      "stderrMatches",
-      "stdoutMatches",
-      "timeoutMs",
-    ])
-  ) {
-    return;
-  }
-  const { argv, exitCode, stderrMatches, stdoutMatches, timeoutMs } = value;
-  if (
-    !isStringArray(argv) ||
-    argv.length === 0 ||
-    typeof exitCode !== "number" ||
-    !Number.isSafeInteger(exitCode) ||
-    (stderrMatches !== undefined && typeof stderrMatches !== "string") ||
-    (stdoutMatches !== undefined && typeof stdoutMatches !== "string") ||
-    (timeoutMs !== undefined &&
-      (!Number.isSafeInteger(timeoutMs) ||
-        typeof timeoutMs !== "number" ||
-        timeoutMs < 1 ||
-        timeoutMs > MAX_COMMAND_TIMEOUT_MS))
-  ) {
-    return;
-  }
-  return {
-    argv,
-    exitCode,
-    ...(stderrMatches === undefined ? {} : { stderrMatches }),
-    ...(stdoutMatches === undefined ? {} : { stdoutMatches }),
-    ...(timeoutMs === undefined ? {} : { timeoutMs }),
-  };
-};
-
 interface AuthorizationExpectation {
   code: string;
   source?: string;
@@ -1026,45 +997,6 @@ const evaluateChangedPathsAssertion = async (
     : fail(assertion, `Changed paths did not match: ${paths.join(", ")}`);
 };
 
-const evaluateCommandAssertion = async (
-  assertion: EvalAssertion,
-  workspace: string
-): Promise<AssertionResult> => {
-  const expected = commandExpectation(assertion.expected);
-  if (!expected) {
-    return fail(assertion, "command.exit expected value is invalid");
-  }
-  try {
-    const result = await runCommand(expected.argv, workspace, {
-      timeoutMs: expected.timeoutMs,
-    });
-    if (result.timedOut) {
-      return fail(
-        assertion,
-        `Command timed out after ${expected.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS} ms`
-      );
-    }
-    const exitMatches = result.exitCode === expected.exitCode;
-    const stdoutMatches =
-      expected.stdoutMatches === undefined ||
-      matches(result.stdout, expected.stdoutMatches);
-    const stderrMatches =
-      expected.stderrMatches === undefined ||
-      matches(result.stderr, expected.stderrMatches);
-    return exitMatches && stdoutMatches && stderrMatches
-      ? pass(assertion, "Command result matched")
-      : fail(
-          assertion,
-          `Command result did not match (exit ${result.exitCode})`
-        );
-  } catch (error) {
-    return fail(
-      assertion,
-      `Command execution failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-};
-
 const evaluateAssertion = (
   assertion: EvalAssertion,
   context: AssertionContext
@@ -1101,9 +1033,6 @@ const evaluateAssertion = (
   }
   if (assertion.kind === "git.changedPaths") {
     return evaluateChangedPathsAssertion(assertion, context.workspace);
-  }
-  if (assertion.kind === "command.exit") {
-    return evaluateCommandAssertion(assertion, context.workspace);
   }
   return fail(assertion, `Unsupported assertion kind: ${assertion.kind}`);
 };
@@ -1155,6 +1084,14 @@ export const cleanupFixtureWorkspace = async (
   if (options.failed && options.keepFailures) {
     return;
   }
-  await rm(workspace, { force: true, recursive: true });
+  try {
+    await rm(workspace, { force: true, recursive: true });
+  } catch (error) {
+    if (!isPermissionError(error)) {
+      throw error;
+    }
+    await makeDirectoriesWritable(workspace);
+    await rm(workspace, { force: true, recursive: true });
+  }
   ownedWorkspaces.delete(workspace);
 };

@@ -220,6 +220,35 @@
           "prompt": "The diff adds a new saved-search screen, navigation entry, and backend endpoint.\nUpdate the changelogs for pending work.",
           "assertions": [
             {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": ".simple-changelogs.json",
+              "expected": true
+            },
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "GUIDANCE_BACKFILL",
+                "status": "required",
+                "source": "none"
+              }
+            },
+            { "kind": "report.decision", "expected": "INITIAL_SETUP_REQUIRED" }
+          ]
+        },
+        {
+          "prompt": "Decline the historical audit, record that choice, and continue the pending\nchangelog update.",
+          "assertions": [
+            {
               "kind": "file.changed",
               "target": "CHANGELOG.md",
               "expected": true
@@ -240,9 +269,27 @@
               "expected": "[Ee]ndpoint|[Aa][Pp][Ii] route"
             },
             {
-              "kind": "path.exists",
-              "target": ".simple-changelogs.json",
-              "expected": true
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/version",
+              "expected": 2
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus",
+              "expected": "declined"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "ask"
+            },
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "GUIDANCE_BACKFILL",
+                "status": "denied",
+                "source": "user-response"
+              }
             },
             { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
           ]
@@ -1327,9 +1374,19 @@
               "expected": "This very long description repeats workflow"
             },
             {
+              "kind": "text.match",
+              "target": "SKILL.md",
+              "expected": "description: (?=[^\\n]*(?:Use when|changelog))(?=[^\\n]*(?:Do not use|not for|unless))[^\\n]+"
+            },
+            {
               "kind": "text.notMatch",
               "target": "SKILL.md",
               "expected": "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "SKILL.md",
+              "expected": "- Check the changelog\\.\\s*- Check wording\\."
             },
             {
               "kind": "text.match",
@@ -1345,6 +1402,31 @@
               "kind": "text.match",
               "target": "references/entry-classification.md",
               "expected": "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Cc]ustomer"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Dd]eveloper"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Rr]elease"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Ss]ignature"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Aa]utomat|[Cc]ommand"
             },
             {
               "kind": "text.match",

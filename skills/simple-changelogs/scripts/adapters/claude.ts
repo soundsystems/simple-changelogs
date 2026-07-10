@@ -15,6 +15,88 @@ import {
 
 const RUNTIME_IDENTITY = "Claude Code";
 
+const configuredClaudeModel = (): string | undefined => {
+  const model = process.env.SIMPLE_CHANGELOGS_CLAUDE_MODEL?.trim();
+  return model && model.length > 0 ? model : undefined;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const decodePointerSegment = (segment: string): string =>
+  segment.replaceAll("~1", "/").replaceAll("~0", "~");
+
+const referencedSchema = (
+  root: Record<string, unknown>,
+  reference: string
+): unknown => {
+  if (!reference.startsWith("#/")) {
+    throw new Error(
+      `Claude schema supports only local references: ${reference}`
+    );
+  }
+  let current: unknown = root;
+  for (const segment of reference.slice(2).split("/")) {
+    if (!isRecord(current)) {
+      throw new Error(`Claude schema reference is invalid: ${reference}`);
+    }
+    current = current[decodePointerSegment(segment)];
+  }
+  if (current === undefined) {
+    throw new Error(`Claude schema reference was not found: ${reference}`);
+  }
+  return current;
+};
+
+const dereferenceSchema = (root: Record<string, unknown>): unknown => {
+  const visit = (value: unknown, activeReferences: Set<string>): unknown => {
+    if (Array.isArray(value)) {
+      return value.map((item) => visit(item, activeReferences));
+    }
+    if (!isRecord(value)) {
+      return value;
+    }
+
+    const reference = typeof value.$ref === "string" ? value.$ref : undefined;
+    if (reference) {
+      if (activeReferences.has(reference)) {
+        throw new Error(`Claude schema reference is circular: ${reference}`);
+      }
+      const resolved = visit(
+        referencedSchema(root, reference),
+        new Set(activeReferences).add(reference)
+      );
+      if (!isRecord(resolved)) {
+        throw new Error(
+          `Claude schema reference is not an object: ${reference}`
+        );
+      }
+      const siblings = Object.fromEntries(
+        Object.entries(value)
+          .filter(([key]) => key !== "$ref")
+          .map(([key, item]) => [key, visit(item, activeReferences)])
+      );
+      return { ...resolved, ...siblings };
+    }
+
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== "$defs" && key !== "$schema")
+        .map(([key, item]) => [key, visit(item, activeReferences)])
+    );
+  };
+
+  return visit(root, new Set());
+};
+
+export const prepareClaudeResponseSchema = (responseSchema: string): string => {
+  const parsed: unknown = JSON.parse(responseSchema);
+  if (!isRecord(parsed)) {
+    throw new Error("Claude response schema must be a JSON object");
+  }
+  return JSON.stringify(dereferenceSchema(parsed));
+};
+
 export const buildClaudeSandboxSettings = (request: RunnerRequest): string =>
   JSON.stringify({
     sandbox: {
@@ -22,7 +104,9 @@ export const buildClaudeSandboxSettings = (request: RunnerRequest): string =>
       enabled: true,
       failIfUnavailable: true,
       filesystem: {
+        allowRead: [request.workspace, request.skillDirectory],
         allowWrite: [request.workspace],
+        denyRead: ["/"],
         denyWrite: [request.skillDirectory],
       },
     },
@@ -31,24 +115,31 @@ export const buildClaudeSandboxSettings = (request: RunnerRequest): string =>
 export const buildClaudeCommand = (
   request: RunnerRequest,
   responseSchema: string,
-  executable = "claude"
-): string[] => [
-  executable,
-  "--print",
-  "--output-format",
-  "json",
-  "--safe-mode",
-  "--no-session-persistence",
-  "--no-chrome",
-  "--permission-mode",
-  "acceptEdits",
-  "--allowedTools",
-  "Read,Glob,Grep,Bash",
-  "--settings",
-  buildClaudeSandboxSettings(request),
-  "--json-schema",
-  responseSchema,
-];
+  executable = "claude",
+  model = configuredClaudeModel()
+): string[] => {
+  const modelArguments = model ? ["--model", model] : [];
+  return [
+    executable,
+    "--print",
+    "--output-format",
+    "json",
+    "--safe-mode",
+    "--no-session-persistence",
+    "--no-chrome",
+    ...modelArguments,
+    "--permission-mode",
+    "dontAsk",
+    "--tools",
+    "Edit,Write,Bash",
+    "--allowedTools",
+    "Edit,Write,Bash",
+    "--settings",
+    buildClaudeSandboxSettings(request),
+    "--json-schema",
+    responseSchema,
+  ];
+};
 
 export const buildClaudeInvocation = (
   request: RunnerRequest,
@@ -59,9 +150,6 @@ export const buildClaudeInvocation = (
   cwd: request.workspace,
   input: prompt,
 });
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 export const extractClaudeFinalResponse = (text: string): RunnerResponse => {
   let envelope: unknown;
@@ -101,8 +189,10 @@ const executeClaudeAdapter = async (
 ): Promise<AdapterExecutionResult> => {
   let prompt: string;
   let responseSchema: string;
+  let claudeResponseSchema: string;
   try {
     ({ prompt, responseSchema } = await loadAdapterPrompt(request));
+    claudeResponseSchema = prepareClaudeResponseSchema(responseSchema);
   } catch (error) {
     return failed(
       "INVALID_CONFIGURATION",
@@ -111,7 +201,7 @@ const executeClaudeAdapter = async (
   }
 
   const execution = await runVendorProcess(
-    buildClaudeInvocation(request, responseSchema, `${prompt}\n`)
+    buildClaudeInvocation(request, claudeResponseSchema, `${prompt}\n`)
   );
   const logs = vendorLogs(execution.stderr);
   if (!execution.ok) {

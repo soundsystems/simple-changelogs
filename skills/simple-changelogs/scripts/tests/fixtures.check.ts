@@ -214,7 +214,7 @@ describe("fixture workspaces", () => {
 });
 
 describe("assertion evaluation", () => {
-  test("evaluates path, text, JSON, report, activation, Git, and command assertions", async () => {
+  test("evaluates path, text, JSON, report, activation, and Git assertions", async () => {
     const fixturesRoot = await makeFixtureRoot();
     const workspace = await createFixtureWorkspace(fixturesRoot, "base");
     temporaryPaths.add(workspace);
@@ -267,10 +267,6 @@ describe("assertion evaluation", () => {
         },
         kind: "git.changedPaths",
       },
-      {
-        expected: { argv: ["git", "status", "--short"], exitCode: 0 },
-        kind: "command.exit",
-      },
     ];
 
     const results = await evaluateAssertions(assertions, {
@@ -290,6 +286,7 @@ describe("assertion evaluation", () => {
     const outside = await makeTemporaryDirectory("simple-changelogs-outside-");
     await writeFile(join(outside, "secret"), "secret\n");
     await symlink(join(outside, "secret"), join(workspace, "linked-secret"));
+    const escapedPath = join(outside, "escaped");
 
     const results = await evaluateAssertions(
       [
@@ -305,7 +302,21 @@ describe("assertion evaluation", () => {
           expected: { forbidden: ["../outside"] },
           kind: "git.changedPaths",
         },
-        { expected: true, kind: "unknown.assertion" },
+        {
+          expected: true,
+          kind: "unknown.assertion",
+        } as unknown as EvalAssertion,
+        {
+          expected: {
+            argv: [
+              process.execPath,
+              "-e",
+              `await Bun.write(${JSON.stringify(escapedPath)}, "escaped")`,
+            ],
+            exitCode: 0,
+          },
+          kind: "command.exit",
+        } as unknown as EvalAssertion,
       ],
       { response: completedResponse(), workspace }
     );
@@ -314,6 +325,7 @@ describe("assertion evaluation", () => {
     expect(results.map((result) => result.message).join("\n")).toMatch(
       UNSAFE_ASSERTION_PATTERN
     );
+    await expect(lstat(escapedPath)).rejects.toThrow();
   });
 
   test("does not accept mutation reports without matching workspace changes", async () => {
@@ -347,7 +359,10 @@ describe("assertion evaluation", () => {
 
     const results = await evaluateAssertions(
       [
-        { expected: "RELEASE_NOTES_SYNC", kind: "report.typo" },
+        {
+          expected: "RELEASE_NOTES_SYNC",
+          kind: "report.typo",
+        } as unknown as EvalAssertion,
         { expected: "RELEASE_NOTES_SYNC", kind: "report.verification" },
         {
           expected: "NEW_RELEASE_NOTE_SURFACE",
@@ -380,58 +395,6 @@ describe("assertion evaluation", () => {
       true,
       true,
     ]);
-  });
-
-  test("evaluates command and workspace assertions sequentially", async () => {
-    const fixturesRoot = await makeFixtureRoot();
-    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
-    temporaryPaths.add(workspace);
-    await initializeFixtureGit(workspace);
-
-    const results = await evaluateAssertions(
-      [
-        {
-          expected: {
-            argv: [
-              process.execPath,
-              "-e",
-              'await Bun.sleep(50); await Bun.write("generated.txt", "ready\\n");',
-            ],
-            exitCode: 0,
-          },
-          kind: "command.exit",
-        },
-        { expected: true, kind: "path.exists", target: "generated.txt" },
-        { expected: "ready", kind: "text.match", target: "generated.txt" },
-      ],
-      { response: completedResponse(), workspace }
-    );
-
-    expect(results.every((result) => result.passed)).toBe(true);
-  });
-
-  test("times out a hung assertion command", async () => {
-    const fixturesRoot = await makeFixtureRoot();
-    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
-    temporaryPaths.add(workspace);
-    await initializeFixtureGit(workspace);
-
-    const [result] = await evaluateAssertions(
-      [
-        {
-          expected: {
-            argv: [process.execPath, "-e", "await Bun.sleep(250);"],
-            exitCode: 0,
-            timeoutMs: 25,
-          },
-          kind: "command.exit",
-        },
-      ],
-      { response: completedResponse(), workspace }
-    );
-
-    expect(result).toMatchObject({ passed: false });
-    expect(result?.message).toContain("timed out");
   });
 
   test("handles exact Git paths and standards-compliant JSON pointers", async () => {
@@ -495,6 +458,26 @@ describe("fixture cleanup", () => {
     });
     await expect(lstat(first)).rejects.toThrow();
     await expect(lstat(second)).rejects.toThrow();
+  });
+
+  test("deletes read-only adapter snapshots after forced termination", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    const snapshot = join(workspace, ".simple-changelogs-skill-stale");
+    const nested = join(snapshot, "references");
+    const skillFile = join(snapshot, "SKILL.md");
+    await mkdir(nested, { recursive: true });
+    await writeFile(skillFile, "# Read-only snapshot\n");
+    await chmod(skillFile, 0o444);
+    await chmod(nested, 0o555);
+    await chmod(snapshot, 0o555);
+
+    await cleanupFixtureWorkspace(workspace, {
+      failed: true,
+      keepFailures: false,
+    });
+
+    await expect(lstat(workspace)).rejects.toThrow();
   });
 
   test("retains failed workspaces only when requested", async () => {

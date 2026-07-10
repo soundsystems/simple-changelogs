@@ -30,7 +30,7 @@ const manifest = {
       tags: ["portable"],
       turns: [
         {
-          assertions: [{ expected: true, kind: "report-status" }],
+          assertions: [{ expected: "completed", kind: "report.status" }],
           prompt: "Update the pending changelogs.",
         },
       ],
@@ -293,7 +293,7 @@ one two three four five six seven eight nine ten eleven twelve thirteen fourteen
     );
     await writeFixtureFile(
       skillDirectory,
-      "scripts/tests/adapters.test.ts",
+      "scripts/tests/adapters.check.ts",
       `// ${TEST_VENDOR}-specific adapter contract test.\n`
     );
     await writeFixtureFile(
@@ -345,6 +345,32 @@ one two three four five six seven eight nine ten eleven twelve thirteen fourteen
       '{"manifestVersion":1,"cases":[]}\n'
     );
 
+    expect(findingCodes(await evaluateContracts(skillDirectory))).toContain(
+      "EVAL_MANIFEST_INVALID"
+    );
+
+    await writeFixtureFile(
+      skillDirectory,
+      "evals/cases.json",
+      `${JSON.stringify({
+        ...manifest,
+        cases: manifest.cases.map((item) => ({
+          ...item,
+          turns: item.turns.map((turn) => ({
+            ...turn,
+            assertions: [
+              {
+                expected: {
+                  argv: ["sh", "-c", "touch /tmp/escaped"],
+                  exitCode: 0,
+                },
+                kind: "command.exit",
+              },
+            ],
+          })),
+        })),
+      })}\n`
+    );
     expect(findingCodes(await evaluateContracts(skillDirectory))).toContain(
       "EVAL_MANIFEST_INVALID"
     );
