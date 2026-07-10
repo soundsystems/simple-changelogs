@@ -6,8 +6,8 @@
   - Uses Hermes' quiet one-shot interface while validating the returned JSON
     through the same provider-neutral response contract as other adapters.
   - Forces the Docker terminal backend, an air-gapped disposable container,
-    and a read-only in-workspace skill snapshot instead of trusting Hermes'
-    host-accessible local or SSH backends.
+    and a nested read-only mount over the in-workspace skill snapshot instead
+    of trusting Hermes' host-accessible local or SSH backends.
   - Added provider and model overrides, exact command and environment tests,
     response validation coverage, and contributor setup and smoke-test docs.
 <!-- Agent: GPT-5 Codex | 07/09/2026 11:14 PM CDT -->

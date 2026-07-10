@@ -1,9 +1,13 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   buildHermesEnvironment,
   buildHermesInvocation,
   buildHermesPromptRequest,
   extractHermesFinalResponse,
+  runHermesAdapter,
 } from "../adapters/hermes.ts";
 import type { RunnerRequest, RunnerResponse } from "../lib/types.ts";
 
@@ -46,15 +50,30 @@ const response: RunnerResponse = {
   status: "completed",
 };
 
+const temporaryDirectories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { force: true, recursive: true }))
+  );
+});
+
 describe("Hermes adapter", () => {
   test("builds a quiet, safe-mode, Docker-isolated invocation", () => {
     const prompt = "Return the neutral response JSON.";
 
     expect(
-      buildHermesInvocation(request, prompt, {
-        model: "available-hermes-model",
-        provider: "nous",
-      })
+      buildHermesInvocation(
+        request,
+        prompt,
+        `${request.workspace}/.simple-changelogs-skill-test`,
+        {
+          model: "available-hermes-model",
+          provider: "nous",
+        }
+      )
     ).toEqual({
       cmd: [
         "hermes",
@@ -77,9 +96,12 @@ describe("Hermes adapter", () => {
       cwd: request.workspace,
       env: {
         TERMINAL_CONTAINER_PERSISTENT: "false",
-        TERMINAL_DOCKER_MOUNT_CWD_TO_WORKSPACE: "true",
         TERMINAL_DOCKER_NETWORK: "false",
         TERMINAL_DOCKER_PERSIST_ACROSS_PROCESSES: "false",
+        TERMINAL_DOCKER_VOLUMES: JSON.stringify([
+          `${request.workspace}:/workspace`,
+          `${request.workspace}/.simple-changelogs-skill-test:/workspace/.simple-changelogs-skill-test:ro`,
+        ]),
         TERMINAL_ENV: "docker",
       },
       input: "",
@@ -94,6 +116,9 @@ describe("Hermes adapter", () => {
     );
     expect(() => buildHermesEnvironment("ssh")).toThrow(
       "requires the Docker terminal backend"
+    );
+    expect(() => buildHermesEnvironment("docker")).toThrow(
+      "requires a skill snapshot"
     );
   });
 
@@ -119,5 +144,42 @@ describe("Hermes adapter", () => {
     expect(() => extractHermesFinalResponse("not JSON")).toThrow(
       "not valid JSON"
     );
+  });
+
+  test("keeps exit-zero protocol failures distinct and cleans the snapshot", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hermes-adapter-"));
+    temporaryDirectories.push(directory);
+    const skillDirectory = join(directory, "skill");
+    const workspace = join(directory, "workspace");
+    const responseSchema = join(directory, "runner-response.schema.json");
+    await Promise.all([mkdir(skillDirectory), mkdir(workspace)]);
+    await Promise.all([
+      writeFile(join(skillDirectory, "SKILL.md"), "# Test skill\n"),
+      writeFile(responseSchema, '{"type":"object"}\n'),
+    ]);
+
+    const result = await runHermesAdapter(
+      {
+        ...request,
+        responseSchema,
+        skillDirectory,
+        workspace,
+      },
+      async () => ({
+        exitCode: 0,
+        ok: true,
+        stderr: "",
+        stdout: "authentication configuration is not JSON",
+      })
+    );
+
+    expect(result).toMatchObject({
+      failure: {
+        code: "VENDOR_EXECUTION_FAILED",
+        message: "Vendor final response is not valid JSON",
+      },
+      ok: false,
+    });
+    expect(await readdir(workspace)).toEqual([]);
   });
 });

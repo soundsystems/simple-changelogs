@@ -185,8 +185,9 @@ still uses Hermes' existing host-side authentication.
 
 The bundled Claude and Hermes adapters copy the skill into each temporary
 fixture as a read-only snapshot. Claude's OS sandbox and Hermes' disposable,
-air-gapped Docker terminal isolate model tool access from the host while
-protecting that snapshot.
+air-gapped Docker terminal isolate model tool access from the host. Hermes adds
+a nested read-only bind mount over the snapshot so container capabilities
+cannot bypass host file modes.
 
 Select a case with `--case <id>`, retain failed workspaces with
 `--keep-failures`, or emit CI-friendly output with `--format json`. Missing CLI

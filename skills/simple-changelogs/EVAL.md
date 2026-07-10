@@ -180,8 +180,9 @@ The bundled Hermes adapter uses `hermes chat --safe-mode --quiet`, validates its
 plain one-shot output against the neutral response schema, and requires the
 Docker terminal backend. It overrides Hermes' terminal environment so tool
 commands run in a disposable, network-disabled container with the fixture
-mounted into its working directory. Local and SSH backends are rejected because
-they do not provide the required host-filesystem boundary.
+mounted into its working directory and a nested read-only mount over the skill
+snapshot. Local and SSH backends are rejected because they do not provide the
+required host-filesystem boundary.
 
 Before an authenticated smoke test, verify the current CLI and container
 runtime, update Hermes if `chat --safe-mode` is unavailable, and use its normal
