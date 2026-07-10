@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added an optional Hermes Agent evaluation adapter:
+  - Uses Hermes' quiet one-shot interface while validating the returned JSON
+    through the same provider-neutral response contract as other adapters.
+  - Forces the Docker terminal backend, an air-gapped disposable container,
+    and a read-only in-workspace skill snapshot instead of trusting Hermes'
+    host-accessible local or SSH backends.
+  - Added provider and model overrides, exact command and environment tests,
+    response validation coverage, and contributor setup and smoke-test docs.
+<!-- Agent: GPT-5 Codex | 07/09/2026 11:14 PM CDT -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T23:14:00-05:00" -->
+
 - Reworked policy and instruction ownership:
   - Added the closed `.simple-changelogs.json` schema and first-use workflow for
     repo-local guidance version, backfill disposition, required developer

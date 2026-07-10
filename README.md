@@ -131,7 +131,7 @@ schemas, instruction ownership, policy examples, manifest validity, shell
 syntax, and vendor-coupling boundaries.
 
 Trigger and behavior suites use a JSON stdin/stdout adapter. Optional adapters
-for Codex and Claude Code are included:
+for Codex, Claude Code, and Hermes Agent are included:
 
 ```bash
 bun skills/simple-changelogs/scripts/eval.ts trigger \
@@ -139,6 +139,9 @@ bun skills/simple-changelogs/scripts/eval.ts trigger \
 
 bun skills/simple-changelogs/scripts/eval.ts behavior \
   --adapter skills/simple-changelogs/scripts/adapters/claude.ts
+
+bun skills/simple-changelogs/scripts/eval.ts behavior \
+  --adapter skills/simple-changelogs/scripts/adapters/hermes.ts
 ```
 
 These adapters use the CLI's existing local authentication; the skill does not
@@ -150,6 +153,9 @@ codex login
 
 claude auth status
 claude auth login
+
+hermes status
+hermes setup --portal
 ```
 
 The Codex adapter uses the CLI's configured model and disables inherited MCP
@@ -168,9 +174,19 @@ The Claude Code adapter has the equivalent
 does not declare provider model catalogs; valid IDs and aliases depend on the
 installed CLIs and authenticated accounts.
 
-The bundled Claude adapter copies the skill into each temporary fixture as a
-read-only snapshot, denies reads outside that fixture, and limits writes to the
-fixture while protecting the snapshot itself.
+The Hermes adapter accepts
+`SIMPLE_CHANGELOGS_HERMES_PROVIDER=<configured-provider>` and
+`SIMPLE_CHANGELOGS_HERMES_MODEL=<available-model-id>`. It requires a Hermes
+release that supports `hermes chat --safe-mode` and a working Docker or Podman
+installation. Each run forces Hermes' Docker terminal backend, mounts the
+temporary fixture as its workspace, disables container networking and
+cross-process reuse, and rejects local or SSH terminal backends. The model API
+still uses Hermes' existing host-side authentication.
+
+The bundled Claude and Hermes adapters copy the skill into each temporary
+fixture as a read-only snapshot. Claude's OS sandbox and Hermes' disposable,
+air-gapped Docker terminal isolate model tool access from the host while
+protecting that snapshot.
 
 Select a case with `--case <id>`, retain failed workspaces with
 `--keep-failures`, or emit CI-friendly output with `--format json`. Missing CLI

@@ -175,3 +175,34 @@ missing login as configuration status `2`.
 For a new adapter, first unit-test exact argument arrays, stdin/stdout framing,
 final-message extraction, stderr preservation, timeout behavior, and normalized
 errors. Then run one trigger and one behavior case before expanding coverage.
+
+The bundled Hermes adapter uses `hermes chat --safe-mode --quiet`, validates its
+plain one-shot output against the neutral response schema, and requires the
+Docker terminal backend. It overrides Hermes' terminal environment so tool
+commands run in a disposable, network-disabled container with the fixture
+mounted into its working directory. Local and SSH backends are rejected because
+they do not provide the required host-filesystem boundary.
+
+Before an authenticated smoke test, verify the current CLI and container
+runtime, update Hermes if `chat --safe-mode` is unavailable, and use its normal
+setup flow:
+
+```bash
+hermes version
+hermes update --check
+docker version
+hermes status
+hermes setup --portal
+```
+
+Then run a focused case before the full suite:
+
+```bash
+bun scripts/eval.ts behavior \
+  --adapter scripts/adapters/hermes.ts \
+  --case behavior-customer-visible-feature
+```
+
+Use `SIMPLE_CHANGELOGS_HERMES_PROVIDER` and
+`SIMPLE_CHANGELOGS_HERMES_MODEL` for per-run provider or model selection. The
+adapter never stores provider credentials.
