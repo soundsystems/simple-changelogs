@@ -415,4 +415,56 @@ describe("vendor process failures", () => {
       stdout: "vendor event\n",
     });
   });
+
+  test("adds adapter-specific environment without dropping the host", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "adapter-vendor-env-"));
+    temporaryDirectories.push(directory);
+
+    const result = await runVendorProcess({
+      cmd: [
+        process.execPath,
+        "-e",
+        "process.stdout.write(String(process.env.ADAPTER_ISOLATION) + ':' + (process.env.PATH ? 'path' : 'missing'))",
+      ],
+      cwd: directory,
+      env: { ADAPTER_ISOLATION: "docker" },
+      input: "",
+    });
+
+    expect(result).toMatchObject({
+      exitCode: 0,
+      stdout: "docker:path",
+    });
+  });
+
+  test("removes unsafe inherited environment before adding overrides", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "adapter-vendor-env-"));
+    temporaryDirectories.push(directory);
+    const previous = process.env.ADAPTER_UNSAFE_SETTING;
+    process.env.ADAPTER_UNSAFE_SETTING = "host-value";
+    try {
+      const result = await runVendorProcess({
+        cmd: [
+          process.execPath,
+          "-e",
+          "process.stdout.write(String(process.env.ADAPTER_UNSAFE_SETTING) + ':' + process.env.ADAPTER_SAFE_SETTING)",
+        ],
+        cwd: directory,
+        env: { ADAPTER_SAFE_SETTING: "adapter-value" },
+        input: "",
+        removeEnvPrefixes: ["ADAPTER_UNSAFE_"],
+      });
+
+      expect(result).toMatchObject({
+        exitCode: 0,
+        stdout: "undefined:adapter-value",
+      });
+    } finally {
+      if (previous === undefined) {
+        delete process.env.ADAPTER_UNSAFE_SETTING;
+      } else {
+        process.env.ADAPTER_UNSAFE_SETTING = previous;
+      }
+    }
+  });
 });

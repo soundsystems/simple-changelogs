@@ -24,7 +24,10 @@ const CONFIGURATION_FAILURE_PATTERN =
 export interface VendorProcessSpec {
   cmd: string[];
   cwd: string;
+  env?: Record<string, string>;
   input: string;
+  removeEnvKeys?: string[];
+  removeEnvPrefixes?: string[];
 }
 
 export interface ReadOnlySkillSnapshot {
@@ -220,9 +223,20 @@ export const runVendorProcess = async (
   spec: VendorProcessSpec
 ): Promise<VendorProcessResult> => {
   try {
+    const env = { ...process.env };
+    for (const key of spec.removeEnvKeys ?? []) {
+      delete env[key];
+    }
+    for (const key of Object.keys(env)) {
+      if (spec.removeEnvPrefixes?.some((prefix) => key.startsWith(prefix))) {
+        delete env[key];
+      }
+    }
+    Object.assign(env, spec.env);
     const subprocess = spawn({
       cmd: spec.cmd,
       cwd: spec.cwd,
+      env,
       stderr: "pipe",
       stdin: "pipe",
       stdout: "pipe",
