@@ -3,7 +3,7 @@
 Use this reference when deciding whether to keep entries under `Unreleased` or
 move them into a released heading.
 
-## Release Intent
+## Evidence of Release Intent
 
 Do not move entries out of `Unreleased`, bump versions, or sync release-note
 surfaces merely because a task touches git, a branch, a preview, or a deploy
@@ -15,6 +15,9 @@ command. First establish release intent from local evidence:
   deployment config identify the current action as release finalization.
 - Users install, read, consume, or deploy directly from the target branch or
   published artifact affected by the task.
+
+An explicit current command to finalize or publish the release is sufficient
+intent for that named scope; do not ask the user to repeat it.
 
 If the task is only preparing a feature branch, draft pull or merge request,
 internal preview, staging deploy, code review, or non-release commit, keep
@@ -61,7 +64,7 @@ Before pushing, merging, publishing, or deploying with release intent:
   unless the repo documents a separate release system that has not shipped yet.
 - After all pending entries have moved into a released section, remove the empty
   `Unreleased` heading from both customer and developer changelogs.
-- Apply pre-release hot-fix omission rules from
+- Apply initial-development and pre-release hot-fix omission rules from
   `references/entry-classification.md` before adding or keeping any user-facing
   entry.
 
@@ -115,9 +118,9 @@ changelog check may validate structure while still allowing a non-empty
 
 ## Public Deployments
 
-When the user asks you to push, publish, or run a production or public
-deployment, treat that deployment as release finalization even if no branch merge
-is part of the request. Before deploying, move the shipped customer-facing
-`Unreleased` entries into the matching version/date heading, sync release-note
-surfaces and affected version fields when applicable, and leave only
-still-unshipped work under `Unreleased`.
+When local evidence establishes that a production or public deployment is the
+release boundary, finalize the changelogs even if no branch merge is involved.
+Before deployment, move shipped customer outcomes into the matching heading,
+align documented existing destinations and affected version fields, and leave
+only genuinely unshipped work pending. Authorization for any missing product
+surface remains governed by `references/release-note-surfaces.md`.
