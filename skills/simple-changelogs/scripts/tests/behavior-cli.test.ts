@@ -80,6 +80,14 @@ switch (request.case.id) {
   case "missing-activation":
     base.finalResponse = "no activation trace";
     break;
+  case "activation-unsupported-response":
+    base.status = "skipped";
+    base.finalResponse = "activation trace unavailable";
+    base.diagnostics = [{
+      code: "CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE",
+      message: "runtime cannot report native activation"
+    }];
+    break;
   case "claimed-mutation":
     base.evaluationReport.decisionCodes = ["CUSTOMER_ENTRY_ADDED"];
     break;
@@ -100,6 +108,9 @@ switch (request.case.id) {
       }];
     }
     break;
+  case "invalid-response":
+    process.stdout.write("{}");
+    process.exit(0);
   default:
     throw new Error("unexpected case " + request.case.id);
 }
@@ -174,6 +185,16 @@ const createBehaviorSkill = async (): Promise<{
         ],
         "trigger"
       ),
+      behaviorCase(
+        "activation-unsupported-response",
+        [
+          {
+            assertions: [{ expected: true, kind: "activation" }],
+            prompt: "runtime activation evidence",
+          },
+        ],
+        "trigger"
+      ),
       behaviorCase("claimed-mutation", [
         {
           assertions: [
@@ -184,6 +205,7 @@ const createBehaviorSkill = async (): Promise<{
       ]),
       behaviorCase("adapter-error", [reportStatus]),
       behaviorCase("multi-unsupported", [reportStatus, reportStatus]),
+      behaviorCase("invalid-response", [reportStatus]),
     ],
     manifestVersion: 1,
   };
@@ -415,6 +437,60 @@ describe("model-backed evaluation CLI", () => {
       reasonCodes: ["CAPABILITY_MULTI_STEP_UNAVAILABLE"],
       status: "unsupported",
     });
+  });
+
+  test("maps activation capability diagnostics on non-completed responses", async () => {
+    const { adapter, skillDirectory } = await createBehaviorSkill();
+    const result = await runCli(
+      {},
+      "trigger",
+      "--format",
+      "json",
+      "--skill-directory",
+      skillDirectory,
+      "--adapter",
+      adapter,
+      "--case",
+      "activation-unsupported-response"
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(JSON.parse(result.stdout).cases[0]).toMatchObject({
+      reasonCodes: ["CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE"],
+      status: "unsupported",
+    });
+  });
+
+  test("cleans earlier retained failures when a later case aborts configuration", async () => {
+    const { adapter, skillDirectory } = await createBehaviorSkill();
+    const workspaceLog = join(dirname(skillDirectory), "abort-workspaces.log");
+    const result = await runCli(
+      { SIMPLE_CHANGELOGS_WORKSPACE_LOG: workspaceLog },
+      "behavior",
+      "--format",
+      "json",
+      "--skill-directory",
+      skillDirectory,
+      "--adapter",
+      adapter,
+      "--case",
+      "claimed-mutation",
+      "--case",
+      "invalid-response",
+      "--keep-failures"
+    );
+    const workspaces = (await readFile(workspaceLog, "utf8"))
+      .trim()
+      .split("\n");
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "INVALID_CONFIGURATION" },
+      status: "error",
+    });
+    await Promise.all(
+      workspaces.map((workspace) => expect(lstat(workspace)).rejects.toThrow())
+    );
   });
 
   test("retains only failed workspaces when requested", async () => {

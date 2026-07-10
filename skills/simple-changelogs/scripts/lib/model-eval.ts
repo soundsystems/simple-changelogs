@@ -328,6 +328,14 @@ const addDiagnosticReasons = (
 ): void => {
   if (
     diagnostics.some(
+      (item) => item.code === "CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE"
+    )
+  ) {
+    runtime.reasonCodes.add("CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE");
+    runtime.status = "unsupported";
+  }
+  if (
+    diagnostics.some(
       (item) => item.code === "CAPABILITY_MULTI_STEP_UNAVAILABLE"
     )
   ) {
@@ -498,12 +506,34 @@ const runCasesSequentially = async (
   return runCasesSequentially(selected, bundle, options, index + 1, reports);
 };
 
+const cleanupRetainedReports = async (
+  reports: CaseEvaluationReport[]
+): Promise<void> => {
+  const retained = reports.flatMap((report) =>
+    report.workspace ? [report.workspace] : []
+  );
+  await Promise.all(
+    retained.map((workspace) =>
+      cleanupFixtureWorkspace(workspace, {
+        failed: true,
+        keepFailures: false,
+      })
+    )
+  );
+};
+
 export const evaluateModelCases = async (
   options: ModelEvaluationOptions
 ): Promise<ModelEvaluationResult> => {
   const bundle = await readManifest(options.skillDirectory);
   const selected = selectCases(bundle.manifest, options.suite, options.caseIds);
-  const cases = await runCasesSequentially(selected, bundle, options);
+  const cases: CaseEvaluationReport[] = [];
+  try {
+    await runCasesSequentially(selected, bundle, options, 0, cases);
+  } catch (error) {
+    await cleanupRetainedReports(cases);
+    throw error;
+  }
   const assertionResults = cases.flatMap((item) =>
     item.turns.flatMap((turn) => turn.assertions)
   );
