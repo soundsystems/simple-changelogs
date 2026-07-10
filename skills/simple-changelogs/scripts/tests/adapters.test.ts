@@ -113,7 +113,7 @@ describe("vendor command builders", () => {
       "--permission-mode",
       "acceptEdits",
       "--allowedTools",
-      "Read,Edit,Write,Glob,Grep,Bash",
+      "Read,Glob,Grep,Bash",
       "--settings",
       sandboxSettings,
       "--json-schema",
@@ -121,6 +121,9 @@ describe("vendor command builders", () => {
     ]);
     expect(buildClaudeInvocation(request, responseSchema).cwd).toBe(
       request.workspace
+    );
+    expect(buildClaudeCommand(request, responseSchema)).not.toContain(
+      "Read,Edit,Write,Glob,Grep,Bash"
     );
     expect(JSON.parse(sandboxSettings)).toEqual({
       sandbox: {

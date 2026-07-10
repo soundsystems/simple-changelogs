@@ -43,7 +43,7 @@ export const buildClaudeCommand = (
   "--permission-mode",
   "acceptEdits",
   "--allowedTools",
-  "Read,Edit,Write,Glob,Grep,Bash",
+  "Read,Glob,Grep,Bash",
   "--settings",
   buildClaudeSandboxSettings(request),
   "--json-schema",
