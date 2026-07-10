@@ -1,3 +1,4 @@
+import type { Stats } from "node:fs";
 import {
   cp,
   lstat,
@@ -8,13 +9,21 @@ import {
   rm,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { spawn } from "bun";
 import type { EvalAssertion, JsonValue, RunnerResponse } from "./types.ts";
 
 const FIXTURE_PREFIX = "simple-changelogs-eval-";
 const PATH_SEPARATOR_PATTERN = /[\\/]/u;
+const ARRAY_INDEX_PATTERN = /^(?:0|[1-9]\d*)$/u;
 const DETERMINISTIC_GIT_DATE = "2000-01-01T00:00:00+00:00";
+const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
+const MAX_COMMAND_TIMEOUT_MS = 2_147_483_647;
+const OUTPUT_DRAIN_GRACE_MS = 250;
+const PROCESS_EXIT_GRACE_MS = 1000;
+const USE_POSIX_PROCESS_GROUP = process.platform !== "win32";
+const NULL_DEVICE = process.platform === "win32" ? "NUL" : "/dev/null";
+const ownedWorkspaces = new Map<string, { device: number; inode: number }>();
 
 const compareText = (left: string, right: string): number => {
   if (left < right) {
@@ -49,6 +58,7 @@ interface CommandExpectation {
   exitCode: number;
   stderrMatches?: string;
   stdoutMatches?: string;
+  timeoutMs?: number;
 }
 
 interface ChangedPathsExpectation {
@@ -67,6 +77,17 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
+
+const hasOnlyKeys = (
+  value: Record<string, unknown>,
+  allowed: string[]
+): boolean => Object.keys(value).every((key) => allowed.includes(key));
+
+const isRecordWithOnlyKeys = (
+  value: unknown,
+  allowed: string[]
+): value is Record<string, unknown> =>
+  isRecord(value) && hasOnlyKeys(value, allowed);
 
 const validateFixtureName = (name: string): void => {
   if (
@@ -97,26 +118,219 @@ const assertNoSymlinks = async (root: string): Promise<void> => {
   );
 };
 
-const runCommand = async (
+interface CommandResult {
+  exitCode: number;
+  stderr: string;
+  stdout: string;
+  timedOut: boolean;
+}
+
+interface OutputCapture {
+  cancel: () => Promise<void>;
+  completed: Promise<void>;
+  error: () => string | undefined;
+  text: () => string;
+}
+
+const captureOutput = (stream: ReadableStream<Uint8Array>): OutputCapture => {
+  const decoder = new TextDecoder();
+  const reader = stream.getReader();
+  let output = "";
+  let readError: string | undefined;
+  const readNextChunk = async (): Promise<void> => {
+    const { done, value } = await reader.read();
+    if (done) {
+      output += decoder.decode();
+      return;
+    }
+    output += decoder.decode(value, { stream: true });
+    await readNextChunk();
+  };
+  const completed = readNextChunk()
+    .catch((error) => {
+      readError = error instanceof Error ? error.message : String(error);
+    })
+    .finally(() => {
+      try {
+        reader.releaseLock();
+      } catch {
+        // Cancellation may already have released the reader.
+      }
+    });
+  return {
+    cancel: async () => {
+      try {
+        await reader.cancel();
+      } catch {
+        // The reader may already be released after normal completion.
+      }
+    },
+    completed,
+    error: () => readError,
+    text: () => output,
+  };
+};
+
+const waitFor = async (
+  promise: Promise<unknown>,
+  timeoutMs: number
+): Promise<boolean> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const elapsed = new Promise<false>((resolveElapsed) => {
+    timer = setTimeout(() => resolveElapsed(false), timeoutMs);
+  });
+  const completed = promise.then(
+    () => true as const,
+    () => true as const
+  );
+  const result = await Promise.race([completed, elapsed]);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+  }
+  return result;
+};
+
+const spawnCommand = (
   argv: string[],
   cwd: string,
   env?: Record<string, string | undefined>
-): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
+) =>
+  spawn({
+    cmd: argv,
+    cwd,
+    detached: USE_POSIX_PROCESS_GROUP,
+    ...(env ? { env } : {}),
+    stderr: "pipe",
+    stdin: "ignore",
+    stdout: "pipe",
+  });
+
+type CommandProcess = ReturnType<typeof spawnCommand>;
+
+interface KillableProcess {
+  kill: (signal?: number | NodeJS.Signals) => void;
+}
+
+const killDirectProcess = (child: KillableProcess): void => {
+  try {
+    child.kill("SIGKILL");
+  } catch {
+    // The process may already have exited.
+  }
+};
+
+const killCommandTree = async (child: CommandProcess): Promise<void> => {
+  if (USE_POSIX_PROCESS_GROUP) {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+      return;
+    } catch {
+      killDirectProcess(child);
+      return;
+    }
+  }
+  try {
+    const terminator = spawn({
+      cmd: ["taskkill.exe", "/PID", String(child.pid), "/T", "/F"],
+      stderr: "ignore",
+      stdin: "ignore",
+      stdout: "ignore",
+    });
+    if (await waitFor(terminator.exited, PROCESS_EXIT_GRACE_MS)) {
+      if (terminator.exitCode === 0) {
+        return;
+      }
+    } else {
+      killDirectProcess(terminator);
+    }
+  } catch {
+    // Fall through to direct-child termination.
+  }
+  killDirectProcess(child);
+};
+
+const runCommand = async (
+  argv: string[],
+  cwd: string,
+  options: {
+    env?: Record<string, string | undefined>;
+    timeoutMs?: number;
+  } = {}
+): Promise<CommandResult> => {
   if (argv.length === 0) {
     throw new Error("Command argv must not be empty");
   }
-  const process = spawn(argv, {
-    cwd,
-    ...(env ? { env } : {}),
-    stderr: "pipe",
-    stdout: "pipe",
+  const timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > MAX_COMMAND_TIMEOUT_MS
+  ) {
+    throw new Error(
+      `Command timeout must be an integer from 1 to ${MAX_COMMAND_TIMEOUT_MS}`
+    );
+  }
+  const child = spawnCommand(argv, cwd, options.env);
+  const stderr = captureOutput(child.stderr);
+  const stdout = captureOutput(child.stdout);
+  const { exited } = child;
+  const completedBeforeTimeout = await waitFor(exited, timeoutMs);
+  if (!completedBeforeTimeout) {
+    await killCommandTree(child);
+    await waitFor(exited, PROCESS_EXIT_GRACE_MS);
+  }
+  const captures = [stderr, stdout];
+  if (
+    !(await waitFor(
+      Promise.all(captures.map((capture) => capture.completed)),
+      OUTPUT_DRAIN_GRACE_MS
+    ))
+  ) {
+    await killCommandTree(child);
+    await Promise.all(captures.map((capture) => capture.cancel()));
+  }
+  const captureError = captures
+    .map((capture) => capture.error())
+    .find((error) => error !== undefined);
+  if (captureError) {
+    throw new Error(`Unable to capture command output: ${captureError}`);
+  }
+  return {
+    exitCode: completedBeforeTimeout ? (child.exitCode ?? -1) : -1,
+    stderr: stderr.text(),
+    stdout: stdout.text(),
+    timedOut: !completedBeforeTimeout,
+  };
+};
+
+const createGitEnvironment = (
+  env?: Record<string, string | undefined>
+): Record<string, string | undefined> => {
+  const gitEnv = { ...process.env };
+  for (const key of Object.keys(gitEnv)) {
+    if (
+      key === "GIT_CONFIG_COUNT" ||
+      key.startsWith("GIT_CONFIG_KEY_") ||
+      key.startsWith("GIT_CONFIG_VALUE_") ||
+      [
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_NAMESPACE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_WORK_TREE",
+      ].includes(key)
+    ) {
+      delete gitEnv[key];
+    }
+  }
+  Object.assign(gitEnv, env, {
+    GIT_CONFIG_GLOBAL: NULL_DEVICE,
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_SYSTEM: NULL_DEVICE,
   });
-  const [exitCode, stderr, stdout] = await Promise.all([
-    process.exited,
-    new Response(process.stderr).text(),
-    new Response(process.stdout).text(),
-  ]);
-  return { exitCode, stderr, stdout };
+  return gitEnv;
 };
 
 const runGit = async (
@@ -124,13 +338,14 @@ const runGit = async (
   args: string[],
   env?: Record<string, string | undefined>
 ): Promise<string> => {
-  const result = await runCommand(["git", ...args], workspace, env);
-  if (result.exitCode !== 0) {
+  const gitEnv = createGitEnvironment(env);
+  const result = await runCommand(["git", ...args], workspace, { env: gitEnv });
+  if (result.timedOut || result.exitCode !== 0) {
     const diagnostics = [result.stderr.trim(), result.stdout.trim()]
       .filter((message) => message.length > 0)
       .join("\n");
     throw new Error(
-      `git ${args.join(" ")} failed${diagnostics ? `: ${diagnostics}` : ""}`
+      `git ${args.join(" ")} ${result.timedOut ? "timed out" : "failed"}${diagnostics ? `: ${diagnostics}` : ""}`
     );
   }
   return result.stdout.trim();
@@ -157,6 +372,11 @@ export const createFixtureWorkspace = async (
   const workspace = await mkdtemp(join(tmpdir(), FIXTURE_PREFIX));
   try {
     await cp(source, workspace, { recursive: true });
+    const workspaceStat = await lstat(workspace);
+    ownedWorkspaces.set(workspace, {
+      device: workspaceStat.dev,
+      inode: workspaceStat.ino,
+    });
     return workspace;
   } catch (error) {
     await rm(workspace, { force: true, recursive: true });
@@ -167,7 +387,7 @@ export const createFixtureWorkspace = async (
 export const initializeFixtureGit = async (
   workspace: string
 ): Promise<string> => {
-  await runGit(workspace, ["init", "-b", "main"]);
+  await runGit(workspace, ["init", "--initial-branch=main", "--template="]);
   await runGit(workspace, ["config", "user.name", "Simple Changelogs Eval"]);
   await runGit(workspace, [
     "config",
@@ -175,18 +395,31 @@ export const initializeFixtureGit = async (
     "eval@simple-changelogs.invalid",
   ]);
   await runGit(workspace, ["add", "--all"]);
-  await runGit(workspace, ["commit", "-m", "eval fixture baseline"], {
-    ...process.env,
-    GIT_AUTHOR_DATE: DETERMINISTIC_GIT_DATE,
-    GIT_COMMITTER_DATE: DETERMINISTIC_GIT_DATE,
-  });
+  await runGit(
+    workspace,
+    [
+      "-c",
+      `core.hooksPath=${NULL_DEVICE}`,
+      "-c",
+      "commit.gpgSign=false",
+      "commit",
+      "--no-gpg-sign",
+      "--no-verify",
+      "-m",
+      "eval fixture baseline",
+    ],
+    {
+      GIT_AUTHOR_DATE: DETERMINISTIC_GIT_DATE,
+      GIT_COMMITTER_DATE: DETERMINISTIC_GIT_DATE,
+    }
+  );
   return runGit(workspace, ["rev-parse", "HEAD"]);
 };
 
 const safeWorkspacePath = async (
   workspace: string,
   target: string
-): Promise<{ path: string } | { error: string }> => {
+): Promise<{ path: string; relative: string } | { error: string }> => {
   if (isAbsolute(target)) {
     return { error: `Unsafe absolute assertion path: ${target}` };
   }
@@ -205,63 +438,85 @@ const safeWorkspacePath = async (
     current = join(current, segment);
     paths.push(current);
   }
-  const inspections = await Promise.all(
-    paths.map(async (path) => {
-      try {
-        const item = await lstat(path);
-        return { path, symlink: item.isSymbolicLink() };
-      } catch (error) {
-        const code = isRecord(error) ? error.code : undefined;
-        if (code !== "ENOENT") {
-          throw new Error(`Unable to inspect assertion path ${target}`, {
-            cause: error,
-          });
-        }
-        return { path, symlink: false };
+  const inspectPath = async (
+    index: number
+  ): Promise<{ error: string } | undefined> => {
+    const path = paths[index];
+    if (!path) {
+      return;
+    }
+    try {
+      const item = await lstat(path);
+      if (item.isSymbolicLink()) {
+        return { error: `Assertion path traverses a symlink: ${target}` };
       }
-    })
-  );
-  if (inspections.some((inspection) => inspection.symlink)) {
-    return { error: `Assertion path traverses a symlink: ${target}` };
+    } catch (error) {
+      const code = isRecord(error) ? error.code : undefined;
+      if (code !== "ENOENT") {
+        throw new Error(`Unable to inspect assertion path ${target}`, {
+          cause: error,
+        });
+      }
+    }
+    return inspectPath(index + 1);
+  };
+  const inspection = await inspectPath(0);
+  if (inspection) {
+    return inspection;
   }
   const targetRelative = relative(canonicalWorkspace, current);
   if (targetRelative.startsWith(`..${sep}`) || targetRelative === "..") {
     return { error: `Unsafe assertion path: ${target}` };
   }
-  return { path: current };
+  return { path: current, relative: segments.join("/") };
 };
 
 const changedPaths = async (workspace: string): Promise<string[]> => {
   const result = await runCommand(
-    ["git", "status", "--porcelain=v1", "--untracked-files=all"],
-    workspace
+    ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    workspace,
+    { env: createGitEnvironment() }
   );
-  if (result.exitCode !== 0) {
+  if (result.timedOut || result.exitCode !== 0) {
     throw new Error(`git status failed: ${result.stderr.trim()}`);
   }
-  const output = result.stdout.trimEnd();
-  if (output.length === 0) {
+  if (result.stdout.length === 0) {
     return [];
   }
-  return output
-    .split("\n")
-    .map((line) => line.slice(3).split(" -> ").at(-1) ?? "")
-    .filter((path) => path.length > 0)
-    .sort();
+  const records = result.stdout.split("\0");
+  const paths: string[] = [];
+  let index = 0;
+  while (index < records.length) {
+    const record = records[index] ?? "";
+    if (record.length === 0) {
+      index += 1;
+      continue;
+    }
+    const status = record.slice(0, 2);
+    const path = record.slice(3);
+    if (path.length > 0) {
+      paths.push(path);
+    }
+    index += status.includes("R") || status.includes("C") ? 2 : 1;
+  }
+  return paths.sort(compareText);
 };
 
 const jsonPointer = (
   value: JsonValue,
   pointer: string
 ): JsonValue | undefined => {
-  if (pointer === "" || pointer === "/") {
+  if (pointer === "") {
     return value;
+  }
+  if (!pointer.startsWith("/")) {
+    return;
   }
   let current: JsonValue | undefined = value;
   for (const rawPart of pointer.split("/").slice(1)) {
     const part = rawPart.replaceAll("~1", "/").replaceAll("~0", "~");
     if (Array.isArray(current)) {
-      const index = Number(part);
+      const index = ARRAY_INDEX_PATTERN.test(part) ? Number(part) : -1;
       current = Number.isSafeInteger(index) ? current[index] : undefined;
     } else if (isRecord(current)) {
       current = current[part] as JsonValue | undefined;
@@ -272,10 +527,38 @@ const jsonPointer = (
   return current;
 };
 
+const jsonEquals = (left: JsonValue | undefined, right: JsonValue): boolean => {
+  if (left === right) {
+    return true;
+  }
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return (
+      left.length === right.length &&
+      left.every((item, index) => jsonEquals(item, right[index] as JsonValue))
+    );
+  }
+  if (isRecord(left) && isRecord(right)) {
+    const leftKeys = Object.keys(left).sort(compareText);
+    const rightKeys = Object.keys(right).sort(compareText);
+    return (
+      leftKeys.length === rightKeys.length &&
+      leftKeys.every(
+        (key, index) =>
+          key === rightKeys[index] &&
+          jsonEquals(
+            left[key] as JsonValue | undefined,
+            right[key] as JsonValue
+          )
+      )
+    );
+  }
+  return false;
+};
+
 const changedExpectation = (
   value: JsonValue
 ): ChangedPathsExpectation | undefined => {
-  if (!isRecord(value)) {
+  if (!isRecordWithOnlyKeys(value, ["allowed", "forbidden", "required"])) {
     return;
   }
   const { allowed, forbidden, required } = value;
@@ -296,7 +579,7 @@ const changedExpectation = (
 const repoExpectation = (
   value: JsonValue
 ): RepoStateExpectation | undefined => {
-  if (!isRecord(value)) {
+  if (!isRecordWithOnlyKeys(value, ["branch", "clean"])) {
     return;
   }
   const { branch, clean } = value;
@@ -315,15 +598,30 @@ const repoExpectation = (
 const commandExpectation = (
   value: JsonValue
 ): CommandExpectation | undefined => {
-  if (!isRecord(value)) {
+  if (
+    !isRecordWithOnlyKeys(value, [
+      "argv",
+      "exitCode",
+      "stderrMatches",
+      "stdoutMatches",
+      "timeoutMs",
+    ])
+  ) {
     return;
   }
-  const { argv, exitCode, stderrMatches, stdoutMatches } = value;
+  const { argv, exitCode, stderrMatches, stdoutMatches, timeoutMs } = value;
   if (
     !isStringArray(argv) ||
+    argv.length === 0 ||
     typeof exitCode !== "number" ||
+    !Number.isSafeInteger(exitCode) ||
     (stderrMatches !== undefined && typeof stderrMatches !== "string") ||
-    (stdoutMatches !== undefined && typeof stdoutMatches !== "string")
+    (stdoutMatches !== undefined && typeof stdoutMatches !== "string") ||
+    (timeoutMs !== undefined &&
+      (!Number.isSafeInteger(timeoutMs) ||
+        typeof timeoutMs !== "number" ||
+        timeoutMs < 1 ||
+        timeoutMs > MAX_COMMAND_TIMEOUT_MS))
   ) {
     return;
   }
@@ -332,6 +630,82 @@ const commandExpectation = (
     exitCode,
     ...(stderrMatches === undefined ? {} : { stderrMatches }),
     ...(stdoutMatches === undefined ? {} : { stdoutMatches }),
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
+  };
+};
+
+interface AuthorizationExpectation {
+  code: string;
+  source?: string;
+  status: string;
+}
+
+interface VerificationExpectation {
+  code: string;
+  status: string;
+}
+
+interface VersionMapExpectation {
+  path: string;
+  role?: string;
+  version?: string;
+}
+
+const authorizationExpectation = (
+  value: JsonValue
+): AuthorizationExpectation | undefined => {
+  if (typeof value === "string") {
+    return { code: value, status: "granted" };
+  }
+  if (
+    !isRecordWithOnlyKeys(value, ["code", "source", "status"]) ||
+    typeof value.code !== "string" ||
+    (value.source !== undefined && typeof value.source !== "string") ||
+    (value.status !== undefined && typeof value.status !== "string")
+  ) {
+    return;
+  }
+  return {
+    code: value.code,
+    ...(value.source === undefined ? {} : { source: value.source }),
+    status: value.status ?? "granted",
+  };
+};
+
+const verificationExpectation = (
+  value: JsonValue
+): VerificationExpectation | undefined => {
+  if (typeof value === "string") {
+    return { code: value, status: "passed" };
+  }
+  if (
+    !isRecordWithOnlyKeys(value, ["code", "status"]) ||
+    typeof value.code !== "string" ||
+    (value.status !== undefined && typeof value.status !== "string")
+  ) {
+    return;
+  }
+  return { code: value.code, status: value.status ?? "passed" };
+};
+
+const versionMapExpectation = (
+  value: JsonValue
+): VersionMapExpectation | undefined => {
+  if (typeof value === "string") {
+    return { path: value };
+  }
+  if (
+    !isRecordWithOnlyKeys(value, ["path", "role", "version"]) ||
+    typeof value.path !== "string" ||
+    (value.role !== undefined && typeof value.role !== "string") ||
+    (value.version !== undefined && typeof value.version !== "string")
+  ) {
+    return;
+  }
+  return {
+    path: value.path,
+    ...(value.role === undefined ? {} : { role: value.role }),
+    ...(value.version === undefined ? {} : { version: value.version }),
   };
 };
 
@@ -387,8 +761,12 @@ const evaluateFileAssertion = async (
   if (!assertion.target) {
     return fail(assertion, `${assertion.kind} requires target`);
   }
+  const resolved = await safeWorkspacePath(context.workspace, assertion.target);
+  if ("error" in resolved) {
+    return fail(assertion, resolved.error);
+  }
   const paths = await changedPaths(context.workspace);
-  const isChanged = paths.includes(assertion.target);
+  const isChanged = paths.includes(resolved.relative);
   const expectedChanged = assertion.kind === "file.changed";
   return isChanged === expectedChanged
     ? pass(assertion, `${assertion.target} change state matched`)
@@ -453,8 +831,7 @@ const evaluateJsonAssertion = async (
   }
   try {
     const value = JSON.parse(file.text) as JsonValue;
-    return JSON.stringify(jsonPointer(value, pointer)) ===
-      JSON.stringify(assertion.expected)
+    return jsonEquals(jsonPointer(value, pointer), assertion.expected)
       ? pass(assertion, "JSON pointer matched")
       : fail(assertion, "JSON pointer did not match");
   } catch {
@@ -477,26 +854,45 @@ const evaluateReportAssertion = (
         typeof expected === "string" &&
         response.evaluationReport.decisionCodes.includes(expected);
       break;
-    case "report.authorization":
+    case "report.authorization": {
+      const authorization = authorizationExpectation(expected);
       matched =
-        typeof expected === "string" &&
+        authorization !== undefined &&
         response.evaluationReport.authorizationRecords.some(
-          (record) => record.code === expected
+          (record) =>
+            record.code === authorization.code &&
+            record.status === authorization.status &&
+            (authorization.source === undefined ||
+              record.source === authorization.source)
         );
       break;
-    case "report.versionMap":
+    }
+    case "report.versionMap": {
+      const version = versionMapExpectation(expected);
       matched =
-        typeof expected === "string" &&
+        version !== undefined &&
         response.evaluationReport.versionMap.some(
-          (record) => record.path === expected
+          (record) =>
+            record.path === version.path &&
+            (version.role === undefined || record.role === version.role) &&
+            (version.version === undefined ||
+              record.version === version.version)
         );
       break;
-    default:
+    }
+    case "report.verification": {
+      const verification = verificationExpectation(expected);
       matched =
-        typeof expected === "string" &&
+        verification !== undefined &&
         response.evaluationReport.verificationResults.some(
-          (record) => record.code === expected
+          (record) =>
+            record.code === verification.code &&
+            record.status === verification.status
         );
+      break;
+    }
+    default:
+      return fail(assertion, `Unsupported assertion kind: ${assertion.kind}`);
   }
   return matched
     ? pass(assertion, "Report assertion matched")
@@ -549,12 +945,38 @@ const evaluateChangedPathsAssertion = async (
   if (!expected) {
     return fail(assertion, "git.changedPaths expected value is invalid");
   }
+  const expectationEntries = (
+    ["allowed", "forbidden", "required"] as const
+  ).flatMap((kind) => (expected[kind] ?? []).map((path) => ({ kind, path })));
+  const resolvedExpectations = await Promise.all(
+    expectationEntries.map(async (entry) => ({
+      ...entry,
+      resolved: await safeWorkspacePath(workspace, entry.path),
+    }))
+  );
+  const unsafe = resolvedExpectations.find(
+    (entry) => "error" in entry.resolved
+  );
+  if (unsafe && "error" in unsafe.resolved) {
+    return fail(assertion, unsafe.resolved.error);
+  }
+  const normalized: ChangedPathsExpectation = {};
+  for (const kind of ["allowed", "forbidden", "required"] as const) {
+    const values = resolvedExpectations
+      .filter((entry) => entry.kind === kind)
+      .map((entry) =>
+        "relative" in entry.resolved ? entry.resolved.relative : ""
+      );
+    if (expected[kind] !== undefined) {
+      normalized[kind] = values;
+    }
+  }
   const paths = await changedPaths(workspace);
-  const { allowed } = expected;
-  const requiredMatch = (expected.required ?? []).every((path) =>
+  const { allowed } = normalized;
+  const requiredMatch = (normalized.required ?? []).every((path) =>
     paths.includes(path)
   );
-  const forbiddenMatch = (expected.forbidden ?? []).every(
+  const forbiddenMatch = (normalized.forbidden ?? []).every(
     (path) => !paths.includes(path)
   );
   const allowedMatch =
@@ -573,7 +995,15 @@ const evaluateCommandAssertion = async (
     return fail(assertion, "command.exit expected value is invalid");
   }
   try {
-    const result = await runCommand(expected.argv, workspace);
+    const result = await runCommand(expected.argv, workspace, {
+      timeoutMs: expected.timeoutMs,
+    });
+    if (result.timedOut) {
+      return fail(
+        assertion,
+        `Command timed out after ${expected.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS} ms`
+      );
+    }
     const exitMatches = result.exitCode === expected.exitCode;
     const stdoutMatches =
       expected.stdoutMatches === undefined ||
@@ -614,7 +1044,13 @@ const evaluateAssertion = (
   if (assertion.kind === "json.path") {
     return evaluateJsonAssertion(assertion, context);
   }
-  if (assertion.kind.startsWith("report.")) {
+  if (
+    assertion.kind === "report.status" ||
+    assertion.kind === "report.decision" ||
+    assertion.kind === "report.authorization" ||
+    assertion.kind === "report.versionMap" ||
+    assertion.kind === "report.verification"
+  ) {
     return evaluateReportAssertion(assertion, context.response);
   }
   if (assertion.kind === "activation") {
@@ -636,46 +1072,49 @@ export const evaluateAssertions = async (
   assertions: EvalAssertion[],
   context: AssertionContext
 ): Promise<AssertionResult[]> =>
-  Promise.all(
-    assertions.map((assertion) => evaluateAssertion(assertion, context))
+  assertions.reduce<Promise<AssertionResult[]>>(
+    async (pendingResults, assertion) => {
+      const results = await pendingResults;
+      results.push(await evaluateAssertion(assertion, context));
+      return results;
+    },
+    Promise.resolve([])
   );
 
 export const cleanupFixtureWorkspace = async (
   workspace: string,
   options: CleanupOptions
 ): Promise<void> => {
-  if (options.failed && options.keepFailures) {
-    return;
+  const ownership = ownedWorkspaces.get(workspace);
+  if (!ownership) {
+    throw new Error(`Refusing to delete non-evaluator workspace: ${workspace}`);
   }
+  let workspaceStat: Stats;
   try {
-    await lstat(workspace);
+    workspaceStat = await lstat(workspace);
   } catch (error) {
     const code = isRecord(error) ? error.code : undefined;
     if (code === "ENOENT") {
+      ownedWorkspaces.delete(workspace);
       return;
     }
     throw new Error(`Unable to inspect fixture workspace ${workspace}`, {
       cause: error,
     });
   }
-  const [canonicalTemporaryRoot, canonicalWorkspace] = await Promise.all([
-    realpath(tmpdir()),
-    realpath(workspace),
-  ]);
-  const temporaryRelative = relative(
-    canonicalTemporaryRoot,
-    canonicalWorkspace
-  );
-  const isOwnedWorkspace =
-    temporaryRelative.length > 0 &&
-    !temporaryRelative.startsWith(`..${sep}`) &&
-    temporaryRelative !== ".." &&
-    !temporaryRelative.includes(sep) &&
-    basename(canonicalWorkspace).startsWith(FIXTURE_PREFIX);
-  if (!isOwnedWorkspace) {
+  if (
+    workspaceStat.isSymbolicLink() ||
+    !workspaceStat.isDirectory() ||
+    workspaceStat.dev !== ownership.device ||
+    workspaceStat.ino !== ownership.inode
+  ) {
     throw new Error(
-      `Refusing to delete non-evaluator workspace: ${canonicalWorkspace}`
+      `Refusing to delete replaced evaluator workspace: ${workspace}`
     );
   }
-  await rm(canonicalWorkspace, { force: true, recursive: true });
+  if (options.failed && options.keepFailures) {
+    return;
+  }
+  await rm(workspace, { force: true, recursive: true });
+  ownedWorkspaces.delete(workspace);
 };

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { randomUUID } from "node:crypto";
 import {
   chmod,
   lstat,
@@ -163,6 +164,46 @@ describe("fixture workspaces", () => {
     expect(subject.stdout.toString().trim()).toBe("eval fixture baseline");
     expect(commitDate.stdout.toString().trim()).toBe(FIXED_COMMIT_DATE);
   });
+
+  test("ignores hostile host Git signing, hook, and template configuration", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    const hostileRoot = await makeTemporaryDirectory(
+      "simple-changelogs-hostile-git-"
+    );
+    const hooks = join(hostileRoot, "hooks");
+    const templateHooks = join(hostileRoot, "template", "hooks");
+    await Promise.all([
+      mkdir(hooks),
+      mkdir(templateHooks, { recursive: true }),
+    ]);
+    const rejectingHook = "#!/bin/sh\nexit 1\n";
+    await Promise.all([
+      writeFile(join(hooks, "pre-commit"), rejectingHook, { mode: 0o755 }),
+      writeFile(join(templateHooks, "pre-commit"), rejectingHook, {
+        mode: 0o755,
+      }),
+    ]);
+    const hostileConfig = join(hostileRoot, "gitconfig");
+    await writeFile(
+      hostileConfig,
+      `[commit]\n\tgpgSign = true\n[core]\n\thooksPath = ${hooks}\n[init]\n\ttemplateDir = ${join(hostileRoot, "template")}\n`
+    );
+    const previousGlobalConfig = process.env.GIT_CONFIG_GLOBAL;
+    process.env.GIT_CONFIG_GLOBAL = hostileConfig;
+    try {
+      await expect(initializeFixtureGit(workspace)).resolves.toMatch(
+        GIT_SHA_PATTERN
+      );
+    } finally {
+      if (previousGlobalConfig === undefined) {
+        delete process.env.GIT_CONFIG_GLOBAL;
+      } else {
+        process.env.GIT_CONFIG_GLOBAL = previousGlobalConfig;
+      }
+    }
+  });
 });
 
 describe("assertion evaluation", () => {
@@ -245,6 +286,11 @@ describe("assertion evaluation", () => {
           target: join(outside, "secret"),
         },
         { expected: true, kind: "path.exists", target: "linked-secret" },
+        { expected: true, kind: "file.unchanged", target: "../outside" },
+        {
+          expected: { forbidden: ["../outside"] },
+          kind: "git.changedPaths",
+        },
         { expected: true, kind: "unknown.assertion" },
       ],
       { response: completedResponse(), workspace }
@@ -268,6 +314,156 @@ describe("assertion evaluation", () => {
     );
     expect(result?.passed).toBe(false);
   });
+
+  test("rejects unknown report kinds and unsuccessful report records", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+    const response = completedResponse();
+    response.evaluationReport.authorizationRecords[0] = {
+      code: "NEW_RELEASE_NOTE_SURFACE",
+      source: "none",
+      status: "denied",
+    };
+    response.evaluationReport.verificationResults[0] = {
+      code: "release-notes-sync".toUpperCase().replaceAll("-", "_"),
+      status: "failed",
+    };
+
+    const results = await evaluateAssertions(
+      [
+        { expected: "RELEASE_NOTES_SYNC", kind: "report.typo" },
+        { expected: "RELEASE_NOTES_SYNC", kind: "report.verification" },
+        {
+          expected: "NEW_RELEASE_NOTE_SURFACE",
+          kind: "report.authorization",
+        },
+        {
+          expected: {
+            code: "NEW_RELEASE_NOTE_SURFACE",
+            source: "none",
+            status: "denied",
+          },
+          kind: "report.authorization",
+        },
+        {
+          expected: {
+            path: "package.json",
+            role: "package",
+            version: "2.0.0",
+          },
+          kind: "report.versionMap",
+        },
+      ],
+      { response, workspace }
+    );
+
+    expect(results.map((result) => result.passed)).toEqual([
+      false,
+      false,
+      false,
+      true,
+      true,
+    ]);
+  });
+
+  test("evaluates command and workspace assertions sequentially", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+
+    const results = await evaluateAssertions(
+      [
+        {
+          expected: {
+            argv: [
+              process.execPath,
+              "-e",
+              'await Bun.sleep(50); await Bun.write("generated.txt", "ready\\n");',
+            ],
+            exitCode: 0,
+          },
+          kind: "command.exit",
+        },
+        { expected: true, kind: "path.exists", target: "generated.txt" },
+        { expected: "ready", kind: "text.match", target: "generated.txt" },
+      ],
+      { response: completedResponse(), workspace }
+    );
+
+    expect(results.every((result) => result.passed)).toBe(true);
+  });
+
+  test("times out a hung assertion command", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+
+    const [result] = await evaluateAssertions(
+      [
+        {
+          expected: {
+            argv: [process.execPath, "-e", "await Bun.sleep(250);"],
+            exitCode: 0,
+            timeoutMs: 25,
+          },
+          kind: "command.exit",
+        },
+      ],
+      { response: completedResponse(), workspace }
+    );
+
+    expect(result).toMatchObject({ passed: false });
+    expect(result?.message).toContain("timed out");
+  });
+
+  test("handles exact Git paths and standards-compliant JSON pointers", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await writeFile(
+      join(workspace, "data.json"),
+      '{"":"empty","object":{"b":1,"a":2}}\n'
+    );
+    await initializeFixtureGit(workspace);
+    const unusualPath = "line\nbreak -> file.md";
+    await writeFile(join(workspace, unusualPath), "changed\n");
+
+    const results = await evaluateAssertions(
+      [
+        {
+          expected: { allowed: [unusualPath], required: [unusualPath] },
+          kind: "git.changedPaths",
+        },
+        {
+          expected: "empty",
+          kind: "json.path",
+          target: "data.json#/",
+        },
+        {
+          expected: { a: 2, b: 1 },
+          kind: "json.path",
+          target: "data.json#/object",
+        },
+        {
+          expected: { "": "empty", object: { a: 2, b: 1 } },
+          kind: "json.path",
+          target: "data.json#object",
+        },
+      ],
+      { response: completedResponse(), workspace }
+    );
+
+    expect(results.map((result) => result.passed)).toEqual([
+      true,
+      true,
+      true,
+      false,
+    ]);
+  });
 });
 
 describe("fixture cleanup", () => {
@@ -288,9 +484,9 @@ describe("fixture cleanup", () => {
   });
 
   test("retains failed workspaces only when requested", async () => {
-    const workspace = await makeTemporaryDirectory(
-      "simple-changelogs-retained-"
-    );
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
     await cleanupFixtureWorkspace(workspace, {
       failed: true,
       keepFailures: true,
@@ -310,5 +506,35 @@ describe("fixture cleanup", () => {
       })
     ).rejects.toThrow("Refusing");
     expect((await lstat(workspace)).isDirectory()).toBe(true);
+  });
+
+  test("rejects prefixed impostors and symlink aliases without deleting targets", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    const impostor = await makeTemporaryDirectory("simple-changelogs-eval-");
+    const alias = join(
+      tmpdir(),
+      `simple-changelogs-eval-alias-${randomUUID()}`
+    );
+    temporaryPaths.add(alias);
+    await symlink(workspace, alias, "dir");
+
+    await expect(
+      cleanupFixtureWorkspace(impostor, {
+        failed: false,
+        keepFailures: false,
+      })
+    ).rejects.toThrow("Refusing");
+    await expect(
+      cleanupFixtureWorkspace(alias, {
+        failed: false,
+        keepFailures: false,
+      })
+    ).rejects.toThrow("Refusing");
+    expect((await lstat(workspace)).isDirectory()).toBe(true);
+    await cleanupFixtureWorkspace(workspace, {
+      failed: false,
+      keepFailures: false,
+    });
   });
 });
