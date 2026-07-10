@@ -99,7 +99,7 @@ Ultracite, POSIX shell, Git.
     "eval": "bun skills/simple-changelogs/scripts/eval.ts contract",
     "format": "ultracite fix",
     "lint": "ultracite check",
-    "test": "bun test skills/simple-changelogs/scripts/tests",
+    "test": "bun test ./skills/simple-changelogs/scripts/tests/*.check.ts",
     "typecheck": "tsc --noEmit"
   }
 }
@@ -172,7 +172,7 @@ git commit -m "build: Add Bun and Ultracite toolchain"
 
 **Files:**
 
-- Create: `skills/simple-changelogs/scripts/tests/validate.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/validate.check.ts`
 - Create: `skills/simple-changelogs/scripts/lib/types.ts`
 - Create: `skills/simple-changelogs/scripts/lib/validate.ts`
 - Create: `skills/simple-changelogs/evals/schemas/repo-policy.schema.json`
@@ -229,7 +229,7 @@ test("runner contracts reject incompatible protocol versions", () => {
 
 - [ ] **Step 2: Run the test and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/validate.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/validate.check.ts`
 
 Expected: FAIL because `../lib/validate.ts` does not exist.
 
@@ -272,7 +272,7 @@ uppercase extensible codes without treating self-report as proof of mutations.
 Run:
 
 ```bash
-bun test skills/simple-changelogs/scripts/tests/validate.test.ts
+bun test ./skills/simple-changelogs/scripts/tests/validate.check.ts
 bun run typecheck
 ```
 
@@ -281,7 +281,7 @@ Expected: PASS with no TypeScript errors.
 - [ ] **Step 5: Commit portable contracts**
 
 ```bash
-git add skills/simple-changelogs/evals/schemas skills/simple-changelogs/scripts/lib skills/simple-changelogs/scripts/tests/validate.test.ts
+git add skills/simple-changelogs/evals/schemas skills/simple-changelogs/scripts/lib skills/simple-changelogs/scripts/tests/validate.check.ts
 git commit -m "feat(eval): Add portable evaluation contracts"
 ```
 
@@ -291,7 +291,7 @@ git commit -m "feat(eval): Add portable evaluation contracts"
 
 **Files:**
 
-- Create: `skills/simple-changelogs/scripts/tests/adapter.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/adapter.check.ts`
 - Create: `skills/simple-changelogs/scripts/lib/adapter.ts`
 
 **Interfaces:**
@@ -308,7 +308,7 @@ argument vector contains no shell executable or command interpolation.
 
 - [ ] **Step 2: Run the test and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/adapter.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/adapter.check.ts`
 
 Expected: FAIL because `runAdapter` does not exist.
 
@@ -325,7 +325,7 @@ timeout and return a typed configuration error.
 Run:
 
 ```bash
-bun test skills/simple-changelogs/scripts/tests/adapter.test.ts
+bun test ./skills/simple-changelogs/scripts/tests/adapter.check.ts
 bun run typecheck
 ```
 
@@ -334,7 +334,7 @@ Expected: PASS; timeout test completes without leaving a child process.
 - [ ] **Step 5: Commit adapter execution**
 
 ```bash
-git add skills/simple-changelogs/scripts/lib/adapter.ts skills/simple-changelogs/scripts/tests/adapter.test.ts
+git add skills/simple-changelogs/scripts/lib/adapter.ts skills/simple-changelogs/scripts/tests/adapter.check.ts
 git commit -m "feat(eval): Add neutral adapter protocol runner"
 ```
 
@@ -344,8 +344,8 @@ git commit -m "feat(eval): Add neutral adapter protocol runner"
 
 **Files:**
 
-- Create: `skills/simple-changelogs/scripts/tests/contracts.test.ts`
-- Create: `skills/simple-changelogs/scripts/tests/eval-cli.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/contracts.check.ts`
+- Create: `skills/simple-changelogs/scripts/tests/eval-cli.check.ts`
 - Create: `skills/simple-changelogs/scripts/lib/contracts.ts`
 - Create: `skills/simple-changelogs/scripts/eval.ts`
 
@@ -367,7 +367,7 @@ missing bundled helpers, invalid shell syntax, and malformed eval manifests.
 
 - [ ] **Step 2: Run contract tests and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/contracts.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/contracts.check.ts`
 
 Expected: FAIL because `evaluateContracts` does not exist.
 
@@ -386,7 +386,7 @@ Assert unknown commands and missing adapters exit `2`.
 
 - [ ] **Step 5: Run CLI tests and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/eval-cli.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/eval-cli.check.ts`
 
 Expected: FAIL because the CLI entry point does not exist.
 
@@ -400,7 +400,7 @@ prints suite, counts, and findings; JSON output emits one versioned report objec
 Run:
 
 ```bash
-bun test skills/simple-changelogs/scripts/tests/contracts.test.ts skills/simple-changelogs/scripts/tests/eval-cli.test.ts
+bun test ./skills/simple-changelogs/scripts/tests/contracts.check.ts ./skills/simple-changelogs/scripts/tests/eval-cli.check.ts
 bun run typecheck
 bun run lint
 ```
@@ -420,7 +420,7 @@ git commit -m "feat(eval): Add deterministic contract evaluator"
 
 **Files:**
 
-- Create: `skills/simple-changelogs/scripts/tests/fixtures.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/fixtures.check.ts`
 - Create: `skills/simple-changelogs/scripts/lib/fixtures.ts`
 - Create: `skills/simple-changelogs/evals/fixtures/minimal-git/`
 - Create: `skills/simple-changelogs/evals/fixtures/dual-changelog/`
@@ -436,18 +436,19 @@ git commit -m "feat(eval): Add deterministic contract evaluator"
   `evaluateAssertions`, and `cleanupFixtureWorkspace`.
 - Supports assertion kinds for activation, adapter/report status, decision and
   authorization codes, paths, changed-path allowlists, text matching, Markdown
-  headings/items/order/signatures, JSON pointers/equality, shell-free command
-  exits, repository state, and stable normalized snapshots.
+  headings/items/order/signatures, JSON pointers/equality, repository state, and
+  stable normalized snapshots. Subprocesses remain evaluator-owned rather than
+  manifest-supplied.
 
 - [ ] **Step 1: Write failing fixture and assertion tests**
 
 Test fresh temp directories, copied dotfiles, initialized Git history, path
-traversal rejection, all assertion kinds, retained failed workspaces, and cleanup
-of successful workspaces.
+traversal rejection, all assertion kinds, rejection of manifest commands,
+retained failed workspaces, and cleanup of successful workspaces.
 
 - [ ] **Step 2: Run tests and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/fixtures.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/fixtures.check.ts`
 
 Expected: FAIL because fixture helpers do not exist.
 
@@ -466,7 +467,7 @@ provide an activation trace, emit reason
 
 - [ ] **Step 5: Run all script tests**
 
-Run: `bun test skills/simple-changelogs/scripts/tests`
+Run: `bun run test`
 
 Expected: PASS; no temp workspaces remain after successful tests.
 
@@ -485,7 +486,7 @@ git commit -m "feat(eval): Add isolated behavior fixtures"
 
 - Create: `skills/simple-changelogs/evals/cases.json`
 - Modify: reusable files under `skills/simple-changelogs/evals/fixtures/`
-- Create: `skills/simple-changelogs/scripts/tests/manifest-coverage.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/manifest-coverage.check.ts`
 
 **Interfaces:**
 
@@ -501,7 +502,7 @@ setup, signatures, backfill, surfaces, versions, lifecycle, forks, and wording.
 
 - [ ] **Step 2: Run the coverage test and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/manifest-coverage.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/manifest-coverage.check.ts`
 
 Expected: FAIL because `evals/cases.json` is absent.
 
@@ -528,8 +529,8 @@ the prior transcript or return `CAPABILITY_MULTI_STEP_UNAVAILABLE`.
 Run:
 
 ```bash
-bun test skills/simple-changelogs/scripts/tests/manifest-coverage.test.ts
-bun test skills/simple-changelogs/scripts/tests
+bun test ./skills/simple-changelogs/scripts/tests/manifest-coverage.check.ts
+bun run test
 ```
 
 Expected: PASS with exactly 45 canonical cases.
@@ -537,7 +538,7 @@ Expected: PASS with exactly 45 canonical cases.
 - [ ] **Step 5: Commit structured eval coverage**
 
 ```bash
-git add skills/simple-changelogs/evals skills/simple-changelogs/scripts/tests/manifest-coverage.test.ts
+git add skills/simple-changelogs/evals skills/simple-changelogs/scripts/tests/manifest-coverage.check.ts
 git commit -m "test(skill): Make changelog behavior cases runnable"
 ```
 
@@ -547,7 +548,7 @@ git commit -m "test(skill): Make changelog behavior cases runnable"
 
 **Files:**
 
-- Create: `skills/simple-changelogs/scripts/tests/adapters.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/adapters.check.ts`
 - Create: `skills/simple-changelogs/scripts/adapters/codex.ts`
 - Create: `skills/simple-changelogs/scripts/adapters/claude.ts`
 - Create: `skills/simple-changelogs/scripts/adapters/shared.ts`
@@ -567,7 +568,7 @@ found errors, authentication failures, and preservation of diagnostic stderr.
 
 - [ ] **Step 2: Run adapter tests and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/adapters.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/adapters.check.ts`
 
 Expected: FAIL because adapter modules do not exist.
 
@@ -590,7 +591,7 @@ tools. Keep exact vendor flags isolated in these two files.
 Run:
 
 ```bash
-bun test skills/simple-changelogs/scripts/tests/adapters.test.ts
+bun test ./skills/simple-changelogs/scripts/tests/adapters.check.ts
 bun skills/simple-changelogs/scripts/eval.ts trigger --adapter skills/simple-changelogs/scripts/adapters/codex.ts --case trigger-update-changelogs
 bun skills/simple-changelogs/scripts/eval.ts trigger --adapter skills/simple-changelogs/scripts/adapters/claude.ts --case trigger-update-changelogs
 ```
@@ -602,7 +603,7 @@ marking skill behavior failed.
 - [ ] **Step 6: Commit optional adapters**
 
 ```bash
-git add skills/simple-changelogs/scripts/adapters skills/simple-changelogs/scripts/tests/adapters.test.ts
+git add skills/simple-changelogs/scripts/adapters skills/simple-changelogs/scripts/tests/adapters.check.ts
 git commit -m "feat(eval): Add Codex and Claude runner adapters"
 ```
 
@@ -686,7 +687,7 @@ Run:
 
 ```bash
 bun skills/simple-changelogs/scripts/eval.ts contract
-bun test skills/simple-changelogs/scripts/tests
+bun run test
 bun run typecheck
 bun run lint
 ```
@@ -706,7 +707,7 @@ git commit -m "ref(skill): Make changelog policy repo-local"
 
 **Files:**
 
-- Create: `skills/simple-changelogs/scripts/tests/check-fork-sync.test.ts`
+- Create: `skills/simple-changelogs/scripts/tests/check-fork-sync.check.ts`
 - Move: `scripts/check-fork-sync.sh` to
   `skills/simple-changelogs/scripts/check-fork-sync.sh`
 - Modify: `skills/simple-changelogs/references/fork-maintenance.md`
@@ -726,7 +727,7 @@ branch while the remote default branch remains authoritative.
 
 - [ ] **Step 2: Run the integration test and observe RED**
 
-Run: `bun test skills/simple-changelogs/scripts/tests/check-fork-sync.test.ts`
+Run: `bun test ./skills/simple-changelogs/scripts/tests/check-fork-sync.check.ts`
 
 Expected: FAIL because the bundled helper is absent and the top-level helper
 compares against local `HEAD`.
@@ -745,7 +746,7 @@ Run:
 
 ```bash
 sh -n skills/simple-changelogs/scripts/check-fork-sync.sh
-bun test skills/simple-changelogs/scripts/tests/check-fork-sync.test.ts
+bun test ./skills/simple-changelogs/scripts/tests/check-fork-sync.check.ts
 ```
 
 Expected: PASS for all six repository states.
@@ -753,7 +754,7 @@ Expected: PASS for all six repository states.
 - [ ] **Step 5: Commit bundled fork tooling**
 
 ```bash
-git add scripts/check-fork-sync.sh skills/simple-changelogs/scripts/check-fork-sync.sh skills/simple-changelogs/scripts/tests/check-fork-sync.test.ts skills/simple-changelogs/references/fork-maintenance.md
+git add scripts/check-fork-sync.sh skills/simple-changelogs/scripts/check-fork-sync.sh skills/simple-changelogs/scripts/tests/check-fork-sync.check.ts skills/simple-changelogs/references/fork-maintenance.md
 git commit -m "fix(forks): Bundle deterministic sync checker"
 ```
 
@@ -836,7 +837,7 @@ Expected: no lint or configuration findings.
 Run:
 
 ```bash
-bun test skills/simple-changelogs/scripts/tests
+bun run test
 bun run typecheck
 bun skills/simple-changelogs/scripts/eval.ts contract
 sh -n skills/simple-changelogs/scripts/check-fork-sync.sh

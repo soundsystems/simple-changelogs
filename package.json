@@ -7,7 +7,7 @@
     "eval": "bun skills/simple-changelogs/scripts/eval.ts contract",
     "format": "ultracite fix",
     "lint": "ultracite check",
-    "test": "bun test skills/simple-changelogs/scripts/tests",
+    "test": "bun skills/simple-changelogs/scripts/test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

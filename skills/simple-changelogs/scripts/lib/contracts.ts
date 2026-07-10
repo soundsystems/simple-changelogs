@@ -580,6 +580,10 @@ const isScopedCorePath = (path: string): boolean =>
   path.startsWith("evals/") ||
   (path.startsWith("scripts/") && !path.startsWith("scripts/adapters/"));
 
+const isVendorAdapterPath = (path: string): boolean =>
+  path.startsWith("scripts/adapters/") ||
+  path === "scripts/tests/adapters.check.ts";
+
 const checkUnreadableCoreFiles = (
   context: ContractContext
 ): ContractFinding[] =>
@@ -612,7 +616,8 @@ const checkVendorAssumptions = (
         (entry) =>
           entry.kind === "file" &&
           entry.readable &&
-          isScopedCorePath(entry.path)
+          isScopedCorePath(entry.path) &&
+          !isVendorAdapterPath(entry.path)
       )
       .map((entry) => {
         const source = (entry.text ?? "").replace(

@@ -9,11 +9,10 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 - Customer changelog entries
 - Public detail budget
 - Detail level
-- Pre-release and hot fixes
+- Initial-development, pre-release, and hot-fix rules
 - Developer changelog entries
 - Superseded developer notes
 - Source links
-- Raw changelog signatures
 - Grouping and wording examples
 
 ## Pruning Rules
@@ -30,7 +29,7 @@ Exclude from `CHANGELOG.md`:
 - Benchmark-only performance work that users or operators would not materially
   notice.
 - Release-note plumbing, shared modules, and technical architecture unless they
-  create or change a visible release-note surface.
+  materially change visible release-note behavior.
 
 Put technically important excluded work in `DEVELOPER_CHANGELOG.md` when
 maintainers will need the context later.
@@ -134,12 +133,15 @@ to understand what changed, where to find it, and how to benefit from it. Use a
 clear top-level feature heading with nested bullets when multiple user actions
 or benefits matter.
 
-## Pre-Release and Hot Fixes
+## Initial Development, Pre-Releases, and Hot Fixes
 
-Treat `alpha`, `beta`, `Pre-1.0`, and every `0.x.y` version before an explicit
-`1.0.0` declaration as pre-release.
+Use SemVer terms precisely. A `0.x.y` version indicates initial development; it
+is not a pre-release solely because its major version is zero. A pre-release has
+an identifier after a hyphen, such as `1.0.0-alpha`, `0.8.0-beta.2`, or
+`2.0.0-rc.1`. Establish public distribution from repository and release
+evidence rather than inferring it from the version number.
 
-During pre-release:
+During initial development and actual pre-release testing:
 
 - Keep routine hot fixes, regression repairs, test-release churn, temporary
   workarounds, narrow visual fixes, cleanup, and baseline defects that should
@@ -156,9 +158,10 @@ During pre-release:
   expectation work as intended.
 - If the prior entry is still unreleased and would otherwise overpromise, revise
   that existing entry instead of adding a new fix announcement.
-- Add a user-facing entry only when the change materially affects trust,
-  onboarding, compliance, payment, shopping flow, safety, access, a broadly
-  noticeable UX surface, or a durable user capability.
+- For a publicly distributed `0.x` product, add a customer entry when the
+  outcome materially affects trust, access, payment, safety, compliance,
+  onboarding, data loss, a broadly noticeable experience, or a durable
+  capability.
 - Prefer folding small fixes into the next meaningful feature or milestone entry
   instead of publishing patch-by-patch customer notes.
 - Do not advertise embarrassing pre-`1.0.0` repairs as public product news. Omit
@@ -169,8 +172,8 @@ During pre-release:
 - Preserve useful internal detail in `DEVELOPER_CHANGELOG.md`, a pull or merge
   request body, or a worklog.
 
-After `1.0.0`, patch releases can include narrow user-facing fixes, but still
-omit implementation-only repair work. When a post-`1.0.0` bug fix belongs in a
+For a stable public contract, patch releases can include narrow visible fixes,
+but still omit implementation-only repair work. When such a fix belongs in a
 public changelog, frame it as a calm user outcome:
 
 - Prefer "Shared links now show the right preview" over "fixed our broken
@@ -186,7 +189,7 @@ details in `CHANGELOG.md` or public "What's New" surfaces. Preserve useful
 technical context in `DEVELOPER_CHANGELOG.md`, pull or merge request notes, or
 incident records when maintainers need it.
 
-When a post-`1.0.0` release has several public bug fixes, group them under a
+When a stable release has several public bug fixes, group them under a
 plain `Bug Fixes` heading after larger feature, workflow, trust, and
 data-quality entries. For one or two fixes, keep calm outcome bullets near the
 end of the release section unless the repo already uses grouped fix headings.
@@ -308,37 +311,6 @@ important user action:
 Before writing `now makes it easier to...`, ask whether users already had that
 action. If the answer is no, name the new capability instead of comparing it to
 a nonexistent prior flow.
-
-## Raw Changelog Signatures
-
-When an agent directly adds to or adjusts raw changelog markdown, sign the
-relevant changed part with the agent's model name/version and a short local
-timestamp.
-
-Use an HTML comment so rendered customer release notes and in-app surfaces do
-not show the signature:
-
-```md
-- Product Page Corrections: Users can now report inconsistent or missing product
-  data directly from a product page.
-<!-- Agent: GPT-5 Codex | 06/30/2026 6:50 PM CDT -->
-```
-
-Rules:
-
-- Place the signature immediately after the changed bullet, group, or section.
-- Match the surrounding indentation when signing nested bullets.
-- One signature may cover adjacent bullets in the same changed group or
-  subsection.
-- Use the active model label and version exposed by the runtime or system
-  context. If only a model family is known, use that exact label rather than
-  inventing a more specific version.
-- Include timezone in the timestamp.
-- Sign raw `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` edits. Do not separately
-  sign generated release-note data that is mechanically synced from a signed
-  changelog entry.
-- Do not use visible prose signatures in customer-facing notes unless the repo
-  explicitly requires rendered attribution.
 
 ## Grouping and Wording Examples
 

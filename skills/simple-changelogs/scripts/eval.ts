@@ -9,6 +9,12 @@ import {
   type ContractFinding,
   evaluateContracts,
 } from "./lib/contracts.ts";
+import {
+  type CaseEvaluationReport,
+  evaluateModelCases,
+  ModelEvaluationConfigurationError,
+  type ModelEvaluationResult,
+} from "./lib/model-eval.ts";
 
 const REPORT_VERSION = 1;
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -34,7 +40,9 @@ export interface EvalCliDependencies {
 }
 
 interface EvaluationReport {
+  cases?: CaseEvaluationReport[];
   counts: {
+    assertions?: ModelEvaluationResult["counts"]["assertions"];
     failed: number;
     findings: number;
     passed: number;
@@ -203,24 +211,33 @@ const validateModelConfiguration = async (
   if (!(await pathIsFile(adapterPath))) {
     return `Adapter does not exist: ${adapterPath}`;
   }
-  return `${options.command} orchestration is not bundled yet`;
 };
 
 const reportFor = (
   suite: Command,
-  findings: ContractFinding[]
-): EvaluationReport => ({
-  counts: {
-    failed: findings.length === 0 ? 0 : 1,
-    findings: findings.length,
-    passed: findings.length === 0 ? 1 : 0,
-    total: 1,
-  },
-  findings,
-  reportVersion: REPORT_VERSION,
-  status: findings.length === 0 ? "pass" : "fail",
-  suite,
-});
+  findings: ContractFinding[],
+  model?: ModelEvaluationResult
+): EvaluationReport => {
+  const contractTotal = suite === "contract" || suite === "all" ? 1 : 0;
+  const contractFailed = findings.length === 0 ? 0 : contractTotal;
+  const modelCounts = model?.counts;
+  const failed = contractFailed + (modelCounts?.failed ?? 0);
+  const report: EvaluationReport = {
+    ...(model ? { cases: model.cases } : {}),
+    counts: {
+      ...(model ? { assertions: model.counts.assertions } : {}),
+      failed,
+      findings: findings.length,
+      passed: contractTotal - contractFailed + (modelCounts?.passed ?? 0),
+      total: contractTotal + (modelCounts?.total ?? 0),
+    },
+    findings,
+    reportVersion: REPORT_VERSION,
+    status: failed === 0 ? "pass" : "fail",
+    suite,
+  };
+  return report;
+};
 
 const writeReport = (report: EvaluationReport, format: OutputFormat): void => {
   if (format === "json") {
@@ -234,6 +251,18 @@ const writeReport = (report: EvaluationReport, format: OutputFormat): void => {
     `Counts: ${report.counts.total} total, ${report.counts.passed} passed, ${report.counts.failed} failed`,
     `Findings: ${report.counts.findings}`,
   ];
+  if (report.cases && report.counts.assertions) {
+    lines.push(
+      `Cases: ${report.cases.length} total, ${report.cases.filter((item) => item.status === "passed").length} passed, ${report.cases.filter((item) => item.status !== "passed").length} failed`,
+      `Assertions: ${report.counts.assertions.total} total, ${report.counts.assertions.passed} passed, ${report.counts.assertions.failed} failed`
+    );
+    for (const item of report.cases) {
+      lines.push(`- [${item.status}] ${item.id}`);
+      if (item.workspace) {
+        lines.push(`  Workspace: ${item.workspace}`);
+      }
+    }
+  }
   for (const item of report.findings) {
     lines.push(`- [${item.code}] ${item.path}: ${item.message}`);
   }
@@ -274,20 +303,33 @@ export const runCli = async (
   }
 
   try {
-    const findings = await evaluateContracts(
-      parsed.options.skillDirectory,
-      dependencies.contractOptions
-    );
-    writeReport(
-      reportFor(parsed.options.command, findings),
-      parsed.options.format
-    );
-    return findings.length === 0 ? 0 : 1;
+    const findings =
+      parsed.options.command === "contract" || parsed.options.command === "all"
+        ? await evaluateContracts(
+            parsed.options.skillDirectory,
+            dependencies.contractOptions
+          )
+        : [];
+    const model =
+      parsed.options.command === "contract"
+        ? undefined
+        : await evaluateModelCases({
+            adapterPath: resolve(parsed.options.adapter ?? ""),
+            caseIds: parsed.options.cases,
+            keepFailures: parsed.options.keepFailures,
+            skillDirectory: parsed.options.skillDirectory,
+            suite: parsed.options.command,
+            timeoutMs: parsed.options.timeoutMs,
+          });
+    const report = reportFor(parsed.options.command, findings, model);
+    writeReport(report, parsed.options.format);
+    return report.status === "pass" ? 0 : 1;
   } catch (error) {
     writeConfigurationError(
-      error instanceof ContractConfigurationError
+      error instanceof ContractConfigurationError ||
+        error instanceof ModelEvaluationConfigurationError
         ? error.message
-        : `Contract evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
+        : `Evaluation failed: ${error instanceof Error ? error.message : String(error)}`,
       parsed.options.format
     );
     return 2;

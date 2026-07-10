@@ -29,15 +29,214 @@
         }
       ]
     },
-    "assertion": {
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "activationExpectation": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activated"],
+          "properties": {
+            "activated": { "type": "boolean" },
+            "includes": { "$ref": "#/$defs/stringArray" },
+            "excludes": { "$ref": "#/$defs/stringArray" }
+          }
+        }
+      ]
+    },
+    "changedPathsExpectation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "expected"],
       "properties": {
-        "kind": { "type": "string", "minLength": 1 },
-        "target": { "type": "string", "minLength": 1 },
-        "expected": { "$ref": "#/$defs/jsonValue" }
+        "allowed": { "$ref": "#/$defs/stringArray" },
+        "forbidden": { "$ref": "#/$defs/stringArray" },
+        "required": { "$ref": "#/$defs/stringArray" }
       }
+    },
+    "repoStateExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "branch": { "type": "string", "minLength": 1 },
+        "clean": { "type": "boolean" }
+      }
+    },
+    "authorizationExpectation": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code"],
+          "properties": {
+            "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+            "status": {
+              "enum": ["granted", "denied", "required", "not-applicable"]
+            },
+            "source": {
+              "enum": [
+                "current-request",
+                "repository-policy",
+                "repository-instructions",
+                "user-response",
+                "none"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "versionMapExpectation": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 },
+            "role": {
+              "enum": ["source", "mirror", "package", "application", "store"]
+            }
+          }
+        }
+      ]
+    },
+    "verificationExpectation": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["passed", "failed", "not-run"] }
+          }
+        }
+      ]
+    },
+    "assertion": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "activation" },
+            "expected": { "$ref": "#/$defs/activationExpectation" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "expected"],
+          "properties": {
+            "kind": {
+              "enum": [
+                "file.changed",
+                "file.unchanged",
+                "path.absent",
+                "path.exists"
+              ]
+            },
+            "target": { "type": "string", "minLength": 1 },
+            "expected": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "expected"],
+          "properties": {
+            "kind": { "enum": ["text.match", "text.notMatch"] },
+            "target": { "type": "string", "minLength": 1 },
+            "expected": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "expected"],
+          "properties": {
+            "kind": { "const": "json.path" },
+            "target": { "type": "string", "minLength": 1 },
+            "expected": { "$ref": "#/$defs/jsonValue" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "git.changedPaths" },
+            "expected": { "$ref": "#/$defs/changedPathsExpectation" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "repo.state" },
+            "expected": { "$ref": "#/$defs/repoStateExpectation" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "report.authorization" },
+            "expected": { "$ref": "#/$defs/authorizationExpectation" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "report.decision" },
+            "expected": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "report.status" },
+            "expected": { "enum": ["completed", "skipped", "error"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "report.verification" },
+            "expected": { "$ref": "#/$defs/verificationExpectation" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expected"],
+          "properties": {
+            "kind": { "const": "report.versionMap" },
+            "expected": { "$ref": "#/$defs/versionMapExpectation" }
+          }
+        }
+      ]
     },
     "turn": {
       "type": "object",
