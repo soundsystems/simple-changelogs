@@ -57,7 +57,7 @@ replace the pin.
 Without the script, the basic log comparison is:
 
 ```bash
-git -C <upstream> log --oneline <pinned-sha>..HEAD -- skills/simple-changelogs
+git -C <upstream> log --oneline <pinned-sha>..<resolved-upstream-ref> -- skills/simple-changelogs
 ```
 
 ## Syncing

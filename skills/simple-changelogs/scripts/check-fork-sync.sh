@@ -28,7 +28,7 @@ default_ref() {
 
   if [ -n "$REMOTE" ]; then
     SYMBOLIC=$(git -C "$UPSTREAM_DIR" symbolic-ref -q "refs/remotes/$REMOTE/HEAD" 2>/dev/null || true)
-    if [ -n "$SYMBOLIC" ]; then
+    if [ -n "$SYMBOLIC" ] && has_ref "$SYMBOLIC"; then
       echo "${SYMBOLIC#refs/remotes/}"
       return
     fi
@@ -67,7 +67,13 @@ PIN_SHA=$(git -C "$UPSTREAM_DIR" rev-parse --verify --end-of-options "$PIN^{comm
 TARGET_REF=${3:-$(default_ref)}
 TARGET_SHA=$(git -C "$UPSTREAM_DIR" rev-parse --verify --end-of-options "$TARGET_REF^{commit}" 2>/dev/null) || fail "upstream ref was not found: $TARGET_REF"
 
-if ! git -C "$UPSTREAM_DIR" merge-base --is-ancestor "$PIN_SHA" "$TARGET_SHA"; then
+if git -C "$UPSTREAM_DIR" merge-base --is-ancestor "$PIN_SHA" "$TARGET_SHA"; then
+  :
+else
+  MERGE_BASE_STATUS=$?
+  if [ "$MERGE_BASE_STATUS" -ne 1 ]; then
+    fail "git merge-base failed while comparing $PIN with $TARGET_REF"
+  fi
   echo "error: fork pin $PIN diverges from upstream $TARGET_REF" >&2
   echo "review both histories before changing the provenance pin" >&2
   exit 3
