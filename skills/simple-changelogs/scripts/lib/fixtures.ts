@@ -652,6 +652,12 @@ interface VersionMapExpectation {
   version?: string;
 }
 
+interface ActivationExpectation {
+  activated: boolean;
+  excludes: string[];
+  includes: string[];
+}
+
 const authorizationExpectation = (
   value: JsonValue
 ): AuthorizationExpectation | undefined => {
@@ -707,6 +713,27 @@ const versionMapExpectation = (
     path: value.path,
     ...(value.role === undefined ? {} : { role: value.role }),
     ...(value.version === undefined ? {} : { version: value.version }),
+  };
+};
+
+const activationExpectation = (
+  value: JsonValue
+): ActivationExpectation | undefined => {
+  if (typeof value === "boolean") {
+    return { activated: value, excludes: [], includes: [] };
+  }
+  if (
+    !isRecordWithOnlyKeys(value, ["activated", "excludes", "includes"]) ||
+    typeof value.activated !== "boolean" ||
+    (value.excludes !== undefined && !isStringArray(value.excludes)) ||
+    (value.includes !== undefined && !isStringArray(value.includes))
+  ) {
+    return;
+  }
+  return {
+    activated: value.activated,
+    excludes: value.excludes ?? [],
+    includes: value.includes ?? [],
   };
 };
 
@@ -912,7 +939,19 @@ const evaluateActivationAssertion = (
       "CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE"
     );
   }
-  return evidence.activated === assertion.expected
+  const expected = activationExpectation(assertion.expected);
+  if (!expected) {
+    return fail(assertion, "Activation assertion expected value is invalid");
+  }
+  const includesMatch = expected.includes.every((expectedTrace) =>
+    evidence.trace.some((trace) => trace.includes(expectedTrace))
+  );
+  const excludesMatch = expected.excludes.every((expectedTrace) =>
+    evidence.trace.every((trace) => !trace.includes(expectedTrace))
+  );
+  return evidence.activated === expected.activated &&
+    includesMatch &&
+    excludesMatch
     ? pass(assertion, "Activation evidence matched")
     : fail(assertion, "Activation evidence did not match");
 };

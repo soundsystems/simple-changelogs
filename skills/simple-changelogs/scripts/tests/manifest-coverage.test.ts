@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { EvalCase, EvalManifest, JsonValue } from "../lib/types.ts";
+import type {
+  EvalCase,
+  EvalManifest,
+  EvalTurn,
+  JsonValue,
+} from "../lib/types.ts";
 import { validateManifest } from "../lib/validate.ts";
 
 const MANIFEST_PATH = join(import.meta.dir, "..", "..", "evals", "cases.json");
@@ -117,6 +122,15 @@ const caseById = (manifest: EvalManifest, id: string): EvalCase => {
   return item;
 };
 
+const turnByIndex = (item: EvalCase, index: number): EvalTurn => {
+  const turn = item.turns[index];
+  expect(turn).toBeDefined();
+  if (!turn) {
+    throw new Error(`Missing turn ${index} for evaluation case ${item.id}`);
+  }
+  return turn;
+};
+
 const hasAssertion = (
   item: EvalCase,
   turnIndex: number,
@@ -201,7 +215,13 @@ describe("canonical evaluation manifest", () => {
 
     const localFork = caseById(manifest, "behavior-local-fork-precedence");
     expect(localFork.activationMode).toBe("discover");
-    expect(hasAssertion(localFork, 0, "activation", true)).toBe(true);
+    expect(
+      hasAssertion(localFork, 0, "activation", {
+        activated: true,
+        excludes: ["global/simple-changelogs"],
+        includes: ["project-changelog-maintainer"],
+      })
+    ).toBe(true);
   });
 
   test("encodes approved backfill and repo-local guidance corrections", async () => {
@@ -224,6 +244,15 @@ describe("canonical evaluation manifest", () => {
       "behavior-one-time-guidance-backfill-notice"
     );
     expect(guidanceNotice.turns).toHaveLength(2);
+    expect(
+      hasAssertion(
+        guidanceNotice,
+        0,
+        "json.path",
+        1,
+        ".simple-changelogs.json#/guidance/version"
+      )
+    ).toBe(true);
     expect(
       hasAssertion(guidanceNotice, 0, "file.unchanged", true, "SKILL.md")
     ).toBe(true);
@@ -283,5 +312,97 @@ describe("canonical evaluation manifest", () => {
         })
       ).toBe(true);
     }
+  });
+
+  test("pins semantic evidence for signatures, backfills, modal gates, maintenance, and forks", async () => {
+    const manifest = await loadManifest();
+    const signature = caseById(manifest, "behavior-raw-changelog-signature");
+    expect(
+      turnByIndex(signature, 0).assertions.some(
+        (assertion) =>
+          assertion.kind === "text.match" &&
+          typeof assertion.expected === "string" &&
+          assertion.expected.startsWith("Product Page Corrections[\\s\\S]")
+      )
+    ).toBe(true);
+
+    const backfill = caseById(
+      manifest,
+      "behavior-guidance-driven-backfill-audit"
+    );
+    expect(
+      hasAssertion(
+        backfill,
+        0,
+        "text.notMatch",
+        "Migrated the internal report queue to a new database table",
+        "CHANGELOG.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        backfill,
+        0,
+        "text.match",
+        "Migrated the internal report queue to a new database table",
+        "DEVELOPER_CHANGELOG.md"
+      )
+    ).toBe(true);
+
+    const modal = caseById(manifest, "behavior-modal-sequencing-eligibility");
+    const modalPatterns = turnByIndex(modal, 0)
+      .assertions.filter((assertion) => assertion.kind === "text.match")
+      .map((assertion) => assertion.expected);
+    expect(modalPatterns).toEqual([
+      "[Aa]uth",
+      "[Aa]ge",
+      "[Oo]nboarding",
+      "[Rr]eturning",
+      "[Cc]heckout|[Aa]ccount recovery|[Ss]afety|[Cc]ritical",
+      "[Dd]ismiss",
+    ]);
+
+    const maintenance = caseById(
+      manifest,
+      "behavior-skill-maintenance-regression"
+    );
+    expect(
+      hasAssertion(
+        maintenance,
+        0,
+        "text.notMatch",
+        "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private",
+        "SKILL.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        maintenance,
+        0,
+        "text.match",
+        "evals/cases\\.json|contract|adapter",
+        "EVAL.md"
+      )
+    ).toBe(true);
+
+    const forkSync = caseById(manifest, "behavior-fork-sync-provenance-pin");
+    expect(
+      hasAssertion(
+        forkSync,
+        0,
+        "text.match",
+        "2222222222222222222222222222222222222222",
+        "skills/project-changelog-maintainer/SKILL.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        forkSync,
+        0,
+        "text.match",
+        "Repo-local guidance state is portable",
+        "skills/project-changelog-maintainer/EVAL.md"
+      )
+    ).toBe(true);
   });
 });

@@ -250,7 +250,14 @@ describe("assertion evaluation", () => {
       { expected: "NEW_RELEASE_NOTE_SURFACE", kind: "report.authorization" },
       { expected: "package.json", kind: "report.versionMap" },
       { expected: "release-notes-sync", kind: "report.verification" },
-      { expected: true, kind: "activation" },
+      {
+        expected: {
+          activated: true,
+          excludes: ["global/simple-changelogs"],
+          includes: ["simple-changelogs"],
+        },
+        kind: "activation",
+      },
       { expected: { branch: "main", clean: false }, kind: "repo.state" },
       {
         expected: {
