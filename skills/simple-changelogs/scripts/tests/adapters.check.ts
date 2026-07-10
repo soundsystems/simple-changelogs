@@ -15,6 +15,7 @@ import {
   buildClaudeInvocation,
   buildClaudeSandboxSettings,
   extractClaudeFinalResponse,
+  prepareClaudeResponseSchema,
 } from "../adapters/claude.ts";
 import {
   buildCodexCommand,
@@ -85,6 +86,33 @@ describe("vendor command builders", () => {
     expect(buildCodexCommand(request, "/tmp/codex-last-message.json")).toEqual([
       "codex",
       "exec",
+      "--config",
+      "mcp_servers={}",
+      "--cd",
+      request.workspace,
+      "--sandbox",
+      "workspace-write",
+      "--json",
+      "--output-schema",
+      request.responseSchema,
+      "--output-last-message",
+      "/tmp/codex-last-message.json",
+      "-",
+    ]);
+    expect(
+      buildCodexCommand(
+        request,
+        "/tmp/codex-last-message.json",
+        "codex",
+        "available-codex-model"
+      )
+    ).toEqual([
+      "codex",
+      "exec",
+      "--config",
+      "mcp_servers={}",
+      "--model",
+      "available-codex-model",
       "--cd",
       request.workspace,
       "--sandbox",
@@ -111,19 +139,32 @@ describe("vendor command builders", () => {
       "--no-session-persistence",
       "--no-chrome",
       "--permission-mode",
-      "acceptEdits",
+      "dontAsk",
+      "--tools",
+      "Read,Glob,Grep,Edit,Write,Bash",
       "--allowedTools",
-      "Read,Glob,Grep,Bash",
+      "Read,Glob,Grep,Edit,Write,Bash",
       "--settings",
       sandboxSettings,
       "--json-schema",
       responseSchema,
     ]);
+    const modelCommand = buildClaudeCommand(
+      request,
+      responseSchema,
+      "claude",
+      "available-claude-model"
+    );
+    const modelIndex = modelCommand.indexOf("--model");
+    expect(modelCommand.slice(modelIndex, modelIndex + 2)).toEqual([
+      "--model",
+      "available-claude-model",
+    ]);
     expect(buildClaudeInvocation(request, responseSchema).cwd).toBe(
       request.workspace
     );
-    expect(buildClaudeCommand(request, responseSchema)).not.toContain(
-      "Read,Edit,Write,Glob,Grep,Bash"
+    expect(buildClaudeCommand(request, responseSchema)).toContain(
+      "Read,Glob,Grep,Edit,Write,Bash"
     );
     expect(JSON.parse(sandboxSettings)).toEqual({
       sandbox: {
@@ -135,6 +176,28 @@ describe("vendor command builders", () => {
           denyWrite: [request.skillDirectory],
         },
       },
+    });
+  });
+
+  test("dereferences the neutral response schema for Claude structured output", () => {
+    const prepared = JSON.parse(
+      prepareClaudeResponseSchema(
+        JSON.stringify({
+          $defs: { value: { minLength: 1, type: "string" } },
+          $schema: "https://json-schema.org/draft/2020-12/schema",
+          additionalProperties: false,
+          properties: { answer: { $ref: "#/$defs/value" } },
+          required: ["answer"],
+          type: "object",
+        })
+      )
+    );
+
+    expect(prepared).toEqual({
+      additionalProperties: false,
+      properties: { answer: { minLength: 1, type: "string" } },
+      required: ["answer"],
+      type: "object",
     });
   });
 });
@@ -314,6 +377,13 @@ describe("vendor process failures", () => {
       normalizeVendorFailure("Claude Code", {
         exitCode: 1,
         stderr: "Invalid configuration file",
+        stdout: "",
+      }).code
+    ).toBe("INVALID_CONFIGURATION");
+    expect(
+      normalizeVendorFailure("Codex CLI", {
+        exitCode: 2,
+        stderr: "The selected model requires a newer version of Codex",
         stdout: "",
       }).code
     ).toBe("INVALID_CONFIGURATION");

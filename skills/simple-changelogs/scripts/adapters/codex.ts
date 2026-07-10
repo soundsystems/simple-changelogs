@@ -15,24 +15,36 @@ import {
 
 const RUNTIME_IDENTITY = "Codex CLI";
 
+const configuredCodexModel = (): string | undefined => {
+  const model = process.env.SIMPLE_CHANGELOGS_CODEX_MODEL?.trim();
+  return model && model.length > 0 ? model : undefined;
+};
+
 export const buildCodexCommand = (
   request: RunnerRequest,
   outputLastMessagePath: string,
-  executable = "codex"
-): string[] => [
-  executable,
-  "exec",
-  "--cd",
-  request.workspace,
-  "--sandbox",
-  "workspace-write",
-  "--json",
-  "--output-schema",
-  request.responseSchema,
-  "--output-last-message",
-  outputLastMessagePath,
-  "-",
-];
+  executable = "codex",
+  model = configuredCodexModel()
+): string[] => {
+  const modelArguments = model ? ["--model", model] : [];
+  return [
+    executable,
+    "exec",
+    "--config",
+    "mcp_servers={}",
+    ...modelArguments,
+    "--cd",
+    request.workspace,
+    "--sandbox",
+    "workspace-write",
+    "--json",
+    "--output-schema",
+    request.responseSchema,
+    "--output-last-message",
+    outputLastMessagePath,
+    "-",
+  ];
+};
 
 export const extractCodexFinalResponse = (text: string): RunnerResponse =>
   parseRunnerResponse(text);
@@ -46,6 +58,17 @@ const failed = (
   logs,
   ok: false,
 });
+
+const failedFromVendorLogs = (
+  execution: { exitCode: number; stderr: string; stdout: string },
+  fallbackMessage: string,
+  logs: string
+): AdapterExecutionResult => {
+  const failure = normalizeVendorFailure(RUNTIME_IDENTITY, execution);
+  return failure.code === "VENDOR_EXECUTION_FAILED"
+    ? failed("VENDOR_EXECUTION_FAILED", fallbackMessage, logs)
+    : { failure, logs, ok: false };
+};
 
 export const runCodexAdapter = async (
   request: RunnerRequest
@@ -92,8 +115,8 @@ export const runCodexAdapter = async (
     try {
       finalMessage = await readFile(outputLastMessagePath, "utf8");
     } catch (error) {
-      return failed(
-        "VENDOR_EXECUTION_FAILED",
+      return failedFromVendorLogs(
+        execution,
         `Codex CLI did not write a final response: ${error instanceof Error ? error.message : String(error)}`,
         logs
       );
@@ -109,8 +132,8 @@ export const runCodexAdapter = async (
         ),
       };
     } catch (error) {
-      return failed(
-        "VENDOR_EXECUTION_FAILED",
+      return failedFromVendorLogs(
+        execution,
         error instanceof Error ? error.message : String(error),
         logs
       );

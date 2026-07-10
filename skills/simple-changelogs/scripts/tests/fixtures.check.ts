@@ -497,6 +497,26 @@ describe("fixture cleanup", () => {
     await expect(lstat(second)).rejects.toThrow();
   });
 
+  test("deletes read-only adapter snapshots after forced termination", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    const snapshot = join(workspace, ".simple-changelogs-skill-stale");
+    const nested = join(snapshot, "references");
+    const skillFile = join(snapshot, "SKILL.md");
+    await mkdir(nested, { recursive: true });
+    await writeFile(skillFile, "# Read-only snapshot\n");
+    await chmod(skillFile, 0o444);
+    await chmod(nested, 0o555);
+    await chmod(snapshot, 0o555);
+
+    await cleanupFixtureWorkspace(workspace, {
+      failed: true,
+      keepFailures: false,
+    });
+
+    await expect(lstat(workspace)).rejects.toThrow();
+  });
+
   test("retains failed workspaces only when requested", async () => {
     const fixturesRoot = await makeFixtureRoot();
     const workspace = await createFixtureWorkspace(fixturesRoot, "base");

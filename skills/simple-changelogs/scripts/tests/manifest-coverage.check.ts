@@ -272,6 +272,39 @@ describe("canonical evaluation manifest", () => {
     ).toBe(true);
   });
 
+  test("waits for the first historical-audit answer before writing policy", async () => {
+    const manifest = await loadManifest();
+    const setup = caseById(manifest, "behavior-customer-visible-feature");
+
+    expect(setup.turns).toHaveLength(2);
+    expect(
+      hasAssertion(setup, 0, "path.absent", true, ".simple-changelogs.json")
+    ).toBe(true);
+    expect(
+      hasAssertion(setup, 0, "report.authorization", {
+        code: "GUIDANCE_BACKFILL",
+        source: "none",
+        status: "required",
+      })
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        setup,
+        1,
+        "json.path",
+        "declined",
+        ".simple-changelogs.json#/guidance/backfillStatus"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(setup, 1, "report.authorization", {
+        code: "GUIDANCE_BACKFILL",
+        source: "user-response",
+        status: "denied",
+      })
+    ).toBe(true);
+  });
+
   test("distinguishes surface approval turns from explicit authorization", async () => {
     const manifest = await loadManifest();
     const approvalCases = [

@@ -1,5 +1,6 @@
 import type { Stats } from "node:fs";
 import {
+  chmod,
   cp,
   lstat,
   mkdtemp,
@@ -33,6 +34,23 @@ const compareText = (left: string, right: string): number => {
     return 1;
   }
   return 0;
+};
+
+const isPermissionError = (error: unknown): boolean =>
+  isRecord(error) && (error.code === "EACCES" || error.code === "EPERM");
+
+const makeDirectoriesWritable = async (root: string): Promise<void> => {
+  const metadata = await lstat(root);
+  if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
+    return;
+  }
+  await chmod(root, 0o700);
+  const entries = await readdir(root, { withFileTypes: true });
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
+      .map((entry) => makeDirectoriesWritable(join(root, entry.name)))
+  );
 };
 
 export interface AssertionContext {
@@ -1155,6 +1173,14 @@ export const cleanupFixtureWorkspace = async (
   if (options.failed && options.keepFailures) {
     return;
   }
-  await rm(workspace, { force: true, recursive: true });
+  try {
+    await rm(workspace, { force: true, recursive: true });
+  } catch (error) {
+    if (!isPermissionError(error)) {
+      throw error;
+    }
+    await makeDirectoriesWritable(workspace);
+    await rm(workspace, { force: true, recursive: true });
+  }
   ownedWorkspaces.delete(workspace);
 };

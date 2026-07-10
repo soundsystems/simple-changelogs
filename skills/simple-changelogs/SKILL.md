@@ -23,6 +23,9 @@ repository root.
   or unsupported state; do not silently replace it.
 - When it is absent and the request authorizes changelog work, follow
   `references/setup.md`, then continue the original task.
+- If released history exists and the request does not decide its audit, ask and
+  stop before writing policy or changelogs. Silence is not `deferred` or
+  `declined`.
 - When the request is read-only, answer without writing policy or changelog
   files. Offer setup as a possible next action.
 - When recorded guidance is older than version 2, read

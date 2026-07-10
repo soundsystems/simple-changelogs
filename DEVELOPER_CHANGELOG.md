@@ -38,9 +38,21 @@
 - Renamed executable checks from auto-discoverable `*.test.ts` filenames to
   explicit `*.check.ts` inputs, retaining the runnable Bun suite without letting
   unrelated JavaScript test runners execute installed skill code implicitly.
+- Hardened representative model execution after live smoke tests:
+  - Added optional per-adapter model overrides and isolated Codex runs from
+    inherited MCP configuration while normalizing stale or unsupported model
+    failures as configuration errors.
+  - Dereferenced the neutral response schema only for Claude Code's structured-
+    output flag, paired an explicit tool inventory with an explicit allowlist,
+    and retained workspace-only sandbox writes with skill-snapshot denial.
+  - Made fixture cleanup recover read-only adapter snapshots left by forced
+    termination without weakening evaluator workspace ownership checks.
+  - Corrected initial-setup coverage to require a separate historical-audit
+    answer before policy or changelog writes.
 <!-- Agent: GPT-5 Codex | 07/09/2026 3:39 PM CDT -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:31:35-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:05:59-05:00" -->
 
 ## 2026-07-08
 

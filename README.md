@@ -152,6 +152,22 @@ claude auth status
 claude auth login
 ```
 
+The Codex adapter uses the CLI's configured model and disables inherited MCP
+servers for isolated runs. If that configured model is unavailable to the
+installed CLI, select an available one for the command without editing the
+skill:
+
+```bash
+SIMPLE_CHANGELOGS_CODEX_MODEL=<available-model-id> \
+  bun skills/simple-changelogs/scripts/eval.ts behavior \
+  --adapter skills/simple-changelogs/scripts/adapters/codex.ts
+```
+
+The Claude Code adapter has the equivalent
+`SIMPLE_CHANGELOGS_CLAUDE_MODEL=<available-model-id>` override. The repository
+does not declare provider model catalogs; valid IDs and aliases depend on the
+installed CLIs and authenticated accounts.
+
 Select a case with `--case <id>`, retain failed workspaces with
 `--keep-failures`, or emit CI-friendly output with `--format json`. Missing CLI
 authentication is a configuration error, not a failed skill behavior case.
