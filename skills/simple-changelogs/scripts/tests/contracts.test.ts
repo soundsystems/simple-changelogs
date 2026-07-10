@@ -293,6 +293,11 @@ one two three four five six seven eight nine ten eleven twelve thirteen fourteen
     );
     await writeFixtureFile(
       skillDirectory,
+      "scripts/tests/adapters.test.ts",
+      `// ${TEST_VENDOR}-specific adapter contract test.\n`
+    );
+    await writeFixtureFile(
+      skillDirectory,
       "scripts/parser.ts",
       "let cursor = 0;\ncursor += 1;\n"
     );
