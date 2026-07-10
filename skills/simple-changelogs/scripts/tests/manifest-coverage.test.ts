@@ -380,6 +380,41 @@ describe("canonical evaluation manifest", () => {
         maintenance,
         0,
         "text.match",
+        "description: (?=[^\\n]*(?:Use when|changelog))(?=[^\\n]*(?:Do not use|not for|unless))[^\\n]+",
+        "SKILL.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        maintenance,
+        0,
+        "text.notMatch",
+        "- Check the changelog\\.\\s*- Check wording\\.",
+        "SKILL.md"
+      )
+    ).toBe(true);
+    for (const pattern of [
+      "[Cc]ustomer",
+      "[Dd]eveloper",
+      "[Rr]elease",
+      "[Ss]ignature",
+      "[Aa]utomat|[Cc]ommand",
+    ]) {
+      expect(
+        hasAssertion(
+          maintenance,
+          0,
+          "text.match",
+          pattern,
+          "references/automation-verification.md"
+        )
+      ).toBe(true);
+    }
+    expect(
+      hasAssertion(
+        maintenance,
+        0,
+        "text.match",
         "evals/cases\\.json|contract|adapter",
         "EVAL.md"
       )

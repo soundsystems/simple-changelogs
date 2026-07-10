@@ -1327,9 +1327,19 @@
               "expected": "This very long description repeats workflow"
             },
             {
+              "kind": "text.match",
+              "target": "SKILL.md",
+              "expected": "description: (?=[^\\n]*(?:Use when|changelog))(?=[^\\n]*(?:Do not use|not for|unless))[^\\n]+"
+            },
+            {
               "kind": "text.notMatch",
               "target": "SKILL.md",
               "expected": "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "SKILL.md",
+              "expected": "- Check the changelog\\.\\s*- Check wording\\."
             },
             {
               "kind": "text.match",
@@ -1345,6 +1355,31 @@
               "kind": "text.match",
               "target": "references/entry-classification.md",
               "expected": "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Cc]ustomer"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Dd]eveloper"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Rr]elease"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Ss]ignature"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Aa]utomat|[Cc]ommand"
             },
             {
               "kind": "text.match",
