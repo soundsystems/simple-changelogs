@@ -25,10 +25,10 @@ changes. Keep both current:
 
 ## Activation Precedence
 
-When a repo-local fork of this skill is installed, that fork is authoritative
-for that repo and supersedes any globally installed upstream `simple-changelogs`
-copy. Agent harnesses and skill loaders should deduplicate by the upstream
-identity in the provenance pin and activate only the closest matching fork.
+When a repo-local fork of this skill is installed, treat it as authoritative for
+that repo and do not also apply a globally installed upstream
+`simple-changelogs` copy. The provenance pin supplies the identity needed to
+make that choice, but not every agent harness can enforce it automatically.
 
 If the harness cannot enforce that, add repo guidance that names the exact local
 fork skill path and tells agents not to apply the global upstream skill in the
@@ -37,10 +37,24 @@ verify changelog work for one repo action.
 
 ## Checking Drift
 
-From the upstream repo, `scripts/check-fork-sync.sh <fork-SKILL.md>` reads the
-fork's pinned sha and lists upstream skill commits and changed files since
-that pin. Exit `0` means current; exit `1` means there is something to review.
-Without the script, the equivalent is:
+The bundled checker works from any directory:
+
+```bash
+scripts/check-fork-sync.sh path/to/fork/SKILL.md /path/to/upstream origin/main
+```
+
+The upstream repo and ref are optional when the bundled skill lives inside its
+upstream checkout. Without an explicit ref, the checker prefers the selected
+remote's symbolic default branch, then existing `origin/main`, `main`,
+`origin/master`, or `master` refs. It never substitutes the current feature
+branch for the upstream default.
+
+Exit `0` means current, `1` means the fork is behind on skill changes, `2` means
+the input or ref is invalid, and `3` means the pin has diverged from the selected
+upstream history. Divergence requires a manual history review; do not simply
+replace the pin.
+
+Without the script, the basic log comparison is:
 
 ```bash
 git -C <upstream> log --oneline <pinned-sha>..HEAD -- skills/simple-changelogs
