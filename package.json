@@ -1,0 +1,19 @@
+{
+  "name": "simple-changelogs",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.13",
+  "scripts": {
+    "eval": "bun skills/simple-changelogs/scripts/eval.ts contract",
+    "format": "ultracite fix",
+    "lint": "ultracite check",
+    "test": "bun skills/simple-changelogs/scripts/test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.3",
+    "@types/bun": "1.3.14",
+    "typescript": "7.0.2",
+    "ultracite": "7.9.3"
+  }
+}

@@ -1,124 +1,103 @@
 # Bootstrap and Backfill
 
-Use this reference when changelog files are missing or when the user asks to
-reconstruct changelogs from existing history.
+Use this reference when changelog files are missing, the user requests history
+reconstruction, or an authorized guidance audit examines released notes.
 
-## New Files
+## New Changelog Files
 
-When adding pending unreleased work to a new customer changelog, use:
+When pending work exists, start with the appropriate heading:
 
 ```md
 # Changelog
 
 ## Unreleased
 
-- ...
+- Pending customer outcome.
 ```
-
-When adding pending unreleased work to a new developer changelog, use:
 
 ```md
 # Developer Changelog
 
 ## Unreleased
 
-- ...
+- Pending technical outcome.
 ```
 
-If creating a changelog with no pending unreleased entries yet, omit
-`## Unreleased` until the first pending change exists.
+When no pending entry exists, create only the title. Add `Unreleased` with the
+first real item rather than keeping a placeholder section.
 
-## Backfill Workflow
+## Historical Reconstruction
 
-1. Find release boundaries first:
-   - `git tag --sort=-creatordate`
-   - existing repository-hosted releases, package versions, app versions, or
-     deployment milestones when available
-2. If tags or releases exist, backfill one range at a time with
-   `git log --oneline <previous-tag>..<tag>` and inspect important commits with
-   `git show --stat --summary --format=fuller <sha>`.
-3. If no release boundaries exist, walk history in batches with
-   `git log --oneline --reverse` or paginated `git log --skip=<n>` ranges, then
-   group entries by date, milestone, or coherent feature area.
-4. Summarize outcomes, not commits. Combine related commits into one grouped
-   entry and leave out churn, reversions, failed experiments, and internal-only
-   details from `CHANGELOG.md`.
-5. Put useful technical history in `DEVELOPER_CHANGELOG.md`, especially
-   migrations, data model changes, parser or pipeline behavior, release-note
-   plumbing, tests, operational changes, and workflow changes.
-6. Mark uncertainty plainly when old commits do not reveal shipped behavior.
-   Prefer a conservative omission over inventing user impact.
+1. Find trustworthy release boundaries from tags, published versions,
+   repository-hosted releases, app metadata, or deployment milestones.
+2. Walk one bounded range at a time. Use `git log` to locate candidates and
+   inspect relevant diffs when subjects do not establish impact.
+3. Combine commits into shipped outcomes. Exclude abandoned experiments,
+   reversions, churn, and private incident detail from customer history.
+4. Put durable migrations, data changes, architecture, release plumbing,
+   operational changes, and important regression coverage in the developer
+   history.
+5. Preserve established headings and dates. Mark uncertainty instead of
+   inventing shipped behavior or a release boundary.
 
-For large histories, produce a short backfill plan first, then work in
-reviewable batches instead of rewriting the whole history in one pass.
+For a large repository, propose reviewable batches before rewriting extensive
+history. A conservative omission is better than fabricated certainty.
 
-## Policy Or Guidance Backfill
+## Guidance Audit Authority
 
-Use this workflow when the user explicitly asks to backfill, audit, clean up, or
-realign existing changelogs and release-note history against updated guidance,
-or after the operator approves a proposed released-history cleanup. Do not
-rewrite released changelog or release-note history just because drift is noticed
-during ordinary feature work.
+A guidance update, noticed drift, or policy prompt is not permission to rewrite
+released notes. Start this workflow only after an explicit current request or a
+recorded approval from the setup flow.
 
-When `SKILL.md` contains a `One-Time Guidance Backfill Notice`, the notice is
-only a prompt to ask the operator whether to run this workflow. It is not
-permission to rewrite history. Remove the notice only after an approved,
-completed, and verified guidance backfill, or after an explicit operator
-opt-out that asks not to run it. Otherwise leave it in place.
+Approval to run the audit covers inspection and deterministic repairs whose
+meaning and visibility remain unchanged:
 
-Agents may freely edit pending `Unreleased` entries for the active task and may
-sync generated release-note data after source changelog edits. Released-history
-backfill has a higher bar: first classify the drift by the operation required,
-then separate safe information-preserving repairs from destructive or
-meaning-changing edits.
+- regenerate an established derived mirror from its unchanged canonical source;
+- align copied version or date metadata when the source of truth is unambiguous;
+- remove empty pending headings after finalization;
+- remove duplicate generated artifacts while keeping their canonical source;
+- report ambiguous or semantic drift without changing it.
 
-### Automatic Drift Repairs
+Before starting historical edits, record resumable policy state according to
+`references/setup.md`. Verify the completed audit before recording completion;
+on a handled failure, preserve an honest retry state.
 
-Agents may apply drift repairs that preserve or relocate information without
-changing the meaning of released history:
+## Additional Approval for Semantic Changes
 
-- Sync generated release-note data from the source changelog after source
-  entries change.
-- Add missing release-note surface entries that already exist in the source
-  changelog or developer changelog.
-- Move clearly developer-only detail from public release notes into
-  `DEVELOPER_CHANGELOG.md` or an internal release-note surface, preserving the
-  meaning and provenance of the note.
-- Align section, version, date, or metadata labels across generated surfaces to
-  the source changelog when the source is unambiguous.
-- Remove empty `Unreleased` headings or duplicate generated artifacts after
-  release finalization.
+Present one reviewable candidate batch and request additional authority before
+any released-history operation that would:
 
-### Permission-Gated Released-History Edits
+- delete information;
+- reword more than mechanical spelling, branding, or exact metadata copying;
+- combine entries in a way that changes their meaning;
+- change a canonical date, version, heading, or release boundary, rather than
+  copying the same unambiguous value into an established mirror;
+- reclassify an ambiguous outcome;
+- change who can see the information.
 
-Ask for explicit operator permission before editing released history in ways
-that delete information, change meaning, or change release boundaries:
+Moving a public note into developer-only or internal history is a visibility
+change even when the text is preserved. It is never an automatic drift repair.
 
-- Delete a released note entirely.
-- Reword released customer-facing prose beyond mechanical branding, spelling, or
-  metadata alignment.
-- Collapse multiple released entries into one entry.
-- Change release dates, versions, headings, or release boundaries.
-- Remove a public-facing customer outcome because it now seems too small,
-  noisy, or below the current impact threshold.
-- Reclassify ambiguous entries that could plausibly still have product,
-  support, operator, or customer value.
+A current command that already and explicitly asks to rewrite, delete, move,
+combine, or reclassify the released material supplies that additional authority.
+Do not ask twice for permission the user already granted for the exact work.
 
-When unsure whether a repair is safe, report the candidate drift and ask before
-changing released changelog or release-note history. The default principle:
-automatic drift repair preserves or relocates information; destructive or
-meaning-changing released-history edits require explicit operator approval.
+When authority remains unclear, leave the source untouched, report the candidate
+and why it is not deterministic, and ask one bounded question.
 
-## Backfill Quality Rules
+## Audit Completion
 
-- Preserve release headings and dates when the repo already has an established
-  format.
-- Do not create one changelog entry per commit unless each commit is truly a
-  separate user-facing or maintainer-relevant outcome.
-- Do not expose abandoned experiments, reverted changes, failed releases, or
-  sensitive internal incident detail in `CHANGELOG.md`.
-- Use `DEVELOPER_CHANGELOG.md` for migration history, release process changes,
-  and technical context future maintainers will search for.
-- If history is ambiguous, write "historical commit context does not establish
-  whether this shipped" in your handoff rather than making the changelog pretend
-  certainty.
+An audit can be complete while reporting semantic candidates that were
+intentionally left unchanged. Use an unfinished status only when the authorized
+audit itself stopped before its planned review or repairs finished.
+
+The handoff should state:
+
+- ranges and release sources inspected;
+- deterministic repairs made;
+- candidates left unchanged and why;
+- verification performed;
+- the recorded policy disposition.
+
+Do not imply that historical completeness was proven when unavailable tags,
+missing release data, shallow history, or vague commits limited the audit.

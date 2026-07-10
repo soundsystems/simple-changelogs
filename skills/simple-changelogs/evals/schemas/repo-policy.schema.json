@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Changelogs Repository Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "guidance",
+    "developerChangelog",
+    "signatures",
+    "newReleaseNoteSurfaces"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "backfillStatus"],
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "backfillStatus": {
+          "enum": [
+            "not-applicable",
+            "completed",
+            "declined",
+            "deferred",
+            "partial",
+            "failed"
+          ]
+        }
+      }
+    },
+    "developerChangelog": { "const": "required" },
+    "signatures": { "const": "agent-and-timestamp" },
+    "newReleaseNoteSurfaces": {
+      "enum": ["ask", "allow", "existing-only"]
+    }
+  }
+}

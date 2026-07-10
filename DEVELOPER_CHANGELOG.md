@@ -1,5 +1,70 @@
 # Developer Changelog
 
+## Unreleased
+
+- Reworked policy and instruction ownership:
+  - Added the closed `.simple-changelogs.json` schema and first-use workflow for
+    repo-local guidance version, backfill disposition, required developer
+    history, signature mode, and release-note surface authorization.
+  - Replaced installed-skill mutation and sentinel state with simple,
+    prospective guidance updates plus one prompt per new guidance version.
+  - Kept customer classification, release lifecycle, versioning, backfill,
+    surface authorization, fork maintenance, and automation verification in
+    focused references behind a concise `SKILL.md` router.
+  - Standardized raw Markdown attribution on an escaped, machine-readable
+    identity and ISO 8601 timestamp comment while documenting its non-
+    cryptographic limits.
+- Added a portable evaluation package:
+  - Added closed schemas for manifests, repository policy, runner requests, and
+    runner responses, plus runtime validators and parity tests.
+  - Added a shell-free adapter runner with timeouts, process-tree termination,
+    JSON framing, normalized configuration errors, and isolated Git fixtures.
+  - Added 45 canonical trigger and behavior cases with multi-turn assertions for
+    setup, backfills, classification, authorization, release lifecycle, fork
+    precedence, and skill-maintenance boundaries.
+  - Added optional sandboxed Codex and Claude Code CLI adapters while keeping
+    the core contract free of vendor terms and authentication requirements.
+  - Added deterministic text and JSON reports, stable exit codes, failure
+    workspace retention, and a contributor-facing `EVAL.md` protocol guide.
+- Moved `check-fork-sync.sh` into the distributable skill and hardened default-
+  branch resolution, ancestry checks, invalid inputs, and divergent pins.
+- Updated public installation guidance to copy the complete skill package,
+  document agent-neutral evaluation, and treat Codex, Claude Code, Cursor,
+  Hermes, and Eve as optional runtime examples.
+- Closed final review gaps around duplicate setup permission, one-off versus
+  ongoing surface authorization, deterministic metadata mirrors, fork-checker
+  invocation, eval exit statuses, assertion documentation, and unanswered
+  guidance prompts.
+- Renamed executable checks from auto-discoverable `*.test.ts` filenames to
+  explicit `*.check.ts` inputs, retaining the runnable Bun suite without letting
+  unrelated JavaScript test runners execute installed skill code implicitly.
+- Hardened representative model execution after live smoke tests:
+  - Added optional per-adapter model overrides and isolated Codex runs from
+    inherited MCP configuration while normalizing stale or unsupported model
+    failures as configuration errors.
+  - Dereferenced the neutral response schema only for Claude Code's structured-
+    output flag, paired an explicit tool inventory with an explicit allowlist,
+    and retained workspace-only sandbox writes with skill-snapshot denial.
+  - Made fixture cleanup recover read-only adapter snapshots left by forced
+    termination without weakening evaluator workspace ownership checks.
+  - Corrected initial-setup coverage to require a separate historical-audit
+    answer before policy or changelog writes.
+- Closed final security and manifest-validation review findings:
+  - Removed externally supplied `command.exit` assertions while retaining only
+    evaluator-owned subprocess argument arrays for Git and fixture setup.
+  - Replaced open assertion records with a closed kind union and matching
+    per-kind target and expected-value validation in TypeScript and JSON Schema.
+  - Denied Claude sandbox reads from `/`, re-allowed only the fixture and its
+    read-only skill snapshot, and removed native read tools so Bash reads remain
+    under OS sandbox enforcement.
+  - Verified with an outside sentinel that the adapter can read the fixture but
+    receives `Operation not permitted` for a file outside it.
+<!-- Agent: GPT-5 Codex | 07/09/2026 3:39 PM CDT -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:31:35-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:05:59-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:31:39-05:00" -->
+
 ## 2026-07-08
 
 - Added fork activation precedence guidance:

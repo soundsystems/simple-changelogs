@@ -38,28 +38,27 @@ Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior
 or published package contract changes.
 
-## Pre-1.0 Products
+## Initial-Development Products
 
-For pre-`1.0.0` products, treat every `0.x.y` section as pre-release unless the
-repo has an explicit public release contract. During that period:
+SemVer uses `0.x.y` for initial development. It does not make those versions
+pre-releases; a pre-release is identified by a suffix such as `-alpha`, `-beta`,
+or `-rc.1`. Determine whether a `0.x` build is publicly distributed from local
+release evidence.
 
-- Do not treat every significant change as a major bump just because the product
-  is still taking shape.
-- Use `0.x.y` patch bumps for repairs, small UX improvements, compatible
-  stabilization, and release-candidate cleanup that is worth publishing.
-- Use `0.(x+1).0` minor bumps more often than post-`1.0.0` when the release adds
-  a durable capability, changes product direction, reshapes a primary workflow,
-  introduces a public surface, or changes an API/data contract before it is
-  stable.
-- Reserve `1.0.0` for an explicit stability, public contract, or launch
-  milestone. Do not jump to `1.0.0` just because a pre-`1.0.0` feature feels
-  large.
-- When the repo treats pre-`1.0.0` minor bumps as compatibility-breaking
-  boundaries, mention the break plainly in the changelog and developer
-  changelog, but follow the repo policy instead of inventing a separate major
-  scheme.
-- Avoid customer-facing patch-note churn for hot fixes; roll durable product
-  outcomes into the next meaningful release section instead.
+During initial development:
+
+- Use patch increments for repairs, small experience improvements, compatible
+  stabilization, and publishable test-cycle cleanup.
+- Use a minor increment when local convention treats it as the next capability
+  or compatibility boundary. This commonly covers a durable feature, a primary
+  workflow change, product direction, or an unstable API/data contract change.
+- Reserve `1.0.0` for a documented stability, public-contract, or launch
+  milestone; feature size alone does not establish that boundary.
+- Follow repository policy when `0.x` minor increments may be incompatible and
+  disclose the break plainly to affected customers and maintainers.
+- Keep routine repair churn and already-promised baseline fixes out of customer
+  notes. A publicly distributed `0.x` release still discloses material trust,
+  access, payment, safety, compliance, onboarding, or data-loss outcomes.
 
 ## Version Field Alignment
 

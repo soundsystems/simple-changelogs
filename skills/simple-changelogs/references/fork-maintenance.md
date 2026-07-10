@@ -25,26 +25,37 @@ changes. Keep both current:
 
 ## Activation Precedence
 
-When a repo-local fork of this skill is installed, that fork is authoritative
-for that repo and supersedes any globally installed upstream `simple-changelogs`
-copy. Agent harnesses and skill loaders should deduplicate by the upstream
-identity in the provenance pin and activate only the closest matching fork.
+When a repo-local fork of this skill is discoverable, repository convention
+makes it authoritative for that repo. The provenance pin documents lineage; it
+does not activate the fork, suppress another copy, or prove that a runtime loader
+enforces precedence.
 
-If the harness cannot enforce that, add repo guidance that names the exact local
-fork skill path and tells agents not to apply the global upstream skill in the
-same task. Do not let the fork and upstream skill both classify, write, or
-verify changelog work for one repo action.
+When discovery leaves both copies active, repository instructions should name
+the exact local path and explicitly suppress the global upstream copy. Only one
+copy should classify, write, and verify a given repository action.
 
 ## Checking Drift
 
-From the upstream repo, `scripts/check-fork-sync.sh <fork-SKILL.md>` reads the
-fork's pinned sha and lists upstream skill commits and changed files since
-that pin. Exit `0` means current; exit `1` means there is something to review.
-Without the script, the equivalent is:
+The bundled checker works from any directory:
 
 ```bash
-git -C <upstream> log --oneline <pinned-sha>..HEAD -- skills/simple-changelogs
+/absolute/path/to/simple-changelogs/scripts/check-fork-sync.sh \
+  path/to/fork/SKILL.md /path/to/upstream origin/main
 ```
+
+The upstream repo and ref are optional when the bundled skill lives inside its
+upstream checkout. Without an explicit ref, the checker prefers the selected
+remote's symbolic default branch, then existing `origin/main`, `main`,
+`origin/master`, or `master` refs. It never substitutes the current feature
+branch for the upstream default.
+
+Exit `0` means current, `1` means the fork is behind on skill changes, `2` means
+the input or ref is invalid, and `3` means the pin has diverged from the selected
+upstream history. Divergence requires a manual history review; do not simply
+replace the pin.
+
+Use the bundled checker for status and changed-file selection so every runtime
+applies the same ref resolution and ancestry rules.
 
 ## Syncing
 

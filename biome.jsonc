@@ -1,0 +1,22 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+  "extends": ["ultracite/biome/core"],
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "files": {
+    "includes": ["!docs/superpowers"]
+  },
+  "linter": {
+    "domains": {
+      "test": "recommended"
+    },
+    "rules": {
+      "recommended": true
+    }
+  }
+}
