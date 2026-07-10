@@ -1,10 +1,12 @@
 import type { RunnerRequest, RunnerResponse } from "../lib/types.ts";
 import {
   type AdapterExecutionResult,
+  createReadOnlySkillSnapshot,
   loadAdapterPrompt,
   normalizeAdapterResponse,
   normalizeVendorFailure,
   parseRunnerResponse,
+  type ReadOnlySkillSnapshot,
   runAdapterEntrypoint,
   runVendorProcess,
   type VendorProcessSpec,
@@ -12,6 +14,19 @@ import {
 } from "./shared.ts";
 
 const RUNTIME_IDENTITY = "Claude Code";
+
+export const buildClaudeSandboxSettings = (request: RunnerRequest): string =>
+  JSON.stringify({
+    sandbox: {
+      allowUnsandboxedCommands: false,
+      enabled: true,
+      failIfUnavailable: true,
+      filesystem: {
+        allowWrite: [request.workspace],
+        denyWrite: [request.skillDirectory],
+      },
+    },
+  });
 
 export const buildClaudeCommand = (
   request: RunnerRequest,
@@ -22,12 +37,15 @@ export const buildClaudeCommand = (
   "--print",
   "--output-format",
   "json",
+  "--safe-mode",
+  "--no-session-persistence",
+  "--no-chrome",
   "--permission-mode",
   "acceptEdits",
   "--allowedTools",
   "Read,Edit,Write,Glob,Grep,Bash",
-  "--add-dir",
-  request.skillDirectory,
+  "--settings",
+  buildClaudeSandboxSettings(request),
   "--json-schema",
   responseSchema,
 ];
@@ -78,7 +96,7 @@ const failed = (
   ok: false,
 });
 
-export const runClaudeAdapter = async (
+const executeClaudeAdapter = async (
   request: RunnerRequest
 ): Promise<AdapterExecutionResult> => {
   let prompt: string;
@@ -137,6 +155,31 @@ export const runClaudeAdapter = async (
       logs,
       ok: false,
     };
+  }
+};
+
+export const runClaudeAdapter = async (
+  request: RunnerRequest
+): Promise<AdapterExecutionResult> => {
+  let snapshot: ReadOnlySkillSnapshot;
+  try {
+    snapshot = await createReadOnlySkillSnapshot(
+      request.skillDirectory,
+      request.workspace
+    );
+  } catch (error) {
+    return failed(
+      "INVALID_CONFIGURATION",
+      `Unable to isolate the skill directory: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  try {
+    return await executeClaudeAdapter({
+      ...request,
+      skillDirectory: snapshot.path,
+    });
+  } finally {
+    await snapshot.cleanup();
   }
 };
 

@@ -1,4 +1,14 @@
-import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import {
+  chmod,
+  cp,
+  lstat,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+} from "node:fs/promises";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { spawn, stdin } from "bun";
 import type { RunnerRequest, RunnerResponse } from "../lib/types.ts";
 import {
@@ -15,6 +25,11 @@ export interface VendorProcessSpec {
   cmd: string[];
   cwd: string;
   input: string;
+}
+
+export interface ReadOnlySkillSnapshot {
+  cleanup: () => Promise<void>;
+  path: string;
 }
 
 export type VendorProcessResult =
@@ -72,6 +87,98 @@ const errorMessage = (error: unknown): string => {
     return error.message;
   }
   return error === undefined ? "" : String(error);
+};
+
+const setReadOnly = async (root: string): Promise<void> => {
+  const entries = await readdir(root, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(root, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Skill snapshots may not contain symlinks: ${path}`);
+      }
+      if (entry.isDirectory()) {
+        await setReadOnly(path);
+        return;
+      }
+      await chmod(path, 0o444);
+    })
+  );
+  await chmod(root, 0o555);
+};
+
+const setWritable = async (root: string): Promise<void> => {
+  await chmod(root, 0o700).catch(() => undefined);
+  const entries = await readdir(root, { withFileTypes: true }).catch(
+    () => undefined
+  );
+  if (!entries) {
+    return;
+  }
+  await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(root, entry.name);
+      if (entry.isSymbolicLink()) {
+        await rm(path, { force: true });
+      } else if (entry.isDirectory()) {
+        await setWritable(path);
+      } else {
+        await chmod(path, 0o600).catch(() => undefined);
+      }
+    })
+  );
+};
+
+export const createReadOnlySkillSnapshot = async (
+  skillDirectory: string,
+  workspace: string
+): Promise<ReadOnlySkillSnapshot> => {
+  const [sourceStat, workspaceStat] = await Promise.all([
+    lstat(skillDirectory),
+    lstat(workspace),
+  ]);
+  if (sourceStat.isSymbolicLink() || !sourceStat.isDirectory()) {
+    throw new Error(
+      `Skill directory must be a real directory: ${skillDirectory}`
+    );
+  }
+  if (workspaceStat.isSymbolicLink() || !workspaceStat.isDirectory()) {
+    throw new Error(`Workspace must be a real directory: ${workspace}`);
+  }
+  const [source, canonicalWorkspace] = await Promise.all([
+    realpath(skillDirectory),
+    realpath(workspace),
+  ]);
+  const sourceToWorkspace = relative(source, canonicalWorkspace);
+  const workspaceToSource = relative(canonicalWorkspace, source);
+  const pathsOverlap = [sourceToWorkspace, workspaceToSource].some(
+    (path) =>
+      path === "" ||
+      (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`))
+  );
+  if (pathsOverlap) {
+    throw new Error(
+      "Skill directory and workspace must not contain each other"
+    );
+  }
+  const snapshot = join(
+    canonicalWorkspace,
+    `.simple-changelogs-skill-${randomUUID()}`
+  );
+  const cleanup = async (): Promise<void> => {
+    await setWritable(snapshot);
+    await rm(snapshot, { force: true, recursive: true });
+  };
+  try {
+    await cp(source, snapshot, { recursive: true });
+    await setReadOnly(snapshot);
+    return { cleanup, path: snapshot };
+  } catch (error) {
+    await cleanup();
+    throw new Error("Unable to create a read-only skill snapshot", {
+      cause: error,
+    });
+  }
 };
 
 const transcriptSection = (request: RunnerRequest): string => {
@@ -206,6 +313,7 @@ export const normalizeAdapterResponse = (
   };
   if (
     request.activationMode === "explicit" ||
+    response.status === "error" ||
     response.evaluationReport.nativeActivationEvidence
   ) {
     return normalized;

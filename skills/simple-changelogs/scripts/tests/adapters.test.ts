@@ -1,10 +1,19 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   buildClaudeCommand,
   buildClaudeInvocation,
+  buildClaudeSandboxSettings,
   extractClaudeFinalResponse,
 } from "../adapters/claude.ts";
 import {
@@ -13,6 +22,7 @@ import {
 } from "../adapters/codex.ts";
 import {
   buildAdapterPrompt,
+  createReadOnlySkillSnapshot,
   normalizeAdapterResponse,
   normalizeVendorFailure,
   runVendorProcess,
@@ -90,24 +100,39 @@ describe("vendor command builders", () => {
 
   test("builds the Claude Code 2.1.177 argument array", () => {
     const responseSchema = '{"type":"object"}';
+    const sandboxSettings = buildClaudeSandboxSettings(request);
 
     expect(buildClaudeCommand(request, responseSchema)).toEqual([
       "claude",
       "--print",
       "--output-format",
       "json",
+      "--safe-mode",
+      "--no-session-persistence",
+      "--no-chrome",
       "--permission-mode",
       "acceptEdits",
       "--allowedTools",
       "Read,Edit,Write,Glob,Grep,Bash",
-      "--add-dir",
-      request.skillDirectory,
+      "--settings",
+      sandboxSettings,
       "--json-schema",
       responseSchema,
     ]);
     expect(buildClaudeInvocation(request, responseSchema).cwd).toBe(
       request.workspace
     );
+    expect(JSON.parse(sandboxSettings)).toEqual({
+      sandbox: {
+        allowUnsandboxedCommands: false,
+        enabled: true,
+        failIfUnavailable: true,
+        filesystem: {
+          allowWrite: [request.workspace],
+          denyWrite: [request.skillDirectory],
+        },
+      },
+    });
   });
 });
 
@@ -203,6 +228,60 @@ describe("activation normalization", () => {
       code: "CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE",
       message: "Example Runtime did not provide a native activation trace",
     });
+  });
+
+  test("preserves real discover-mode runtime errors", () => {
+    const normalized = normalizeAdapterResponse(
+      {
+        ...request,
+        activationMode: "discover",
+        case: { ...request.case, activationMode: "discover", suite: "trigger" },
+      },
+      {
+        ...response,
+        diagnostics: [{ code: "MODEL_ERROR", message: "runtime failed" }],
+        status: "error",
+      },
+      "Example Runtime"
+    );
+
+    expect(normalized.status).toBe("error");
+    expect(normalized.diagnostics).toEqual([
+      { code: "MODEL_ERROR", message: "runtime failed" },
+    ]);
+  });
+});
+
+describe("Claude skill snapshot isolation", () => {
+  test("copies the skill under the workspace as read-only and cleans it", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "adapter-snapshot-"));
+    temporaryDirectories.push(directory);
+    const source = join(directory, "source-skill");
+    const workspace = join(directory, "workspace");
+    await Promise.all([
+      mkdir(join(source, "references"), { recursive: true }),
+      mkdir(workspace),
+    ]);
+    await Promise.all([
+      writeFile(join(source, "SKILL.md"), "# Source skill\n"),
+      writeFile(join(source, "references", "setup.md"), "# Setup\n"),
+    ]);
+
+    const snapshot = await createReadOnlySkillSnapshot(source, workspace);
+    const copiedSkill = join(snapshot.path, "SKILL.md");
+    try {
+      expect(snapshot.path.startsWith(`${await realpath(workspace)}/`)).toBe(
+        true
+      );
+      expect((await lstat(copiedSkill)).mode % 0o1000).toBe(0o444);
+      await expect(writeFile(copiedSkill, "mutated\n")).rejects.toThrow();
+      expect(await readFile(join(source, "SKILL.md"), "utf8")).toBe(
+        "# Source skill\n"
+      );
+    } finally {
+      await snapshot.cleanup();
+    }
+    await expect(lstat(snapshot.path)).rejects.toThrow();
   });
 });
 
