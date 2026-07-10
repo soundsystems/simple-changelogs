@@ -168,6 +168,10 @@ The Claude Code adapter has the equivalent
 does not declare provider model catalogs; valid IDs and aliases depend on the
 installed CLIs and authenticated accounts.
 
+The bundled Claude adapter copies the skill into each temporary fixture as a
+read-only snapshot, denies reads outside that fixture, and limits writes to the
+fixture while protecting the snapshot itself.
+
 Select a case with `--case <id>`, retain failed workspaces with
 `--keep-failures`, or emit CI-friendly output with `--format json`. Missing CLI
 authentication is a configuration error, not a failed skill behavior case.

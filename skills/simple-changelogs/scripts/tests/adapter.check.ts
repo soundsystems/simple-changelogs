@@ -47,7 +47,9 @@ const createRequest = (workspace: string, timeoutMs = 1000): RunnerRequest => ({
     tags: ["adapter"],
     turns: [
       {
-        assertions: [{ expected: "CHANGELOG_UPDATED", kind: "decision-code" }],
+        assertions: [
+          { expected: "CHANGELOG_UPDATED", kind: "report.decision" },
+        ],
         prompt: "Update the pending changelog.",
       },
     ],

@@ -14,9 +14,12 @@
 - Fork maintenance now ships with the skill and reports current, behind,
   invalid, and divergent provenance pins consistently.
 - A runnable, provider-neutral evaluation package now checks contracts and
-  isolated behavior through optional or third-party adapters.
+  isolated behavior through optional or third-party adapters, rejects
+  caller-supplied command execution, and constrains bundled model adapters to
+  their temporary fixtures.
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:31:35-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:31:39-05:00" -->
 
 ## 2026-07-08
 

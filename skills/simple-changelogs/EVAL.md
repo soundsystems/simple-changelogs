@@ -125,10 +125,12 @@ are:
 - `file.changed` and `file.unchanged`;
 - `text.match` and `text.notMatch`;
 - `json.path`;
-- `command.exit`;
 - `repo.state` and `git.changedPaths`;
 - `report.status`, `report.decision`, `report.authorization`,
   `report.versionMap`, and `report.verification`.
+
+Manifest assertions never execute caller-supplied commands. Git inspection and
+other subprocess checks use evaluator-owned argument arrays only.
 
 Paths are workspace-relative. Text expectations are regular expressions.
 `json.path` combines a relative file and JSON pointer with `#`. Command

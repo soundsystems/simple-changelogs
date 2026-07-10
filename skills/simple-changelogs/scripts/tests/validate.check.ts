@@ -21,7 +21,7 @@ const behaviorCase: EvalCase = {
   tags: ["setup"],
   turns: [
     {
-      assertions: [{ expected: "CHANGELOG_REQUIRED", kind: "decision-code" }],
+      assertions: [{ expected: "CHANGELOG_REQUIRED", kind: "report.decision" }],
       prompt: "Update the pending changelogs.",
     },
   ],
@@ -217,6 +217,43 @@ describe("manifest", () => {
           error.startsWith("$.cases[0].runtimeVendor")
         )
       ).toBe(true);
+    }
+  });
+
+  test("rejects unknown assertion kinds and kind-specific shape errors", () => {
+    const invalidAssertions = [
+      {
+        expected: { argv: ["sh", "-c", "touch /tmp/escaped"], exitCode: 0 },
+        kind: "command.exit",
+      },
+      { expected: true, kind: "file.changed" },
+      { expected: true, kind: "report.status" },
+      { expected: "lowercase", kind: "report.decision" },
+      {
+        expected: "completed",
+        kind: "report.status",
+        target: "CHANGELOG.md",
+      },
+    ];
+
+    for (const assertion of invalidAssertions) {
+      const result = validateManifest({
+        cases: [
+          {
+            ...behaviorCase,
+            turns: [{ assertions: [assertion], prompt: "Invalid assertion." }],
+          },
+        ],
+        manifestVersion: 1,
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(
+          result.errors.some((error) =>
+            error.startsWith("$.cases[0].turns[0].assertions[0]")
+          )
+        ).toBe(true);
+      }
     }
   });
 });

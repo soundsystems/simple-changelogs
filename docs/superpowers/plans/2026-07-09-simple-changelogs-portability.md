@@ -436,14 +436,15 @@ git commit -m "feat(eval): Add deterministic contract evaluator"
   `evaluateAssertions`, and `cleanupFixtureWorkspace`.
 - Supports assertion kinds for activation, adapter/report status, decision and
   authorization codes, paths, changed-path allowlists, text matching, Markdown
-  headings/items/order/signatures, JSON pointers/equality, shell-free command
-  exits, repository state, and stable normalized snapshots.
+  headings/items/order/signatures, JSON pointers/equality, repository state, and
+  stable normalized snapshots. Subprocesses remain evaluator-owned rather than
+  manifest-supplied.
 
 - [ ] **Step 1: Write failing fixture and assertion tests**
 
 Test fresh temp directories, copied dotfiles, initialized Git history, path
-traversal rejection, all assertion kinds, retained failed workspaces, and cleanup
-of successful workspaces.
+traversal rejection, all assertion kinds, rejection of manifest commands,
+retained failed workspaces, and cleanup of successful workspaces.
 
 - [ ] **Step 2: Run tests and observe RED**
 

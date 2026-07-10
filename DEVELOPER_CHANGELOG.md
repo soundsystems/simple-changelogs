@@ -49,10 +49,21 @@
     termination without weakening evaluator workspace ownership checks.
   - Corrected initial-setup coverage to require a separate historical-audit
     answer before policy or changelog writes.
+- Closed final security and manifest-validation review findings:
+  - Removed externally supplied `command.exit` assertions while retaining only
+    evaluator-owned subprocess argument arrays for Git and fixture setup.
+  - Replaced open assertion records with a closed kind union and matching
+    per-kind target and expected-value validation in TypeScript and JSON Schema.
+  - Denied Claude sandbox reads from `/`, re-allowed only the fixture and its
+    read-only skill snapshot, and removed native read tools so Bash reads remain
+    under OS sandbox enforcement.
+  - Verified with an outside sentinel that the adapter can read the fixture but
+    receives `Operation not permitted` for a file outside it.
 <!-- Agent: GPT-5 Codex | 07/09/2026 3:39 PM CDT -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:31:35-05:00" -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:05:59-05:00" -->
+<!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:31:39-05:00" -->
 
 ## 2026-07-08
 

@@ -42,7 +42,9 @@ const request: RunnerRequest = {
     tags: ["adapters"],
     turns: [
       {
-        assertions: [{ expected: "CHANGELOG_UPDATED", kind: "decision-code" }],
+        assertions: [
+          { expected: "CHANGELOG_UPDATED", kind: "report.decision" },
+        ],
         prompt: "Update the pending changelog.",
       },
     ],
@@ -141,9 +143,9 @@ describe("vendor command builders", () => {
       "--permission-mode",
       "dontAsk",
       "--tools",
-      "Read,Glob,Grep,Edit,Write,Bash",
+      "Edit,Write,Bash",
       "--allowedTools",
-      "Read,Glob,Grep,Edit,Write,Bash",
+      "Edit,Write,Bash",
       "--settings",
       sandboxSettings,
       "--json-schema",
@@ -163,8 +165,10 @@ describe("vendor command builders", () => {
     expect(buildClaudeInvocation(request, responseSchema).cwd).toBe(
       request.workspace
     );
-    expect(buildClaudeCommand(request, responseSchema)).toContain(
-      "Read,Glob,Grep,Edit,Write,Bash"
+    const command = buildClaudeCommand(request, responseSchema);
+    expect(command[command.indexOf("--tools") + 1]).toBe("Edit,Write,Bash");
+    expect(command[command.indexOf("--allowedTools") + 1]).toBe(
+      "Edit,Write,Bash"
     );
     expect(JSON.parse(sandboxSettings)).toEqual({
       sandbox: {
@@ -172,7 +176,9 @@ describe("vendor command builders", () => {
         enabled: true,
         failIfUnavailable: true,
         filesystem: {
+          allowRead: [request.workspace, request.skillDirectory],
           allowWrite: [request.workspace],
+          denyRead: ["/"],
           denyWrite: [request.skillDirectory],
         },
       },

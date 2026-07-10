@@ -71,14 +71,6 @@ export interface CleanupOptions {
   keepFailures: boolean;
 }
 
-interface CommandExpectation {
-  argv: string[];
-  exitCode: number;
-  stderrMatches?: string;
-  stdoutMatches?: string;
-  timeoutMs?: number;
-}
-
 interface ChangedPathsExpectation {
   allowed?: string[];
   forbidden?: string[];
@@ -614,45 +606,6 @@ const repoExpectation = (
   };
 };
 
-const commandExpectation = (
-  value: JsonValue
-): CommandExpectation | undefined => {
-  if (
-    !isRecordWithOnlyKeys(value, [
-      "argv",
-      "exitCode",
-      "stderrMatches",
-      "stdoutMatches",
-      "timeoutMs",
-    ])
-  ) {
-    return;
-  }
-  const { argv, exitCode, stderrMatches, stdoutMatches, timeoutMs } = value;
-  if (
-    !isStringArray(argv) ||
-    argv.length === 0 ||
-    typeof exitCode !== "number" ||
-    !Number.isSafeInteger(exitCode) ||
-    (stderrMatches !== undefined && typeof stderrMatches !== "string") ||
-    (stdoutMatches !== undefined && typeof stdoutMatches !== "string") ||
-    (timeoutMs !== undefined &&
-      (!Number.isSafeInteger(timeoutMs) ||
-        typeof timeoutMs !== "number" ||
-        timeoutMs < 1 ||
-        timeoutMs > MAX_COMMAND_TIMEOUT_MS))
-  ) {
-    return;
-  }
-  return {
-    argv,
-    exitCode,
-    ...(stderrMatches === undefined ? {} : { stderrMatches }),
-    ...(stdoutMatches === undefined ? {} : { stdoutMatches }),
-    ...(timeoutMs === undefined ? {} : { timeoutMs }),
-  };
-};
-
 interface AuthorizationExpectation {
   code: string;
   source?: string;
@@ -1044,45 +997,6 @@ const evaluateChangedPathsAssertion = async (
     : fail(assertion, `Changed paths did not match: ${paths.join(", ")}`);
 };
 
-const evaluateCommandAssertion = async (
-  assertion: EvalAssertion,
-  workspace: string
-): Promise<AssertionResult> => {
-  const expected = commandExpectation(assertion.expected);
-  if (!expected) {
-    return fail(assertion, "command.exit expected value is invalid");
-  }
-  try {
-    const result = await runCommand(expected.argv, workspace, {
-      timeoutMs: expected.timeoutMs,
-    });
-    if (result.timedOut) {
-      return fail(
-        assertion,
-        `Command timed out after ${expected.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS} ms`
-      );
-    }
-    const exitMatches = result.exitCode === expected.exitCode;
-    const stdoutMatches =
-      expected.stdoutMatches === undefined ||
-      matches(result.stdout, expected.stdoutMatches);
-    const stderrMatches =
-      expected.stderrMatches === undefined ||
-      matches(result.stderr, expected.stderrMatches);
-    return exitMatches && stdoutMatches && stderrMatches
-      ? pass(assertion, "Command result matched")
-      : fail(
-          assertion,
-          `Command result did not match (exit ${result.exitCode})`
-        );
-  } catch (error) {
-    return fail(
-      assertion,
-      `Command execution failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-};
-
 const evaluateAssertion = (
   assertion: EvalAssertion,
   context: AssertionContext
@@ -1119,9 +1033,6 @@ const evaluateAssertion = (
   }
   if (assertion.kind === "git.changedPaths") {
     return evaluateChangedPathsAssertion(assertion, context.workspace);
-  }
-  if (assertion.kind === "command.exit") {
-    return evaluateCommandAssertion(assertion, context.workspace);
   }
   return fail(assertion, `Unsupported assertion kind: ${assertion.kind}`);
 };

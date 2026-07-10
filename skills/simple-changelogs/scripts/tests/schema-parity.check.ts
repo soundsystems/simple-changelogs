@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { file } from "bun";
 import {
   ACTIVATION_MODES,
+  ASSERTION_KINDS,
   AUTHORIZATION_SOURCES,
   AUTHORIZATION_STATUSES,
   BACKFILL_STATUSES,
@@ -24,6 +25,15 @@ import {
 type JsonRecord = Record<string, unknown>;
 
 const OUTSIDE_ENUM = "outside-contract";
+const compareText = (left: string, right: string): number => {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+};
 const schemaUrl = (name: string): URL =>
   new URL(`../../evals/schemas/${name}.schema.json`, import.meta.url);
 
@@ -53,6 +63,29 @@ const enumAt = (value: unknown, path: string): string[] => {
     throw new Error(`Schema path ${path} is not a string enum`);
   }
   return candidate;
+};
+
+const assertionKindsAt = (value: unknown): string[] => {
+  const variants = valueAt(value, "$defs.assertion.oneOf");
+  if (!Array.isArray(variants)) {
+    throw new Error("Assertion schema does not contain oneOf variants");
+  }
+  return variants.flatMap((variant) => {
+    const kind = valueAt(variant, "properties.kind");
+    if (!isRecord(kind)) {
+      throw new Error("Assertion variant kind is not an object");
+    }
+    if (typeof kind.const === "string") {
+      return [kind.const];
+    }
+    if (
+      Array.isArray(kind.enum) &&
+      kind.enum.every((item) => typeof item === "string")
+    ) {
+      return kind.enum as string[];
+    }
+    throw new Error("Assertion variant kind is not closed");
+  });
 };
 
 const findOpenFixedObjects = (
@@ -90,7 +123,7 @@ const evalCase = (activationMode: string, suite: string) => ({
   tags: ["contracts"],
   turns: [
     {
-      assertions: [{ expected: true, kind: "report-status" }],
+      assertions: [{ expected: "completed", kind: "report.status" }],
       prompt: "Check the portable contract.",
     },
   ],
@@ -214,6 +247,9 @@ describe("schema parity", () => {
     for (const [schema, path, expected] of enums) {
       expect(enumAt(schema, path)).toEqual([...expected]);
     }
+    expect(assertionKindsAt(manifestSchema).sort(compareText)).toEqual(
+      [...ASSERTION_KINDS].sort(compareText)
+    );
   });
 
   test("keeps validator versions and enum boundaries aligned", () => {

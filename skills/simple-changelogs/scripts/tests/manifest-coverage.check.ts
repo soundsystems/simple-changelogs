@@ -37,7 +37,6 @@ const REQUIRED_COVERAGE_TAGS = new Set([
 
 const ASSERTION_KINDS = new Set([
   "activation",
-  "command.exit",
   "file.changed",
   "file.unchanged",
   "git.changedPaths",
