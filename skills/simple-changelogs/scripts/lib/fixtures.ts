@@ -310,6 +310,7 @@ const createGitEnvironment = (
   for (const key of Object.keys(gitEnv)) {
     if (
       key === "GIT_CONFIG_COUNT" ||
+      key === "GIT_CONFIG_PARAMETERS" ||
       key.startsWith("GIT_CONFIG_KEY_") ||
       key.startsWith("GIT_CONFIG_VALUE_") ||
       [

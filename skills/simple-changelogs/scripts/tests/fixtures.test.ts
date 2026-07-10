@@ -191,7 +191,9 @@ describe("fixture workspaces", () => {
       `[commit]\n\tgpgSign = true\n[core]\n\thooksPath = ${hooks}\n[init]\n\ttemplateDir = ${join(hostileRoot, "template")}\n`
     );
     const previousGlobalConfig = process.env.GIT_CONFIG_GLOBAL;
+    const previousConfigParameters = process.env.GIT_CONFIG_PARAMETERS;
     process.env.GIT_CONFIG_GLOBAL = hostileConfig;
+    process.env.GIT_CONFIG_PARAMETERS = "malformed-host-configuration";
     try {
       await expect(initializeFixtureGit(workspace)).resolves.toMatch(
         GIT_SHA_PATTERN
@@ -201,6 +203,11 @@ describe("fixture workspaces", () => {
         delete process.env.GIT_CONFIG_GLOBAL;
       } else {
         process.env.GIT_CONFIG_GLOBAL = previousGlobalConfig;
+      }
+      if (previousConfigParameters === undefined) {
+        delete process.env.GIT_CONFIG_PARAMETERS;
+      } else {
+        process.env.GIT_CONFIG_PARAMETERS = previousConfigParameters;
       }
     }
   });
