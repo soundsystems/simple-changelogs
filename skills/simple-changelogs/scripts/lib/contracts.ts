@@ -584,6 +584,23 @@ const isVendorAdapterPath = (path: string): boolean =>
   path.startsWith("scripts/adapters/") ||
   path === "scripts/tests/adapters.check.ts";
 
+// Skill loaders may scan installed directories recursively, so the package
+// must expose exactly one discoverable SKILL.md: the root skill itself.
+// Evaluation fixtures store theirs as SKILL.fixture.md instead.
+const checkNestedSkillFiles = (context: ContractContext): ContractFinding[] =>
+  Array.from(context.entries.values())
+    .filter(
+      (entry) =>
+        entry.path !== "SKILL.md" && basename(entry.path) === "SKILL.md"
+    )
+    .map((entry) =>
+      finding(
+        "NESTED_SKILL_FILE",
+        entry.path,
+        `Installed packages must not contain a nested discoverable SKILL.md; rename fixture copies to SKILL.fixture.md: ${entry.path}`
+      )
+    );
+
 const checkUnreadableCoreFiles = (
   context: ContractContext
 ): ContractFinding[] =>
@@ -737,6 +754,7 @@ export const evaluateContracts = async (
     checkGuidanceCoverage(context),
     checkProseDuplication(context),
     checkInstructionBoundaries(context),
+    checkNestedSkillFiles(context),
     checkUnreadableCoreFiles(context),
     checkVendorAssumptions(context),
     checkShellSyntax(

@@ -1525,6 +1525,46 @@
           ]
         }
       ]
+    },
+    {
+      "id": "behavior-single-changelog-policy",
+      "suite": "behavior",
+      "fixture": "single-changelog",
+      "tags": ["setup", "signatures", "wording"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff adds CSV export to saved reports. Update the changelog for this\npending work.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "CSV|[Ee]xport"
+            },
+            {
+              "kind": "path.absent",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs.json",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+          ]
+        }
+      ]
     }
   ]
 }

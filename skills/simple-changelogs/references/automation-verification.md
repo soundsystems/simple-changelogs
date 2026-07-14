@@ -20,7 +20,8 @@ encode an uncertain or independently versioned relationship.
 
 - `.simple-changelogs.json` validates against the bundled schema.
 - Its recorded values match an actual user disposition or documented policy.
-- The repository maintains both customer and developer histories after adoption.
+- The repository maintains both customer and developer histories after
+  adoption, unless policy records `developerChangelog: "optional"`.
 - Guidance state lives in the repository and no packaged skill files were used
   as per-repository storage.
 - Unanswered prompts did not produce an invented status.
@@ -90,9 +91,12 @@ encode an uncertain or independently versioned relationship.
 
 ## Signatures
 
-- Each contiguous raw changelog edit has the canonical nearby HTML comment.
+- Each contiguous raw changelog edit has the canonical nearby HTML comment when
+  policy enables signatures.
 - Runtime identity and timestamp were copied exactly or recorded as
   `unreported`.
+- No comment was written when both values would be `unreported` or when policy
+  records `signatures: "none"`.
 - HTML attribute characters are escaped.
 - Existing signatures remain intact and generated customer copy does not render
   them.

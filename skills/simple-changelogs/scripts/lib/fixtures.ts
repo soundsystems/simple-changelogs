@@ -7,6 +7,7 @@ import {
   readdir,
   readFile,
   realpath,
+  rename,
   rm,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -15,6 +16,8 @@ import { spawn } from "bun";
 import type { EvalAssertion, JsonValue, RunnerResponse } from "./types.ts";
 
 const FIXTURE_PREFIX = "simple-changelogs-eval-";
+const FIXTURE_SKILL_FILENAME = "SKILL.fixture.md";
+const WORKSPACE_SKILL_FILENAME = "SKILL.md";
 const PATH_SEPARATOR_PATTERN = /[\\/]/u;
 const ARRAY_INDEX_PATTERN = /^(?:0|[1-9]\d*)$/u;
 const DETERMINISTIC_GIT_DATE = "2000-01-01T00:00:00+00:00";
@@ -123,6 +126,25 @@ const assertNoSymlinks = async (root: string): Promise<void> => {
       }
       if (entry.isDirectory()) {
         await assertNoSymlinks(path);
+      }
+    })
+  );
+};
+
+// Bundled fixtures store skill files as SKILL.fixture.md so installed
+// packages never expose extra discoverable SKILL.md entries to skill loaders.
+// Materialized workspaces restore the canonical filename the cases assert on.
+const restoreFixtureSkillFiles = async (root: string): Promise<void> => {
+  const entries = await readdir(root, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(root, entry.name);
+      if (entry.isDirectory() && !entry.isSymbolicLink()) {
+        await restoreFixtureSkillFiles(path);
+        return;
+      }
+      if (entry.isFile() && entry.name === FIXTURE_SKILL_FILENAME) {
+        await rename(path, join(root, WORKSPACE_SKILL_FILENAME));
       }
     })
   );
@@ -383,6 +405,7 @@ export const createFixtureWorkspace = async (
   const workspace = await mkdtemp(join(tmpdir(), FIXTURE_PREFIX));
   try {
     await cp(source, workspace, { recursive: true });
+    await restoreFixtureSkillFiles(workspace);
     const workspaceStat = await lstat(workspace);
     ownedWorkspaces.set(workspace, {
       device: workspaceStat.dev,

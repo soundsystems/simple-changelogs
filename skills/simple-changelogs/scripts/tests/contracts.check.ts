@@ -186,8 +186,8 @@ describe("evaluateContracts", () => {
 {
   "schemaVersion": 1,
   "guidance": { "version": 2, "backfillStatus": "invented" },
-  "developerChangelog": "optional",
-  "signatures": "none",
+  "developerChangelog": "forbidden",
+  "signatures": "human-form",
   "newReleaseNoteSurfaces": "always"
 }
 \`\`\`
@@ -197,6 +197,28 @@ describe("evaluateContracts", () => {
     expect(findingCodes(await evaluateContracts(skillDirectory))).toContain(
       "POLICY_EXAMPLE_INVALID"
     );
+  });
+
+  test("rejects nested discoverable SKILL.md files", async () => {
+    const skillDirectory = await createValidSkill();
+    await writeFixtureFile(
+      skillDirectory,
+      "evals/fixtures/decoy-repo/SKILL.md",
+      "---\nname: tiny-skill\ndescription: Decoy fixture skill.\n---\n"
+    );
+    await writeFixtureFile(
+      skillDirectory,
+      "evals/fixtures/decoy-repo/nested/SKILL.fixture.md",
+      "---\nname: tiny-skill\ndescription: Stored fixture skill.\n---\n"
+    );
+
+    const findings = await evaluateContracts(skillDirectory);
+    const nested = findings.filter(
+      (finding) => finding.code === "NESTED_SKILL_FILE"
+    );
+
+    expect(nested).toHaveLength(1);
+    expect(nested[0]?.path).toBe("evals/fixtures/decoy-repo/SKILL.md");
   });
 
   test("requires an update entry for every current guidance version", async () => {

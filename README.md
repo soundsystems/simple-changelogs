@@ -76,6 +76,12 @@ files.
 established changelog workflow, a new product-facing release-note surface needs
 an explicit current request or documented repository permission.
 
+`developerChangelog` may be `required` (the default) or `optional` for
+repositories that keep a single customer changelog and preserve technical
+context in commit or merge-request descriptions. `signatures` may be
+`agent-and-timestamp` (the default) or `none` to keep attribution comments out
+of the raw Markdown entirely.
+
 ## Manual Install
 
 Copy the entire `skills/simple-changelogs/` directory. `SKILL.md` alone is not
@@ -222,7 +228,9 @@ no changelog entry.
 - Correct SemVer language: `0.x` is initial development, while prerelease means
   a suffix such as `1.0.0-beta.1`.
 - Machine-readable identity and timestamp comments as an informational audit
-  trail, without claiming cryptographic authorship.
+  trail, without claiming cryptographic authorship. Repositories can disable
+  them with `signatures: "none"`, and a comment is never written when neither
+  the identity nor the timestamp is actually available.
 
 ## Forking For Your Project
 

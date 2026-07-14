@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- Hardened installed-package skill discovery:
+  - Renamed evaluation-fixture skill files to `SKILL.fixture.md`; the fixture
+    harness restores the canonical `SKILL.md` name inside each temporary
+    workspace so case assertions are unchanged.
+  - Added the `NESTED_SKILL_FILE` contract check so a nested discoverable
+    `SKILL.md` can never ship in the package again.
+- Widened the repository-policy schema from const placeholders to real enums:
+  - `developerChangelog` accepts `required` or `optional`; `signatures` accepts
+    `agent-and-timestamp` or `none`. Existing policy files stay valid because
+    the previous const values remain in each enum.
+  - Updated the runtime validator, TypeScript types, schema-parity tests, and
+    the setup reference, and added the `single-changelog` fixture plus the
+    `behavior-single-changelog-policy` case covering both new values.
+- Made fully-unreported signatures illegal prospectively: when neither runtime
+  identity nor a trustworthy timestamp is available, the signature comment is
+  omitted instead of written as placeholders.
+- Single-homed SemVer terminology in `references/version-decisions.md`;
+  `references/entry-classification.md` now cross-references it instead of
+  paraphrasing, removing a reference-to-reference drift risk the SKILL.md-only
+  duplication contract cannot see.
+<!-- simple-changelogs-signature agent="Claude Fable 5" at="2026-07-14T08:59:29-05:00" -->
+
 - Added an optional Hermes Agent evaluation adapter:
   - Uses Hermes' quiet one-shot interface while validating the returned JSON
     through the same provider-neutral response contract as other adapters.
@@ -30,7 +52,7 @@
     runner responses, plus runtime validators and parity tests.
   - Added a shell-free adapter runner with timeouts, process-tree termination,
     JSON framing, normalized configuration errors, and isolated Git fixtures.
-  - Added 45 canonical trigger and behavior cases with multi-turn assertions for
+  - Added 46 canonical trigger and behavior cases with multi-turn assertions for
     setup, backfills, classification, authorization, release lifecycle, fork
     precedence, and skill-maintenance boundaries.
   - Added optional sandboxed Codex and Claude Code CLI adapters while keeping

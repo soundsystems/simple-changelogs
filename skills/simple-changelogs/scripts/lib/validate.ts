@@ -6,6 +6,7 @@ import {
   AUTHORIZATION_SOURCES,
   AUTHORIZATION_STATUSES,
   BACKFILL_STATUSES,
+  DEVELOPER_CHANGELOG_POLICIES,
   EVAL_SUITES,
   type EvalManifest,
   MANIFEST_VERSION,
@@ -15,6 +16,7 @@ import {
   RUNNER_STATUSES,
   type RunnerRequest,
   type RunnerResponse,
+  SIGNATURE_POLICIES,
   SURFACE_POLICIES,
   type ValidationResult,
   VERIFICATION_STATUSES,
@@ -340,14 +342,14 @@ const evalCase = objectOf({
 });
 
 const repoPolicy = objectOf({
-  developerChangelog: literal("required"),
+  developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
   guidance: objectOf({
     backfillStatus: enumOf(BACKFILL_STATUSES),
     version: integer(1),
   }),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
   schemaVersion: literal(1),
-  signatures: literal("agent-and-timestamp"),
+  signatures: enumOf(SIGNATURE_POLICIES),
 });
 
 const manifest = objectOf({
