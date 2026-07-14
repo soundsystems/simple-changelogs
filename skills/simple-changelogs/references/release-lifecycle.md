@@ -67,6 +67,9 @@ Before pushing, merging, publishing, or deploying with release intent:
 - Apply initial-development and pre-release hot-fix omission rules from
   `references/entry-classification.md` before adding or keeping any user-facing
   entry.
+- When the canonical version indicates `1.0.0`, a later major, or a next-major
+  prerelease, apply `references/major-releases.md` before finalizing. A branch
+  name or prerelease merge is not sufficient evidence of a stable major.
 
 ## Pull or Merge Request Reconciliation
 

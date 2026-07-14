@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer or developer changelogs, release notes, "What's New" content, store notes, release metadata, version fields, or explicit changelog decisions during push, merge, release, or deploy preparation.
+description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer or developer changelogs, release notes, "What's New" content, store notes, release metadata, version fields, or explicit changelog decisions during push, merge, release, or deploy preparation, including major releases (1.0, 2.0, GA) and alpha, beta, or RC prerelease trains.
 ---
 
 # Simple Changelogs
@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 2
+Current guidance version: 3
 
 ## Setup Checkpoint
 
@@ -28,7 +28,7 @@ repository root.
   `declined`.
 - When the request is read-only, answer without writing policy or changelog
   files. Offer setup as a possible next action.
-- When recorded guidance is older than version 2, read
+- When recorded guidance is older than version 3, read
   `references/guidance-updates.md` and follow its one-time disposition flow.
 
 Repository instructions take precedence when they establish a stricter scope,
@@ -46,6 +46,7 @@ Read only the references needed for the current branch of work:
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
+| `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Existing release-note sync or authorized product surfaces | `references/release-note-surfaces.md` |
 | Final checks and repository-native automation | `references/automation-verification.md` |
 | Fork provenance, selection convention, or upstream drift | `references/fork-maintenance.md` |

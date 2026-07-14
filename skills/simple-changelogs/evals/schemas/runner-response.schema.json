@@ -35,7 +35,10 @@
       "additionalProperties": false,
       "required": ["code", "status", "source"],
       "properties": {
-        "code": { "$ref": "#/$defs/uppercaseCode" },
+        "code": {
+          "$ref": "#/$defs/uppercaseCode",
+          "description": "Canonical authorization codes: GUIDANCE_BACKFILL, NEW_RELEASE_NOTE_SURFACE, RELEASED_HISTORY_REWRITE. Coin a new uppercase code only for an authority they do not cover."
+        },
         "status": {
           "enum": ["granted", "denied", "required", "not-applicable"]
         },
@@ -67,7 +70,10 @@
       "additionalProperties": false,
       "required": ["code", "status"],
       "properties": {
-        "code": { "$ref": "#/$defs/uppercaseCode" },
+        "code": {
+          "$ref": "#/$defs/uppercaseCode",
+          "description": "Canonical verification codes: BACKFILL_AUDIT, RELEASE_NOTES_SYNC, VERSION_CONSISTENCY. Coin a new uppercase code only for a check they do not cover."
+        },
         "status": { "enum": ["passed", "failed", "not-run"] },
         "detail": { "type": "string" }
       }
@@ -96,7 +102,10 @@
         "verificationResults"
       ],
       "properties": {
-        "decisionCodes": { "$ref": "#/$defs/codeArray" },
+        "decisionCodes": {
+          "$ref": "#/$defs/codeArray",
+          "description": "Codes for the decisions made this turn. Use these canonical codes when they apply, and coin a new uppercase code only for a decision they do not cover: BACKFILL_COMPLETED, CUSTOMER_ENTRY_ADDED, CUSTOMER_ENTRY_OMITTED, DEVELOPER_ENTRY_ADDED, DEVELOPER_ENTRY_SUPERSEDED, FEATURE_GROUPED, FEATURE_NAMED, FORK_SYNCED, GUIDANCE_BACKFILL_COMPLETED, GUIDANCE_BACKFILL_REQUIRED, INITIAL_DEVELOPMENT_FIX_OMITTED, INITIAL_SETUP_REQUIRED, INTERNAL_SURFACE_CREATED, LOCAL_FORK_SELECTED, MAJOR_RELEASE_EXPERIENCE_CREATED, MAJOR_RELEASE_FINALIZED, MOBILE_SURFACE_CREATED, MODAL_DEPTH_REDUCED, MODAL_SEQUENCING_UPDATED, POLICY_NOTE_TERSE, PRERELEASE_FINALIZED, PUBLIC_DETAIL_REDACTED, PUBLIC_FIX_ADDED, RELEASE_BATCH_FINALIZED, RELEASE_FINALIZED, SIGNATURE_ADDED, SKILL_REFACTORED, STABLE_MAJOR_NOT_FINALIZED, STORE_NOTES_UPDATED, SURFACE_AUTHORIZATION_REQUIRED, SURFACE_CREATED, UNRELEASED_RETAINED, VERSION_SYNCED."
+        },
         "reasonCodes": { "$ref": "#/$defs/codeArray" },
         "authorizationRecords": {
           "type": "array",

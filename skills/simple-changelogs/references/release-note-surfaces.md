@@ -121,14 +121,14 @@ authority exists and no reachable public archive serves the same audience, the
 full-history destination should use the canonical source and the summary should
 offer one clear link to it.
 
-For a major release summary:
+Use `references/major-releases.md` to select, order, and synthesize the
+major-release outcomes. The compact surface summary additionally:
 
-- lead with the release's main outcomes;
-- keep highlights scannable and feature-led;
-- explain where users find important capabilities;
-- use technical names only when they are public product, API, CLI, SDK, or
+- keeps only the highlights a returning user can scan in one sitting;
+- explains where users find important capabilities;
+- uses technical names only when they are public product, API, CLI, SDK, or
   integration concepts;
-- provide one unambiguous full-history action.
+- keeps its single full-history action unambiguous.
 
 Avoid repeating an identical archive link inline and in the footer. Separate
 links should serve distinct purposes.

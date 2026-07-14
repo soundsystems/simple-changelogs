@@ -17,8 +17,11 @@ const RECORDED_DISPOSITION_PATTERN = /once a\s+disposition is recorded/;
 const FIXTURE_IDS = new Set([
   "dual-changelog",
   "forked-skill",
+  "initial-major",
   "minimal-git",
   "mobile-monorepo",
+  "next-major",
+  "python-prerelease",
   "release-repo",
   "routed-app",
   "single-changelog",
@@ -29,6 +32,7 @@ const REQUIRED_COVERAGE_TAGS = new Set([
   "backfill",
   "forks",
   "lifecycle",
+  "major-releases",
   "setup",
   "signatures",
   "surfaces",
@@ -59,6 +63,7 @@ const TRIGGER_CASE_IDS = new Set([
   "trigger-positive-changelog-update",
   "trigger-positive-copy-classification",
   "trigger-positive-docs-release",
+  "trigger-positive-major-release",
   "trigger-positive-migration-classification",
   "trigger-positive-release-finalization",
   "trigger-positive-release-note-surface",
@@ -83,6 +88,8 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-hidden-whats-new-surface",
   "behavior-internal-admin-developer-release-notes",
   "behavior-internal-release-note-surface",
+  "behavior-initial-major-synthesis",
+  "behavior-later-major-transition",
   "behavior-local-fork-precedence",
   "behavior-major-feature-launch",
   "behavior-major-release-modal-changelog-route",
@@ -92,9 +99,11 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-modal-depth-budget",
   "behavior-modal-sequencing-eligibility",
   "behavior-new-whats-new-surface",
+  "behavior-next-major-branch-prerelease",
   "behavior-non-release-pr-prep",
   "behavior-one-time-guidance-backfill-notice",
   "behavior-post-1-0-public-fix",
+  "behavior-pep440-major-prerelease",
   "behavior-pre-1-0-hot-fix",
   "behavior-raw-changelog-signature",
   "behavior-release-bearing-branch",
@@ -164,8 +173,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(46);
-    expect(new Set(ids).size).toBe(46);
+    expect(ids).toHaveLength(51);
+    expect(new Set(ids).size).toBe(51);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -348,6 +357,105 @@ describe("canonical evaluation manifest", () => {
         })
       ).toBe(true);
     }
+  });
+
+  test("documents every asserted report code in the model-visible response schema", async () => {
+    const manifest = await loadManifest();
+    const schema = await readFile(
+      join(SKILL_ROOT, "evals", "schemas", "runner-response.schema.json"),
+      "utf8"
+    );
+    const codeOf = (expected: JsonValue): string =>
+      typeof expected === "string"
+        ? expected
+        : ((expected as { code?: string }).code ?? "");
+    const reportKinds = new Set([
+      "report.decision",
+      "report.authorization",
+      "report.verification",
+    ]);
+
+    for (const item of manifest.cases) {
+      for (const turn of item.turns) {
+        for (const assertion of turn.assertions) {
+          if (!reportKinds.has(assertion.kind)) {
+            continue;
+          }
+          const code = codeOf(assertion.expected);
+          expect(code).not.toBe("");
+          expect(schema).toContain(code);
+        }
+      }
+    }
+  });
+
+  test("pins stable-major synthesis and prerelease boundaries", async () => {
+    const manifest = await loadManifest();
+    const initialMajor = caseById(manifest, "behavior-initial-major-synthesis");
+    expect(
+      hasAssertion(
+        initialMajor,
+        0,
+        "json.path",
+        "1.0.0",
+        "package.json#/version"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        initialMajor,
+        0,
+        "text.match",
+        "[Aa]ccount recovery",
+        "release-notes.json"
+      )
+    ).toBe(true);
+
+    const laterMajor = caseById(manifest, "behavior-later-major-transition");
+    expect(
+      hasAssertion(
+        laterMajor,
+        0,
+        "text.match",
+        "## 2\\.0\\.0-beta\\.2",
+        "CHANGELOG.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        laterMajor,
+        0,
+        "text.notMatch",
+        "[Aa]ccount recovery|[Ss]cheduled report",
+        "release-notes.json"
+      )
+    ).toBe(true);
+
+    const branchMerge = caseById(
+      manifest,
+      "behavior-next-major-branch-prerelease"
+    );
+    for (const path of [
+      "CHANGELOG.md",
+      "DEVELOPER_CHANGELOG.md",
+      "package.json",
+      "release-notes.json",
+    ]) {
+      expect(hasAssertion(branchMerge, 0, "file.unchanged", true, path)).toBe(
+        true
+      );
+    }
+
+    const pep440 = caseById(manifest, "behavior-pep440-major-prerelease");
+    expect(
+      hasAssertion(
+        pep440,
+        0,
+        "text.notMatch",
+        "## 2\\.0(?:\\.0)?(?:\\s|-)",
+        "CHANGELOG.md"
+      )
+    ).toBe(true);
   });
 
   test("keeps recorded single-changelog policy choices authoritative", async () => {
