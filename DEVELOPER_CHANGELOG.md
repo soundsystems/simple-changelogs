@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Added the `references/major-releases.md` reference and Guidance 3:
+  - Routed stable-major and prerelease work to it from the SKILL.md router,
+    release lifecycle, version decisions, and release-note surfaces, keeping
+    boundary detection and synthesis single-homed.
+  - Added the `initial-major`, `next-major`, and `python-prerelease` fixtures
+    plus five cases: `1.0.0` synthesis, `2.0.0` transition, an integration-
+    branch merge that must change nothing, a PEP 440 alpha tag, and a
+    discover-mode major-release trigger.
+  - Bumped recorded fixture policies to guidance version 3; the
+    `skill-package` fixture intentionally stays at version 1 for the upgrade
+    prompt case.
+- Documented the canonical report-code vocabulary in the response schema's
+  model-visible descriptions and added a coverage test so every decision,
+  authorization, and verification code asserted in `evals/cases.json` stays
+  documented there.
+- Tightened major-release case assertions: `1.0.0` synthesis now requires the
+  developer history heading, and the `2.0.0` transition now requires the empty
+  `Unreleased` heading to be removed.
+<!-- simple-changelogs-signature agent="Claude Fable 5" at="2026-07-14T14:12:57-05:00" -->
+
 - Hardened installed-package skill discovery:
   - Renamed evaluation-fixture skill files to `SKILL.fixture.md`; the fixture
     harness restores the canonical `SKILL.md` name inside each temporary
@@ -52,7 +72,7 @@
     runner responses, plus runtime validators and parity tests.
   - Added a shell-free adapter runner with timeouts, process-tree termination,
     JSON framing, normalized configuration errors, and isolated Git fixtures.
-  - Added 46 canonical trigger and behavior cases with multi-turn assertions for
+  - Added 51 canonical trigger and behavior cases with multi-turn assertions for
     setup, backfills, classification, authorization, release lifecycle, fork
     precedence, and skill-maintenance boundaries.
   - Added optional sandboxed Codex and Claude Code CLI adapters while keeping

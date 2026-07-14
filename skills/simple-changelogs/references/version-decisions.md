@@ -60,6 +60,9 @@ During initial development:
   `references/entry-classification.md` when deciding which `0.x` outcomes get
   customer notes.
 
+Before finalizing `1.0.0`, a later stable major, or a next-major prerelease,
+follow `references/major-releases.md` for boundary detection and synthesis.
+
 ## Version Field Alignment
 
 When preparing a release or doing explicit version-tracking work, keep the

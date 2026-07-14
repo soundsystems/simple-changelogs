@@ -28,6 +28,19 @@
       ]
     },
     {
+      "id": "trigger-positive-major-release",
+      "suite": "trigger",
+      "fixture": "next-major",
+      "tags": ["trigger", "positive", "major-releases", "versions"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "We're cutting the stable 2.0.0 GA from the beta line today. Write the major release announcement and get the release notes ready.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
       "id": "trigger-positive-backfill",
       "suite": "trigger",
       "fixture": "release-repo",
@@ -271,7 +284,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 2
+              "expected": 3
             },
             {
               "kind": "json.path",
@@ -873,7 +886,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 2
+              "expected": 3
             },
             {
               "kind": "json.path",
@@ -1058,6 +1071,208 @@
               "expected": "[Cc]hangelog|[Rr]elease-note|What's New guidance|what's new guidance"
             },
             { "kind": "report.decision", "expected": "SURFACE_CREATED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-initial-major-synthesis",
+      "suite": "behavior",
+      "fixture": "initial-major",
+      "tags": ["versions", "lifecycle", "wording", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the approved stable 1.0.0 public tag. Build the customer summary from the product's durable public 0.x capabilities, preserve the detailed 0.x archive, and align the existing release-note data and developer history.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": "package.json#/version",
+              "expected": "1.0.0"
+            },
+            {
+              "kind": "json.path",
+              "target": "release-notes.json#/version",
+              "expected": "1.0.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 1\\.0\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Ss]table|[Pp]ublic[- ]contract|[Ss]upported"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Ss]aved views"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Rr]eport filters"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 0\\.9\\.0[\\s\\S]*## 0\\.8\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "## 1\\.0\\.0"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MAJOR_RELEASE_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-later-major-transition",
+      "suite": "behavior",
+      "fixture": "next-major",
+      "tags": ["versions", "lifecycle", "wording", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize and publish the stable 2.0.0 tag. Summarize the transition from stable 1.x, preserve the published beta history, include required upgrade action, and align the existing release-note data and developer history.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": "package.json#/version",
+              "expected": "2.0.0"
+            },
+            {
+              "kind": "json.path",
+              "target": "release-notes.json#/version",
+              "expected": "2.0.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0\\.0-beta\\.2"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Uu]nified workspaces"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Ww]orkspace handles|[Mm]igrat|[Uu]pgrad"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "release-notes.json",
+              "expected": "[Aa]ccount recovery|[Ss]cheduled report"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MAJOR_RELEASE_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-next-major-branch-prerelease",
+      "suite": "behavior",
+      "fixture": "next-major",
+      "tags": ["versions", "lifecycle", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Merge the v2 development branch into main and reconcile release notes. Main remains an integration branch, the canonical version is still 2.0.0-beta.2, and the stable release will be published later from a tag.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "package.json",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "release-notes.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "STABLE_MAJOR_NOT_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-pep440-major-prerelease",
+      "suite": "behavior",
+      "fixture": "python-prerelease",
+      "tags": ["versions", "lifecycle", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the public 2.0a1 tester-preview tag and its changelog. Follow this Python project's PEP 440 convention; do not treat the alpha as the stable 2.0 major release.",
+          "assertions": [
+            {
+              "kind": "text.match",
+              "target": "pyproject.toml",
+              "expected": "version = \"2\\.0a1\""
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0a1"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0(?:\\.0)?(?:\\s|-)"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Pp]review|[Aa]lpha|[Tt]ester"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "PRERELEASE_FINALIZED"
+            }
           ]
         }
       ]

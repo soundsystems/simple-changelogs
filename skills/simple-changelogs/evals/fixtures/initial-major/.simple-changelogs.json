@@ -4,7 +4,7 @@
     "version": 3,
     "backfillStatus": "completed"
   },
-  "developerChangelog": "optional",
+  "developerChangelog": "required",
   "signatures": "none",
-  "newReleaseNoteSurfaces": "ask"
+  "newReleaseNoteSurfaces": "existing-only"
 }

@@ -31,6 +31,16 @@
   evaluation fixtures now store theirs as `SKILL.fixture.md`, so recursive
   skill loaders cannot mistake a test decoy for the real skill.
 <!-- simple-changelogs-signature agent="Claude Fable 5" at="2026-07-14T08:59:29-05:00" -->
+- Added major-release guidance (guidance version 3):
+  - `1.0.0` notes now curate the durable product established during public
+    `0.x` development, while later majors summarize the transition from the
+    prior stable line, including breaking changes and required migration.
+  - Next-major branches, integration-branch merges, and alpha, beta, or
+    release-candidate versions are no longer mistaken for the stable major
+    release, and published prerelease history stays intact.
+  - Prerelease detection now follows the repository's published convention,
+    including PEP 440 versions such as `2.0a1`, not just SemVer suffixes.
+<!-- simple-changelogs-signature agent="Claude Fable 5" at="2026-07-14T14:12:57-05:00" -->
 
 ## 2026-07-08
 

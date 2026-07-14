@@ -95,6 +95,9 @@ interpolation.
 optional runtime identity, diagnostics, and a separate evaluation-only report.
 That report carries decision and reason codes, authorization records, version
 map records, verification results, and optional native activation evidence.
+The canonical code vocabulary is documented in the response schema's field
+descriptions, which adapters surface to the model with the schema itself; a
+coverage test keeps that registry aligned with every code the manifest asserts.
 
 The harness validates the response after extraction. Reported decisions are
 assertable metadata, but claimed mutations never replace inspection of the

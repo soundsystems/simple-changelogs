@@ -43,3 +43,21 @@ data-loss outcomes.
 Clarified that a local fork wins by repository convention, not through a
 guaranteed loader capability, and bundled deterministic evaluation and fork
 checking helpers with the installed package.
+
+## Guidance 3
+
+Added stable-major release synthesis. Version `1.0.0` now curates the durable
+capabilities and stability promise established during public `0.x` development,
+while later major releases explain the transition from the latest stable prior
+line, including breaking changes and required migration.
+
+Separated next-major development from stable-major finalization. Branch names
+such as `v2` are supporting evidence only, and alpha, beta, or release-candidate
+versions follow the repository's published version convention without being
+mistaken for the stable major release. Public prerelease history remains intact
+when the stable release is synthesized.
+
+An approved historical audit may identify stable-major summaries that omit a
+material migration or misstate the release boundary. Preserve released
+headings and detailed history unless the audit separately authorizes a
+meaning-changing correction under `references/backfill.md`.

@@ -60,6 +60,12 @@ encode an uncertain or independently versioned relationship.
 - The selected bump follows local convention and the shipped contract.
 - Initial-development versions and SemVer suffix pre-releases use accurate
   terminology.
+- Stable major finalization came from the canonical version and documented
+  release boundary, not a branch name or prerelease merge alone.
+- A `1.0.0` summary curates the current durable product, while a later major
+  summarizes the transition from the prior stable line.
+- Published prerelease history remains intact and stabilization churn is not
+  repeated in the stable major summary.
 - Only app, package, store, and feed fields proven to share the release changed.
 - Independently versioned packages, build identifiers, and remote-only values
   were not guessed.

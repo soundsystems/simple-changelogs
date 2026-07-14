@@ -58,7 +58,7 @@ history. It then stores the decision in one committed repo-local policy file:
 {
   "schemaVersion": 1,
   "guidance": {
-    "version": 2,
+    "version": 3,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
@@ -227,6 +227,9 @@ no changelog entry.
   policy.
 - Correct SemVer language: `0.x` is initial development, while prerelease means
   a suffix such as `1.0.0-beta.1`.
+- Stable-major synthesis: `1.0.0` curates the durable product established during
+  `0.x`, later majors summarize the transition from the prior stable line, and
+  next-major branch names never replace canonical release evidence.
 - Machine-readable identity and timestamp comments as an informational audit
   trail, without claiming cryptographic authorship. Repositories can disable
   them with `signatures: "none"`, and a comment is never written when neither
