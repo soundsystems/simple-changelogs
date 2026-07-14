@@ -35,6 +35,20 @@ Allowed `guidance.backfillStatus` values:
 Reserve `partial` for incomplete work, not for a completed review that kept
 some history unchanged on purpose.
 
+`developerChangelog` accepts:
+
+- `required`: the default. Setup creates `DEVELOPER_CHANGELOG.md` alongside
+  `CHANGELOG.md`, and technical outcomes worth preserving go there.
+- `optional`: the repository keeps only `CHANGELOG.md`. Preserve technical
+  context in commit, pull, or merge request descriptions instead, and create
+  `DEVELOPER_CHANGELOG.md` only when the user explicitly asks for one.
+
+`signatures` accepts:
+
+- `agent-and-timestamp`: the default. Attach the signature comment described
+  below to each contiguous raw-markdown block you change.
+- `none`: write no signature comments. Preserve signatures that already exist.
+
 `newReleaseNoteSurfaces` accepts:
 
 - `ask`: request permission if future work needs a missing product surface.
@@ -61,8 +75,10 @@ For authorized setup:
 
 1. Inspect repository instructions, existing changelogs, released headings,
    release-note data, and local release policy.
-2. Create `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` when missing. Repositories
-   adopting this skill maintain both histories.
+2. Create `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` when missing.
+   Repositories adopting this skill maintain both histories by default; skip
+   the developer file only when the user explicitly chooses
+   `developerChangelog: "optional"`.
 3. When no released history exists, write the current guidance version with
    `backfillStatus: "not-applicable"`.
 4. When released history exists, first check whether the current request already
@@ -111,8 +127,9 @@ user also grants ongoing permission.
 
 ## Raw-Markdown Signatures
 
-Place one machine-readable comment next to each contiguous block or release
-section changed directly in `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md`:
+When policy records `signatures: "agent-and-timestamp"`, place one
+machine-readable comment next to each contiguous block or release section
+changed directly in `CHANGELOG.md` or `DEVELOPER_CHANGELOG.md`:
 
 ```html
 <!-- simple-changelogs-signature agent="Example Agent" at="2026-07-09T15:42:00-05:00" -->
@@ -123,6 +140,8 @@ Use only identity and time data exposed by the runtime:
 - If identity is unavailable, write `agent="unreported"`.
 - If a trustworthy local ISO 8601 timestamp and offset are unavailable, write
   `at="unreported"`.
+- If both values would be `unreported`, omit the signature comment entirely; a
+  placeholder-only signature records nothing useful.
 - Escape `&` as `&amp;`, `"` as `&quot;`, `<` as `&lt;`, and `>` as `&gt;`
   before inserting a runtime identity into the attribute.
 - Preserve existing signatures and do not invent a model name, version, time,

@@ -30,8 +30,12 @@
         }
       }
     },
-    "developerChangelog": { "const": "required" },
-    "signatures": { "const": "agent-and-timestamp" },
+    "developerChangelog": {
+      "enum": ["required", "optional"]
+    },
+    "signatures": {
+      "enum": ["agent-and-timestamp", "none"]
+    },
     "newReleaseNoteSurfaces": {
       "enum": ["ask", "allow", "existing-only"]
     }

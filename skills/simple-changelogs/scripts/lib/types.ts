@@ -10,6 +10,8 @@ export const BACKFILL_STATUSES = [
   "failed",
 ] as const;
 export const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+export const DEVELOPER_CHANGELOG_POLICIES = ["required", "optional"] as const;
+export const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 export const ACTIVATION_MODES = ["discover", "explicit"] as const;
 export const EVAL_SUITES = ["trigger", "behavior"] as const;
 export const RUNNER_STATUSES = ["completed", "skipped", "error"] as const;
@@ -55,6 +57,9 @@ export const ASSERTION_KINDS = [
 
 export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+export type DeveloperChangelogPolicy =
+  (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
+export type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
 export type ActivationMode = (typeof ACTIVATION_MODES)[number];
 export type EvalSuite = (typeof EVAL_SUITES)[number];
 export type RunnerStatus = (typeof RUNNER_STATUSES)[number];
@@ -70,14 +75,14 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 export interface RepoPolicy {
-  developerChangelog: "required";
+  developerChangelog: DeveloperChangelogPolicy;
   guidance: {
     version: number;
     backfillStatus: BackfillStatus;
   };
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
-  signatures: "agent-and-timestamp";
+  signatures: SignaturePolicy;
 }
 
 export interface EvalAssertion {

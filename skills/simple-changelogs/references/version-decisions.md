@@ -56,9 +56,9 @@ During initial development:
   milestone; feature size alone does not establish that boundary.
 - Follow repository policy when `0.x` minor increments may be incompatible and
   disclose the break plainly to affected customers and maintainers.
-- Keep routine repair churn and already-promised baseline fixes out of customer
-  notes. A publicly distributed `0.x` release still discloses material trust,
-  access, payment, safety, compliance, onboarding, or data-loss outcomes.
+- Apply the initial-development disclosure rules in
+  `references/entry-classification.md` when deciding which `0.x` outcomes get
+  customer notes.
 
 ## Version Field Alignment
 

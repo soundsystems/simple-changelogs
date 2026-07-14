@@ -75,6 +75,30 @@ describe("repo policy", () => {
     expect(result.ok).toBe(false);
     expect(input).toEqual(snapshot);
   });
+
+  test("accepts an optional developer changelog and disabled signatures", () => {
+    const result = validateRepoPolicy({
+      ...portableRepoPolicy(),
+      developerChangelog: "optional",
+      signatures: "none",
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  test("rejects unsupported developer changelog and signature policies", () => {
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        developerChangelog: "forbidden",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        signatures: "human-form",
+      }).ok
+    ).toBe(false);
+  });
 });
 
 describe("portable inputs", () => {

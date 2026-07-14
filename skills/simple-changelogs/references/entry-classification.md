@@ -135,11 +135,11 @@ or benefits matter.
 
 ## Initial Development, Pre-Releases, and Hot Fixes
 
-Use SemVer terms precisely. A `0.x.y` version indicates initial development; it
-is not a pre-release solely because its major version is zero. A pre-release has
-an identifier after a hyphen, such as `1.0.0-alpha`, `0.8.0-beta.2`, or
-`2.0.0-rc.1`. Establish public distribution from repository and release
-evidence rather than inferring it from the version number.
+SemVer terminology is owned by `references/version-decisions.md`: `0.x.y` means
+initial development, a pre-release has a hyphenated suffix such as
+`1.0.0-alpha`, and public distribution comes from repository and release
+evidence rather than the version number. Apply those terms when deciding
+disclosure here.
 
 During initial development and actual pre-release testing:
 

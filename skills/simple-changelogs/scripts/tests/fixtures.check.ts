@@ -31,6 +31,7 @@ const FIXTURE_NAMES = [
   "mobile-monorepo",
   "release-repo",
   "routed-app",
+  "single-changelog",
   "skill-package",
 ] as const;
 const FIXED_COMMIT_DATE = "2000-01-01T00:00:00Z";
@@ -122,6 +123,30 @@ describe("fixture workspaces", () => {
     );
     await writeFile(join(first, "README.md"), "changed\n");
     expect(await readFile(join(second, "README.md"), "utf8")).toBe("fixture\n");
+  });
+
+  test("restores stored SKILL.fixture.md files as workspace SKILL.md", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const base = join(fixturesRoot, "base");
+    await writeFile(join(base, "SKILL.fixture.md"), "root skill\n");
+    await mkdir(join(base, "skills", "fork"), { recursive: true });
+    await writeFile(
+      join(base, "skills", "fork", "SKILL.fixture.md"),
+      "nested skill\n"
+    );
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+
+    expect(await readFile(join(workspace, "SKILL.md"), "utf8")).toBe(
+      "root skill\n"
+    );
+    expect(
+      await readFile(join(workspace, "skills", "fork", "SKILL.md"), "utf8")
+    ).toBe("nested skill\n");
+    await expect(lstat(join(workspace, "SKILL.fixture.md"))).rejects.toThrow();
+    await expect(
+      lstat(join(workspace, "skills", "fork", "SKILL.fixture.md"))
+    ).rejects.toThrow();
   });
 
   test("rejects traversal, dot segments, and fixture symlinks", async () => {

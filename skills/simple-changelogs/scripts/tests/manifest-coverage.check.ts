@@ -21,6 +21,7 @@ const FIXTURE_IDS = new Set([
   "mobile-monorepo",
   "release-repo",
   "routed-app",
+  "single-changelog",
   "skill-package",
 ]);
 
@@ -99,6 +100,7 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-release-bearing-branch",
   "behavior-release-metadata-drift",
   "behavior-routine-copy-edit",
+  "behavior-single-changelog-policy",
   "behavior-skill-maintenance-regression",
   "behavior-superseded-developer-note",
   "behavior-terse-policy-terms-update",
@@ -162,8 +164,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(45);
-    expect(new Set(ids).size).toBe(45);
+    expect(ids).toHaveLength(46);
+    expect(new Set(ids).size).toBe(46);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -346,6 +348,43 @@ describe("canonical evaluation manifest", () => {
         })
       ).toBe(true);
     }
+  });
+
+  test("keeps recorded single-changelog policy choices authoritative", async () => {
+    const manifest = await loadManifest();
+    const singleChangelog = caseById(
+      manifest,
+      "behavior-single-changelog-policy"
+    );
+
+    expect(singleChangelog.turns).toHaveLength(1);
+    expect(
+      hasAssertion(
+        singleChangelog,
+        0,
+        "path.absent",
+        true,
+        "DEVELOPER_CHANGELOG.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        singleChangelog,
+        0,
+        "text.notMatch",
+        "simple-changelogs-signature",
+        "CHANGELOG.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        singleChangelog,
+        0,
+        "file.unchanged",
+        true,
+        ".simple-changelogs.json"
+      )
+    ).toBe(true);
   });
 
   test("pins semantic evidence for signatures, backfills, modal gates, maintenance, and forks", async () => {

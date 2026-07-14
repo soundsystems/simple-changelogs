@@ -20,6 +20,17 @@
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:23:26-05:00" -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T20:31:35-05:00" -->
 <!-- simple-changelogs-signature agent="GPT-5" at="2026-07-09T21:31:39-05:00" -->
+- Repository policy now supports single-changelog repositories and optional
+  attribution:
+  - `developerChangelog: "optional"` keeps only `CHANGELOG.md` and preserves
+    technical context in commit or merge-request descriptions instead.
+  - `signatures: "none"` disables signature comments for a repository, and a
+    signature is never written when neither the agent identity nor the
+    timestamp is actually available.
+- Installed packages no longer contain extra discoverable `SKILL.md` files:
+  evaluation fixtures now store theirs as `SKILL.fixture.md`, so recursive
+  skill loaders cannot mistake a test decoy for the real skill.
+<!-- simple-changelogs-signature agent="Claude Fable 5" at="2026-07-14T08:59:29-05:00" -->
 
 ## 2026-07-08
 

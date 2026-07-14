@@ -143,6 +143,10 @@ cases to remain runnable.
 ## Adding or Changing a Case
 
 1. Choose the smallest reusable fixture base. Add only data the scenario needs.
+   Store any skill file a fixture simulates as `SKILL.fixture.md`; the harness
+   renames it to `SKILL.md` inside the temporary workspace, and a contract
+   check rejects nested `SKILL.md` files so installed packages never expose
+   fixture skills to recursive skill loaders.
 2. Add the case to `evals/cases.json` with a unique ID, correct suite, focused
    tags, and explicit activation mode.
 3. Express observable outcomes through existing assertions. Prefer filesystem
