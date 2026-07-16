@@ -61,3 +61,15 @@ An approved historical audit may identify stable-major summaries that omit a
 material migration or misstate the release boundary. Preserve released
 headings and detailed history unless the audit separately authorizes a
 meaning-changing correction under `references/backfill.md`.
+
+## Guidance 4
+
+Separated full customer history from compact release announcements. Durable,
+identifiable UI and interaction polish may now remain in `CHANGELOG.md` even
+when it is too minor for a What's New summary, store note, email, or other
+highlight surface.
+
+Incidental cosmetic churn, routine copy cleanup, and baseline corrections still
+remain unrecorded by default. `DEVELOPER_CHANGELOG.md` receives polish only when
+its implementation or tradeoffs create maintainable technical context; it is
+not a catch-all UI ledger.

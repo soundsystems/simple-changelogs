@@ -82,6 +82,7 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-clone-sensitive-public-detail",
   "behavior-customer-visible-feature",
   "behavior-developer-only-migration",
+  "behavior-durable-ui-polish-changelog-only",
   "behavior-first-time-feature-naming",
   "behavior-fork-sync-provenance-pin",
   "behavior-guidance-driven-backfill-audit",
@@ -173,8 +174,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(51);
-    expect(new Set(ids).size).toBe(51);
+    expect(ids).toHaveLength(52);
+    expect(new Set(ids).size).toBe(52);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

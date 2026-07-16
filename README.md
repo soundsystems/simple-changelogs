@@ -12,6 +12,11 @@ evidence-based version recommendations, and updates established release-note
 destinations. It never treats ordinary UI work as permission to add a new
 modal, route, screen, panel, or navigation entry.
 
+This repository also ships `publish-skill-forks`, a production workflow for
+validating a canonical skill update, synchronizing maintained forks, testing a
+complete Skills CLI consumer install, and verifying that every required change
+reaches its remote default branch.
+
 ## Install
 
 Use the [Skills CLI](https://skills.sh/docs) to choose the project or global
@@ -19,6 +24,12 @@ scope and any supported agent targets:
 
 ```bash
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs
+```
+
+Install the production-loop skill independently:
+
+```bash
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill publish-skill-forks
 ```
 
 For a non-interactive project install to every detected agent:
@@ -58,7 +69,7 @@ history. It then stores the decision in one committed repo-local policy file:
 {
   "schemaVersion": 1,
   "guidance": {
-    "version": 3,
+    "version": 4,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
@@ -279,3 +290,8 @@ portable guarantee that every agent loader implements deduplication.
 - `skills/simple-changelogs/scripts/adapters/` — optional model CLI adapters.
 - `skills/simple-changelogs/scripts/check-fork-sync.sh` — bundled fork checker.
 - `skills/simple-changelogs/EVAL.md` — harness protocol and contributor guide.
+- `skills/publish-skill-forks/SKILL.md` — canonical-to-fork production workflow.
+- `skills/publish-skill-forks/references/` — release-map, synchronization, merge,
+  and cleanup gates.
+- `skills/publish-skill-forks/scripts/verify-installed-package.sh` — exact Skills
+  CLI package-tree and content verifier.

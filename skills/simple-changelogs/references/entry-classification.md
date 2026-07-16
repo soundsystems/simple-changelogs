@@ -18,7 +18,9 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 ## Pruning Rules
 
 Before writing a customer entry, remove changes that are not durable
-user-facing product news.
+user-facing product history. The full changelog is a broader record than a
+compact release announcement; inclusion here does not require inclusion in
+every release-note destination.
 
 Exclude from `CHANGELOG.md`:
 
@@ -47,6 +49,18 @@ Write customer bullets like concise product updates:
 Include copy or content changes only when they materially change user
 understanding, trust, legal/compliance meaning, pricing, purchase decisions,
 onboarding/setup, error recovery, permissions/access, or support obligations.
+
+Record modest UI and interaction polish when it creates a durable, identifiable
+change that is useful for answering what changed or when. Examples include a
+new interaction affordance, a persistent navigation or layout improvement, or
+a noticeable change to how users complete an existing task. Describe the
+outcome concisely; its inclusion in the full changelog does not make it a
+release-note highlight.
+
+Continue to omit incidental cosmetic churn such as isolated spacing, color,
+animation-timing, typo, tone, or one-off alignment adjustments. A baseline
+defect that merely restores the already-promised behavior is not automatically
+durable product history either.
 
 Exclude implementation details, raw enum names, migration numbers, pipeline
 markers, internal package names, or function names unless the requested audience
@@ -144,8 +158,10 @@ disclosure here.
 During initial development and actual pre-release testing:
 
 - Keep routine hot fixes, regression repairs, test-release churn, temporary
-  workarounds, narrow visual fixes, cleanup, and baseline defects that should
-  already work out of the user-facing changelog.
+  workarounds, incidental cosmetic churn, cleanup, and baseline defects that
+  should already work out of the user-facing changelog. Do not exclude a
+  durable interaction or UI improvement solely because it is small or ships
+  during initial development.
 - Keep obvious user-facing copy edits out of the user-facing changelog by
   default. Visible wording, labels, placeholders, helper text, modal text, and
   marketing copy do not need a customer note merely because users can see them;
@@ -216,6 +232,9 @@ Good developer changelog entries explain maintainable technical outcomes:
 
 Avoid entries that only restate commit messages, hashes, raw diffs, or
 implementation trivia without explaining why maintainers will care later.
+Visible polish belongs here only when its implementation, architecture, or
+tradeoff will matter to future maintainers; do not use the developer changelog
+as a catch-all ledger for otherwise incidental UI changes.
 
 ## Superseded Developer Notes
 

@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Added Guidance 4 to separate customer-history inclusion from release-summary
+  selection:
+  - Durable, identifiable UI and interaction polish can remain in
+    `CHANGELOG.md`; incidental cosmetic churn and routine copy cleanup remain
+    excluded.
+  - Compact release-note destinations now explicitly select material
+    highlights instead of inheriting every customer changelog entry.
+  - Developer history receives polish only when its implementation or tradeoffs
+    create maintainable technical context.
+  - Added a routed-app behavior case proving that durable catalog interaction
+    polish updates `CHANGELOG.md` without changing developer history or compact
+    release-note data, and advanced current fixture policies to guidance 4.
+<!-- simple-changelogs-signature agent="Codex" at="2026-07-16T12:48:48-05:00" -->
+- Added the `publish-skill-forks` skill package:
+  - Added release-map discovery and isolated-worktree protections for canonical,
+    downstream-fork, and consumer repositories.
+  - Codified canonical merge, merged-commit provenance pinning, fork guidance
+    backfills, Skills CLI installation, and final remote default-branch checks.
+  - Added a package verifier that compares complete file trees and contents,
+    rejects symlinks, and requires exactly one discoverable `SKILL.md`.
+  - Required MR or PR descriptions to be re-read after creation and distinguished
+    passed, blocked, failed, running, and optional pipeline states.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-16T12:52:00-05:00" -->
 - Added the `references/major-releases.md` reference and Guidance 3:
   - Routed stable-major and prerelease work to it from the SKILL.md router,
     release lifecycle, version decisions, and release-note surfaces, keeping

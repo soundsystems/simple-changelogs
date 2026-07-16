@@ -13,7 +13,7 @@ file records decisions; it does not copy the skill's prose rules.
 {
   "schemaVersion": 1,
   "guidance": {
-    "version": 3,
+    "version": 4,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
