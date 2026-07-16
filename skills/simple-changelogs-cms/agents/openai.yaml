@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simple Changelogs CMS"
+  short_description: "Maintain authenticated CMS-only release history"
+  default_prompt: "Use $simple-changelogs-cms to update the authenticated operator changelog without creating public or developer release notes."

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Changelogs CMS Repository Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "guidance",
+    "changelogPath",
+    "cmsSurface",
+    "newReleaseNoteSurfaces"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "backfillStatus"],
+      "properties": {
+        "version": { "const": 1 },
+        "backfillStatus": {
+          "enum": [
+            "not-applicable",
+            "completed",
+            "declined",
+            "deferred",
+            "partial",
+            "failed"
+          ]
+        }
+      }
+    },
+    "changelogPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.json$"
+    },
+    "cmsSurface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route", "access"],
+      "properties": {
+        "route": { "type": "string", "pattern": "^/(?!$).+" },
+        "access": { "const": "authenticated-operators" }
+      }
+    },
+    "newReleaseNoteSurfaces": {
+      "enum": ["ask", "allow", "existing-only"]
+    }
+  }
+}

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added the repository-agnostic `simple-changelogs-cms` variant:
+  - Defines a closed repository policy and structured `CMS_CHANGELOG.json`
+    source for authenticated operators without owning `CHANGELOG.md` or
+    `DEVELOPER_CHANGELOG.md`.
+  - Adds guidance for operator classification, authorized historical
+    reconstruction, authenticated CMS routing, and public-surface isolation.
+  - Ships JSON schemas, a repository validator, deterministic schema/package
+    checks, behavior prompts, a valid fixture, and a dedicated install command.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="unreported" -->
 - Added Guidance 4 to separate customer-history inclusion from release-summary
   selection:
   - Durable, identifiable UI and interaction polish can remain in

@@ -17,6 +17,10 @@ validating a canonical skill update, synchronizing maintained forks, testing a
 complete Skills CLI consumer install, and verifying that every required change
 reaches its remote default branch.
 
+It also ships `simple-changelogs-cms`, a repository-agnostic variant for one
+structured changelog rendered only inside an authenticated CMS. That variant
+does not create or maintain public or developer changelog files.
+
 ## Install
 
 Use the [Skills CLI](https://skills.sh/docs) to choose the project or global
@@ -30,6 +34,12 @@ Install the production-loop skill independently:
 
 ```bash
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill publish-skill-forks
+```
+
+Install the CMS-only variant independently:
+
+```bash
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-cms
 ```
 
 For a non-interactive project install to every detected agent:
@@ -92,6 +102,16 @@ repositories that keep a single customer changelog and preserve technical
 context in commit or merge-request descriptions. `signatures` may be
 `agent-and-timestamp` (the default) or `none` to keep attribution comments out
 of the raw Markdown entirely.
+
+The CMS-only variant uses `.simple-changelogs-cms.json` plus a validated
+`CMS_CHANGELOG.json` source. Its policy records the protected CMS route and
+keeps further release-note surfaces at `existing-only` by default. Run its
+focused checks with:
+
+```bash
+bun skills/simple-changelogs-cms/scripts/test.ts
+bun skills/simple-changelogs-cms/scripts/validate.ts /path/to/repository
+```
 
 ## Manual Install
 

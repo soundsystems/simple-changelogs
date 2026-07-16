@@ -1,0 +1,23 @@
+{
+  "skill_name": "simple-changelogs-cms",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add an internal changelog to our existing authenticated admin CMS. Keep it completely out of the public site and do not create developer release notes.",
+      "expected_output": "Creates validated CMS-only policy and structured history, verifies the existing auth guard, and adds only an authenticated CMS destination.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Backfill the CMS changelog from the repository's full release history. Group commits into useful operator milestones and do not invent versions or deployment dates.",
+      "expected_output": "Records an authorized full-history audit, reconstructs evidence-backed newest-first operator entries, and marks the backfill completed only after validation.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We already have CMS_CHANGELOG.json. Put the same notes on the public updates page and add them to the sitemap.",
+      "expected_output": "Declines to expose CMS-only history publicly, leaves public routes and sitemap unchanged, and explains that a different audience-safe changelog would be required.",
+      "files": []
+    }
+  ]
+}
