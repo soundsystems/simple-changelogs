@@ -62,6 +62,12 @@ Keep versions, dates, ordering, and grouping aligned with the canonical
 changelog when the destination supports them. Ignore HTML comments while
 rendering so raw attribution metadata remains hidden.
 
+Do not treat every `CHANGELOG.md` entry as automatic copy for every destination.
+A full-history mirror preserves the qualifying customer history, including
+modest durable UI and interaction polish. Compact modals, store notes, emails,
+and announcement-style summaries select material highlights for their audience
+and normally omit minor polish even when the canonical changelog records it.
+
 When a release has no customer-facing outcome, leave customer destinations
 unchanged and state that decision. Do not fill them with developer-only work.
 
@@ -125,6 +131,8 @@ Use `references/major-releases.md` to select, order, and synthesize the
 major-release outcomes. The compact surface summary additionally:
 
 - keeps only the highlights a returning user can scan in one sitting;
+- omits minor UI, interaction, and copy polish unless it materially changes how
+  that audience uses or understands the product;
 - explains where users find important capabilities;
 - uses technical names only when they are public product, API, CLI, SDK, or
   integration concepts;

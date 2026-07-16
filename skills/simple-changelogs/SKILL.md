@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 3
+Current guidance version: 4
 
 ## Setup Checkpoint
 
@@ -28,7 +28,7 @@ repository root.
   `declined`.
 - When the request is read-only, answer without writing policy or changelog
   files. Offer setup as a possible next action.
-- When recorded guidance is older than version 3, read
+- When recorded guidance is older than version 4, read
   `references/guidance-updates.md` and follow its one-time disposition flow.
 
 Repository instructions take precedence when they establish a stricter scope,

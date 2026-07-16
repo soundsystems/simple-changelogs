@@ -284,7 +284,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 3
+              "expected": 4
             },
             {
               "kind": "json.path",
@@ -399,6 +399,41 @@
               "expected": true
             },
             { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_OMITTED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-durable-ui-polish-changelog-only",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["wording", "classification", "surfaces"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff permanently changes catalog cards so selecting a price opens the\ncomparison drawer directly, reducing an extra navigation step. Record this UI\nchange in the changelog and synchronize the existing compact release-note data.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Cc]atalog|[Pp]rice|[Cc]omparison drawer"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "release-notes.json",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
           ]
         }
       ]
@@ -886,7 +921,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 3
+              "expected": 4
             },
             {
               "kind": "json.path",
