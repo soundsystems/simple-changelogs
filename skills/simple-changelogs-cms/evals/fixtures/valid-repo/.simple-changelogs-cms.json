@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "guidance": {
+    "version": 1,
+    "backfillStatus": "completed"
+  },
+  "changelogPath": "CMS_CHANGELOG.json",
+  "cmsSurface": {
+    "route": "/admin/changelog",
+    "access": "authenticated-operators"
+  },
+  "newReleaseNoteSurfaces": "existing-only"
+}

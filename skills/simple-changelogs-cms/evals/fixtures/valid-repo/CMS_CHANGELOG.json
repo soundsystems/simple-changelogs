@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "title": "CMS Changelog",
+  "entries": [
+    {
+      "id": "2026-07-16-cms-history",
+      "date": "2026-07-16",
+      "version": "1.0.0",
+      "kind": "backfill",
+      "title": "CMS history is available",
+      "summary": "Operators can review release context inside the authenticated CMS.",
+      "changes": [
+        "Added a protected changelog route backed by validated structured data."
+      ]
+    }
+  ]
+}

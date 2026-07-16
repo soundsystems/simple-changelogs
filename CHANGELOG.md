@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Authenticated CMS applications can now adopt a dedicated changelog that
+  keeps operator history out of public and developer release notes, validates
+  structured entries, and supports evidence-based historical backfills.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="unreported" -->
 - Durable UI and interaction polish now stays in the full customer changelog
   when it provides useful product history, while compact release-note surfaces
   continue to show only material highlights.
