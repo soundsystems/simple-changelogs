@@ -186,3 +186,292 @@ export interface RunnerResponse {
 export type ValidationResult<T> =
   | { ok: true; value: T }
   | { ok: false; errors: string[] };
+
+export const CURATION_MANIFEST_VERSION = 1;
+
+export const CURATION_OPERATION_STATUSES = [
+  "partial",
+  "failed",
+  "completed",
+  "superseded",
+] as const;
+export const CURATION_SURFACE_MODES = [
+  "full-history",
+  "selected-summary",
+  "internal-history",
+] as const;
+export const CURATION_SURFACE_AUDIENCES = ["public", "internal"] as const;
+export const CURATION_SCOPE_KINDS = [
+  "full-history",
+  "release-range",
+  "release",
+  "section",
+  "item-set",
+] as const;
+export const CURATION_SCOPE_MATURITIES = ["provisional", "released"] as const;
+export const CURATION_STRATEGY_GROUPINGS = [
+  "product-area",
+  "workflow",
+  "release-section",
+  "custom",
+] as const;
+export const CURATION_STRATEGY_ORDERINGS = [
+  "product-importance",
+  "product-journey",
+  "source-order",
+  "custom",
+] as const;
+export const SURFACE_DEFAULT_ORGANIZATIONS = [
+  "product-area",
+  "change-type",
+  "release-chronology",
+  "custom",
+] as const;
+export const SURFACE_LAYOUTS = [
+  "grouped-sections",
+  "timeline",
+  "cards",
+  "changelog-list",
+] as const;
+export const SURFACE_VISUAL_DIRECTIONS = [
+  "project-native",
+  "editorial-minimal",
+  "product-cards",
+  "timeline-minimal",
+  "custom",
+] as const;
+export const SURFACE_DATE_DISPLAYS = ["exact", "month-year", "hidden"] as const;
+export const SURFACE_VERSION_DISPLAYS = [
+  "exact",
+  "friendly",
+  "hidden",
+] as const;
+export const SURFACE_DETAIL_DENSITIES = [
+  "concise",
+  "balanced",
+  "full",
+] as const;
+export const SURFACE_CHRONOLOGICAL_ACCESS_MODES = [
+  "curated-with-toggle",
+  "chronology-with-filters",
+  "curated-with-context",
+] as const;
+export const SURFACE_NAVIGATION_ITEMS = [
+  "anchors",
+  "search",
+  "product-area-filter",
+  "release-filter",
+] as const;
+export const SURFACE_TRANSPARENCY_PREFERENCES = [
+  "undecided",
+  "none",
+  "curation-notice",
+  "correction-notice",
+] as const;
+export const DEPLOYED_SURFACE_STATES = [
+  "deployed",
+  "unpublished",
+  "unknown",
+] as const;
+export const DEPLOYED_SURFACE_CHANGE_KINDS = [
+  "ordering",
+  "grouping",
+  "display-version-format",
+  "canonical-version",
+  "date",
+  "release-boundary",
+  "content",
+  "visibility",
+  "deep-link",
+] as const;
+export const SOURCE_REWRITE_CHANGE_KINDS = [
+  "canonical-version",
+  "date",
+  "release-boundary",
+  "content",
+  "visibility",
+] as const;
+export const CURATION_OPERATION_DIRECTIONS = [
+  "canonical-forward",
+  "canonical-reverse",
+] as const;
+export const CURATION_OPERATION_OVERLAPS = [
+  "none",
+  "continuation",
+  "partial-overlap",
+  "full-overlap",
+] as const;
+
+export type CurationOperationStatus =
+  (typeof CURATION_OPERATION_STATUSES)[number];
+export type CurationSurfaceMode = (typeof CURATION_SURFACE_MODES)[number];
+export type CurationSurfaceAudience =
+  (typeof CURATION_SURFACE_AUDIENCES)[number];
+export type CurationScopeKind = (typeof CURATION_SCOPE_KINDS)[number];
+export type CurationScopeMaturity = (typeof CURATION_SCOPE_MATURITIES)[number];
+export type CurationStrategyGrouping =
+  (typeof CURATION_STRATEGY_GROUPINGS)[number];
+export type CurationStrategyOrdering =
+  (typeof CURATION_STRATEGY_ORDERINGS)[number];
+export type SurfaceDefaultOrganization =
+  (typeof SURFACE_DEFAULT_ORGANIZATIONS)[number];
+export type SurfaceLayout = (typeof SURFACE_LAYOUTS)[number];
+export type SurfaceVisualDirection = (typeof SURFACE_VISUAL_DIRECTIONS)[number];
+export type SurfaceDateDisplay = (typeof SURFACE_DATE_DISPLAYS)[number];
+export type SurfaceVersionDisplay = (typeof SURFACE_VERSION_DISPLAYS)[number];
+export type SurfaceDetailDensity = (typeof SURFACE_DETAIL_DENSITIES)[number];
+export type SurfaceChronologicalAccess =
+  (typeof SURFACE_CHRONOLOGICAL_ACCESS_MODES)[number];
+export type SurfaceNavigationItem = (typeof SURFACE_NAVIGATION_ITEMS)[number];
+export type SurfaceTransparencyPreferenceValue =
+  (typeof SURFACE_TRANSPARENCY_PREFERENCES)[number];
+export type DeployedSurfaceState = (typeof DEPLOYED_SURFACE_STATES)[number];
+export type DeployedSurfaceChangeKind =
+  (typeof DEPLOYED_SURFACE_CHANGE_KINDS)[number];
+export type SourceRewriteChangeKind =
+  (typeof SOURCE_REWRITE_CHANGE_KINDS)[number];
+export type CurationOperationDirection =
+  (typeof CURATION_OPERATION_DIRECTIONS)[number];
+export type CurationOperationOverlap =
+  (typeof CURATION_OPERATION_OVERLAPS)[number];
+
+export interface SourceBoundary {
+  date?: string;
+  heading: string;
+  /** 1-based index among identical headings in document order. */
+  occurrence: number;
+  sourcePath: string;
+  version?: string;
+}
+
+export type CurationScope =
+  | { kind: "full-history" }
+  | { itemIds: string[]; kind: "item-set" }
+  | { kind: "release"; release: SourceBoundary }
+  | {
+      first: SourceBoundary;
+      kind: "release-range";
+      last: SourceBoundary;
+    }
+  | { kind: "section"; release: SourceBoundary; section: SourceBoundary };
+
+export interface CurationGroup {
+  groupId: string;
+  itemIds: string[];
+  label: string;
+}
+
+export interface ActiveCurationScope {
+  activatedByOperationId: string;
+  groups: CurationGroup[];
+  maturity: CurationScopeMaturity;
+  scope: CurationScope;
+  scopeId: string;
+  sourceFingerprint: string;
+}
+
+export interface CurationCounts {
+  eligibleAfter: number;
+  eligibleBefore: number;
+  groupsAfter: number;
+  groupsBefore: number;
+  mapped: number;
+  moved: number;
+}
+
+export interface CurationStrategy {
+  customDescription?: string;
+  grouping: CurationStrategyGrouping;
+  ordering: CurationStrategyOrdering;
+  withinGroup: CurationStrategyOrdering;
+}
+
+export interface SurfaceDisplayPreferences {
+  chronologicalAccess: SurfaceChronologicalAccess;
+  dateDisplay: SurfaceDateDisplay;
+  defaultOrganization: SurfaceDefaultOrganization;
+  detailDensity: SurfaceDetailDensity;
+  layout: SurfaceLayout;
+  navigation: SurfaceNavigationItem[];
+  versionDisplay: SurfaceVersionDisplay;
+  visualDirection: SurfaceVisualDirection;
+}
+
+export interface SurfaceTransparencyPreference {
+  decidedAt?: string;
+  decisionSource?: AuthorizationSource;
+  noticeLocation?: string;
+  noticeText?: string;
+  preference: SurfaceTransparencyPreferenceValue;
+}
+
+export interface DeployedSurfaceImpact {
+  acknowledged: boolean;
+  acknowledgedAt?: string;
+  acknowledgmentSource?: AuthorizationSource;
+  changeKinds: DeployedSurfaceChangeKind[];
+  evidence: string[];
+  previouslyVisibleScope?: CurationScope;
+  state: DeployedSurfaceState;
+}
+
+export interface LinkedSourceRewrite {
+  authorizationCode: "RELEASED_HISTORY_REWRITE";
+  changedPaths: string[];
+  changeKinds: SourceRewriteChangeKind[];
+  sourceFingerprintAfter: string;
+  sourceFingerprintBefore: string;
+}
+
+export interface LinkedSurfaceCopyRevision {
+  authorizationCode: "RELEASE_NOTE_COPY_REVISION";
+  changedItemIds: string[];
+  surfaceFingerprintAfter: string;
+  surfaceFingerprintBefore: string;
+}
+
+export interface CurationOperation {
+  completedAt?: string;
+  counts?: CurationCounts;
+  deployedImpact: DeployedSurfaceImpact;
+  direction: CurationOperationDirection;
+  effectiveScope: CurationScope;
+  eligibleItemSetFingerprintAfter?: string;
+  eligibleItemSetFingerprintBefore: string;
+  failureDiagnostic?: string;
+  linkedSourceRewrite?: LinkedSourceRewrite;
+  linkedSurfaceCopyRevision?: LinkedSurfaceCopyRevision;
+  newestCovered?: SourceBoundary;
+  oldestCovered?: SourceBoundary;
+  operationId: string;
+  overlap: CurationOperationOverlap;
+  requestedScope: CurationScope;
+  resumeAfter?: SourceBoundary;
+  revisitsOperationIds: string[];
+  runtimeIdentity?: string;
+  sourceFingerprint: string;
+  sourceRevision?: string;
+  startedAt?: string;
+  status: CurationOperationStatus;
+  supersededBy?: string;
+  surfaceFingerprintAfter?: string;
+  surfaceFingerprintBefore: string;
+}
+
+export interface CurationSurface {
+  activeScopes: ActiveCurationScope[];
+  audience: CurationSurfaceAudience;
+  displayPreferences: SurfaceDisplayPreferences;
+  fallback: "source-order";
+  mode: CurationSurfaceMode;
+  operations: CurationOperation[];
+  sourcePaths: string[];
+  surfaceId: string;
+  surfacePaths: string[];
+  transparencyPreference: SurfaceTransparencyPreference;
+}
+
+export interface CurationManifest {
+  schemaVersion: 1;
+  surfaces: CurationSurface[];
+}

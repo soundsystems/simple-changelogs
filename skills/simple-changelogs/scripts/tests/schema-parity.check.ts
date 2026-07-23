@@ -6,6 +6,18 @@ import {
   AUTHORIZATION_SOURCES,
   AUTHORIZATION_STATUSES,
   BACKFILL_STATUSES,
+  CURATION_MANIFEST_VERSION,
+  CURATION_OPERATION_DIRECTIONS,
+  CURATION_OPERATION_OVERLAPS,
+  CURATION_OPERATION_STATUSES,
+  CURATION_SCOPE_KINDS,
+  CURATION_SCOPE_MATURITIES,
+  CURATION_STRATEGY_GROUPINGS,
+  CURATION_STRATEGY_ORDERINGS,
+  CURATION_SURFACE_AUDIENCES,
+  CURATION_SURFACE_MODES,
+  DEPLOYED_SURFACE_CHANGE_KINDS,
+  DEPLOYED_SURFACE_STATES,
   DEVELOPER_CHANGELOG_POLICIES,
   EVAL_SUITES,
   MANIFEST_VERSION,
@@ -13,11 +25,22 @@ import {
   RUNNER_MESSAGE_ROLES,
   RUNNER_STATUSES,
   SIGNATURE_POLICIES,
+  SOURCE_REWRITE_CHANGE_KINDS,
+  SURFACE_CHRONOLOGICAL_ACCESS_MODES,
+  SURFACE_DATE_DISPLAYS,
+  SURFACE_DEFAULT_ORGANIZATIONS,
+  SURFACE_DETAIL_DENSITIES,
+  SURFACE_LAYOUTS,
+  SURFACE_NAVIGATION_ITEMS,
   SURFACE_POLICIES,
+  SURFACE_TRANSPARENCY_PREFERENCES,
+  SURFACE_VERSION_DISPLAYS,
+  SURFACE_VISUAL_DIRECTIONS,
   VERIFICATION_STATUSES,
   VERSION_ROLES,
 } from "../lib/types.ts";
 import {
+  validateCurationManifest,
   validateManifest,
   validateRepoPolicy,
   validateRunnerRequest,
@@ -117,6 +140,20 @@ const findOpenFixedObjects = (
   return findings;
 };
 
+const curationScopeKindsAt = (value: unknown): string[] => {
+  const variants = valueAt(value, "$defs.curationScope.oneOf");
+  if (!Array.isArray(variants)) {
+    throw new Error("curationScope schema does not contain oneOf variants");
+  }
+  return variants.map((variant) => {
+    const kind = valueAt(variant, "properties.kind");
+    if (isRecord(kind) && typeof kind.const === "string") {
+      return kind.const;
+    }
+    throw new Error("curationScope variant kind is not closed");
+  });
+};
+
 const evalCase = (activationMode: string, suite: string) => ({
   activationMode,
   fixture: "dual-changelog",
@@ -181,13 +218,75 @@ const response = (
   status,
 });
 
-const [policySchema, manifestSchema, requestSchema, responseSchema] =
-  await Promise.all([
-    loadSchema("repo-policy"),
-    loadSchema("eval-manifest"),
-    loadSchema("runner-request"),
-    loadSchema("runner-response"),
-  ]);
+const curationManifest = (status: string) => ({
+  schemaVersion: 1,
+  surfaces: [
+    {
+      activeScopes: [],
+      audience: "public",
+      displayPreferences: {
+        chronologicalAccess: "curated-with-toggle",
+        dateDisplay: "month-year",
+        defaultOrganization: "product-area",
+        detailDensity: "balanced",
+        layout: "grouped-sections",
+        navigation: ["anchors"],
+        versionDisplay: "friendly",
+        visualDirection: "editorial-minimal",
+      },
+      fallback: "source-order",
+      mode: "selected-summary",
+      operations: [
+        {
+          counts: {
+            eligibleAfter: 4,
+            eligibleBefore: 4,
+            groupsAfter: 1,
+            groupsBefore: 1,
+            mapped: 4,
+            moved: 2,
+          },
+          deployedImpact: {
+            acknowledged: false,
+            changeKinds: [],
+            evidence: [],
+            state: "unpublished",
+          },
+          direction: "canonical-forward",
+          effectiveScope: { kind: "full-history" },
+          eligibleItemSetFingerprintAfter: "sha256:eligible",
+          eligibleItemSetFingerprintBefore: "sha256:eligible",
+          operationId: "op-1",
+          overlap: "none",
+          requestedScope: { kind: "full-history" },
+          revisitsOperationIds: [],
+          sourceFingerprint: "sha256:source",
+          status,
+          surfaceFingerprintAfter: "sha256:surface-after",
+          surfaceFingerprintBefore: "sha256:surface-before",
+        },
+      ],
+      sourcePaths: ["CHANGELOG.md"],
+      surfaceId: "surface-1",
+      surfacePaths: ["RELEASES.md"],
+      transparencyPreference: { preference: "none" },
+    },
+  ],
+});
+
+const [
+  policySchema,
+  manifestSchema,
+  requestSchema,
+  responseSchema,
+  curationManifestSchema,
+] = await Promise.all([
+  loadSchema("repo-policy"),
+  loadSchema("eval-manifest"),
+  loadSchema("runner-request"),
+  loadSchema("runner-response"),
+  loadSchema("curation-manifest"),
+]);
 
 describe("schema parity", () => {
   test("keeps versions and enums aligned with runtime validators", () => {
@@ -196,6 +295,11 @@ describe("schema parity", () => {
       [manifestSchema, "properties.manifestVersion.const", MANIFEST_VERSION],
       [requestSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
       [responseSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
+      [
+        curationManifestSchema,
+        "properties.schemaVersion.const",
+        CURATION_MANIFEST_VERSION,
+      ],
     ];
     const enums: [unknown, string, readonly string[]][] = [
       [
@@ -247,6 +351,111 @@ describe("schema parity", () => {
         "$defs.verificationResult.properties.status.enum",
         VERIFICATION_STATUSES,
       ],
+      [
+        curationManifestSchema,
+        "$defs.curationOperation.properties.status.enum",
+        CURATION_OPERATION_STATUSES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationOperation.properties.direction.enum",
+        CURATION_OPERATION_DIRECTIONS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationOperation.properties.overlap.enum",
+        CURATION_OPERATION_OVERLAPS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.activeCurationScope.properties.maturity.enum",
+        CURATION_SCOPE_MATURITIES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationStrategy.properties.grouping.enum",
+        CURATION_STRATEGY_GROUPINGS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationStrategy.properties.ordering.enum",
+        CURATION_STRATEGY_ORDERINGS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationStrategy.properties.withinGroup.enum",
+        CURATION_STRATEGY_ORDERINGS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.defaultOrganization.enum",
+        SURFACE_DEFAULT_ORGANIZATIONS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.layout.enum",
+        SURFACE_LAYOUTS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.visualDirection.enum",
+        SURFACE_VISUAL_DIRECTIONS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.dateDisplay.enum",
+        SURFACE_DATE_DISPLAYS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.versionDisplay.enum",
+        SURFACE_VERSION_DISPLAYS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.detailDensity.enum",
+        SURFACE_DETAIL_DENSITIES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.chronologicalAccess.enum",
+        SURFACE_CHRONOLOGICAL_ACCESS_MODES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceDisplayPreferences.properties.navigation.items.enum",
+        SURFACE_NAVIGATION_ITEMS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.surfaceTransparencyPreference.properties.preference.enum",
+        SURFACE_TRANSPARENCY_PREFERENCES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.deployedSurfaceImpact.properties.state.enum",
+        DEPLOYED_SURFACE_STATES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.deployedSurfaceImpact.properties.changeKinds.items.enum",
+        DEPLOYED_SURFACE_CHANGE_KINDS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.linkedSourceRewrite.properties.changeKinds.items.enum",
+        SOURCE_REWRITE_CHANGE_KINDS,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationSurface.properties.audience.enum",
+        CURATION_SURFACE_AUDIENCES,
+      ],
+      [
+        curationManifestSchema,
+        "$defs.curationSurface.properties.mode.enum",
+        CURATION_SURFACE_MODES,
+      ],
     ];
 
     for (const [schema, path, expected] of versions) {
@@ -258,6 +467,9 @@ describe("schema parity", () => {
     expect(assertionKindsAt(manifestSchema).sort(compareText)).toEqual(
       [...ASSERTION_KINDS].sort(compareText)
     );
+    expect(
+      curationScopeKindsAt(curationManifestSchema).sort(compareText)
+    ).toEqual([...CURATION_SCOPE_KINDS].sort(compareText));
   });
 
   test("keeps validator versions and enum boundaries aligned", () => {
@@ -270,6 +482,9 @@ describe("schema parity", () => {
     ).toBe(true);
     expect(validateRunnerRequest(request("explicit")).ok).toBe(true);
     expect(validateRunnerResponse(response("completed")).ok).toBe(true);
+    expect(validateCurationManifest(curationManifest("completed")).ok).toBe(
+      true
+    );
 
     expect(validateRepoPolicy(policy(OUTSIDE_ENUM, "ask")).ok).toBe(false);
     expect(
@@ -280,6 +495,9 @@ describe("schema parity", () => {
     ).toBe(false);
     expect(validateRunnerRequest(request(OUTSIDE_ENUM)).ok).toBe(false);
     expect(validateRunnerResponse(response(OUTSIDE_ENUM)).ok).toBe(false);
+    expect(validateCurationManifest(curationManifest(OUTSIDE_ENUM)).ok).toBe(
+      false
+    );
 
     expect(
       validateRepoPolicy({
@@ -302,6 +520,12 @@ describe("schema parity", () => {
         protocolVersion: 2,
       }).ok
     ).toBe(false);
+    expect(
+      validateCurationManifest({
+        ...curationManifest("completed"),
+        schemaVersion: 2,
+      }).ok
+    ).toBe(false);
   });
 
   test("keeps every fixed schema object and validator input closed", () => {
@@ -310,6 +534,7 @@ describe("schema parity", () => {
       manifestSchema,
       requestSchema,
       responseSchema,
+      curationManifestSchema,
     ]) {
       expect(findOpenFixedObjects(schema)).toEqual([]);
     }
@@ -329,6 +554,12 @@ describe("schema parity", () => {
     ).toBe(false);
     expect(
       validateRunnerResponse({ ...response("completed"), extra: true }).ok
+    ).toBe(false);
+    expect(
+      validateCurationManifest({
+        ...curationManifest("completed"),
+        extra: true,
+      }).ok
     ).toBe(false);
   });
 });
