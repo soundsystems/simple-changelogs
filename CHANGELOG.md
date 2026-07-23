@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Durable UI and interaction polish now stays in the full customer changelog
+  when it provides useful product history, while compact release-note surfaces
+  continue to show only material highlights.
+<!-- simple-changelogs-signature agent="Codex" at="2026-07-16T12:48:48-05:00" -->
+- Skill updates can now be published end to end through maintained forks and a
+  real consumer installation, with package integrity and merged release state
+  verified before completion.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-16T12:52:00-05:00" -->
 - Changelog setup now keeps one portable `.simple-changelogs.json` policy in
   each repository, reuses clear audit permission from the current request, asks
   only when the choice remains open, and never records an unanswered setup
