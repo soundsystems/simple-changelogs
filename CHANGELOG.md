@@ -2,10 +2,27 @@
 
 ## Unreleased
 
-- Authenticated CMS applications can now adopt a dedicated changelog that
-  keeps operator history out of public and developer release notes, validates
-  structured entries, and supports evidence-based historical backfills.
-<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="unreported" -->
+- Release-note curation now uses stable, scoped presentation maps that preserve
+  chronological changelogs as the source of truth, record continuation and
+  overlapping revisit history, and prevent completed reorganizations from
+  silently dropping or duplicating notes.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-24T00:39:25-05:00" -->
+- Simple Changelogs now offers six mutually exclusive distributions: full,
+  CMS-only, web-only, mobile-only, web+CMS, and the lean
+  `simple-changelogs-skill-maintainer` distribution for repositories that
+  develop or publish agent skills. Repository policy and install metadata select
+  one owner so overlapping changelog workflows stop before writing.
+- Each selected distribution is now self-contained and approximately 24–87 KB,
+  with package-shape and real Skills CLI consumer checks verifying the installed
+  boundary.
+- The CMS-only distribution now includes the current upstream behavior while
+  retaining its runtime validator, and fork synchronization follows each fork's
+  provenance to compare the correct upstream distribution.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-23T20:53:07-05:00" -->
+- The evaluation package now supports Grok Build as an optional runtime, with
+  isolated execution and the same provider-neutral response contract used by
+  other adapters.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-23T18:01:31-05:00" -->
 - Durable UI and interaction polish now stays in the full customer changelog
   when it provides useful product history, while compact release-note surfaces
   continue to show only material highlights.

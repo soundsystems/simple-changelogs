@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simple Changelogs Mobile"
+  short_description: "Maintain mobile changelogs and store release notes"
+  default_prompt: "Use $simple-changelogs-mobile for this repository's mobile customer, developer, in-app, and store release history."

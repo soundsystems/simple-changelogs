@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simple Changelogs Web"
+  short_description: "Maintain web-only changelogs and release notes"
+  default_prompt: "Use $simple-changelogs-web for this repository's customer, developer, and established public web release history."

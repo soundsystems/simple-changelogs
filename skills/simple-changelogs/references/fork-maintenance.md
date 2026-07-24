@@ -1,7 +1,7 @@
 # Fork Maintenance
 
-Use this reference when creating a downstream fork of this skill, editing a
-fork, or syncing a fork with upstream.
+Use this reference when creating a downstream fork of the selected
+distribution, editing a fork, or syncing a fork with upstream.
 
 ## Provenance Pin
 
@@ -61,5 +61,7 @@ applies the same ref resolution and ancestry rules.
 
 1. Review the upstream diff since the pin.
 2. Port what applies; skip changes the fork's deltas intentionally override.
-3. Re-run the fork's `EVAL.md` behavior cases after material changes.
+3. Re-run the fork repository's own behavior and package checks after material
+   changes. The public distribution intentionally does not bundle its
+   maintainer harness.
 4. Bump the pinned sha and update the deltas list if it changed.

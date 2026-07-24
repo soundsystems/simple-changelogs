@@ -2,82 +2,108 @@
 
 [![skills.sh](https://skills.sh/b/soundsystems/simple-changelogs)](https://skills.sh/soundsystems/simple-changelogs)
 
-An agent-neutral skill for maintaining two useful release histories:
+Simple Changelogs is an agent-neutral family of release-history skills. Choose
+one changelog-owning distribution for a repository so agents load only the
+audiences and release surfaces that exist there.
 
-- `CHANGELOG.md` explains shipped outcomes to customers.
-- `DEVELOPER_CHANGELOG.md` preserves technical context for maintainers.
+## Distributions
 
-The skill classifies changes, bootstraps or backfills both files, makes
-evidence-based version recommendations, and updates established release-note
-destinations. It never treats ordinary UI work as permission to add a new
-modal, route, screen, panel, or navigation entry.
+The Skills CLI reads each directory's `SKILL.md` name and description when it
+lists choices. The table below provides the same selection guide.
 
-This repository also ships `publish-skill-forks`, a production workflow for
-validating a canonical skill update, synchronizing maintained forks, testing a
-complete Skills CLI consumer install, and verifying that every required change
-reaches its remote default branch.
+| Skill | Use it for | Does not own |
+| --- | --- | --- |
+| `simple-changelogs` | Full cross-surface repositories: customer and developer histories, web, mobile, store, internal, versions, majors, and prereleases | A narrower distro selected by the repository |
+| `simple-changelogs-cms` | One structured `CMS_CHANGELOG.json` rendered only for authenticated CMS operators | Public or developer changelogs |
+| `simple-changelogs-web` | Customer and optional developer histories plus established public web release-note destinations | Mobile/store and CMS operator history |
+| `simple-changelogs-mobile` | Customer and optional developer histories plus mobile in-app and existing store-note metadata | Web and CMS operator destinations |
+| `simple-changelogs-web-cms` | Public web history and a separate authenticated CMS operator history in one repository | Mobile/store destinations |
+| `simple-changelogs-skill-maintainer` | Skill-development repositories: changelogs, packaged notes, guidance versions, fork provenance, and installable package boundaries | Product-app, CMS, mobile, and store workflows |
 
-It also ships `simple-changelogs-cms`, a repository-agnostic variant for one
-structured changelog rendered only inside an authenticated CMS. That variant
-does not create or maintain public or developer changelog files.
+`publish-skill` is separate production tooling for synchronizing a
+canonical skill through maintained forks and a real Skills CLI consumer
+installation. It does not claim changelog ownership and may be installed beside
+one distribution.
+
+The distributions live in one repository because Skills CLI selects
+self-contained skill directories. Separate repositories are unnecessary unless
+a distribution later needs independent ownership, versioning, or release
+cadence.
 
 ## Install
 
-Use the [Skills CLI](https://skills.sh/docs) to choose the project or global
-scope and any supported agent targets:
+List names and discovery descriptions without installing:
 
-```bash
+```sh
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --list
+```
+
+Install one changelog distribution interactively:
+
+```sh
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs
 ```
 
-Install the production-loop skill independently:
+Examples for every narrower distribution:
 
-```bash
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill publish-skill-forks
-```
-
-Install the CMS-only variant independently:
-
-```bash
+```sh
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-cms
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-web
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-mobile
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-web-cms
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-skill-maintainer
 ```
 
 For a non-interactive project install to every detected agent:
 
-```bash
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent '*' -y
+```sh
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs \
+  --skill simple-changelogs-web \
+  --agent '*' \
+  -y
 ```
 
-Add `-g` for a global install. Use `pnpx` instead of `bunx` if preferred. To
-install a branch or tag, use the Git URL with its ref:
+Add `-g` for a global install. Use `pnpx` instead of `bunx` if preferred. Agent
+targets can be explicit:
 
-```bash
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs.git#<branch-or-tag> --skill simple-changelogs
-```
-
-Codex, Claude Code, and Cursor are optional explicit targets, not requirements:
-
-```bash
+```sh
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent claude-code -g -y
 bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent cursor -g -y
 ```
 
-List the repository's skills without installing them:
+Install a branch or tag with an explicit Git ref:
 
-```bash
-pnpx skills add https://gitlab.com/soundsystems/simple-changelogs --list
+```sh
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs.git#<branch-or-tag> \
+  --skill simple-changelogs
 ```
 
-## First Repository Setup
+Install the non-owning fork publication workflow independently or alongside the
+selected distro:
 
-On the first write-capable changelog task, the skill inspects the repository,
-creates either missing changelog, and asks once how to handle existing released
-history. It then stores the decision in one committed repo-local policy file:
+```sh
+bunx skills add https://gitlab.com/soundsystems/simple-changelogs \
+  --skill publish-skill
+```
+
+Install `publish-skill` project-locally from this repository. Other skill
+families may ship their own adaptation under the same name; the copy selected
+from the repository being published is authoritative for that production run.
+
+Do not install both `simple-changelogs-web` and `simple-changelogs-cms` to model
+one repository. Select `simple-changelogs-web-cms`; it owns the combined policy
+and prevents duplicate classification or writes.
+
+## Distribution selection in a repository
+
+The Markdown-based distributions use `.simple-changelogs.json`. New policies
+record one of:
 
 ```json
 {
   "schemaVersion": 1,
+  "distribution": "web",
   "guidance": {
     "version": 4,
     "backfillStatus": "completed"
@@ -88,230 +114,153 @@ history. It then stores the decision in one committed repo-local policy file:
 }
 ```
 
-Save it as `.simple-changelogs.json` at the repository root. The setup prompt
-records the user's actual answer; silence never becomes an invented version or
-backfill disposition. Read-only questions do not create or change project
-files.
+Allowed `distribution` values are `full`, `web`, `mobile`, `web-cms`, and
+`skill-repository`. Existing policies without the field remain backward
+compatible with the full distribution unless the repository explicitly selects
+another one.
 
-`newReleaseNoteSurfaces` may be `ask`, `allow`, or `existing-only`. Even with an
-established changelog workflow, a new product-facing release-note surface needs
-an explicit current request or documented repository permission.
+CMS-only uses `.simple-changelogs-cms.json` and a validated
+`CMS_CHANGELOG.json`. The combined web+CMS distribution uses both the standard
+policy and the CMS policy because their sources and audiences remain separate.
 
-`developerChangelog` may be `required` (the default) or `optional` for
-repositories that keep a single customer changelog and preserve technical
-context in commit or merge-request descriptions. `signatures` may be
-`agent-and-timestamp` (the default) or `none` to keep attribution comments out
-of the raw Markdown entirely.
+A sole repo-local distribution is selection evidence. A global installation is
+only availability; it does not override a repo-local distro or explicit
+repository instructions. When selection conflicts, agents stop before writing
+instead of running two workflows.
 
-The CMS-only variant uses `.simple-changelogs-cms.json` plus a validated
-`CMS_CHANGELOG.json` source. Its policy records the protected CMS route and
-keeps further release-note surfaces at `existing-only` by default. Run its
-focused checks with:
+## Manual install
 
-```bash
-bun skills/simple-changelogs-cms/scripts/test.ts
-bun skills/simple-changelogs-cms/scripts/validate.ts /path/to/repository
-```
+Copy only the selected self-contained directory:
 
-## Manual Install
-
-Copy the entire `skills/simple-changelogs/` directory. `SKILL.md` alone is not
-the full package: the references, schemas, eval manifest, adapters, runner, and
-fork checker are all bundled alongside it.
-
-Shared project install:
-
-```bash
+```sh
 mkdir -p .agents/skills
-cp -R skills/simple-changelogs .agents/skills/
+cp -R skills/simple-changelogs-web .agents/skills/
 ```
 
-Agent-specific examples:
+Agent-specific destinations can be used when desired:
 
-```bash
+```sh
 # Codex
 mkdir -p ~/.codex/skills
-cp -R skills/simple-changelogs ~/.codex/skills/
+cp -R skills/simple-changelogs-web ~/.codex/skills/
 
 # Claude Code
 mkdir -p ~/.claude/skills
-cp -R skills/simple-changelogs ~/.claude/skills/
+cp -R skills/simple-changelogs-web ~/.claude/skills/
 
 # Cursor
 mkdir -p .cursor/skills
-cp -R skills/simple-changelogs .cursor/skills/
+cp -R skills/simple-changelogs-web .cursor/skills/
 
 # Hermes
 mkdir -p ~/.hermes/skills
-cp -R skills/simple-changelogs ~/.hermes/skills/
+cp -R skills/simple-changelogs-web ~/.hermes/skills/
 
-# Eve (Vercel)
-mkdir -p .vercel/skills
-cp -R skills/simple-changelogs .vercel/skills/
+# Grok Build
+mkdir -p ~/.grok/skills
+cp -R skills/simple-changelogs-web ~/.grok/skills/
 ```
 
-Use the skill directory supported by your runtime if it differs from these
-examples.
+Each installed directory contains its runtime instructions, references, and
+deterministic runtime helper when applicable. It does not contain the
+repository's model adapters, fixtures, contributor tests, or eval protocol.
 
-## Run the Evaluation Harness
+## Development
 
-The bundled Bun harness is runtime-neutral at its core. Contract checks need
-Bun, Git, and a POSIX shell, but no model or credentials:
+Requires Bun, Git, and a POSIX shell:
 
-```bash
-bun skills/simple-changelogs/scripts/eval.ts contract
+```sh
+bun install
+bun run typecheck
+bun run lint
+bun run test
+bun run eval
 ```
 
-From inside an installed `simple-changelogs` directory, use
-`bun scripts/eval.ts contract` instead. The command checks package structure,
-schemas, instruction ownership, policy examples, manifest validity, shell
-syntax, and vendor-coupling boundaries.
+`bun run eval` validates all selectable package boundaries, runs the full
+distribution's deterministic contract suite, and validates the CMS fixture.
+Every installed skill must contain exactly one root `SKILL.md`; the entire
+`tooling/` tree must contain none.
 
-Trigger and behavior suites use a JSON stdin/stdout adapter. Optional adapters
-for Codex, Claude Code, and Hermes Agent are included:
+The optional authenticated behavior harness remains repository-only:
 
-```bash
-bun skills/simple-changelogs/scripts/eval.ts trigger \
-  --adapter skills/simple-changelogs/scripts/adapters/codex.ts
+```sh
+bun tooling/simple-changelogs/scripts/eval.ts behavior \
+  --adapter tooling/simple-changelogs/scripts/adapters/codex.ts
 
-bun skills/simple-changelogs/scripts/eval.ts behavior \
-  --adapter skills/simple-changelogs/scripts/adapters/claude.ts
+bun tooling/simple-changelogs/scripts/eval.ts behavior \
+  --adapter tooling/simple-changelogs/scripts/adapters/claude.ts
 
-bun skills/simple-changelogs/scripts/eval.ts behavior \
-  --adapter skills/simple-changelogs/scripts/adapters/hermes.ts
+bun tooling/simple-changelogs/scripts/eval.ts behavior \
+  --adapter tooling/simple-changelogs/scripts/adapters/hermes.ts
+
+bun tooling/simple-changelogs/scripts/eval.ts behavior \
+  --adapter tooling/simple-changelogs/scripts/adapters/cursor.ts
+
+bun tooling/simple-changelogs/scripts/eval.ts behavior \
+  --adapter tooling/simple-changelogs/scripts/adapters/grok.ts
 ```
 
-These adapters use the CLI's existing local authentication; the skill does not
-store API keys. Check or establish that authentication before running them:
+Adapters use existing local CLI authentication and never store keys:
 
-```bash
+```sh
 codex login status
-codex login
-
 claude auth status
-claude auth login
-
 hermes status
-hermes setup --portal
+cursor-agent status
+grok version
 ```
 
-The Codex adapter uses the CLI's configured model and disables inherited MCP
-servers for isolated runs. If that configured model is unavailable to the
-installed CLI, select an available one for the command without editing the
-skill:
+Optional per-run model variables are
+`SIMPLE_CHANGELOGS_CODEX_MODEL`,
+`SIMPLE_CHANGELOGS_CLAUDE_MODEL`,
+`SIMPLE_CHANGELOGS_HERMES_MODEL`,
+`SIMPLE_CHANGELOGS_CURSOR_MODEL`, and
+`SIMPLE_CHANGELOGS_GROK_MODEL`. Hermes also accepts
+`SIMPLE_CHANGELOGS_HERMES_PROVIDER`.
 
-```bash
-SIMPLE_CHANGELOGS_CODEX_MODEL=<available-model-id> \
-  bun skills/simple-changelogs/scripts/eval.ts behavior \
-  --adapter skills/simple-changelogs/scripts/adapters/codex.ts
-```
+The harness uses a provider-neutral JSON stdin/stdout contract. Bundled adapters
+isolate temporary fixtures and keep the selected skill directory read-only.
+See [tooling/simple-changelogs/EVAL.md](tooling/simple-changelogs/EVAL.md) for
+commands, response schemas, isolation details, authentication, case filters,
+and extension guidance.
 
-The Claude Code adapter has the equivalent
-`SIMPLE_CHANGELOGS_CLAUDE_MODEL=<available-model-id>` override. The repository
-does not declare provider model catalogs; valid IDs and aliases depend on the
-installed CLIs and authenticated accounts.
+## Forks
 
-The Hermes adapter accepts
-`SIMPLE_CHANGELOGS_HERMES_PROVIDER=<configured-provider>` and
-`SIMPLE_CHANGELOGS_HERMES_MODEL=<available-model-id>`. It requires a Hermes
-release that supports `hermes chat --safe-mode` and a working Docker or Podman
-installation. Each run forces Hermes' Docker terminal backend, mounts the
-temporary fixture as its workspace, disables container networking and
-cross-process reuse, and rejects local or SSH terminal backends. The model API
-still uses Hermes' existing host-side authentication.
-
-The bundled Claude and Hermes adapters copy the skill into each temporary
-fixture as a read-only snapshot. Claude's OS sandbox and Hermes' disposable,
-air-gapped Docker terminal isolate model tool access from the host. Hermes adds
-a nested read-only bind mount over the snapshot so container capabilities
-cannot bypass host file modes.
-
-Select a case with `--case <id>`, retain failed workspaces with
-`--keep-failures`, or emit CI-friendly output with `--format json`. Missing CLI
-authentication is a configuration error, not a failed skill behavior case.
-
-An external adapter may use any model provider or agent harness. It must read
-one `RunnerRequest` JSON object from stdin, write one `RunnerResponse` JSON
-object to stdout, keep diagnostics on stderr, restrict edits to the supplied
-workspace, and leave the skill package read-only. The exact protocol lives in
-`evals/schemas/runner-request.schema.json` and
-`evals/schemas/runner-response.schema.json`; see `EVAL.md` for commands, exit
-codes, assertion types, and adapter guidance.
-
-## When To Use It
-
-Use the skill for explicit changelog, developer-history, release-note,
-backfill, release-finalization, or release-version work. It also helps decide
-whether a specific change belongs in customer or developer history.
-
-It is not a generic trigger for every deploy, package bump, UI edit, commit
-summary, or code review. Routine internal work can be classified as requiring
-no changelog entry.
-
-## What It Encourages
-
-- Plain-language customer outcomes without clone-enabling implementation detail.
-- Maintainer notes for migrations, data models, parsers, automation, tests, and
-  release mechanics.
-- Grouped entries for one feature instead of a noisy commit-by-commit log.
-- Version decisions based on compatibility, shipped impact, and repository
-  policy.
-- Correct SemVer language: `0.x` is initial development, while prerelease means
-  a suffix such as `1.0.0-beta.1`.
-- Stable-major synthesis: `1.0.0` curates the durable product established during
-  `0.x`, later majors summarize the transition from the prior stable line, and
-  next-major branch names never replace canonical release evidence.
-- Machine-readable identity and timestamp comments as an informational audit
-  trail, without claiming cryptographic authorship. Repositories can disable
-  them with `signatures: "none"`, and a comment is never written when neither
-  the identity nor the timestamp is actually available.
-
-## Forking For Your Project
-
-A repo-specific fork can bake in product audiences, release surfaces, and local
-commands while remaining syncable with upstream. Record provenance directly
-under the fork's title:
+A repository-local fork can specialize audiences, commands, and release
+surfaces while retaining a provenance pin:
 
 ```md
 Forked from `simple-changelogs` @ `<short-sha>`. <project>-specific deltas:
-<audiences, policy sources, CLI workflows, release surfaces, ...>
+<audiences, policy sources, release surfaces, commands, ...>
 ```
 
-The repo-local fork should be authoritative for that repository. When a loader
-cannot enforce local precedence, repository guidance should name the exact fork
-and tell the agent not to apply the global upstream skill in the same task.
+Run the checker from the selected installed distribution or canonical source:
 
-Check the fork's pinned commit against the upstream default branch:
-
-```bash
-skills/simple-changelogs/scripts/check-fork-sync.sh path/to/fork/SKILL.md
-```
-
-Exit `0` means current, `1` means behind, `2` means invalid input, and `3` means
-the pin diverged from the selected upstream ref. Pass an upstream repository
-and ref explicitly when the defaults are not appropriate:
-
-```bash
+```sh
 skills/simple-changelogs/scripts/check-fork-sync.sh \
-  path/to/fork/SKILL.md /path/to/upstream origin/main
+  path/to/fork/SKILL.md \
+  /path/to/simple-changelogs \
+  origin/main
 ```
 
-Port applicable improvements, preserve intentional local deltas, and update the
-pin after verification. Fork provenance is a convention and audit aid, not a
-portable guarantee that every agent loader implements deduplication.
+Exit `0` means current, `1` behind, `2` invalid input, and `3` divergent.
+Repo-local precedence is a documented convention, not a claim that every
+runtime loader deduplicates automatically.
 
-## Package Layout
+## Repository layout
 
-- `skills/simple-changelogs/SKILL.md` — concise workflow and reference routing.
-- `skills/simple-changelogs/references/` — focused policy and verification
-  guidance.
-- `skills/simple-changelogs/evals/` — canonical cases and closed JSON schemas.
-- `skills/simple-changelogs/scripts/eval.ts` — contract and behavior runner.
-- `skills/simple-changelogs/scripts/adapters/` — optional model CLI adapters.
-- `skills/simple-changelogs/scripts/check-fork-sync.sh` — bundled fork checker.
-- `skills/simple-changelogs/EVAL.md` — harness protocol and contributor guide.
-- `skills/publish-skill-forks/SKILL.md` — canonical-to-fork production workflow.
-- `skills/publish-skill-forks/references/` — release-map, synchronization, merge,
-  and cleanup gates.
-- `skills/publish-skill-forks/scripts/verify-installed-package.sh` — exact Skills
-  CLI package-tree and content verifier.
+- `skills/simple-changelogs/` — full cross-surface runtime distribution.
+- `skills/simple-changelogs-cms/` — CMS-only runtime distribution and
+  validator.
+- `skills/simple-changelogs-web/` — web-only runtime distribution.
+- `skills/simple-changelogs-mobile/` — mobile/store runtime distribution.
+- `skills/simple-changelogs-web-cms/` — combined public-web and protected-CMS
+  runtime distribution.
+- `skills/simple-changelogs-skill-maintainer/` — lean distribution for repositories that develop or distribute skills.
+- `skills/publish-skill/` — optional production propagation workflow.
+- `tooling/simple-changelogs/` — full contract and behavior harness, fixtures,
+  schemas, tests, and Codex, Claude Code, Hermes, Cursor, and Grok adapters.
+- `tooling/simple-changelogs-cms/` — CMS fixtures and contributor tests.
+- `tooling/distributions.check.ts` — installed package-shape and discovery
+  boundary validator.

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Publish Skill Forks"
-  short_description: "Publish and verify skill updates across forks"
-  default_prompt: "Use $publish-skill-forks to run the complete production loop for this skill update."

@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs-cms
-description: Use when creating, updating, backfilling, classifying, reconciling, or displaying an internal CMS changelog for authenticated operators, especially when a repository must keep release history out of public and developer changelogs. Also use during CMS release, deploy, admin-surface, or content-model work that needs operator-facing history.
+description: Use only for a repository that explicitly selects the CMS-only Simple Changelogs distribution. Create, update, backfill, classify, reconcile, validate, or display one internal changelog for authenticated CMS operators while keeping it out of public and developer histories. Do not use for public web, mobile/store, skill-package, or full cross-surface changelogs, or when another distribution owns the repository.
 ---
 
 # Simple Changelogs CMS
@@ -13,6 +13,18 @@ Maintain one repository-owned `CMS_CHANGELOG.json` document for people who
 operate the product through its authenticated content-management surface.
 
 Current guidance version: 1
+
+## Distribution checkpoint
+
+Use one changelog-owning distribution per repository.
+
+This distribution is selected when repository instructions or the current user
+name `simple-changelogs-cms`, `.simple-changelogs-cms.json` exists without a
+combined web+CMS policy, or this is the sole repo-local changelog distribution.
+A global installation alone does not override another repo-local distribution.
+
+If `simple-changelogs-web-cms` owns the repository, defer to it; do not invoke
+both skills for the same operator history.
 
 ## Setup checkpoint
 
@@ -40,7 +52,6 @@ release process, content source, or validation command.
 | Historical reconstruction or audits | `references/backfill.md` |
 | Adding or synchronizing the authenticated route | `references/cms-surface.md` |
 | Final data, access, and repository checks | `references/verification.md` |
-| Running the focused evaluation package | `EVAL.md` |
 
 ## Core workflow
 
