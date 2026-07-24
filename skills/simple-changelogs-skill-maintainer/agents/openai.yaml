@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Repo Release Maintainer"
+  short_description: "Maintain releases for repositories that ship agent skills"
+  default_prompt: "Use $simple-changelogs-skill-maintainer to maintain this skill repository's changelogs, packaged notes, versions, and distribution boundaries."

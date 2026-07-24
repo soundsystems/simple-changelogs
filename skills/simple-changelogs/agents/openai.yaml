@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simple Changelogs"
+  short_description: "Maintain full cross-surface release history"
+  default_prompt: "Use $simple-changelogs as this repository's full customer, developer, release-note, and release-metadata workflow."

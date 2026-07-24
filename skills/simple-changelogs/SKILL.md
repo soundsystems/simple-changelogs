@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer or developer changelogs, release notes, "What's New" content, store notes, release metadata, version fields, or explicit changelog decisions during push, merge, release, or deploy preparation, including major releases (1.0, 2.0, GA) and alpha, beta, or RC prerelease trains.
+description: Use as the full cross-surface Simple Changelogs distribution when a repository spans web, mobile, store, internal, or other release-note destinations, or when no narrower distribution is selected. Create, update, backfill, classify, reconcile, or finalize customer and developer changelogs, release notes, metadata, versions, major releases, and prerelease trains. Do not use when the repository selects the CMS-only, web-only, mobile-only, web+CMS, or skill-repository distribution.
 ---
 
 # Simple Changelogs
@@ -13,6 +13,21 @@ Maintain two complementary histories:
   should not have to reconstruct from commits.
 
 Current guidance version: 4
+
+## Distribution Checkpoint
+
+Use one changelog-owning distribution per repository.
+
+The full distribution is selected when `.simple-changelogs.json` records
+`"distribution": "full"`, repository instructions or the current user name
+`simple-changelogs`, this is the sole repo-local changelog distribution, or an
+existing policy omits `distribution` and no narrower distribution is otherwise
+selected.
+
+A global installation alone does not override a repository-local CMS, web,
+mobile, web+CMS, or skill-repository distribution. If selection is conflicting,
+stop before writing and report the conflict rather than running two changelog
+workflows.
 
 ## Setup Checkpoint
 
@@ -50,7 +65,6 @@ Read only the references needed for the current branch of work:
 | Existing release-note sync or authorized product surfaces | `references/release-note-surfaces.md` |
 | Final checks and repository-native automation | `references/automation-verification.md` |
 | Fork provenance, selection convention, or upstream drift | `references/fork-maintenance.md` |
-| Running or extending the evaluation harness | `EVAL.md` |
 
 ## Core Workflow
 

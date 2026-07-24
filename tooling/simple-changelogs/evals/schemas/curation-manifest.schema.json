@@ -1,0 +1,529 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Changelogs Curation Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "surfaces"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "surfaces": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/curationSurface" }
+    }
+  },
+  "$defs": {
+    "repoRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "repoRelativePathArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/repoRelativePath" }
+    },
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "sourceBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourcePath", "heading", "occurrence"],
+      "properties": {
+        "sourcePath": { "$ref": "#/$defs/repoRelativePath" },
+        "heading": { "type": "string", "minLength": 1 },
+        "occurrence": { "type": "integer", "minimum": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "date": { "type": "string", "minLength": 1 }
+      }
+    },
+    "curationScope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "full-history" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "first", "last"],
+          "properties": {
+            "kind": { "const": "release-range" },
+            "first": { "$ref": "#/$defs/sourceBoundary" },
+            "last": { "$ref": "#/$defs/sourceBoundary" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "release"],
+          "properties": {
+            "kind": { "const": "release" },
+            "release": { "$ref": "#/$defs/sourceBoundary" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "release", "section"],
+          "properties": {
+            "kind": { "const": "section" },
+            "release": { "$ref": "#/$defs/sourceBoundary" },
+            "section": { "$ref": "#/$defs/sourceBoundary" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "itemIds"],
+          "properties": {
+            "kind": { "const": "item-set" },
+            "itemIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "curationGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["groupId", "label", "itemIds"],
+      "properties": {
+        "groupId": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "itemIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "activeCurationScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scopeId",
+        "scope",
+        "maturity",
+        "sourceFingerprint",
+        "activatedByOperationId",
+        "groups"
+      ],
+      "properties": {
+        "scopeId": { "type": "string", "minLength": 1 },
+        "scope": { "$ref": "#/$defs/curationScope" },
+        "maturity": { "enum": ["provisional", "released"] },
+        "sourceFingerprint": { "type": "string", "minLength": 1 },
+        "activatedByOperationId": { "type": "string", "minLength": 1 },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/curationGroup" }
+        }
+      }
+    },
+    "curationCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligibleBefore",
+        "eligibleAfter",
+        "mapped",
+        "moved",
+        "groupsBefore",
+        "groupsAfter"
+      ],
+      "properties": {
+        "eligibleBefore": { "type": "integer", "minimum": 0 },
+        "eligibleAfter": { "type": "integer", "minimum": 0 },
+        "mapped": { "type": "integer", "minimum": 0 },
+        "moved": { "type": "integer", "minimum": 0 },
+        "groupsBefore": { "type": "integer", "minimum": 0 },
+        "groupsAfter": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "curationStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grouping", "ordering", "withinGroup"],
+      "properties": {
+        "grouping": {
+          "enum": ["product-area", "workflow", "release-section", "custom"]
+        },
+        "ordering": {
+          "enum": [
+            "product-importance",
+            "product-journey",
+            "source-order",
+            "custom"
+          ]
+        },
+        "withinGroup": {
+          "enum": [
+            "product-importance",
+            "product-journey",
+            "source-order",
+            "custom"
+          ]
+        },
+        "customDescription": { "type": "string", "minLength": 1 }
+      }
+    },
+    "surfaceDisplayPreferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "defaultOrganization",
+        "layout",
+        "visualDirection",
+        "dateDisplay",
+        "versionDisplay",
+        "detailDensity",
+        "chronologicalAccess",
+        "navigation"
+      ],
+      "properties": {
+        "defaultOrganization": {
+          "enum": [
+            "product-area",
+            "change-type",
+            "release-chronology",
+            "custom"
+          ]
+        },
+        "layout": {
+          "enum": ["grouped-sections", "timeline", "cards", "changelog-list"]
+        },
+        "visualDirection": {
+          "enum": [
+            "project-native",
+            "editorial-minimal",
+            "product-cards",
+            "timeline-minimal",
+            "custom"
+          ]
+        },
+        "dateDisplay": { "enum": ["exact", "month-year", "hidden"] },
+        "versionDisplay": { "enum": ["exact", "friendly", "hidden"] },
+        "detailDensity": { "enum": ["concise", "balanced", "full"] },
+        "chronologicalAccess": {
+          "enum": [
+            "curated-with-toggle",
+            "chronology-with-filters",
+            "curated-with-context"
+          ]
+        },
+        "navigation": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "anchors",
+              "search",
+              "product-area-filter",
+              "release-filter"
+            ]
+          }
+        }
+      }
+    },
+    "surfaceTransparencyPreference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preference"],
+      "properties": {
+        "preference": {
+          "enum": ["undecided", "none", "curation-notice", "correction-notice"]
+        },
+        "noticeText": { "type": "string", "minLength": 1 },
+        "noticeLocation": { "type": "string", "minLength": 1 },
+        "decisionSource": { "$ref": "#/$defs/authorizationSource" },
+        "decidedAt": { "type": "string", "minLength": 1 }
+      },
+      "if": {
+        "properties": {
+          "preference": { "enum": ["curation-notice", "correction-notice"] }
+        },
+        "required": ["preference"]
+      },
+      "then": { "required": ["noticeText", "noticeLocation"] },
+      "else": {
+        "not": {
+          "anyOf": [
+            { "required": ["noticeText"] },
+            { "required": ["noticeLocation"] }
+          ]
+        }
+      }
+    },
+    "authorizationSource": {
+      "enum": [
+        "current-request",
+        "repository-policy",
+        "repository-instructions",
+        "user-response",
+        "none"
+      ]
+    },
+    "deployedSurfaceImpact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "evidence", "changeKinds", "acknowledged"],
+      "properties": {
+        "state": { "enum": ["deployed", "unpublished", "unknown"] },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "previouslyVisibleScope": { "$ref": "#/$defs/curationScope" },
+        "changeKinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ordering",
+              "grouping",
+              "display-version-format",
+              "canonical-version",
+              "date",
+              "release-boundary",
+              "content",
+              "visibility",
+              "deep-link"
+            ]
+          }
+        },
+        "acknowledged": { "type": "boolean" },
+        "acknowledgmentSource": { "$ref": "#/$defs/authorizationSource" },
+        "acknowledgedAt": { "type": "string", "minLength": 1 }
+      },
+      "if": {
+        "properties": {
+          "state": { "const": "deployed" },
+          "changeKinds": { "minItems": 1 }
+        },
+        "required": ["state", "previouslyVisibleScope", "changeKinds"]
+      },
+      "then": {
+        "properties": { "acknowledged": { "const": true } },
+        "required": ["acknowledged"]
+      }
+    },
+    "linkedSourceRewrite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorizationCode",
+        "sourceFingerprintBefore",
+        "sourceFingerprintAfter",
+        "changedPaths",
+        "changeKinds"
+      ],
+      "properties": {
+        "authorizationCode": { "const": "RELEASED_HISTORY_REWRITE" },
+        "sourceFingerprintBefore": { "type": "string", "minLength": 1 },
+        "sourceFingerprintAfter": { "type": "string", "minLength": 1 },
+        "changedPaths": { "$ref": "#/$defs/repoRelativePathArray" },
+        "changeKinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "canonical-version",
+              "date",
+              "release-boundary",
+              "content",
+              "visibility"
+            ]
+          }
+        }
+      }
+    },
+    "linkedSurfaceCopyRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorizationCode",
+        "surfaceFingerprintBefore",
+        "surfaceFingerprintAfter",
+        "changedItemIds"
+      ],
+      "properties": {
+        "authorizationCode": { "const": "RELEASE_NOTE_COPY_REVISION" },
+        "surfaceFingerprintBefore": { "type": "string", "minLength": 1 },
+        "surfaceFingerprintAfter": { "type": "string", "minLength": 1 },
+        "changedItemIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "curationOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "status",
+        "requestedScope",
+        "effectiveScope",
+        "direction",
+        "overlap",
+        "sourceFingerprint",
+        "eligibleItemSetFingerprintBefore",
+        "surfaceFingerprintBefore",
+        "strategy",
+        "deployedImpact",
+        "revisitsOperationIds"
+      ],
+      "properties": {
+        "operationId": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["partial", "failed", "completed", "superseded"] },
+        "requestedScope": { "$ref": "#/$defs/curationScope" },
+        "effectiveScope": { "$ref": "#/$defs/curationScope" },
+        "direction": { "enum": ["canonical-forward", "canonical-reverse"] },
+        "overlap": {
+          "enum": ["none", "continuation", "partial-overlap", "full-overlap"]
+        },
+        "sourceFingerprint": { "type": "string", "minLength": 1 },
+        "eligibleItemSetFingerprintBefore": {
+          "type": "string",
+          "minLength": 1
+        },
+        "eligibleItemSetFingerprintAfter": { "type": "string", "minLength": 1 },
+        "surfaceFingerprintBefore": { "type": "string", "minLength": 1 },
+        "surfaceFingerprintAfter": { "type": "string", "minLength": 1 },
+        "counts": { "$ref": "#/$defs/curationCounts" },
+        "strategy": { "$ref": "#/$defs/curationStrategy" },
+        "deployedImpact": { "$ref": "#/$defs/deployedSurfaceImpact" },
+        "linkedSourceRewrite": { "$ref": "#/$defs/linkedSourceRewrite" },
+        "linkedSurfaceCopyRevision": {
+          "$ref": "#/$defs/linkedSurfaceCopyRevision"
+        },
+        "revisitsOperationIds": { "$ref": "#/$defs/stringArray" },
+        "resumeAfter": { "$ref": "#/$defs/sourceBoundary" },
+        "oldestCovered": { "$ref": "#/$defs/sourceBoundary" },
+        "newestCovered": { "$ref": "#/$defs/sourceBoundary" },
+        "supersededBy": { "type": "string", "minLength": 1 },
+        "failureDiagnostic": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "type": "string", "minLength": 1 },
+        "runtimeIdentity": { "type": "string", "minLength": 1 },
+        "startedAt": { "type": "string", "minLength": 1 },
+        "completedAt": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "completed" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": [
+              "eligibleItemSetFingerprintAfter",
+              "surfaceFingerprintAfter",
+              "counts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "partial" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["resumeAfter"] }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "failed" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["failureDiagnostic"] }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "superseded" } },
+            "required": ["status"]
+          },
+          "then": { "required": ["supersededBy"] }
+        }
+      ]
+    },
+    "curationSurface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surfaceId",
+        "surfacePaths",
+        "sourcePaths",
+        "audience",
+        "mode",
+        "fallback",
+        "displayPreferences",
+        "transparencyPreference",
+        "activeScopes",
+        "operations"
+      ],
+      "properties": {
+        "surfaceId": { "type": "string", "minLength": 1 },
+        "surfacePaths": {
+          "allOf": [
+            { "$ref": "#/$defs/repoRelativePathArray" },
+            { "minItems": 1 }
+          ]
+        },
+        "sourcePaths": {
+          "allOf": [
+            { "$ref": "#/$defs/repoRelativePathArray" },
+            { "minItems": 1 }
+          ]
+        },
+        "audience": { "enum": ["public", "internal"] },
+        "mode": {
+          "enum": ["full-history", "selected-summary", "internal-history"]
+        },
+        "fallback": { "const": "source-order" },
+        "displayPreferences": { "$ref": "#/$defs/surfaceDisplayPreferences" },
+        "transparencyPreference": {
+          "$ref": "#/$defs/surfaceTransparencyPreference"
+        },
+        "activeScopes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/activeCurationScope" }
+        },
+        "operations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/curationOperation" }
+        }
+      },
+      "if": {
+        "properties": { "mode": { "const": "full-history" } },
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": {
+          "displayPreferences": {
+            "not": {
+              "properties": {
+                "dateDisplay": { "const": "hidden" },
+                "versionDisplay": { "const": "hidden" }
+              },
+              "required": ["dateDisplay", "versionDisplay"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

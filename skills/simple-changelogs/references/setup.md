@@ -12,6 +12,7 @@ file records decisions; it does not copy the skill's prose rules.
 ```json
 {
   "schemaVersion": 1,
+  "distribution": "full",
   "guidance": {
     "version": 4,
     "backfillStatus": "completed"
@@ -21,6 +22,13 @@ file records decisions; it does not copy the skill's prose rules.
   "newReleaseNoteSurfaces": "ask"
 }
 ```
+
+`distribution` prevents multiple globally installed variants from claiming the
+same repository. Allowed values are `full`, `web`, `mobile`, `web-cms`, and
+`skill-repository`. An existing policy without this field remains a
+backward-compatible `full` policy unless repository instructions or the current
+user explicitly select another distribution. A CMS-only repository uses
+`.simple-changelogs-cms.json` instead.
 
 Allowed `guidance.backfillStatus` values:
 
@@ -75,7 +83,9 @@ For authorized setup:
 
 1. Inspect repository instructions, existing changelogs, released headings,
    release-note data, and local release policy.
-2. Create `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` when missing.
+2. Confirm that the full distribution owns the repository and record
+   `distribution: "full"`. Create `CHANGELOG.md` and
+   `DEVELOPER_CHANGELOG.md` when missing.
    Repositories adopting this skill maintain both histories by default; skip
    the developer file only when the user explicitly chooses
    `developerChangelog: "optional"`.

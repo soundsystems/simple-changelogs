@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simple Changelogs Web + CMS"
+  short_description: "Maintain public web and protected CMS release history"
+  default_prompt: "Use $simple-changelogs-web-cms to maintain this repository's public web history and separate authenticated CMS operator changelog."
