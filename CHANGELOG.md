@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release-note curation now uses stable, scoped presentation maps that preserve
+  chronological changelogs as the source of truth, record continuation and
+  overlapping revisit history, and prevent completed reorganizations from
+  silently dropping or duplicating notes.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-24T00:39:25-05:00" -->
 - Simple Changelogs now offers six mutually exclusive distributions: full,
   CMS-only, web-only, mobile-only, web+CMS, and the lean
   `simple-changelogs-skill-maintainer` distribution for repositories that

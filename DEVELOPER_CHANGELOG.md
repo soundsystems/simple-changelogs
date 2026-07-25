@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Added release-note curation contracts and source parsing:
+  - A closed JSON Schema and runtime validator model per-surface groups,
+    operation history, continuation and revisit overlap, deployed-impact
+    acknowledgments, linked corrections, and completed-operation item
+    conservation.
+  - Markdown extraction assigns stable SHA-256 identities to atomic changelog
+    entries, resolves full-history, release-range, release, section, and
+    item-set scopes, strips signature comments, and reports ambiguous structure
+    instead of guessing.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-24T00:39:25-05:00" -->
 - Split the monolithic package into six changelog-owning distributions:
   `simple-changelogs`, `simple-changelogs-cms`,
   `simple-changelogs-web`, `simple-changelogs-mobile`,
