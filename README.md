@@ -148,6 +148,53 @@ only availability; it does not override a repo-local distro or explicit
 repository instructions. When selection conflicts, agents stop before writing
 instead of running two workflows.
 
+## First-write onboarding
+
+Every changelog distribution includes a deterministic, non-TTY
+`scripts/setup.ts` helper. A write-capable task runs inspection before changing
+history; read-only questions and previews pass `--task-mode read` and never
+write policy.
+
+```sh
+bun skills/simple-changelogs-web/scripts/setup.ts inspect \
+  --json \
+  --task-mode write \
+  --repo .
+```
+
+When policy is missing, the agent summarizes detected distribution, histories,
+released headings, established destinations, and applicable global defaults.
+It then offers recommended setup, customization, or run-only preferences. The
+user confirms a plain-language receipt before durable writes, and the agent
+continues the original changelog task after setup.
+
+```sh
+bun skills/simple-changelogs-web/scripts/setup.ts apply \
+  --developer-history required \
+  --signatures agent-and-timestamp \
+  --new-surfaces ask \
+  --backfill not-applicable \
+  --scope repository \
+  --setup-style recommended \
+  --confirm \
+  --repo .
+```
+
+`--scope all-projects` saves a private solo-developer profile containing only
+developer-history, signature, missing-surface, and setup-style defaults.
+Repository distribution, audiences, destinations, routes, authentication,
+released-history state, metadata, and publication authority are always
+rediscovered. Storage uses:
+
+- macOS: `~/Library/Application Support/simple-changelogs/preferences.json`
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/simple-changelogs/preferences.json`
+- Windows: `%APPDATA%/simple-changelogs/preferences.json`
+
+Set `SIMPLE_CHANGELOGS_CONFIG_DIR` to override the containing directory in
+tests or automation. CMS-only and web+CMS application additionally require
+`--cms-auth-proven`, `--cms-surface-proven`, and an exact `--cms-route`; the
+helper never derives CMS access authority from global preferences.
+
 ## Manual install
 
 Copy only the selected self-contained directory:

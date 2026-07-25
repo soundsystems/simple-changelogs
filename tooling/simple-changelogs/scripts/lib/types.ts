@@ -12,6 +12,17 @@ export const BACKFILL_STATUSES = [
 export const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
 export const DEVELOPER_CHANGELOG_POLICIES = ["required", "optional"] as const;
 export const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
+export const SETUP_STYLES = ["recommended", "customized"] as const;
+export const SETUP_SCOPES = ["repository", "all-projects", "run-only"] as const;
+export const SETUP_COMMANDS = ["inspect", "apply"] as const;
+export const SETUP_STATUSES = [
+  "already-configured",
+  "blocked",
+  "configured",
+  "needs-input",
+  "ready",
+  "run-only",
+] as const;
 export const DISTRIBUTIONS = [
   "full",
   "web",
@@ -67,6 +78,10 @@ export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
 export type DeveloperChangelogPolicy =
   (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 export type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
+export type SetupStyle = (typeof SETUP_STYLES)[number];
+export type SetupScope = (typeof SETUP_SCOPES)[number];
+export type SetupCommand = (typeof SETUP_COMMANDS)[number];
+export type SetupStatus = (typeof SETUP_STATUSES)[number];
 export type Distribution = (typeof DISTRIBUTIONS)[number];
 export type ActivationMode = (typeof ACTIVATION_MODES)[number];
 export type EvalSuite = (typeof EVAL_SUITES)[number];
@@ -92,6 +107,101 @@ export interface RepoPolicy {
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
+}
+
+export interface GlobalPreferences {
+  developerChangelog: DeveloperChangelogPolicy;
+  newReleaseNoteSurfaces: SurfacePolicy;
+  profile: "solo-developer";
+  schemaVersion: 1;
+  setupStyle: SetupStyle;
+  signatures: SignaturePolicy;
+}
+
+export interface SetupWriteRecord {
+  kind:
+    | "changelog"
+    | "cms-changelog"
+    | "cms-policy"
+    | "developer-changelog"
+    | "global-preferences"
+    | "repository-policy";
+  path: string;
+  written: boolean;
+}
+
+export interface SetupSelection {
+  backfillStatus?: BackfillStatus;
+  developerChangelog?: DeveloperChangelogPolicy;
+  newReleaseNoteSurfaces?: SurfacePolicy;
+  scope?: SetupScope;
+  setupStyle?: SetupStyle;
+  signatures?: SignaturePolicy;
+}
+
+export interface CmsSetupPolicy {
+  changelogPath: string;
+  cmsSurface: {
+    access: "authenticated-operators";
+    route: string;
+  };
+  guidance: {
+    backfillStatus: BackfillStatus;
+    version: 1;
+  };
+  newReleaseNoteSurfaces: SurfacePolicy;
+  schemaVersion: 1;
+}
+
+export interface SetupStateRecord<T> {
+  errors: string[];
+  path: string;
+  state: "absent" | "malformed" | "valid";
+  value?: T;
+}
+
+export interface SetupDetection {
+  confidence: "conflict" | "high" | "low" | "medium";
+  distribution: Distribution | "cms" | null;
+  evidence: string[];
+}
+
+export interface SetupInventory {
+  changelogs: {
+    exists: boolean;
+    path: string;
+    releasedHeadings: number;
+  }[];
+  cmsEvidence: string[];
+  destinations: string[];
+  developerHistoryEvidence: string[];
+  releasedHistoryCount: number;
+}
+
+export interface SetupRecommendation {
+  cmsPolicy: CmsSetupPolicy | null;
+  policy: RepoPolicy | null;
+  reusableDefaults: GlobalPreferences;
+}
+
+export interface SetupResult {
+  cmsPolicy: SetupStateRecord<CmsSetupPolicy> | null;
+  command: SetupCommand;
+  detection: SetupDetection;
+  errors: string[];
+  globalPreferences: SetupStateRecord<GlobalPreferences>;
+  inventory: SetupInventory;
+  onboardingRequired: boolean;
+  policy: SetupStateRecord<RepoPolicy> | null;
+  recommendation: SetupRecommendation;
+  repository: string;
+  schemaVersion: 1;
+  selection: SetupSelection;
+  status: SetupStatus;
+  summary: string;
+  unresolvedQuestions: string[];
+  writeCapable: boolean;
+  writes: SetupWriteRecord[];
 }
 
 export interface EvalAssertion {

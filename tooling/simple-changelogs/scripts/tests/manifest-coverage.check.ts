@@ -325,6 +325,24 @@ describe("canonical evaluation manifest", () => {
       )
     ).toBe(true);
     expect(
+      hasAssertion(
+        setup,
+        1,
+        "json.path",
+        "full",
+        ".simple-changelogs.json#/distribution"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        setup,
+        1,
+        "json.path",
+        "required",
+        ".simple-changelogs.json#/developerChangelog"
+      )
+    ).toBe(true);
+    expect(
       hasAssertion(setup, 1, "report.authorization", {
         code: "GUIDANCE_BACKFILL",
         source: "user-response",

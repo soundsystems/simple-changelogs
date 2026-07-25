@@ -28,13 +28,17 @@ both skills for the same operator history.
 
 ## Setup checkpoint
 
-Before write-capable changelog work, look for `.simple-changelogs-cms.json` at
-the repository root.
+Before write-capable changelog work, run the bundled `scripts/setup.ts`
+inspection helper and look for `.simple-changelogs-cms.json` at the repository
+root.
 
+- Pass `--task-mode write` for CMS history mutations and `--task-mode read` for
+  explanations or previews that must stay read-only.
 - Validate existing policy and changelog data with `scripts/validate.ts` before
   relying on them.
 - When policy is absent and the request authorizes CMS changelog work, read
-  `references/setup.md` and create the repository-local state.
+  `references/setup.md`, confirm the CMS-specific receipt, create the
+  repository-local state, then continue the original request.
 - When released history exists, backfill only after the user or repository
   policy explicitly authorizes the audit. Read `references/backfill.md`.
 - Treat the recorded CMS route as presentation metadata, not permission to

@@ -32,6 +32,10 @@ const portableContractDistributions = new Set([
 ]);
 const forbiddenNames = new Set(["EVAL.md"]);
 const failures: string[] = [];
+const canonicalSetupHelper = await readFile(
+  join(toolingRoot, "simple-changelogs", "scripts", "setup.ts"),
+  "utf8"
+);
 
 interface WalkedEntry {
   bytes: number;
@@ -85,11 +89,22 @@ for (const actual of skillDirectories) {
 const distributionSnapshots = await Promise.all(
   skillDirectories.map(async (directoryName) => {
     const directory = join(skillsRoot, directoryName);
+    const setupPath = join(directory, "scripts", "setup.ts");
     const [entries, source] = await Promise.all([
       walk(directory),
       readFile(join(directory, "SKILL.md"), "utf8"),
     ]);
-    return { directory, directoryName, entries, source };
+    const setupSource =
+      changelogDistributions.has(directoryName) && existsSync(setupPath)
+        ? await readFile(setupPath, "utf8")
+        : null;
+    return {
+      directory,
+      directoryName,
+      entries,
+      setupSource,
+      source,
+    };
   })
 );
 
@@ -98,6 +113,7 @@ for (const {
   directory,
   directoryName,
   entries,
+  setupSource,
   source,
 } of distributionSnapshots) {
   const skillFiles = entries.filter(
@@ -181,6 +197,16 @@ for (const {
     failures.push(
       `skills/${directoryName}/SKILL.md lacks the mutual-exclusion checkpoint`
     );
+  }
+  if (changelogDistributions.has(directoryName)) {
+    const setupPath = join(directory, "scripts", "setup.ts");
+    if (!existsSync(setupPath)) {
+      failures.push(`skills/${directoryName} is missing scripts/setup.ts`);
+    } else if (setupSource !== canonicalSetupHelper) {
+      failures.push(
+        `skills/${directoryName}/scripts/setup.ts is out of sync with maintainer tooling`
+      );
+    }
   }
 }
 

@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Changelogs Setup Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "command",
+    "status",
+    "repository",
+    "writeCapable",
+    "onboardingRequired",
+    "detection",
+    "policy",
+    "cmsPolicy",
+    "globalPreferences",
+    "inventory",
+    "recommendation",
+    "selection",
+    "unresolvedQuestions",
+    "writes",
+    "summary",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "command": { "enum": ["inspect", "apply"] },
+    "status": {
+      "enum": [
+        "already-configured",
+        "blocked",
+        "configured",
+        "needs-input",
+        "ready",
+        "run-only"
+      ]
+    },
+    "repository": { "type": "string", "minLength": 1 },
+    "writeCapable": { "type": "boolean" },
+    "onboardingRequired": { "type": "boolean" },
+    "detection": { "$ref": "#/$defs/detection" },
+    "policy": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/repoPolicyState" }]
+    },
+    "cmsPolicy": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/cmsPolicyState" }]
+    },
+    "globalPreferences": { "$ref": "#/$defs/globalPreferencesState" },
+    "inventory": { "$ref": "#/$defs/inventory" },
+    "recommendation": { "$ref": "#/$defs/recommendation" },
+    "selection": { "$ref": "#/$defs/selection" },
+    "unresolvedQuestions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "writes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/write" }
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "backfillStatus": {
+      "enum": [
+        "not-applicable",
+        "completed",
+        "declined",
+        "deferred",
+        "partial",
+        "failed"
+      ]
+    },
+    "surfacePolicy": { "enum": ["ask", "allow", "existing-only"] },
+    "repoPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "guidance",
+        "developerChangelog",
+        "signatures",
+        "newReleaseNoteSurfaces"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "distribution": {
+          "enum": ["full", "web", "mobile", "web-cms", "skill-repository"]
+        },
+        "guidance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "backfillStatus"],
+          "properties": {
+            "version": { "type": "integer", "minimum": 1 },
+            "backfillStatus": { "$ref": "#/$defs/backfillStatus" }
+          }
+        },
+        "developerChangelog": { "enum": ["required", "optional"] },
+        "signatures": { "enum": ["agent-and-timestamp", "none"] },
+        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" }
+      }
+    },
+    "cmsPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "guidance",
+        "changelogPath",
+        "cmsSurface",
+        "newReleaseNoteSurfaces"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "guidance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "backfillStatus"],
+          "properties": {
+            "version": { "const": 1 },
+            "backfillStatus": { "$ref": "#/$defs/backfillStatus" }
+          }
+        },
+        "changelogPath": { "type": "string", "minLength": 6 },
+        "cmsSurface": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["route", "access"],
+          "properties": {
+            "route": { "type": "string", "pattern": "^/.+" },
+            "access": { "const": "authenticated-operators" }
+          }
+        },
+        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" }
+      }
+    },
+    "globalPreferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "profile",
+        "developerChangelog",
+        "signatures",
+        "newReleaseNoteSurfaces",
+        "setupStyle"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "profile": { "const": "solo-developer" },
+        "developerChangelog": { "enum": ["required", "optional"] },
+        "signatures": { "enum": ["agent-and-timestamp", "none"] },
+        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "setupStyle": { "enum": ["recommended", "customized"] }
+      }
+    },
+    "stateBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "state", "errors"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["absent", "valid", "malformed"] },
+        "errors": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "repoPolicyState": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/$defs/stateBase" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "state", "errors"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "state": { "enum": ["absent", "malformed"] },
+                "errors": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors", "value"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "const": "valid" },
+            "errors": { "type": "array", "maxItems": 0 },
+            "value": { "$ref": "#/$defs/repoPolicy" }
+          }
+        }
+      ]
+    },
+    "cmsPolicyState": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "enum": ["absent", "malformed"] },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors", "value"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "const": "valid" },
+            "errors": { "type": "array", "maxItems": 0 },
+            "value": { "$ref": "#/$defs/cmsPolicy" }
+          }
+        }
+      ]
+    },
+    "globalPreferencesState": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "enum": ["absent", "malformed"] },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors", "value"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "const": "valid" },
+            "errors": { "type": "array", "maxItems": 0 },
+            "value": { "$ref": "#/$defs/globalPreferences" }
+          }
+        }
+      ]
+    },
+    "detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "confidence", "evidence"],
+      "properties": {
+        "distribution": {
+          "enum": [
+            null,
+            "cms",
+            "full",
+            "web",
+            "mobile",
+            "web-cms",
+            "skill-repository"
+          ]
+        },
+        "confidence": { "enum": ["conflict", "high", "low", "medium"] },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changelogs",
+        "cmsEvidence",
+        "destinations",
+        "developerHistoryEvidence",
+        "releasedHistoryCount"
+      ],
+      "properties": {
+        "changelogs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "exists", "releasedHeadings"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "exists": { "type": "boolean" },
+              "releasedHeadings": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "cmsEvidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "destinations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "developerHistoryEvidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "releasedHistoryCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "cmsPolicy", "reusableDefaults"],
+      "properties": {
+        "policy": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/repoPolicy" }]
+        },
+        "cmsPolicy": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/cmsPolicy" }]
+        },
+        "reusableDefaults": { "$ref": "#/$defs/globalPreferences" }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backfillStatus": { "$ref": "#/$defs/backfillStatus" },
+        "developerChangelog": { "enum": ["required", "optional"] },
+        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "scope": { "enum": ["repository", "all-projects", "run-only"] },
+        "setupStyle": { "enum": ["recommended", "customized"] },
+        "signatures": { "enum": ["agent-and-timestamp", "none"] }
+      }
+    },
+    "write": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "written"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "changelog",
+            "cms-changelog",
+            "cms-policy",
+            "developer-changelog",
+            "global-preferences",
+            "repository-policy"
+          ]
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "written": { "type": "boolean" }
+      }
+    }
+  }
+}

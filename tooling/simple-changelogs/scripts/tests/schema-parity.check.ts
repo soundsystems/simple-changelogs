@@ -25,6 +25,10 @@ import {
   PROTOCOL_VERSION,
   RUNNER_MESSAGE_ROLES,
   RUNNER_STATUSES,
+  SETUP_COMMANDS,
+  SETUP_SCOPES,
+  SETUP_STATUSES,
+  SETUP_STYLES,
   SIGNATURE_POLICIES,
   SOURCE_REWRITE_CHANGE_KINDS,
   SURFACE_CHRONOLOGICAL_ACCESS_MODES,
@@ -42,6 +46,7 @@ import {
 } from "../lib/types.ts";
 import {
   validateCurationManifest,
+  validateGlobalPreferences,
   validateManifest,
   validateRepoPolicy,
   validateRunnerRequest,
@@ -177,6 +182,15 @@ const policy = (backfillStatus: string, surfacePolicy: string) => ({
   signatures: "agent-and-timestamp",
 });
 
+const preferences = (setupStyle: string) => ({
+  developerChangelog: "required",
+  newReleaseNoteSurfaces: "ask",
+  profile: "solo-developer",
+  schemaVersion: 1,
+  setupStyle,
+  signatures: "agent-and-timestamp",
+});
+
 const request = (activationMode: string, role = "user") => ({
   activationMode,
   case: evalCase("explicit", "behavior"),
@@ -277,12 +291,16 @@ const curationManifest = (status: string) => ({
 
 const [
   policySchema,
+  preferencesSchema,
+  setupResultSchema,
   manifestSchema,
   requestSchema,
   responseSchema,
   curationManifestSchema,
 ] = await Promise.all([
   loadSchema("repo-policy"),
+  loadSchema("global-preferences"),
+  loadSchema("setup-result"),
   loadSchema("eval-manifest"),
   loadSchema("runner-request"),
   loadSchema("runner-response"),
@@ -293,6 +311,8 @@ describe("schema parity", () => {
   test("keeps versions and enums aligned with runtime validators", () => {
     const versions: [unknown, string, number][] = [
       [policySchema, "properties.schemaVersion.const", 1],
+      [preferencesSchema, "properties.schemaVersion.const", 1],
+      [setupResultSchema, "properties.schemaVersion.const", 1],
       [manifestSchema, "properties.manifestVersion.const", MANIFEST_VERSION],
       [requestSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
       [responseSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
@@ -320,6 +340,14 @@ describe("schema parity", () => {
       ],
       [policySchema, "properties.distribution.enum", DISTRIBUTIONS],
       [policySchema, "properties.signatures.enum", SIGNATURE_POLICIES],
+      [preferencesSchema, "properties.setupStyle.enum", SETUP_STYLES],
+      [setupResultSchema, "properties.command.enum", SETUP_COMMANDS],
+      [setupResultSchema, "properties.status.enum", SETUP_STATUSES],
+      [
+        setupResultSchema,
+        "$defs.selection.properties.scope.enum",
+        SETUP_SCOPES,
+      ],
       [
         manifestSchema,
         "$defs.evalCase.properties.activationMode.enum",
@@ -476,6 +504,7 @@ describe("schema parity", () => {
 
   test("keeps validator versions and enum boundaries aligned", () => {
     expect(validateRepoPolicy(policy("completed", "ask")).ok).toBe(true);
+    expect(validateGlobalPreferences(preferences("recommended")).ok).toBe(true);
     expect(
       validateManifest({
         cases: [evalCase("explicit", "behavior")],
@@ -489,6 +518,7 @@ describe("schema parity", () => {
     );
 
     expect(validateRepoPolicy(policy(OUTSIDE_ENUM, "ask")).ok).toBe(false);
+    expect(validateGlobalPreferences(preferences(OUTSIDE_ENUM)).ok).toBe(false);
     expect(
       validateManifest({
         cases: [evalCase(OUTSIDE_ENUM, "behavior")],
@@ -533,6 +563,8 @@ describe("schema parity", () => {
   test("keeps every fixed schema object and validator input closed", () => {
     for (const schema of [
       policySchema,
+      preferencesSchema,
+      setupResultSchema,
       manifestSchema,
       requestSchema,
       responseSchema,
@@ -543,6 +575,12 @@ describe("schema parity", () => {
 
     expect(
       validateRepoPolicy({ ...policy("completed", "ask"), extra: true }).ok
+    ).toBe(false);
+    expect(
+      validateGlobalPreferences({
+        ...preferences("recommended"),
+        distribution: "web",
+      }).ok
     ).toBe(false);
     expect(
       validateManifest({

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Changelogs Solo-Developer Preferences",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "developerChangelog",
+    "signatures",
+    "newReleaseNoteSurfaces",
+    "setupStyle"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "profile": { "const": "solo-developer" },
+    "developerChangelog": { "enum": ["required", "optional"] },
+    "signatures": { "enum": ["agent-and-timestamp", "none"] },
+    "newReleaseNoteSurfaces": {
+      "enum": ["ask", "allow", "existing-only"]
+    },
+    "setupStyle": { "enum": ["recommended", "customized"] }
+  }
+}

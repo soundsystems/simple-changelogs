@@ -28,11 +28,15 @@ web+CMS, or skill-repository distribution.
 
 ## Setup checkpoint
 
-Before write-capable work, inspect `.simple-changelogs.json`.
+Before write-capable work, run the bundled `scripts/setup.ts` inspection helper
+and inspect `.simple-changelogs.json`.
 
+- Pass `--task-mode write` for changelog mutations and `--task-mode read` for
+  explanations or previews that must stay read-only.
 - Validate existing state before relying on it.
 - When state is absent and the request authorizes changelog work, follow
-  `references/setup.md`.
+  `references/setup.md`, confirm and apply the selected setup, then continue the
+  original request without making the user repeat it.
 - Read-only questions never create policy or changelog files.
 - Existing policies without `distribution` remain compatible only when this
   distribution is otherwise explicitly selected.

@@ -1,0 +1,542 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import {
+  cp,
+  lstat,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawn } from "bun";
+import {
+  applySetup,
+  inspectRepository,
+  resolveGlobalPreferencesPath,
+  validateGlobalPreferences,
+} from "../setup.ts";
+
+const temporaryPaths: string[] = [];
+
+const temporaryDirectory = async (label: string): Promise<string> => {
+  const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
+  temporaryPaths.push(path);
+  return path;
+};
+
+const fixture = async (): Promise<{ config: string; repo: string }> => ({
+  config: await temporaryDirectory("config"),
+  repo: await temporaryDirectory("repo"),
+});
+
+const readJson = async (path: string): Promise<Record<string, unknown>> =>
+  JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+
+const writeJson = async (path: string, value: unknown): Promise<void> => {
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+};
+
+const recommendedOptions = (repo: string, configDirectory: string) => ({
+  backfillStatus: "not-applicable" as const,
+  configDirectory,
+  confirm: true,
+  distribution: "web" as const,
+  repo,
+  scope: "repository" as const,
+});
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryPaths
+      .splice(0)
+      .map((path) => rm(path, { force: true, recursive: true }))
+  );
+});
+
+describe("setup inspection", () => {
+  test("enters onboarding only for a write-capable task with missing policy", async () => {
+    const { config, repo } = await fixture();
+
+    const writeInspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "write",
+    });
+    const readInspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "read",
+    });
+
+    expect(writeInspection.onboardingRequired).toBe(true);
+    expect(writeInspection.status).toBe("needs-input");
+    expect(readInspection.onboardingRequired).toBe(false);
+    expect(readInspection.status).toBe("ready");
+    expect(readInspection.writes).toEqual([]);
+  });
+
+  test("reports released history and refuses to imply a disposition", async () => {
+    const { config, repo } = await fixture();
+    await writeFile(
+      join(repo, "CHANGELOG.md"),
+      "# Changelog\n\n## 1.0.0\n\n- Shipped.\n",
+      "utf8"
+    );
+
+    const inspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+    });
+    const result = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      repo,
+    });
+
+    expect(inspection.inventory.releasedHistoryCount).toBe(1);
+    expect(inspection.unresolvedQuestions).toContain("released-history-audit");
+    expect(result.status).toBe("blocked");
+    expect(result.errors.join(" ")).toContain("Choose partial");
+    expect(existsSync(join(repo, ".simple-changelogs.json"))).toBe(false);
+  });
+
+  test("valid repository policy suppresses repeat onboarding and wins over global defaults", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(config, "preferences.json"), {
+      developerChangelog: "required",
+      newReleaseNoteSurfaces: "allow",
+      profile: "solo-developer",
+      schemaVersion: 1,
+      setupStyle: "recommended",
+      signatures: "agent-and-timestamp",
+    });
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      developerChangelog: "optional",
+      distribution: "web",
+      guidance: { backfillStatus: "declined", version: 4 },
+      newReleaseNoteSurfaces: "existing-only",
+      schemaVersion: 1,
+      signatures: "none",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+    });
+
+    expect(result.status).toBe("already-configured");
+    expect(result.onboardingRequired).toBe(false);
+    expect(result.recommendation.policy?.developerChangelog).toBe("optional");
+    expect(result.recommendation.policy?.newReleaseNoteSurfaces).toBe(
+      "existing-only"
+    );
+  });
+
+  test("summarizes concrete project-type evidence before asking", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web-product",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+    });
+
+    expect(result.detection.evidence).toContain(
+      "Package metadata indicates a web application"
+    );
+  });
+});
+
+describe("setup application", () => {
+  test("maps customized choices, creates only selected histories, and is idempotent", async () => {
+    const { config, repo } = await fixture();
+    const options = {
+      ...recommendedOptions(repo, config),
+      developerChangelog: "optional" as const,
+      newReleaseNoteSurfaces: "existing-only" as const,
+      setupStyle: "customized" as const,
+      signatures: "none" as const,
+    };
+
+    const first = await applySetup(options);
+    const firstChangelog = await readFile(join(repo, "CHANGELOG.md"), "utf8");
+    const second = await applySetup(options);
+
+    expect(first.status).toBe("configured");
+    expect(first.selection).toEqual({
+      backfillStatus: "not-applicable",
+      developerChangelog: "optional",
+      newReleaseNoteSurfaces: "existing-only",
+      scope: "repository",
+      setupStyle: "customized",
+      signatures: "none",
+    });
+    expect(existsSync(join(repo, "DEVELOPER_CHANGELOG.md"))).toBe(false);
+    expect(second.status).toBe("already-configured");
+    expect(await readFile(join(repo, "CHANGELOG.md"), "utf8")).toBe(
+      firstChangelog
+    );
+  });
+
+  test("run-only scope writes no policy, preferences, or histories", async () => {
+    const { config, repo } = await fixture();
+
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      configDirectory: config,
+      distribution: "mobile",
+      repo,
+      scope: "run-only",
+    });
+
+    expect(result.status).toBe("run-only");
+    expect(result.writes).toEqual([]);
+    expect(await readdir(repo)).toEqual([]);
+    expect(await readdir(config)).toEqual([]);
+  });
+
+  test("all-projects scope stores only closed reusable defaults with private permissions", async () => {
+    const { config, repo } = await fixture();
+
+    const result = await applySetup({
+      ...recommendedOptions(repo, config),
+      developerChangelog: "optional",
+      newReleaseNoteSurfaces: "existing-only",
+      scope: "all-projects",
+      setupStyle: "customized",
+      signatures: "none",
+    });
+    const path = resolveGlobalPreferencesPath(config);
+    const preferences = await readJson(path);
+    const mode = (await lstat(path)).mode % 0o1000;
+
+    expect(result.status).toBe("configured");
+    expect(validateGlobalPreferences(preferences).errors).toEqual([]);
+    expect(Object.keys(preferences).sort()).toEqual([
+      "developerChangelog",
+      "newReleaseNoteSurfaces",
+      "profile",
+      "schemaVersion",
+      "setupStyle",
+      "signatures",
+    ]);
+    expect(JSON.stringify(preferences)).not.toContain(repo);
+    expect(mode).toBe(0o600);
+  });
+
+  test("malformed global state is preserved and blocks only all-projects scope", async () => {
+    const { config, repo } = await fixture();
+    const path = join(config, "preferences.json");
+    await writeJson(path, { repository: repo, schemaVersion: 1 });
+    const before = await readFile(path, "utf8");
+
+    const blocked = await applySetup({
+      ...recommendedOptions(repo, config),
+      scope: "all-projects",
+    });
+    const repositoryOnly = await applySetup({
+      ...recommendedOptions(repo, config),
+      scope: "repository",
+    });
+
+    expect(blocked.status).toBe("blocked");
+    expect(repositoryOnly.status).toBe("configured");
+    expect(await readFile(path, "utf8")).toBe(before);
+  });
+
+  test("malformed and symbolic-link repository policy targets are preserved", async () => {
+    const malformed = await fixture();
+    const malformedPath = join(malformed.repo, ".simple-changelogs.json");
+    await writeFile(malformedPath, "{ broken", "utf8");
+    const malformedBefore = await readFile(malformedPath, "utf8");
+    const malformedResult = await applySetup(
+      recommendedOptions(malformed.repo, malformed.config)
+    );
+
+    const linked = await fixture();
+    const outside = join(linked.config, "outside.json");
+    await writeFile(outside, "outside\n", "utf8");
+    await symlink(outside, join(linked.repo, ".simple-changelogs.json"));
+    const linkedResult = await applySetup(
+      recommendedOptions(linked.repo, linked.config)
+    );
+
+    expect(malformedResult.status).toBe("blocked");
+    expect(await readFile(malformedPath, "utf8")).toBe(malformedBefore);
+    expect(linkedResult.status).toBe("blocked");
+    expect(await readFile(outside, "utf8")).toBe("outside\n");
+  });
+
+  test("records audit-now as partial and requires verification before completion", async () => {
+    const { config, repo } = await fixture();
+    await writeFile(
+      join(repo, "CHANGELOG.md"),
+      "# Changelog\n\n## 1.0.0\n\n- Shipped.\n",
+      "utf8"
+    );
+    const partial = await applySetup({
+      ...recommendedOptions(repo, config),
+      backfillStatus: "partial",
+    });
+    const unverified = await applySetup({
+      backfillStatus: "completed",
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      repo,
+    });
+    const statusAfterUnverified = (
+      (await readJson(join(repo, ".simple-changelogs.json")))
+        .guidance as Record<string, unknown>
+    ).backfillStatus;
+    const completed = await applySetup({
+      auditVerified: true,
+      backfillStatus: "completed",
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      repo,
+    });
+
+    expect(partial.status).toBe("configured");
+    expect(unverified.status).toBe("blocked");
+    expect(statusAfterUnverified).toBe("partial");
+    expect(
+      (
+        (await readJson(join(repo, ".simple-changelogs.json")))
+          .guidance as Record<string, unknown>
+      ).backfillStatus
+    ).toBe("completed");
+    expect(completed.status).toBe("configured");
+  });
+});
+
+describe("distribution and CMS boundaries", () => {
+  test("distribution conflicts stop before writing", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      developerChangelog: "required",
+      distribution: "mobile",
+      guidance: { backfillStatus: "not-applicable", version: 4 },
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+
+    const result = await applySetup(recommendedOptions(repo, config));
+
+    expect(result.status).toBe("blocked");
+    expect(result.detection.confidence).toBe("conflict");
+  });
+
+  test("CMS setup requires proven authentication, route, and contained source", async () => {
+    const { config, repo } = await fixture();
+    const blocked = await applySetup({
+      backfillStatus: "not-applicable",
+      configDirectory: config,
+      confirm: true,
+      distribution: "cms",
+      repo,
+      scope: "repository",
+    });
+    const traversal = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsChangelog: "../outside.json",
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      distribution: "cms",
+      repo,
+      scope: "repository",
+    });
+
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain("cms-auth-proven");
+    expect(traversal.status).toBe("blocked");
+    expect(traversal.errors.join(" ")).toContain("repository-root");
+  });
+
+  test("CMS ignores global surface authority and writes authenticated repository state", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(config, "preferences.json"), {
+      developerChangelog: "optional",
+      newReleaseNoteSurfaces: "allow",
+      profile: "solo-developer",
+      schemaVersion: 1,
+      setupStyle: "customized",
+      signatures: "none",
+    });
+
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      distribution: "cms",
+      repo,
+      scope: "all-projects",
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
+    const preferences = await readJson(join(config, "preferences.json"));
+
+    expect(result.status).toBe("configured");
+    expect(policy.newReleaseNoteSurfaces).toBe("existing-only");
+    expect(preferences.newReleaseNoteSurfaces).toBe("allow");
+    expect(policy).not.toHaveProperty("developerChangelog");
+    expect(policy).not.toHaveProperty("signatures");
+  });
+
+  test("web+CMS writes both validated policies in one setup transaction", async () => {
+    const { config, repo } = await fixture();
+
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      distribution: "web-cms",
+      repo,
+      scope: "repository",
+    });
+
+    expect(result.status).toBe("configured");
+    expect(existsSync(join(repo, ".simple-changelogs.json"))).toBe(true);
+    expect(existsSync(join(repo, ".simple-changelogs-cms.json"))).toBe(true);
+    expect(
+      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
+    ).toBe(false);
+  });
+
+  test("web+CMS resumes a matching interrupted setup transaction", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      developerChangelog: "required",
+      distribution: "web-cms",
+      guidance: { backfillStatus: "not-applicable", version: 4 },
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+    await writeJson(join(repo, ".simple-changelogs.setup-transaction.json"), {
+      schemaVersion: 1,
+      targets: [".simple-changelogs.json"],
+    });
+
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      distribution: "web-cms",
+      repo,
+      scope: "repository",
+    });
+
+    expect(result.status).toBe("configured");
+    expect(existsSync(join(repo, ".simple-changelogs-cms.json"))).toBe(true);
+    expect(
+      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
+    ).toBe(false);
+  });
+});
+
+test("global preference validation rejects unknown authority and repository fields", () => {
+  expect(
+    validateGlobalPreferences({
+      developerChangelog: "required",
+      newReleaseNoteSurfaces: "ask",
+      profile: "solo-developer",
+      repository: "/tmp/project",
+      schemaVersion: 1,
+      setupStyle: "recommended",
+      signatures: "agent-and-timestamp",
+    }).errors
+  ).not.toEqual([]);
+});
+
+test("every copied distribution runs its self-contained setup helper", async () => {
+  const sourceRoot = fileURLToPath(
+    new URL("../../../../skills", import.meta.url)
+  );
+  const packageRoot = await temporaryDirectory("packages");
+  const repo = await temporaryDirectory("package-repo");
+  const distributions = [
+    ["simple-changelogs", "full"],
+    ["simple-changelogs-cms", "cms"],
+    ["simple-changelogs-mobile", "mobile"],
+    ["simple-changelogs-skill-maintainer", "skill-repository"],
+    ["simple-changelogs-web", "web"],
+    ["simple-changelogs-web-cms", "web-cms"],
+  ] as const;
+
+  const results = await Promise.all(
+    distributions.map(async ([directory]) => {
+      const target = join(packageRoot, directory);
+      await cp(join(sourceRoot, directory), target, { recursive: true });
+      const subprocess = spawn({
+        cmd: [
+          process.execPath,
+          join(target, "scripts", "setup.ts"),
+          "inspect",
+          "--repo",
+          repo,
+          "--task-mode",
+          "read",
+        ],
+        stderr: "pipe",
+        stdout: "pipe",
+      });
+      const [exitCode, stdout, stderr] = await Promise.all([
+        subprocess.exited,
+        new Response(subprocess.stdout).text(),
+        new Response(subprocess.stderr).text(),
+      ]);
+      return {
+        directory,
+        exitCode,
+        result: JSON.parse(stdout) as {
+          detection: { distribution: string };
+        },
+        stderr,
+      };
+    })
+  );
+
+  expect(
+    results.map(({ directory, exitCode, result, stderr }) => ({
+      directory,
+      distribution: result.detection.distribution,
+      exitCode,
+      stderr,
+    }))
+  ).toEqual(
+    distributions.map(([directory, distribution]) => ({
+      directory,
+      distribution,
+      exitCode: 0,
+      stderr: "",
+    }))
+  );
+});
