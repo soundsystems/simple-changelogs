@@ -4,10 +4,12 @@
   "type": "module",
   "packageManager": "bun@1.3.13",
   "scripts": {
-    "eval": "bun skills/simple-changelogs/scripts/eval.ts contract",
+    "check": "bun run typecheck && bun run lint && bun run test && bun run eval",
+    "distros": "bun tooling/distributions.check.ts",
+    "eval": "bun tooling/distributions.check.ts && bun tooling/simple-changelogs/scripts/eval.ts contract && bun skills/simple-changelogs-cms/scripts/validate.ts tooling/simple-changelogs-cms/evals/fixtures/valid-repo",
     "format": "ultracite fix",
     "lint": "ultracite check",
-    "test": "bun skills/simple-changelogs/scripts/test.ts",
+    "test": "bun tooling/simple-changelogs/scripts/test.ts && bun tooling/simple-changelogs-cms/scripts/test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

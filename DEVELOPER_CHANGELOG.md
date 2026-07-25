@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+- Split the monolithic package into six changelog-owning distributions:
+  `simple-changelogs`, `simple-changelogs-cms`,
+  `simple-changelogs-web`, `simple-changelogs-mobile`,
+  `simple-changelogs-web-cms`, and `simple-changelogs-skill-maintainer`. The
+  latter is the lean Simple Changelogs distribution for repositories that
+  develop or publish agent skills. Distinct frontmatter descriptions,
+  repository policy selection, and shared mutual-exclusion checkpoints prevent
+  multiple distributions from claiming the same repository; legacy policies
+  without `distribution` remain compatible with the full package.
+- Moved model adapters, evaluation protocols, fixtures, and contributor tests
+  under `tooling/`. Public distributions remain self-contained with exactly one
+  root `SKILL.md`, no symlinks or maintainer-only artifacts, valid local routes,
+  and measured package sizes from 24,653 to 86,825 bytes.
+- Added distribution-wide package-shape and portable-contract validation plus
+  real Skills CLI consumer-install verification for skill-repository release
+  workflows.
+- Brought the CMS-only distribution from upstream `main` into this branch while
+  preserving its installable schema and runtime repository validator. CMS
+  fixtures, package checks, and contributor tests remain repository-only.
+- Added a Cursor Agent behavior-harness adapter with read-only skill snapshots,
+  optional model selection, explicit force opt-in, normalized responses, and
+  deterministic command coverage alongside Codex CLI, Claude Code, Hermes
+  Agent, and Grok Build.
+- Generalized fork synchronization to parse the upstream distribution name and
+  revision from provenance, scope comparison to that distribution's
+  `skills/<name>` tree, and retain current/behind/invalid/divergent behavior
+  across every packaged variant.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-23T20:53:07-05:00" -->
+- Added an optional Grok Build evaluation adapter:
+  - Uses Grok's headless JSON output and validates results against the neutral
+    `RunnerResponse` contract.
+  - Isolates Grok home and configuration, applies the workspace sandbox, and
+    disables memory, subagents, web search, and automatic updates.
+  - Supports an environment-based model override and adds unit coverage plus
+    README and `EVAL.md` setup documentation.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-23T18:01:31-05:00" -->
 - Added Guidance 4 to separate customer-history inclusion from release-summary
   selection:
   - Durable, identifiable UI and interaction polish can remain in

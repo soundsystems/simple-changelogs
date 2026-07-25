@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Use when creating, updating, backfilling, classifying, reconciling, or finalizing customer or developer changelogs, release notes, "What's New" content, store notes, release metadata, version fields, or explicit changelog decisions during push, merge, release, or deploy preparation, including major releases (1.0, 2.0, GA) and alpha, beta, or RC prerelease trains.
+description: Use as the full cross-surface Simple Changelogs distribution when a repository spans web, mobile, store, internal, or other release-note destinations, or when no narrower distribution is selected. Create, update, backfill, classify, reconcile, or finalize customer and developer changelogs, release notes, metadata, versions, major releases, and prerelease trains. Do not use when the repository selects the CMS-only, web-only, mobile-only, web+CMS, or skill-repository distribution.
 ---
 
 # Simple Changelogs
@@ -12,7 +12,22 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 4
+Current guidance version: 5
+
+## Distribution Checkpoint
+
+Use one changelog-owning distribution per repository.
+
+The full distribution is selected when `.simple-changelogs.json` records
+`"distribution": "full"`, repository instructions or the current user name
+`simple-changelogs`, this is the sole repo-local changelog distribution, or an
+existing policy omits `distribution` and no narrower distribution is otherwise
+selected.
+
+A global installation alone does not override a repository-local CMS, web,
+mobile, web+CMS, or skill-repository distribution. If selection is conflicting,
+stop before writing and report the conflict rather than running two changelog
+workflows.
 
 ## Setup Checkpoint
 
@@ -42,30 +57,34 @@ Read only the references needed for the current branch of work:
 | --- | --- |
 | First use, policy state, setup prompts, or raw-markdown signatures | `references/setup.md` |
 | Guidance-version changes and their user-readable effects | `references/guidance-updates.md` |
-| Customer/developer classification, wording, grouping, or hot fixes | `references/entry-classification.md` |
+| Customer/developer classification, expert public detail, wording, grouping, or hot fixes | `references/entry-classification.md` |
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
-| Existing release-note sync or authorized product surfaces | `references/release-note-surfaces.md` |
+| Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |
 | Final checks and repository-native automation | `references/automation-verification.md` |
 | Fork provenance, selection convention, or upstream drift | `references/fork-maintenance.md` |
-| Running or extending the evaluation harness | `EVAL.md` |
 
 ## Core Workflow
 
 ### 1. Inspect
 
 Read repository instructions, Git state, recent history, both changelogs, and
-the files changed by the task. Inspect diffs when commit subjects do not reveal
-visible impact. Establish release intent before touching released headings or
-release metadata.
+the files changed by the task. Inventory every affected release-note
+destination and its audience, product, app or package, platform, release train,
+source, inclusion rules, and exclusions. Inspect diffs when commit subjects do
+not reveal visible impact. Establish release intent before touching released
+headings or release metadata.
 
 ### 2. Classify
 
 Decide whether each outcome belongs in the customer history, developer history,
-both, or neither. Base customer inclusion on durable audience impact, then apply
-the public detail budget. Preserve useful implementation context separately.
+both, or neither. Then classify it independently for each affected destination;
+a shared version does not make web, mobile, store, CMS, package, and internal
+eligible sets identical. Base customer inclusion on durable audience impact,
+then apply the general or proven expert public detail budget. Preserve useful
+implementation context separately.
 
 ### 3. Edit
 
@@ -78,7 +97,8 @@ raw-markdown block you change.
 
 For release-bearing work, reconcile pending entries with the intended release
 boundary. Update only metadata and existing release-note destinations proven to
-belong to that same release flow.
+belong to that same release flow, and filter each destination through its own
+scope map.
 
 ### 5. Verify
 
@@ -131,7 +151,9 @@ work.
 
 The task is complete only when the changelog decision is explicit, affected raw
 files and established mirrors agree, pending/released boundaries are honest,
-required signatures are present, and relevant verification has fresh evidence.
+required signatures are present, every affected destination contains only its
+relevant audience and platform outcomes, and relevant verification has fresh
+evidence.
 
 If blocked, leave resumable repository state and name the exact decision,
 authority, credential, or source-of-truth evidence that is missing.

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "distribution": "full",
+  "guidance": {
+    "version": 5,
+    "backfillStatus": "completed"
+  },
+  "developerChangelog": "required",
+  "signatures": "none",
+  "newReleaseNoteSurfaces": "existing-only"
+}

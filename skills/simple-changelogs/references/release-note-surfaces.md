@@ -38,6 +38,50 @@ Prefer updating the established source over maintaining parallel copy. Hidden,
 disabled, prototype, preview-only, unreachable, or wrong-audience components do
 not prove that a usable equivalent exists.
 
+## Destination Scope Map
+
+Before synchronizing more than one release-note destination, build a scope map
+for every affected surface. Record:
+
+- the destination path or stable identity and whether it is a full history,
+  selected summary, store field, or internal history;
+- its audience and authorized roles;
+- its product, application, package, platform, edition, and release train;
+- the canonical customer or developer source it may draw from;
+- positive inclusion rules; and
+- explicit exclusions.
+
+A shared repository, release date, or version does not make the eligible
+content identical. Select entries independently for each destination:
+
+- web surfaces receive web-visible outcomes and genuinely shared account,
+  billing, sync, privacy, reliability, or backend outcomes that affect web
+  users; omit mobile-only, native-build, store-submission, and CMS-only work;
+- mobile surfaces receive mobile-visible outcomes and shared outcomes that
+  affect the mobile app; omit web-only presentation, web-admin, and CMS-only
+  work;
+- store notes receive only mobile-scoped public highlights for the submitted
+  app and release train;
+- CMS histories receive changes that alter an authorized operator's workflow,
+  content model, controls, permissions, integrations, reliability, support
+  duties, or safe recovery; omit general web or mobile changes with no operator
+  consequence;
+- internal histories receive only technical or operational outcomes relevant
+  to their authorized roles; and
+- package, API, CLI, SDK, plug-in, device, or integration archives receive only
+  changes to that public contract plus shared compatibility information their
+  readers need.
+
+Use repository ownership, changed paths, imports, release metadata, tests,
+documentation, and established structured tags as evidence. Do not filter by
+heading names or keywords alone. When relevance to a narrow destination remains
+ambiguous, keep the canonical history intact, exclude the item from that
+destination, and report the unresolved mapping.
+
+Cross-platform outcomes may appear in several destinations only when the
+outcome independently affects each one. Reword for each audience rather than
+copying irrelevant platform detail.
+
 ## Audience and Platform Scope
 
 Derive each destination from the customer or developer history appropriate to
@@ -73,6 +117,10 @@ unchanged and state that decision. Do not fill them with developer-only work.
 
 For established generated data, change the source of truth and regenerate the
 mirror. Avoid hand-maintained duplicates that can drift.
+
+For a multi-surface release, verify both sides of each selector: representative
+eligible entries appear, and representative web-only, mobile-only, CMS-only,
+store-only, and internal-only entries stay out of unrelated destinations.
 
 ## Mobile Store Copy
 
@@ -141,6 +189,39 @@ major-release outcomes. The compact surface summary additionally:
 Avoid repeating an identical archive link inline and in the footer. Separate
 links should serve distinct purposes.
 
+## Long-Form Expert Release Archives
+
+When an established archive serves an expert product audience or the current
+request explicitly asks for a comprehensive technical release page, preserve
+its deeper editorial pattern. Adapt to the repository's existing hierarchy, but
+normally use:
+
+1. release identity and date;
+2. an anchor-linked feature index when the page is long enough to need one;
+3. named feature sections ordered by product importance;
+4. concise explanation of what each feature does, where readers find it, how
+   they use it, and any compatibility or upgrade constraint;
+5. verified media when it materially explains the feature;
+6. additional improvements grouped under stable product-area headings;
+7. a comprehensive audience-relevant bug-fix ledger; and
+8. links to distinct related-product notes or detailed manuals when they serve
+   a separate purpose.
+
+Major and feature-bearing minor releases may use several explanatory
+paragraphs. Patch releases should stay proportional: a short categorized
+ledger is enough when no feature needs a narrative.
+
+Use public technical identifiers and precise repair conditions only under the
+expert-audience rules in `references/entry-classification.md`. Comprehensive
+does not mean exposing developer history wholesale or including unrelated
+platform work.
+
+Reference only verified, authorized media that already belongs to the release
+flow or that the current request separately authorizes. Confirm the file exists,
+use useful alt text, and keep captions factual. Do not invent an asset, generate
+a screenshot, copy remote media, or leave a broken placeholder merely to fill
+the layout; omit media when no approved asset exists.
+
 ## Internal Destinations
 
 Do not create an internal release-note route, panel, or modal without both
@@ -162,3 +243,11 @@ Confirm the destination is reachable by the intended audience, the displayed
 copy excludes raw comments and wrong-platform items, versions match the source,
 dismissal behavior is scoped correctly, and no unapproved product surface or
 remote release action was performed.
+
+For multi-surface repositories, verify the destination scope map against the
+rendered or generated output and test representative negative cases so web,
+mobile, store, CMS, package, and internal details do not leak across selectors.
+For long-form expert archives, also confirm media paths resolve and every
+technical identifier is part of the public contract or needed by the proven
+audience. When an index is present, confirm every anchor resolves to one unique
+section and no empty product-area heading remains.

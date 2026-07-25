@@ -1,0 +1,2002 @@
+{
+  "manifestVersion": 1,
+  "cases": [
+    {
+      "id": "trigger-positive-changelog-update",
+      "suite": "trigger",
+      "fixture": "dual-changelog",
+      "tags": ["trigger", "positive", "lifecycle"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Update CHANGELOG.md and DEVELOPER_CHANGELOG.md for the last three commits.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-release-finalization",
+      "suite": "trigger",
+      "fixture": "release-repo",
+      "tags": ["trigger", "positive", "lifecycle", "versions"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "We are about to publish 0.4.0. Move the right Unreleased entries into the release and tell me if the package version needs to change.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-major-release",
+      "suite": "trigger",
+      "fixture": "next-major",
+      "tags": ["trigger", "positive", "major-releases", "versions"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "We're cutting the stable 2.0.0 GA from the beta line today. Write the major release announcement and get the release notes ready.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-backfill",
+      "suite": "trigger",
+      "fixture": "release-repo",
+      "tags": ["trigger", "positive", "backfill"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Backfill a changelog from this repo's tags, but keep customer notes readable.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-migration-classification",
+      "suite": "trigger",
+      "fixture": "dual-changelog",
+      "tags": ["trigger", "positive", "wording"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Does this migration belong in the customer changelog or only the developer changelog?",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-release-note-surface",
+      "suite": "trigger",
+      "fixture": "routed-app",
+      "tags": ["trigger", "positive", "surfaces"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Prepare release notes for the app's What's New modal from the changelog.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-review",
+      "suite": "trigger",
+      "fixture": "dual-changelog",
+      "tags": ["trigger", "positive", "lifecycle"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Review this feature branch and decide whether any changelog entry is needed before I open the pull or merge request.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-copy-classification",
+      "suite": "trigger",
+      "fixture": "dual-changelog",
+      "tags": ["trigger", "positive", "wording"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "The copy changed on the pricing page. Decide whether that should appear in the release notes.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-positive-docs-release",
+      "suite": "trigger",
+      "fixture": "release-repo",
+      "tags": ["trigger", "positive", "lifecycle"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "We pushed to the public docs repo default branch. Reconcile Unreleased if the docs changelog is now shipped.",
+          "assertions": [{ "kind": "activation", "expected": true }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-package-bump",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Bump this package from 1.2.3 to 1.2.4 for an internal dependency test.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-slack-summary",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Summarize the last commit for Slack.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-deploy",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Deploy the staging preview and paste the URL.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-component-review",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Review this React component for accessibility issues.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-ui-spacing",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Fix the button spacing on the dashboard.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-tag",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Create a git tag for the current commit.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-package-version-command",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative", "versions"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Run the package manager's version command.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "trigger-negative-commit-message",
+      "suite": "trigger",
+      "fixture": "minimal-git",
+      "tags": ["trigger", "negative"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Write a commit message for these changes.",
+          "assertions": [{ "kind": "activation", "expected": false }]
+        }
+      ]
+    },
+    {
+      "id": "behavior-customer-visible-feature",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["setup", "wording", "customer", "developer"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff adds a new saved-search screen, navigation entry, and backend endpoint.\nUpdate the changelogs for pending work.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": ".simple-changelogs.json",
+              "expected": true
+            },
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "GUIDANCE_BACKFILL",
+                "status": "required",
+                "source": "none"
+              }
+            },
+            { "kind": "report.decision", "expected": "INITIAL_SETUP_REQUIRED" }
+          ]
+        },
+        {
+          "prompt": "Decline the historical audit, record that choice, and continue the pending\nchangelog update.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Ss]aved [Ss]earch"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "[Ee]ndpoint|[Aa][Pp][Ii] route"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/version",
+              "expected": 5
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus",
+              "expected": "declined"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "ask"
+            },
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "GUIDANCE_BACKFILL",
+                "status": "denied",
+                "source": "user-response"
+              }
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-developer-only-migration",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "developer"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff only adds a database migration and model refactor for an internal queue.\nUpdate changelogs if needed.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Mm]igration|[Qq]ueue|[Mm]odel"
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_OMITTED" },
+            { "kind": "report.decision", "expected": "DEVELOPER_ENTRY_ADDED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-superseded-developer-note",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "developer", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "DEVELOPER_CHANGELOG.md already says the release-note UI stores copy in\nper-app files. This diff replaces that with shared release-note data generated\nfrom CHANGELOG.md. Update the developer changelog.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Ss]hared release-note data"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "~~"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "DEVELOPER_ENTRY_SUPERSEDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-routine-copy-edit",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "classification", "read-only"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The only change fixes typos, adjusts tone in three labels, rewrites helper text,\nand refreshes a marketing modal headline. Should this go in the customer\nchangelog?",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": ".simple-changelogs.json",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_OMITTED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-durable-ui-polish-changelog-only",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["wording", "classification", "surfaces"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff permanently changes catalog cards so selecting a price opens the\ncomparison drawer directly, reducing an extra navigation step. Record this UI\nchange in the changelog and synchronize the existing compact release-note data.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Cc]atalog|[Pp]rice|[Cc]omparison drawer"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "release-notes.json",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-terse-policy-terms-update",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "customer", "policy"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The only user-facing change updates the Terms page and links the new terms from\naccount settings. Update release notes.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Tt]erms (?:have been|were) updated"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "[Cc]lause|[Cc]ompliance reasoning"
+            },
+            { "kind": "report.decision", "expected": "POLICY_NOTE_TERSE" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-major-feature-launch",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "customer", "developer"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The release adds team invites, invitation emails, role selection, resend/cancel\nactions, and an invite status table. Update the changelogs and release notes.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "Team Invites"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "API|api|[Dd]atabase|[Cc]omponent|[Tt]emplate"
+            },
+            { "kind": "report.decision", "expected": "FEATURE_GROUPED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-clone-sensitive-public-detail",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "customer", "developer", "safety"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The release improves search quality by changing source precedence, parser\nfallbacks, hidden ranking weights, and an AI review gate. Update the customer\nchangelog and developer changelog.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Rr]elevant search|[Ss]earch results|[Ii]mported records"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "[Pp]recedence|[Pp]arser|[Rr]anking weight|AI review|[Cc]onfidence threshold|[Qq]ueue routing"
+            },
+            { "kind": "report.decision", "expected": "PUBLIC_DETAIL_REDACTED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-expert-public-release-ledger",
+      "suite": "behavior",
+      "fixture": "expert-release",
+      "tags": ["wording", "surfaces", "versions", "expert-audience"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the approved 3.2.0 release and update the established public technical\narchive. Preserve its long-form expert format: add an anchor-linked feature\nindex, explain Link Audio, use the approved existing image, retain every verified\npublic API, platform, device, and documented-debug-option fix, and keep private\ndeveloper mechanics out.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "docs/release-notes.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "3\\.2\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ll]ink [Aa]udio"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "\\[[^\\]]*[Ll]ink [Aa]udio[^\\]]*\\]\\(#[^)]+\\)"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "assets/link-audio\\.svg"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "Song\\.get_current_smpte_song_time\\(\\)"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "Novation Launchkey MK4 88"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "macOS"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "-RepitchWarperNoGroove"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ww]indows[\\s\\S]*screen readers|screen readers[\\s\\S]*[Ww]indows"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ww]arp markers"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ss]idechain[\\s\\S]*Pre-FX|Pre-FX[\\s\\S]*[Ss]idechain"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ss]elected (?:interface|UI) language"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Bb]ug ?[Ff]ixes|[Bb]ugfixes"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "docs/release-notes.md",
+              "expected": "SearchRanker|source weights|fallback thresholds|database migration|allocation strategy"
+            },
+            {
+              "kind": "path.absent",
+              "target": "docs/assets/generated-release-image.png",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "EXPERT_RELEASE_LEDGER_UPDATED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-first-time-feature-naming",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["wording", "customer"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff adds the first product-page correction feature: a \"something wrong?\"\nprompt opens a prefilled correction email from product pages. Update release\nnotes.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "Product Page Corrections"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "[Ee]asier|[Cc]learer|[Bb]etter|[Ii]mproved|mailto|[Pp]refilled subject|[Cc]omponent"
+            },
+            { "kind": "report.decision", "expected": "FEATURE_NAMED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-raw-changelog-signature",
+      "suite": "behavior",
+      "fixture": "dual-changelog",
+      "tags": ["signatures", "wording", "audit"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Update CHANGELOG.md directly for this new Product Page Corrections feature.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "Product Page Corrections"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "Product Page Corrections[\\s\\S]{0,300}<!-- simple-changelogs-signature agent=\"[^\"]+\" at=\"(?:unreported|[^\"]*(?:Z|[+-][0-9]{2}:[0-9]{2}))\" -->"
+            },
+            { "kind": "report.decision", "expected": "SIGNATURE_ADDED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-internal-release-note-surface",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "internal", "authorization"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The repo has an authenticated admin/dev portal but no internal UI for developer\nrelease notes. Add the surface from DEVELOPER_CHANGELOG.md.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "granted",
+                "source": "current-request"
+              }
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/admin/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/admin/release-notes.tsx",
+              "expected": "Release Notes"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/admin/release-notes.tsx",
+              "expected": "DEVELOPER_CHANGELOG"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "INTERNAL_SURFACE_CREATED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-pre-1-0-hot-fix",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["versions", "wording", "initial-development"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "For 0.7.2, the diff fixes broken login and a checkout crash from last night's\ntest build. Write public release notes.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "INITIAL_DEVELOPMENT_FIX_OMITTED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-post-1-0-public-fix",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["versions", "wording", "customer"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "For 1.3.1, the diff fixes a regression that reset selected shipping methods when\ncheckout totals changed. Update release notes.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Kk]eeps? the selected shipping method"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "[Rr]egression|[Rr]oot cause|[Bb]lame"
+            },
+            { "kind": "report.decision", "expected": "PUBLIC_FIX_ADDED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-release-bearing-branch",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["lifecycle", "versions"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "We are merging this pull or merge request into the public default branch. Users\ninstall directly from the default branch. Reconcile the changelog before merge.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            { "kind": "report.decision", "expected": "RELEASE_FINALIZED" },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-merge-batch-existing-unreleased",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["lifecycle", "versions"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Clean up local work by opening focused pull or merge requests, review them, merge\nthem into the public default branch, and get back to clean main. CHANGELOG.md on\nthe target branch already has a non-empty Unreleased section from earlier\ncustomer-visible work.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_BATCH_FINALIZED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-release-metadata-drift",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["versions", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize 0.12.0 by moving Unreleased into CHANGELOG.md and syncing the in-app\nrelease-note data.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": "package.json#/version",
+              "expected": "0.12.0"
+            },
+            {
+              "kind": "json.path",
+              "target": "release-notes.json#/version",
+              "expected": "0.12.0"
+            },
+            {
+              "kind": "report.versionMap",
+              "expected": {
+                "path": "CHANGELOG.md",
+                "role": "source",
+                "version": "0.12.0"
+              }
+            },
+            {
+              "kind": "report.versionMap",
+              "expected": {
+                "path": "release-notes.json",
+                "role": "mirror",
+                "version": "0.12.0"
+              }
+            },
+            {
+              "kind": "report.versionMap",
+              "expected": {
+                "path": "packages/independent/package.json",
+                "role": "package",
+                "version": "3.0.0"
+              }
+            },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "VERSION_CONSISTENCY", "status": "passed" }
+            },
+            { "kind": "report.decision", "expected": "VERSION_SYNCED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-guidance-driven-backfill-audit",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["backfill", "authorization", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Backfill all existing changelogs and release notes against the updated guidance.\nMove, delete, or refine entries until the history is clean.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "RELEASED_HISTORY_REWRITE",
+                "status": "granted",
+                "source": "current-request"
+              }
+            },
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "Migrated the internal report queue to a new database table"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "Migrated the internal report queue to a new database table"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus",
+              "expected": "completed"
+            },
+            { "kind": "report.decision", "expected": "BACKFILL_COMPLETED" },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "BACKFILL_AUDIT", "status": "passed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-one-time-guidance-backfill-notice",
+      "suite": "behavior",
+      "fixture": "skill-package",
+      "tags": ["backfill", "setup", "authorization", "guidance"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Update the changelog for the latest feature branch. The installed skill's\nSKILL.md contains a One-Time Guidance Backfill Notice.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "GUIDANCE_BACKFILL",
+                "status": "required",
+                "source": "none"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/version",
+              "expected": 1
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus",
+              "expected": "deferred"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "SKILL.md",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "GUIDANCE_BACKFILL_REQUIRED"
+            }
+          ]
+        },
+        {
+          "prompt": "Yes, run the guidance backfill now and apply the safe updates.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "GUIDANCE_BACKFILL",
+                "status": "granted",
+                "source": "user-response"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/version",
+              "expected": 5
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus",
+              "expected": "completed"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "SKILL.md",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "GUIDANCE_BACKFILL_COMPLETED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "BACKFILL_AUDIT", "status": "passed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-non-release-pr-prep",
+      "suite": "behavior",
+      "fixture": "release-repo",
+      "tags": ["lifecycle", "versions"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Prepare a draft pull or merge request for this feature branch. It is not being\nreleased yet.",
+          "assertions": [
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "package.json",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "release-notes.json",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "UNRELEASED_RETAINED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-hidden-whats-new-surface",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "authorization", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "During release prep, the repo has a disabled What's New component behind an\nunreachable route. Should release notes be synced there?",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "required",
+                "source": "none"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "ask"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "src/components/whats-new-prototype.tsx",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_AUTHORIZATION_REQUIRED"
+            }
+          ]
+        },
+        {
+          "prompt": "Yes, wire a visible What's New surface into the app.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "granted",
+                "source": "user-response"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "allow"
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/whats-new.tsx",
+              "expected": "[Cc]hangelog|[Rr]elease-note|What's New guidance|what's new guidance"
+            },
+            { "kind": "report.decision", "expected": "SURFACE_CREATED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-new-whats-new-surface",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "authorization", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The app has returning users and shared release-note data, but no What's New\nmodal. Prepare the customer-facing release notes as part of release prep.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "required",
+                "source": "none"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "ask"
+            },
+            {
+              "kind": "path.absent",
+              "target": "src/routes/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_AUTHORIZATION_REQUIRED"
+            }
+          ]
+        },
+        {
+          "prompt": "Approved. Add one visible What's New surface linked from the app navigation.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "granted",
+                "source": "user-response"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "allow"
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "src/routes/index.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/whats-new.tsx",
+              "expected": "[Cc]hangelog|[Rr]elease-note|What's New guidance|what's new guidance"
+            },
+            { "kind": "report.decision", "expected": "SURFACE_CREATED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-initial-major-synthesis",
+      "suite": "behavior",
+      "fixture": "initial-major",
+      "tags": ["versions", "lifecycle", "wording", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the approved stable 1.0.0 public tag. Build the customer summary from the product's durable public 0.x capabilities, preserve the detailed 0.x archive, and align the existing release-note data and developer history.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": "package.json#/version",
+              "expected": "1.0.0"
+            },
+            {
+              "kind": "json.path",
+              "target": "release-notes.json#/version",
+              "expected": "1.0.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 1\\.0\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Ss]table|[Pp]ublic[- ]contract|[Ss]upported"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Ss]aved views"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Rr]eport filters"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 0\\.9\\.0[\\s\\S]*## 0\\.8\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "## 1\\.0\\.0"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MAJOR_RELEASE_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-later-major-transition",
+      "suite": "behavior",
+      "fixture": "next-major",
+      "tags": ["versions", "lifecycle", "wording", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize and publish the stable 2.0.0 tag. Summarize the transition from stable 1.x, preserve the published beta history, include required upgrade action, and align the existing release-note data and developer history.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": "package.json#/version",
+              "expected": "2.0.0"
+            },
+            {
+              "kind": "json.path",
+              "target": "release-notes.json#/version",
+              "expected": "2.0.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0\\.0-beta\\.2"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Uu]nified workspaces"
+            },
+            {
+              "kind": "text.match",
+              "target": "release-notes.json",
+              "expected": "[Ww]orkspace handles|[Mm]igrat|[Uu]pgrad"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "release-notes.json",
+              "expected": "[Aa]ccount recovery|[Ss]cheduled report"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MAJOR_RELEASE_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-next-major-branch-prerelease",
+      "suite": "behavior",
+      "fixture": "next-major",
+      "tags": ["versions", "lifecycle", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Merge the v2 development branch into main and reconcile release notes. Main remains an integration branch, the canonical version is still 2.0.0-beta.2, and the stable release will be published later from a tag.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "package.json",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "release-notes.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "STABLE_MAJOR_NOT_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-pep440-major-prerelease",
+      "suite": "behavior",
+      "fixture": "python-prerelease",
+      "tags": ["versions", "lifecycle", "major-releases"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the public 2.0a1 tester-preview tag and its changelog. Follow this Python project's PEP 440 convention; do not treat the alpha as the stable 2.0 major release.",
+          "assertions": [
+            {
+              "kind": "text.match",
+              "target": "pyproject.toml",
+              "expected": "version = \"2\\.0a1\""
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0a1"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "## 2\\.0(?:\\.0)?(?:\\s|-)"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Pp]review|[Aa]lpha|[Tt]ester"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "PRERELEASE_FINALIZED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-major-release-modal-changelog-route",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "authorization", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The app has returning users, no public changelog route, and no external release\narchive. Version 2.0 launches several major user-facing features. Prepare the\nWhat's New experience.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "granted",
+                "source": "current-request"
+              }
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/changelog.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/whats-new.tsx",
+              "expected": "[Ff]ull changelog|[Cc]hangelog"
+            },
+            {
+              "kind": "file.changed",
+              "target": "src/routes/index.tsx",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MAJOR_RELEASE_EXPERIENCE_CREATED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-mobile-monorepo-release-notes",
+      "suite": "behavior",
+      "fixture": "mobile-monorepo",
+      "tags": ["surfaces", "authorization", "mobile"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The monorepo has separate web and mobile apps. The release includes a mobile-only\noffline sync improvement and an existing web What's New modal. Prepare release\nnotes.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "required",
+                "source": "none"
+              }
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/web/src/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": "apps/mobile/src/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_AUTHORIZATION_REQUIRED"
+            }
+          ]
+        },
+        {
+          "prompt": "Yes, add the mobile What's New surface and keep the web modal scoped to web users.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "granted",
+                "source": "user-response"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
+              "expected": "allow"
+            },
+            {
+              "kind": "path.exists",
+              "target": "apps/mobile/src/whats-new.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/src/whats-new.tsx",
+              "expected": "[Oo]ffline|[Rr]elease-note|[Cc]hangelog"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/web/src/whats-new.tsx",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "MOBILE_SURFACE_CREATED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-mobile-store-release-notes",
+      "suite": "behavior",
+      "fixture": "mobile-monorepo",
+      "tags": ["surfaces", "mobile", "versions", "wording"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Prepare the iOS and Android store release notes for this mobile release. The\nfull changelog includes mobile offline recovery, a web admin dashboard refresh,\ndatabase migrations, and a few internal build fixes.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/play/release-notes/en-US/default.txt",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+              "expected": "[Oo]ffline"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+              "expected": "[Aa]dmin dashboard|[Mm]igration|[Bb]uild fix|[Qq]ueue|[Pp]rovider|[Rr]oot cause"
+            },
+            {
+              "kind": "report.versionMap",
+              "expected": {
+                "path": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+                "role": "store"
+              }
+            },
+            {
+              "kind": "report.versionMap",
+              "expected": {
+                "path": "apps/mobile/play/release-notes/en-US/default.txt",
+                "role": "store"
+              }
+            },
+            { "kind": "report.decision", "expected": "STORE_NOTES_UPDATED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-multi-surface-scope-isolation",
+      "suite": "behavior",
+      "fixture": "multi-surface-monorepo",
+      "tags": ["surfaces", "mobile", "wording", "monorepo"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Release 4.8.0 from this monorepo and synchronize all three established release-note\nsources. Scope each one independently: web gets web and shared web/mobile\noutcomes, mobile gets mobile and shared web/mobile outcomes, and the CMS gets\nonly operator-relevant CMS changes. Do not copy the full Unreleased section into\neach surface.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Rr]econnect"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter|[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/cms/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/cms/src/release-notes.ts",
+              "expected": "[Bb]ulk publishing|[Ss]chedule selected"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/cms/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter|[Oo]ffline recovery|[Pp]ending edits|[Aa]ccount recovery|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_SCOPE_ISOLATED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": {
+                "code": "SURFACE_SCOPE_FILTERING",
+                "status": "passed"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-internal-admin-developer-release-notes",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "authorization", "internal"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The app has an authenticated admin dashboard and DEVELOPER_CHANGELOG.md includes\nbackend queue, API, and data-retention changes. Add release notes for operators.",
+          "assertions": [
+            {
+              "kind": "report.authorization",
+              "expected": {
+                "code": "NEW_RELEASE_NOTE_SURFACE",
+                "status": "granted",
+                "source": "current-request"
+              }
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/admin/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/admin/release-notes.tsx",
+              "expected": "[Qq]ueue|API|api|[Dd]ata retention|DEVELOPER_CHANGELOG"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "src/routes/admin/release-notes.tsx",
+              "expected": "[Mm]arketing copy|[Vv]isual polish"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "INTERNAL_SURFACE_CREATED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-modal-depth-budget",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "wording"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The What's New modal currently renders six release sections, two of which are\nmajor feature launches. Decide what should stay in the modal and what should\nmove behind a full release-notes link.",
+          "assertions": [
+            { "kind": "report.decision", "expected": "MODAL_DEPTH_REDUCED" },
+            {
+              "kind": "file.changed",
+              "target": "src/components/whats-new-prototype.tsx",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/components/whats-new-prototype.tsx",
+              "expected": "[Cc]hangelog|[Rr]elease notes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-modal-sequencing-eligibility",
+      "suite": "behavior",
+      "fixture": "routed-app",
+      "tags": ["surfaces", "lifecycle", "safety"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The app has auth, an age gate, onboarding, and a What's New modal. Make the\nrelease notes show automatically for this release.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "src/release-note-eligibility.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "src/release-note-eligibility.ts",
+              "expected": "[Aa]uth"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/release-note-eligibility.ts",
+              "expected": "[Aa]ge"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/release-note-eligibility.ts",
+              "expected": "[Oo]nboarding"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/release-note-eligibility.ts",
+              "expected": "[Rr]eturning"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/release-note-eligibility.ts",
+              "expected": "[Cc]heckout|[Aa]ccount recovery|[Ss]afety|[Cc]ritical"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/release-note-eligibility.ts",
+              "expected": "[Dd]ismiss"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MODAL_SEQUENCING_UPDATED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-skill-maintenance-regression",
+      "suite": "behavior",
+      "fixture": "skill-package",
+      "tags": ["wording", "maintenance", "guidance"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Refine this changelog skill after an audit found duplicate SKILL.md and\nreference-file rules, an overlong description, and checklist drift.",
+          "assertions": [
+            { "kind": "file.changed", "target": "SKILL.md", "expected": true },
+            {
+              "kind": "file.changed",
+              "target": "references/entry-classification.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "references/automation-verification.md",
+              "expected": true
+            },
+            { "kind": "file.changed", "target": "EVAL.md", "expected": true },
+            {
+              "kind": "text.notMatch",
+              "target": "SKILL.md",
+              "expected": "This very long description repeats workflow"
+            },
+            {
+              "kind": "text.match",
+              "target": "SKILL.md",
+              "expected": "description: (?=[^\\n]*(?:Use when|changelog))(?=[^\\n]*(?:Do not use|not for|unless))[^\\n]+"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "SKILL.md",
+              "expected": "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "SKILL.md",
+              "expected": "- Check the changelog\\.\\s*- Check wording\\."
+            },
+            {
+              "kind": "text.match",
+              "target": "SKILL.md",
+              "expected": "references/entry-classification\\.md"
+            },
+            {
+              "kind": "text.match",
+              "target": "SKILL.md",
+              "expected": "references/automation-verification\\.md"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/entry-classification.md",
+              "expected": "Routine copy stays out\\. Customer outcomes stay in\\. Clone-sensitive details stay private"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Cc]ustomer"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Dd]eveloper"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Rr]elease"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Ss]ignature"
+            },
+            {
+              "kind": "text.match",
+              "target": "references/automation-verification.md",
+              "expected": "[Aa]utomat|[Cc]ommand"
+            },
+            {
+              "kind": "text.match",
+              "target": "EVAL.md",
+              "expected": "evals/cases\\.json|contract|adapter"
+            },
+            { "kind": "report.decision", "expected": "SKILL_REFACTORED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-fork-sync-provenance-pin",
+      "suite": "behavior",
+      "fixture": "forked-skill",
+      "tags": ["forks", "lifecycle", "maintenance"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Our repo has a fork of this skill pinned at an older upstream sha. Port the\nlatest upstream improvements into the fork.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "skills/project-changelog-maintainer/SKILL.md",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "skills/project-changelog-maintainer/EVAL.md",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "skills/project-changelog-maintainer/SKILL.md",
+              "expected": "1111111111111111111111111111111111111111"
+            },
+            {
+              "kind": "text.match",
+              "target": "skills/project-changelog-maintainer/SKILL.md",
+              "expected": "2222222222222222222222222222222222222222"
+            },
+            {
+              "kind": "text.match",
+              "target": "skills/project-changelog-maintainer/SKILL.md",
+              "expected": "release automation verification"
+            },
+            {
+              "kind": "text.match",
+              "target": "skills/project-changelog-maintainer/EVAL.md",
+              "expected": "Project release automation verification"
+            },
+            {
+              "kind": "text.match",
+              "target": "skills/project-changelog-maintainer/EVAL.md",
+              "expected": "Repo-local guidance state is portable"
+            },
+            {
+              "kind": "text.match",
+              "target": "skills/project-changelog-maintainer/EVAL.md",
+              "expected": "New release-note surfaces require authorization"
+            },
+            { "kind": "report.decision", "expected": "FORK_SYNCED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-local-fork-precedence",
+      "suite": "behavior",
+      "fixture": "forked-skill",
+      "tags": ["forks", "signatures", "lifecycle"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "This repo has `skills/project-changelog-maintainer/SKILL.md`, forked from\n`simple-changelogs`, and the agent also has upstream `simple-changelogs`\ninstalled globally. Update the changelog for this release.",
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": {
+                "activated": true,
+                "includes": ["project-changelog-maintainer"],
+                "excludes": ["global/simple-changelogs"]
+              }
+            },
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "global/simple-changelogs/SKILL.md",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "LOCAL_FORK_SELECTED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-single-changelog-policy",
+      "suite": "behavior",
+      "fixture": "single-changelog",
+      "tags": ["setup", "signatures", "wording"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The diff adds CSV export to saved reports. Update the changelog for this\npending work.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "CSV|[Ee]xport"
+            },
+            {
+              "kind": "path.absent",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs.json",
+              "expected": true
+            },
+            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+          ]
+        }
+      ]
+    }
+  ]
+}
