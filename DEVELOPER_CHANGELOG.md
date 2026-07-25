@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Synchronized the local `publish-skill` distribution with canonical upstream
+  `soundsystems/simple-changes` at `3b37e4b`:
+  - Added the bundled `scripts/discover-local-consumers.ts` inventory, which
+    resolves exact-source lock entries and installed packages under
+    `.agents`, `.claude`, and `.cursor` skill roots and classifies each row as
+    installed, multiple-installs, lock-only, or unlocked-install.
+  - Replaced the single convenience-consumer step with per-consumer retention
+    modes (maintained, validation-only, intentional-pin, stale) and concurrent
+    bounded-parallelism reinstallation in which one failure cannot cancel or
+    hide the remaining consumers.
+  - Updated the frontmatter description and `agents/openai.yaml` interface copy
+    to describe fork-plus-consumer publication. The fork carried no local
+    deltas, so the sync is a straight upstream mirror.
+<!-- simple-changelogs-signature agent="Claude Opus 5" at="2026-07-25T11:40:26-05:00" -->
 - Added release-note curation contracts and source parsing:
   - A closed JSON Schema and runtime validator model per-surface groups,
     operation history, continuation and revisit overlap, deployed-impact
