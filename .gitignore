@@ -4,3 +4,4 @@ dist/
 build/
 docs/superpowers/plans/
 *.log
+/BUILD_PLAN.md

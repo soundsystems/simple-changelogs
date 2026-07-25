@@ -46,4 +46,23 @@ describe("CMS skill package", () => {
     expect(instructions).toContain("`DEVELOPER_CHANGELOG.md`");
     expect(instructions).toContain("Do not expose the CMS history");
   });
+
+  test("requires operator relevance and negative surface isolation", async () => {
+    const [classification, surface, verification] = await Promise.all([
+      readFile(
+        join(skillRoot, "references", "entry-classification.md"),
+        "utf8"
+      ),
+      readFile(join(skillRoot, "references", "cms-surface.md"), "utf8"),
+      readFile(join(skillRoot, "references", "verification.md"), "utf8"),
+    ]);
+
+    expect(classification).toContain("Operator relevance gate");
+    expect(classification).toContain("general public web changes");
+    expect(classification).toContain("mobile-only changes");
+    expect(surface).toContain("Source isolation");
+    expect(surface).toContain("Do not merge the general customer");
+    expect(verification).toContain("representative CMS workflow outcomes");
+    expect(verification).toContain("general web, mobile-only");
+  });
 });

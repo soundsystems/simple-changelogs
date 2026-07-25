@@ -8,10 +8,23 @@ the durable customer source.
 
 Inspect each mobile target independently. In a monorepo, prove which application
 and release train a version field, Fastlane file, Play metadata file, or in-app
-surface belongs to. Never synchronize an unrelated web or package version.
+surface belongs to. A shared version or release date does not make the eligible
+content identical. Never synchronize an unrelated web or package version.
 
 Use established repository-native destinations and locale conventions. A store
 metadata path is evidence of a destination, not authority to submit it.
+
+Build a scope map for each affected destination: record its path or identity,
+mobile application, platform, audience, release train, source, positive
+inclusion rules, and explicit exclusions. Include mobile-visible outcomes and
+shared account, sync, notification, privacy, safety, reliability, or backend
+outcomes only when they affect that app. Exclude web-only presentation,
+web-admin, CMS-only, unrelated package, and internal build or migration work.
+
+Use changed paths, ownership, imports, tests, documentation, release metadata,
+and established structured tags as evidence. Do not filter by headings or
+keywords alone. If relevance remains ambiguous, preserve canonical history,
+omit the item from the narrow mobile destination, and report the mapping.
 
 ## Content budget
 
@@ -27,6 +40,16 @@ Mobile in-app notes can provide more context than store notes but should still
 default to the latest release. Keep older history in a reachable changelog or
 manual release-history screen rather than an ever-growing auto-shown modal.
 Strip raw HTML signature comments before rendering.
+
+An established manually opened archive for expert mobile users may use named
+feature narratives, verified media, compatibility guidance, stable product-area
+headings, an anchor-linked feature index when the page needs one, and a
+comprehensive mobile-relevant public fix ledger. Store notes remain compact and
+never inherit that exhaustive technical density.
+
+Reference only existing authorized assets or media separately authorized by the
+current request. Verify paths and useful alt text; do not invent or generate an
+asset merely to fill the release layout.
 
 ## Authorization
 
@@ -44,6 +67,10 @@ For release-bearing work, report each mobile application, package/bundle
 version, build number when relevant, changelog section, in-app destination, and
 store metadata destination as updated, already aligned, intentionally skipped,
 or blocked.
+
+Verify both positive and negative scope examples for every destination:
+qualifying mobile and shared outcomes render, while representative web-only,
+CMS-only, unrelated-store, and internal entries remain absent.
 
 This distribution does not own web release-note pages or authenticated CMS
 operator history.

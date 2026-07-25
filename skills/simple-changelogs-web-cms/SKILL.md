@@ -14,8 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 4
-
+Current guidance version: 5
 Current CMS guidance version: 1
 
 ## Distribution checkpoint
@@ -51,12 +50,12 @@ access, release, source-of-truth, or surface rules.
 | --- | --- |
 | Public/developer setup, distribution, or signatures | `references/setup.md` |
 | Public guidance changes | `references/guidance-updates.md` |
-| Customer/developer classification | `references/entry-classification.md` |
+| Customer/developer classification and expert public detail | `references/entry-classification.md` |
 | Public history reconstruction | `references/backfill.md` |
 | Release boundaries and reconciliation | `references/release-lifecycle.md` |
 | Versions and metadata | `references/version-decisions.md` |
 | Stable majors and prereleases | `references/major-releases.md` |
-| Public web and protected CMS destinations | `references/release-note-surfaces.md` |
+| Public web/CMS destination scoping and long-form web notes | `references/release-note-surfaces.md` |
 | CMS policy and structured source | `references/cms-setup.md` |
 | CMS operator classification | `references/cms-entry-classification.md` |
 | CMS historical reconstruction | `references/cms-backfill.md` |
@@ -69,10 +68,11 @@ access, release, source-of-truth, or surface rules.
 
 1. Inspect repository instructions, Git state, all three histories, both policy
    files, release evidence, public web destinations, the CMS route and access
-   guard, and the task diff.
+   guard, each destination's audience/app/release scope, and the task diff.
 2. Classify each outcome independently for customers, maintainers, and
-   authenticated operators. One outcome may belong to multiple sources, but
-   wording and detail must fit each audience.
+   authenticated operators. One outcome may belong to multiple sources only
+   when each audience is independently affected; wording and detail must fit
+   each audience.
 3. Edit each canonical source. Keep Markdown pending work under `Unreleased`;
    keep CMS JSON valid, newest-first, and stable-ID based.
 4. Reconcile only destinations and metadata proven to belong to the intended
@@ -99,4 +99,5 @@ access, release, source-of-truth, or surface rules.
 Complete only when all affected sources validate, audience boundaries are
 preserved, public and protected destinations agree with their own source,
 released/pending state is honest, authentication is proven from code and tests,
-and repository-native checks have fresh evidence.
+representative wrong-channel entries remain absent, and repository-native checks
+have fresh evidence.

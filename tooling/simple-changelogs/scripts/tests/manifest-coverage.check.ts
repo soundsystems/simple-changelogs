@@ -22,13 +22,19 @@ const SKILL_ROOT = join(
   "simple-changelogs"
 );
 const RECORDED_DISPOSITION_PATTERN = /once a\s+disposition is recorded/;
+const SHARED_RELEASE_SCOPE_PATTERN =
+  /shared\s+(?:repository,\s+release date,\s+or version|version or release date)/;
+const WRONG_SURFACE_EXCLUSION_PATTERN =
+  /representative wrong-platform or\s+wrong-role entries remain absent/;
 
 const FIXTURE_IDS = new Set([
   "dual-changelog",
+  "expert-release",
   "forked-skill",
   "initial-major",
   "minimal-git",
   "mobile-monorepo",
+  "multi-surface-monorepo",
   "next-major",
   "python-prerelease",
   "release-repo",
@@ -92,6 +98,7 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-customer-visible-feature",
   "behavior-developer-only-migration",
   "behavior-durable-ui-polish-changelog-only",
+  "behavior-expert-public-release-ledger",
   "behavior-first-time-feature-naming",
   "behavior-fork-sync-provenance-pin",
   "behavior-guidance-driven-backfill-audit",
@@ -106,6 +113,7 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-merge-batch-existing-unreleased",
   "behavior-mobile-monorepo-release-notes",
   "behavior-mobile-store-release-notes",
+  "behavior-multi-surface-scope-isolation",
   "behavior-modal-depth-budget",
   "behavior-modal-sequencing-eligibility",
   "behavior-new-whats-new-surface",
@@ -183,8 +191,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(52);
-    expect(new Set(ids).size).toBe(52);
+    expect(ids).toHaveLength(54);
+    expect(new Set(ids).size).toBe(54);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -468,6 +476,69 @@ describe("canonical evaluation manifest", () => {
     ).toBe(true);
   });
 
+  test("pins expert technical archives and per-surface monorepo isolation", async () => {
+    const manifest = await loadManifest();
+    const expert = caseById(manifest, "behavior-expert-public-release-ledger");
+
+    expect(
+      hasAssertion(
+        expert,
+        0,
+        "text.match",
+        "Song\\.get_current_smpte_song_time\\(\\)",
+        "docs/release-notes.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        expert,
+        0,
+        "text.match",
+        "assets/link-audio\\.svg",
+        "docs/release-notes.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        expert,
+        0,
+        "text.match",
+        "\\[[^\\]]*[Ll]ink [Aa]udio[^\\]]*\\]\\(#[^)]+\\)",
+        "docs/release-notes.md"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        expert,
+        0,
+        "text.notMatch",
+        "SearchRanker|source weights|fallback thresholds|database migration|allocation strategy",
+        "docs/release-notes.md"
+      )
+    ).toBe(true);
+
+    const scoped = caseById(manifest, "behavior-multi-surface-scope-isolation");
+    for (const path of [
+      "apps/web/src/release-notes.ts",
+      "apps/mobile/src/release-notes.ts",
+      "apps/cms/src/release-notes.ts",
+    ]) {
+      expect(hasAssertion(scoped, 0, "file.changed", true, path)).toBe(true);
+      expect(
+        turnByIndex(scoped, 0).assertions.some(
+          (assertion) =>
+            assertion.kind === "text.notMatch" && assertion.target === path
+        )
+      ).toBe(true);
+    }
+    expect(
+      hasAssertion(scoped, 0, "report.verification", {
+        code: "SURFACE_SCOPE_FILTERING",
+        status: "passed",
+      })
+    ).toBe(true);
+  });
+
   test("keeps recorded single-changelog policy choices authoritative", async () => {
     const manifest = await loadManifest();
     const singleChangelog = caseById(
@@ -634,6 +705,40 @@ describe("canonical evaluation manifest", () => {
 });
 
 describe("portable guidance consistency", () => {
+  test("packages expert public detail and destination isolation in every product distribution", async () => {
+    const skillsRoot = join(SKILL_ROOT, "..");
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-web",
+      "simple-changelogs-mobile",
+      "simple-changelogs-web-cms",
+    ];
+
+    const packages = await Promise.all(
+      distributions.map(async (distribution) => {
+        const referenceRoot = join(skillsRoot, distribution, "references");
+        const [classification, surfaces, verification] = await Promise.all([
+          readFile(join(referenceRoot, "entry-classification.md"), "utf8"),
+          readFile(join(referenceRoot, "release-note-surfaces.md"), "utf8"),
+          readFile(join(referenceRoot, "automation-verification.md"), "utf8"),
+        ]);
+        return { classification, surfaces, verification };
+      })
+    );
+
+    for (const { classification, surfaces, verification } of packages) {
+      expect(classification).toContain(
+        "Audience Profiles and Public Technical Ledgers"
+      );
+      expect(classification).toContain("comprehensive public patch ledger");
+      expect(
+        surfaces.includes("scope map") || surfaces.includes("Destination scope")
+      ).toBe(true);
+      expect(surfaces).toMatch(SHARED_RELEASE_SCOPE_PATTERN);
+      expect(verification).toMatch(WRONG_SURFACE_EXCLUSION_PATTERN);
+    }
+  });
+
   test("does not repeat explicit audit authority or broaden one-off surface answers", async () => {
     const setup = await readFile(
       join(SKILL_ROOT, "references", "setup.md"),

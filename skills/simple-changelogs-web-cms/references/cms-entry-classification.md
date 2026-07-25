@@ -18,10 +18,25 @@ maintain day-to-day product state.
 
 - raw commit lists, hashes, dependency churn, formatting, and test-only work;
 - customer marketing copy or visual polish with no operator consequence;
+- general public web changes, mobile-only changes, store notes, and package or
+  developer work that does not change an authorized operator's responsibilities;
 - secrets, personal data, access tokens, internal credentials, or detailed
   vulnerability mechanics;
 - speculative release claims, invented versions, and dates not supported by
   tags, metadata, merge history, or deployment evidence.
+
+## Operator relevance gate
+
+For every candidate, name the operator action, decision, support duty, workflow,
+content model, permission, integration, reliability expectation, or safe
+recovery step that changed. If none changed, omit the item even when it shipped
+in the same repository, release, or version as CMS work.
+
+Shared backend or customer-facing work belongs only when authenticated
+operators must configure it, manage its content, answer users about it, or
+change their operating procedure. Do not infer CMS relevance from a broad
+heading or keyword; use changed paths, ownership, imports, tests,
+documentation, and release metadata.
 
 ## Write entries
 

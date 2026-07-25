@@ -14,6 +14,9 @@ Then verify:
 - unauthenticated requests are redirected, rejected, or shown the established
   login surface;
 - the CMS navigation reaches the changelog for authorized operators;
+- representative CMS workflow outcomes render while general web, mobile-only,
+  store, package, and developer-only outcomes from the same release remain
+  absent;
 - no public route, API, sitemap, feed, or customer update surface exposes it;
 - `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` were not created or edited by
   this workflow;

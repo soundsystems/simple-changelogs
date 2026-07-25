@@ -13,7 +13,7 @@ CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established mobile and store destinations mirror release-scoped highlights.
 
-Current guidance version: 4
+Current guidance version: 5
 
 ## Distribution checkpoint
 
@@ -46,12 +46,12 @@ release flow, source of truth, or store boundary.
 | --- | --- |
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
-| Customer/developer classification and wording | `references/entry-classification.md` |
+| Customer/developer classification, expert public detail, and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
 | Version choice and metadata alignment | `references/version-decisions.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
-| Mobile in-app and store destinations | `references/release-note-surfaces.md` |
+| Mobile/store destination scoping and long-form release notes | `references/release-note-surfaces.md` |
 | Final repository-native checks | `references/automation-verification.md` |
 | Repository-specific forks | `references/fork-maintenance.md` |
 
@@ -59,9 +59,10 @@ release flow, source of truth, or store boundary.
 
 1. Inspect repository instructions, Git state, both changelogs, release
    evidence, mobile package metadata, established in-app/store destinations,
-   and the task diff.
+   each destination's app/platform/release scope, and the task diff.
 2. Classify each durable mobile outcome as customer, developer, both, or
-   neither.
+   neither, then include it in each in-app or store destination only when that
+   app and release train are affected.
 3. Edit the established Markdown structure. Keep pending work under a nonempty
    `Unreleased` section and follow the recorded signature policy.
 4. For release-bearing work, reconcile the intended boundary and update only
@@ -85,5 +86,5 @@ release flow, source of truth, or store boundary.
 
 Complete only when changelog decisions are explicit, raw histories and
 established mobile/store destinations agree, release metadata is scoped to the
-correct app, required signatures are present, and relevant checks have fresh
-evidence.
+correct app, web/CMS/internal details remain absent, required signatures are
+present, and relevant checks have fresh evidence.

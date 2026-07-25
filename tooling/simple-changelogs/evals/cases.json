@@ -284,7 +284,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 4
+              "expected": 5
             },
             {
               "kind": "json.path",
@@ -534,6 +534,108 @@
               "expected": "[Pp]recedence|[Pp]arser|[Rr]anking weight|AI review|[Cc]onfidence threshold|[Qq]ueue routing"
             },
             { "kind": "report.decision", "expected": "PUBLIC_DETAIL_REDACTED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-expert-public-release-ledger",
+      "suite": "behavior",
+      "fixture": "expert-release",
+      "tags": ["wording", "surfaces", "versions", "expert-audience"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the approved 3.2.0 release and update the established public technical\narchive. Preserve its long-form expert format: add an anchor-linked feature\nindex, explain Link Audio, use the approved existing image, retain every verified\npublic API, platform, device, and documented-debug-option fix, and keep private\ndeveloper mechanics out.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "docs/release-notes.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "3\\.2\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ll]ink [Aa]udio"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "\\[[^\\]]*[Ll]ink [Aa]udio[^\\]]*\\]\\(#[^)]+\\)"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "assets/link-audio\\.svg"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "Song\\.get_current_smpte_song_time\\(\\)"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "Novation Launchkey MK4 88"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "macOS"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "-RepitchWarperNoGroove"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ww]indows[\\s\\S]*screen readers|screen readers[\\s\\S]*[Ww]indows"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ww]arp markers"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ss]idechain[\\s\\S]*Pre-FX|Pre-FX[\\s\\S]*[Ss]idechain"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Ss]elected (?:interface|UI) language"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/release-notes.md",
+              "expected": "[Bb]ug ?[Ff]ixes|[Bb]ugfixes"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "docs/release-notes.md",
+              "expected": "SearchRanker|source weights|fallback thresholds|database migration|allocation strategy"
+            },
+            {
+              "kind": "path.absent",
+              "target": "docs/assets/generated-release-image.png",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "EXPERT_RELEASE_LEDGER_UPDATED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+            }
           ]
         }
       ]
@@ -921,7 +1023,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 4
+              "expected": 5
             },
             {
               "kind": "json.path",
@@ -1473,6 +1575,86 @@
               }
             },
             { "kind": "report.decision", "expected": "STORE_NOTES_UPDATED" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-multi-surface-scope-isolation",
+      "suite": "behavior",
+      "fixture": "multi-surface-monorepo",
+      "tags": ["surfaces", "mobile", "wording", "monorepo"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Release 4.8.0 from this monorepo and synchronize all three established release-note\nsources. Scope each one independently: web gets web and shared web/mobile\noutcomes, mobile gets mobile and shared web/mobile outcomes, and the CMS gets\nonly operator-relevant CMS changes. Do not copy the full Unreleased section into\neach surface.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Rr]econnect"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter|[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/cms/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/cms/src/release-notes.ts",
+              "expected": "[Bb]ulk publishing|[Ss]chedule selected"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/cms/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter|[Oo]ffline recovery|[Pp]ending edits|[Aa]ccount recovery|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_SCOPE_ISOLATED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": {
+                "code": "SURFACE_SCOPE_FILTERING",
+                "status": "passed"
+              }
+            }
           ]
         }
       ]

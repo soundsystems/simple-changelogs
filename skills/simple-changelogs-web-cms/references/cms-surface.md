@@ -24,6 +24,17 @@ Link the route from the existing CMS navigation and preserve the application's
 design system, responsive behavior, and accessibility patterns. Keep it out of
 public navigation, sitemaps, feeds, search metadata, and customer update pages.
 
+## Source isolation
+
+Render only the validated CMS source. Do not merge the general customer
+changelog, mobile or store notes, package history, or developer changelog into
+the operator route. A shared release identity controls chronology, not
+eligibility.
+
+When repository code selects CMS entries from a broader structured source,
+require explicit operator scope metadata and test both positive and negative
+examples. Do not use heading names or keyword matching as the only filter.
+
 ## Scope
 
 Creating the first route is product implementation and needs explicit authority.

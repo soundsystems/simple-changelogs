@@ -66,7 +66,8 @@ that an `/admin` or `/studio` path is private.
 
 Record durable outcomes that help authenticated operators understand product,
 content, workflow, integration, reliability, or support changes. Omit commit
-trivia and sensitive implementation detail. Use
+trivia, general web/mobile work with no operator consequence, and sensitive
+implementation detail. Use
 `references/entry-classification.md` for boundaries.
 
 ### 3. Edit
@@ -116,4 +117,5 @@ unresolved.
 The task is complete only when the JSON source validates, historical claims are
 traceable to repository evidence, the intended operator can reach the route,
 unauthenticated and public audiences cannot, repository-native checks pass, and
-no public or developer changelog was changed by this workflow.
+general web, mobile, store, package, and developer-only entries remain absent,
+and no public or developer changelog was changed by this workflow.

@@ -13,7 +13,7 @@ store, CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established public web release-note destinations mirror selected highlights.
 
-Current guidance version: 4
+Current guidance version: 5
 
 ## Distribution checkpoint
 
@@ -46,20 +46,22 @@ release flow, source of truth, or surface boundary.
 | --- | --- |
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
-| Customer/developer classification and wording | `references/entry-classification.md` |
+| Customer/developer classification, expert public detail, and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
 | Version choice and metadata alignment | `references/version-decisions.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
-| Public web release-note destinations | `references/release-note-surfaces.md` |
+| Public web destination scoping and long-form release notes | `references/release-note-surfaces.md` |
 | Final repository-native checks | `references/automation-verification.md` |
 | Repository-specific forks | `references/fork-maintenance.md` |
 
 ## Core workflow
 
 1. Inspect repository instructions, Git state, both changelogs, release
-   evidence, established public web destinations, and the task diff.
-2. Classify each durable outcome as customer, developer, both, or neither.
+   evidence, established public web destinations, their audience/app/release
+   scope, and the task diff.
+2. Classify each durable outcome as customer, developer, both, or neither, then
+   include it in a web destination only when web or proven shared impact exists.
 3. Edit the established Markdown structure. Keep pending work under a nonempty
    `Unreleased` section and follow the recorded signature policy.
 4. For release-bearing work, reconcile the intended boundary and update only
@@ -82,4 +84,5 @@ release flow, source of truth, or surface boundary.
 
 Complete only when changelog decisions are explicit, raw files and established
 web mirrors agree, pending/released boundaries are honest, required signatures
-are present, and relevant checks have fresh evidence.
+are present, wrong-platform and wrong-role details remain absent, and relevant
+checks have fresh evidence.

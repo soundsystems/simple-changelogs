@@ -1,0 +1,13 @@
+<svg
+  aria-labelledby="title"
+  role="img"
+  viewBox="0 0 640 360"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <title id="title">Link Audio peer controls</title>
+  <rect fill="#171717" height="360" width="640" />
+  <rect fill="#f2f2f2" height="216" rx="20" width="512" x="64" y="72" />
+  <circle cx="176" cy="180" fill="#ff764d" r="48" />
+  <circle cx="464" cy="180" fill="#ff764d" r="48" />
+  <path d="M240 180h160" stroke="#171717" stroke-width="16" />
+</svg>

@@ -14,7 +14,7 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "web-cms",
   "guidance": {
-    "version": 4,
+    "version": 5,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",

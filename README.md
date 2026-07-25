@@ -30,6 +30,26 @@ self-contained skill directories. Separate repositories are unnecessary unless
 a distribution later needs independent ownership, versioning, or release
 cadence.
 
+## Release-note depth and surface isolation
+
+Public notes adapt to their proven audience. General customer destinations keep
+outcome-focused detail, while established expert archives may retain public API,
+CLI, SDK, plug-in, device, compatibility, debugging, and comprehensive patch
+information that power users or integrators need. Long-form archives can use
+named feature narratives, existing approved media, stable product-area
+groupings, and an audience-relevant fix ledger without exposing private
+developer history.
+
+Long pages may add an anchor-linked feature index so the narrative remains
+scannable.
+
+In a monorepo, each destination gets an independent scope map. Web, mobile,
+store, CMS, package, and internal notes may share a version while rendering
+different eligible outcomes. Shared changes appear in more than one destination
+only when evidence proves that each audience is affected; positive and negative
+selector checks prevent unrelated platform or role details from leaking across
+surfaces.
+
 ## Install
 
 List names and discovery descriptions without installing:
@@ -105,7 +125,7 @@ record one of:
   "schemaVersion": 1,
   "distribution": "web",
   "guidance": {
-    "version": 4,
+    "version": 5,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",

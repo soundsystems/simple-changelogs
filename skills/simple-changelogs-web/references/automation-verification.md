@@ -33,6 +33,10 @@ encode an uncertain or independently versioned relationship.
   details, and clone-enabling mechanics.
 - Legal, privacy, trust, payment, access, and safety wording is accurate and no
   more detailed than users need.
+- Public technical identifiers, compatibility detail, and narrow fixes appear
+  only when an established expert audience needs them; a comprehensive ledger
+  preserves its full verified audience-relevant set without importing internal
+  history.
 - Feature groups and bullets follow product importance rather than commit order.
 - Routine initial-development repairs remain quiet unless they meet the material
   disclosure threshold.
@@ -75,6 +79,14 @@ encode an uncertain or independently versioned relationship.
 
 - Existing public, mobile, documentation, and internal destinations use copy
   appropriate to their audience and platform.
+- Every affected destination has an evidence-backed scope map naming its
+  audience, product or app, platform, release train, canonical source, positive
+  inclusion rules, and explicit exclusions.
+- A shared version or release date did not cause identical content to be copied
+  across unrelated web, mobile, store, CMS, package, or internal surfaces.
+- Representative eligible entries render and representative wrong-platform or
+  wrong-role entries remain absent; selectors do not rely on headings or
+  keywords alone.
 - Renderers ignore raw HTML attribution comments.
 - Missing product UI was not created or wired without explicit current-request
   authorization, documented repository policy, or stored permission.
@@ -85,6 +97,10 @@ encode an uncertain or independently versioned relationship.
   were unavailable.
 - Auto-shown summaries wait for higher-priority gates and retain suitable manual
   access.
+- Long-form expert archives keep feature narratives, product-area improvements,
+  and comprehensive public fixes proportional to the release; referenced media
+  exists, has useful alt text, and was not invented or generated without
+  authority; anchor indexes resolve to unique nonempty sections.
 
 ## Backfills
 
@@ -117,7 +133,11 @@ When local architecture supports them, tests may enforce:
 - product metadata known to share one version remains aligned;
 - customer-visible code paths trigger the repository's established changelog
   coverage rule;
-- authorized surfaces render only the intended audience's entries.
+- authorized surfaces render only the intended audience's entries;
+- surface selectors have positive and negative fixtures for shared, web-only,
+  mobile-only, store-only, CMS-only, package-only, and internal-only outcomes
+  that exist in the repository; and
+- long-form release media references resolve without placeholders.
 
 Run final commands after the last edit. Record command, outcome, and any skipped
 check with its reason; do not summarize stale evidence as current verification.

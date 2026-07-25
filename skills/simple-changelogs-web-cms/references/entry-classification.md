@@ -9,6 +9,7 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 - Customer changelog entries
 - Public detail budget
 - Detail level
+- Audience profiles and public technical ledgers
 - Initial-development, pre-release, and hot-fix rules
 - Developer changelog entries
 - Superseded developer notes
@@ -66,6 +67,47 @@ Exclude implementation details, raw enum names, migration numbers, pipeline
 markers, internal package names, or function names unless the requested audience
 explicitly needs technical release notes.
 
+## Audience Profiles and Public Technical Ledgers
+
+`Public` describes who can reach a destination, not how technical its readers
+are. Establish the real audience from repository instructions, product
+documentation, existing release notes, supported integrations, and the terms
+the product already exposes. When evidence does not establish an expert
+audience, use the general customer detail budget.
+
+An established public archive or an explicit current request may serve power
+users, administrators, device or plug-in authors, integration partners, and
+API, CLI, or SDK developers. For that audience, include technical detail that
+helps readers use the release, evaluate an upgrade, maintain compatibility, or
+recognize a resolved problem:
+
+- public product, API, CLI, SDK, plug-in, device, control-surface, setting, and
+  command names;
+- supported operating systems, editions, hardware, formats, and dependency
+  versions when they affect the shipped contract;
+- precise user-observable conditions for a fix, including the affected
+  workflow or platform;
+- compatibility notes, upgrade actions, documented workarounds, and public
+  debug options that the audience can safely use; and
+- narrow verified fixes and crashes when the established archive promises a
+  comprehensive public patch ledger.
+
+An exhaustive ledger means every verified change relevant to that destination's
+promised audience and product surface, not every commit or internal change.
+Preserve that complete eligible set on a comprehensive archive while keeping
+compact modals, store notes, emails, and announcements selective.
+
+Do not copy `DEVELOPER_CHANGELOG.md` into a public destination. Classify each
+technical outcome for the public expert audience independently. Put qualifying
+public-contract detail in customer history or its established public source;
+use the developer history for deeper maintainer context when the same outcome
+belongs in both.
+
+Expert detail never relaxes the safety budget. Keep private endpoint and schema
+names, hidden heuristics, credentials, exploit-enabling security mechanics,
+private incident evidence, unreleased vendors, internal flags, and operational
+playbooks out of public notes.
+
 ## Public Detail Budget
 
 Assume public changelog surfaces can be read by customers, prospects,
@@ -91,8 +133,10 @@ Keep these out of customer-facing notes:
   enforcement heuristics
 - AI prompts, model choices, eval criteria, queue routing, human-review
   triggers, and internal QA signals
-- API endpoint names, schema fields, RPC/function names, package names, feature
-  flags, cron cadence, queue names, service boundaries, and pipeline markers
+- nonpublic API endpoint names, schema fields, RPC/function names, package
+  names, feature flags, cron cadence, queue names, service boundaries, and
+  pipeline markers; public API, CLI, SDK, integration, or device contracts may
+  be named for an established expert audience as described above
 - private vendor names, unreleased integrations, roadmap sequencing, release
   slot strategy, and operational playbooks
 
@@ -198,6 +242,12 @@ public changelog, frame it as a calm user outcome:
   over "fixed a regression that reset shipping state."
 - Prefer "Reports now load reliably for larger date ranges" over "fixed a crash
   caused by an inefficient query."
+
+When an established public expert archive promises comprehensive patch notes,
+include every verified audience-relevant repair even when it restores baseline
+behavior or affects a narrow platform, device, plug-in, or API scenario. State
+the observable condition and repaired result without publishing blame, private
+root cause, or internal-only mechanics.
 
 Do not expose blame, embarrassing root causes, failed releases, avoidable
 mistakes, internal incident language, or security-sensitive implementation

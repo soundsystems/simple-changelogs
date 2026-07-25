@@ -73,3 +73,29 @@ Incidental cosmetic churn, routine copy cleanup, and baseline corrections still
 remain unrecorded by default. `DEVELOPER_CHANGELOG.md` receives polish only when
 its implementation or tradeoffs create maintainable technical context; it is
 not a catch-all UI ledger.
+
+## Guidance 5
+
+Added evidence-based expert public release notes. An established technical
+archive may now retain public API, CLI, SDK, plug-in, device, compatibility,
+debugging, and narrow patch details that its proven audience needs. A
+comprehensive public ledger preserves every verified audience-relevant change
+without copying internal developer history or relaxing security and private
+implementation boundaries.
+
+Added destination-level scope maps for repositories with multiple release-note
+surfaces. Web, mobile, store, CMS, package, and internal destinations now select
+their own eligible entries even when they share a repository, version, or
+release date. Cross-platform outcomes appear only where the affected audience
+and product surface are proven, and positive plus negative selector checks
+guard against wrong-platform leakage.
+
+Added long-form expert archive guidance for feature narratives, verified media,
+anchor-linked indexes for long pages, stable product-area groupings,
+comprehensive public fix ledgers, and distinct related-product links. Media is
+omitted when no authorized asset exists rather than invented to fill a layout.
+
+An approved historical audit may identify technical public archives that lost
+audience-relevant detail or destinations that exposed unrelated platform or
+role content. Preserve released history unless the audit separately authorizes
+the required meaning or visibility change.

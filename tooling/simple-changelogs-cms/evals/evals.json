@@ -18,6 +18,12 @@
       "prompt": "We already have CMS_CHANGELOG.json. Put the same notes on the public updates page and add them to the sitemap.",
       "expected_output": "Declines to expose CMS-only history publicly, leaves public routes and sitemap unchanged, and explains that a different audience-safe changelog would be required.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "This monorepo release contains a public web dashboard redesign, mobile offline sync, a database migration, and new CMS bulk publishing controls. Update the existing CMS changelog, but only with changes authenticated content operators need.",
+      "expected_output": "Adds only the CMS bulk publishing outcome, omits unrelated web, mobile, migration, and developer details, and verifies representative negative cases against the authenticated CMS destination.",
+      "files": []
     }
   ]
 }
