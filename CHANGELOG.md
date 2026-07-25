@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Publishing a skill update now reaches every local install of that skill
+  instead of one chosen validation repository. The workflow discovers each
+  consumer, applies its retention mode, and reinstalls consumers concurrently
+  so a single failure no longer hides the others.
+<!-- simple-changelogs-signature agent="Claude Opus 5" at="2026-07-25T11:40:26-05:00" -->
 - Release-note curation now uses stable, scoped presentation maps that preserve
   chronological changelogs as the source of truth, record continuation and
   overlapping revisit history, and prevent completed reorganizations from
