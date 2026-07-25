@@ -31,13 +31,16 @@ workflows.
 
 ## Setup Checkpoint
 
-Before a write-capable changelog task, look for `.simple-changelogs.json` at the
-repository root.
+Before a write-capable changelog task, run the bundled `scripts/setup.ts`
+inspection helper and inspect `.simple-changelogs.json` at the repository root.
 
+- Classify the current request as `write` or `read` and pass that task mode to
+  the helper. Read-only requests never enter or persist onboarding.
 - When it exists, validate it before relying on its decisions. Report malformed
   or unsupported state; do not silently replace it.
 - When it is absent and the request authorizes changelog work, follow
-  `references/setup.md`, then continue the original task.
+  `references/setup.md`, confirm the helper's receipt, apply the chosen setup,
+  then continue the original task without asking the user to repeat it.
 - If released history exists and the request does not decide its audit, ask and
   stop before writing policy or changelogs. Silence is not `deferred` or
   `declined`.

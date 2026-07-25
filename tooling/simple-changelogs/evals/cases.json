@@ -259,7 +259,7 @@
           ]
         },
         {
-          "prompt": "Decline the historical audit, record that choice, and continue the pending\nchangelog update.",
+          "prompt": "Use the recommended setup for this repository, decline the historical audit,\nconfirm the receipt, and continue the pending changelog update.",
           "assertions": [
             {
               "kind": "file.changed",
@@ -295,6 +295,21 @@
               "kind": "json.path",
               "target": ".simple-changelogs.json#/newReleaseNoteSurfaces",
               "expected": "ask"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/distribution",
+              "expected": "full"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/developerChangelog",
+              "expected": "required"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/signatures",
+              "expected": "agent-and-timestamp"
             },
             {
               "kind": "report.authorization",

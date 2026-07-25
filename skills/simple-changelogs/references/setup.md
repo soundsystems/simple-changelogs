@@ -3,6 +3,10 @@
 Use this reference for first use, repository-local decisions, one-time prompts,
 and raw-changelog attribution.
 
+For the automatic inspection, recommended/customized entry screen, preference
+scope, confirmation receipt, and helper commands, follow
+`references/onboarding.md`.
+
 ## Policy File
 
 Store portable state in `.simple-changelogs.json` at the repository root. This

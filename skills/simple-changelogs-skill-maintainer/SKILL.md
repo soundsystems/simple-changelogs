@@ -33,11 +33,15 @@ defer to it. A global installation alone never overrides repo-local selection.
 
 ## Setup checkpoint
 
-Before write-capable work, inspect `.simple-changelogs.json`.
+Before write-capable work, run the bundled `scripts/setup.ts` inspection helper
+and inspect `.simple-changelogs.json`.
 
+- Pass `--task-mode write` for release-history mutations and `--task-mode read`
+  for explanations or previews that must stay read-only.
 - Validate existing state before relying on it.
 - When state is absent and the request authorizes release-history work, follow
-  `references/setup.md` and record `distribution: "skill-repository"`.
+  `references/setup.md`, confirm and apply the selected setup with
+  `distribution: "skill-repository"`, then continue the original request.
 - Read-only questions never create policy or changelog files.
 - Existing released history requires an explicit audit disposition.
 

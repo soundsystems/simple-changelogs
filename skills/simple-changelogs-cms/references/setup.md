@@ -4,6 +4,10 @@ Store CMS-only decisions in `.simple-changelogs-cms.json` at the repository
 root. The policy identifies the owned data file and the authenticated route; it
 does not copy this skill's prose.
 
+For the automatic inspection, CMS-specific questions, preference scope,
+confirmation receipt, and helper commands, follow
+`references/onboarding.md`.
+
 <!-- simple-changelogs-cms-policy-example -->
 ```json
 {

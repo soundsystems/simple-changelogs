@@ -22,6 +22,7 @@ import {
   DISTRIBUTIONS,
   EVAL_SUITES,
   type EvalManifest,
+  type GlobalPreferences,
   MANIFEST_VERSION,
   PROTOCOL_VERSION,
   type RepoPolicy,
@@ -29,6 +30,7 @@ import {
   RUNNER_STATUSES,
   type RunnerRequest,
   type RunnerResponse,
+  SETUP_STYLES,
   SIGNATURE_POLICIES,
   SOURCE_REWRITE_CHANGE_KINDS,
   SURFACE_CHRONOLOGICAL_ACCESS_MODES,
@@ -408,6 +410,15 @@ const repoPolicy = objectOf({
   }),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
   schemaVersion: literal(1),
+  signatures: enumOf(SIGNATURE_POLICIES),
+});
+
+const globalPreferences = objectOf({
+  developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
+  newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
+  profile: literal("solo-developer"),
+  schemaVersion: literal(1),
+  setupStyle: enumOf(SETUP_STYLES),
   signatures: enumOf(SIGNATURE_POLICIES),
 });
 
@@ -1123,6 +1134,11 @@ const validateWith = <T>(
 export const validateRepoPolicy = (
   value: unknown
 ): ValidationResult<RepoPolicy> => validateWith(value, repoPolicy);
+
+export const validateGlobalPreferences = (
+  value: unknown
+): ValidationResult<GlobalPreferences> =>
+  validateWith(value, globalPreferences);
 
 export const validateManifest = (
   value: unknown

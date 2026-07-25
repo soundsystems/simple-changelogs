@@ -33,11 +33,15 @@ The combined distribution owns both `.simple-changelogs.json` and
 
 ## Setup checkpoint
 
-Before write-capable work:
+Before write-capable work, run the bundled `scripts/setup.ts` inspection helper:
 
+- Pass `--task-mode write` for changelog mutations and `--task-mode read` for
+  explanations or previews that must stay read-only.
 - Inspect and validate both policy files when present.
 - For public/developer setup, follow `references/setup.md`.
 - For operator-history setup, follow `references/cms-setup.md`.
+- Confirm one combined receipt, apply both policies as one transaction, and
+  continue the original request without asking the user to repeat it.
 - Existing released history is never audited without an explicit disposition.
 - Read-only questions never create policy, changelog, JSON, or UI files.
 
