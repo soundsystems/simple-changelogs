@@ -300,7 +300,7 @@ describe("canonical evaluation manifest", () => {
     ).toBe(true);
   });
 
-  test("waits for the first historical-audit answer before writing policy", async () => {
+  test("waits for historical-audit and mobile-placement answers before writing policy", async () => {
     const manifest = await loadManifest();
     const setup = caseById(manifest, "behavior-customer-visible-feature");
 
@@ -314,6 +314,14 @@ describe("canonical evaluation manifest", () => {
         source: "none",
         status: "required",
       })
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        setup,
+        0,
+        "report.decision",
+        "MOBILE_RELEASE_NOTE_PLACEMENT_REQUIRED"
+      )
     ).toBe(true);
     expect(
       hasAssertion(
@@ -348,6 +356,15 @@ describe("canonical evaluation manifest", () => {
         source: "user-response",
         status: "denied",
       })
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        setup,
+        1,
+        "json.path",
+        "mobile-only",
+        ".simple-changelogs.json#/mobileReleaseNotePlacement"
+      )
     ).toBe(true);
   });
 
@@ -536,6 +553,7 @@ describe("canonical evaluation manifest", () => {
     ).toBe(true);
 
     const scoped = caseById(manifest, "behavior-multi-surface-scope-isolation");
+    expect(scoped.turns).toHaveLength(3);
     for (const path of [
       "apps/web/src/release-notes.ts",
       "apps/mobile/src/release-notes.ts",
@@ -554,6 +572,50 @@ describe("canonical evaluation manifest", () => {
         code: "SURFACE_SCOPE_FILTERING",
         status: "passed",
       })
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        0,
+        "json.path",
+        "mobile-only",
+        ".simple-changelogs.json#/mobileReleaseNotePlacement"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        1,
+        "json.path",
+        "web-tabs",
+        ".simple-changelogs.json#/mobileReleaseNotePlacement"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        1,
+        "report.decision",
+        "MOBILE_HISTORY_EXPOSED_IN_WEB_TABS"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        2,
+        "json.path",
+        "web-page",
+        ".simple-changelogs.json#/mobileReleaseNotePlacement"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        2,
+        "path.exists",
+        true,
+        "apps/web/src/mobile-release-notes.ts"
+      )
     ).toBe(true);
   });
 

@@ -24,6 +24,7 @@ import {
   type EvalManifest,
   type GlobalPreferences,
   MANIFEST_VERSION,
+  MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
   type RepoPolicy,
   RUNNER_MESSAGE_ROLES,
@@ -401,13 +402,14 @@ const evalCase = objectOf({
   turns: arrayOf(turn, { minItems: 1 }),
 });
 
-const repoPolicy = objectOf({
+const repoPolicyBase = objectOf({
   developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
   distribution: optional(enumOf(DISTRIBUTIONS)),
   guidance: objectOf({
     backfillStatus: enumOf(BACKFILL_STATUSES),
     version: integer(1),
   }),
+  mobileReleaseNotePlacement: optional(enumOf(MOBILE_RELEASE_NOTE_PLACEMENTS)),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
   schemaVersion: literal(1),
   signatures: enumOf(SIGNATURE_POLICIES),
@@ -421,6 +423,27 @@ const globalPreferences = objectOf({
   setupStyle: enumOf(SETUP_STYLES),
   signatures: enumOf(SIGNATURE_POLICIES),
 });
+
+const repoPolicy: Validator = (value, path, errors) => {
+  repoPolicyBase(value, path, errors);
+  if (!isPlainObject(value)) {
+    return;
+  }
+  const { distribution, guidance } = value;
+  const isFullDistribution =
+    distribution === undefined || distribution === "full";
+  if (
+    isFullDistribution &&
+    isPlainObject(guidance) &&
+    typeof guidance.version === "number" &&
+    guidance.version >= 6 &&
+    !Object.hasOwn(value, "mobileReleaseNotePlacement")
+  ) {
+    errors.push(
+      `${childPath(path, "mobileReleaseNotePlacement")} is required for full distribution guidance version 6 or newer`
+    );
+  }
+};
 
 const manifest = objectOf({
   cases: arrayOf(evalCase, { minItems: 1 }),

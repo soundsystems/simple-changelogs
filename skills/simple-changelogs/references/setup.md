@@ -18,12 +18,13 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "full",
   "guidance": {
-    "version": 5,
+    "version": 6,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
-  "newReleaseNoteSurfaces": "ask"
+  "newReleaseNoteSurfaces": "ask",
+  "mobileReleaseNotePlacement": "mobile-only"
 }
 ```
 
@@ -68,6 +69,34 @@ some history unchanged on purpose.
 - `existing-only`: update established destinations, but do not add another one
   without a new explicit request.
 
+`mobileReleaseNotePlacement` accepts:
+
+- `web-tabs`: expose the independently scoped Web and Mobile histories at one
+  web changelog destination under clearly labeled tabs.
+- `web-page`: keep the normal Web history at its established destination and
+  expose the independently scoped Mobile history on a separate linked web page.
+- `mobile-only`: keep mobile-specific history off the web. Publish it only
+  through established in-app, App Store, Google Play, testing-track, or other
+  mobile destinations.
+
+The full distribution, and any explicitly combined web+mobile distribution
+derived from it, asks the user to choose one of these values during setup. Do
+not infer a preference from repository layout, an existing shared version, or
+the presence of a mobile app. Shared outcomes that genuinely affect web users
+remain eligible for the Web history even when the preference is `mobile-only`;
+the preference controls mobile-specific history.
+
+The field is optional only so policy files created before guidance 6 remain
+valid. Treat a missing value as unresolved, not as `mobile-only`. Before
+synchronizing or implementing combined web/mobile history, ask once and record
+the answer. A web-only, mobile-only, web+CMS, or skill-repository distribution
+does not add this field.
+
+Choosing `web-tabs` or `web-page` records desired placement, but does not by
+itself create product UI. Existing compatible destinations may follow the
+preference during ordinary synchronization. A missing tab set, route, page, or
+navigation entry still follows `newReleaseNoteSurfaces` authorization.
+
 The `guidance.version` is the newest guidance version for which the repository
 recorded a disposition. It is not proof that released history conforms. Current
 guidance applies prospectively regardless of the recorded backfill status.
@@ -99,17 +128,23 @@ For authorized setup:
    and explicitly decides the audit. Use that decision when its scope is clear;
    otherwise explain the current guidance briefly and ask once whether to audit
    that history. Do not repeat permission the user already granted.
-5. Record the user's actual disposition and set `newReleaseNoteSurfaces` to
-   `ask`, then continue the originally requested task. An authorized audit starts
-   as `partial` and becomes `completed` only after verification.
+5. Ask how mobile-specific release history should be placed: `web-tabs`,
+   `web-page`, or `mobile-only`. Explain that shared cross-platform outcomes
+   remain eligible for Web history under every choice and that new UI still
+   requires its normal authorization.
+6. Record the user's actual audit disposition and mobile placement, set
+   `newReleaseNoteSurfaces` to `ask`, then continue the originally requested
+   task. An authorized audit starts as `partial` and becomes `completed` only
+   after verification.
 
 Setup does not authorize a new modal, route, screen, panel, navigation entry, or
 other product UI. Follow `references/release-note-surfaces.md` when later work
 needs a missing destination.
 
-If the user does not answer the setup question, do not guess a disposition or
-write policy state that implies one. A declined or deferred historical audit
-does not prevent prospective changelog work after that decision is recorded.
+If the user does not answer either setup question, do not guess a disposition
+or placement and do not write policy state that implies one. A declined or
+deferred historical audit does not prevent prospective changelog work after
+that decision and the mobile placement are recorded.
 
 ## One Prompt per Guidance Version
 

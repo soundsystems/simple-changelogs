@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
   "guidance": {
-    "version": 5,
+    "version": 6,
     "backfillStatus": "completed"
   },
   "developerChangelog": "optional",
   "signatures": "none",
-  "newReleaseNoteSurfaces": "ask"
+  "newReleaseNoteSurfaces": "ask",
+  "mobileReleaseNotePlacement": "mobile-only"
 }

@@ -82,6 +82,51 @@ Cross-platform outcomes may appear in several destinations only when the
 outcome independently affects each one. Reword for each audience rather than
 copying irrelevant platform detail.
 
+## Canonical Web and Mobile Feeds
+
+When one repository ships web and mobile products, preserve one canonical
+customer history and derive independently scoped feeds from it. Do not maintain
+parallel handwritten Web and Mobile copies when structured release-note data or
+a small deterministic adapter can express the relationship.
+
+When the repository supports structured release-note data:
+
+- give every top-level item an explicit surface selector such as `web`,
+  `mobile`, or both; do not assume an untagged item is shared;
+- let nested bullets inherit the parent selector, with an explicit narrower
+  selector when one grouped feature mixes platform-specific details;
+- derive Web and Mobile feeds by filtering the canonical item set rather than
+  copying text between app packages;
+- remove a group when filtering leaves it with no bullets, and do not render an
+  empty release section;
+- when release tooling must preserve a version/date record for a release with
+  no eligible public notes, keep that maintained metadata separate from the
+  latest rendered feed version; and
+- keep per-release dismissal or seen state independent by product so viewing
+  one product's summary does not suppress the other product's summary.
+
+Plain Markdown repositories use the same method through the destination scope
+map: classify each item once, record evidence for every eligible surface, and
+generate or synchronize each destination from that mapping.
+
+Read `.simple-changelogs.json` key `mobileReleaseNotePlacement` before deciding
+whether mobile-specific history is visible on the web:
+
+- `web-tabs` renders separate Web and Mobile feeds under labeled tabs at one web
+  destination. The Mobile tab consumes the Mobile feed; it does not make
+  mobile-only entries part of the Web feed.
+- `web-page` keeps the Web feed at the normal web changelog and exposes the
+  Mobile feed on a separate linked web page.
+- `mobile-only` keeps the Mobile feed in established in-app, App Store, Google
+  Play, testing-track, or other mobile destinations and omits mobile-specific
+  entries from web changelog destinations.
+
+Shared outcomes still appear in every independently affected feed. Store copy
+remains a concise selection from the Mobile feed, never the entire mobile
+history. A placement preference does not authorize a missing tab set, route,
+page, navigation entry, or dismissal store; apply the product-implementation
+authorization rules above.
+
 ## Audience and Platform Scope
 
 Derive each destination from the customer or developer history appropriate to
@@ -121,6 +166,9 @@ mirror. Avoid hand-maintained duplicates that can drift.
 For a multi-surface release, verify both sides of each selector: representative
 eligible entries appear, and representative web-only, mobile-only, CMS-only,
 store-only, and internal-only entries stay out of unrelated destinations.
+For Web and Mobile feeds, also verify nested selector inheritance, removal of
+empty groups and sections, independent latest-rendered versions, and
+product-scoped seen state.
 
 ## Mobile Store Copy
 

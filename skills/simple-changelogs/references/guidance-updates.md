@@ -99,3 +99,24 @@ An approved historical audit may identify technical public archives that lost
 audience-relevant detail or destinations that exposed unrelated platform or
 role content. Preserve released history unless the audit separately authorizes
 the required meaning or visibility change.
+
+## Guidance 6
+
+Added an explicit setup preference for repositories that ship Web and Mobile
+products. Users now choose whether mobile-specific release history appears on
+the web under labeled tabs, on a separate linked page, or only in mobile
+in-app/store destinations. Shared outcomes remain eligible for every product
+they genuinely affect, and placement does not silently authorize new product
+UI.
+
+Made the canonical multi-surface method concrete: one customer history,
+explicit per-item surface selectors, narrower nested-bullet overrides,
+deterministically derived Web and Mobile feeds, removal of empty filtered
+groups and sections, and independent latest-rendered and seen-version state per
+product.
+
+An approved historical audit may identify mobile-specific entries exposed on a
+web surface contrary to the recorded preference, shared entries missing from an
+affected product, or hand-maintained Web and Mobile copies that have drifted.
+Preserve released history and deployed visibility unless the audit separately
+authorizes the required meaning or visibility change.

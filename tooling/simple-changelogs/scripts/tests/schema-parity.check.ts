@@ -22,6 +22,7 @@ import {
   DISTRIBUTIONS,
   EVAL_SUITES,
   MANIFEST_VERSION,
+  MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
   RUNNER_MESSAGE_ROLES,
   RUNNER_STATUSES,
@@ -332,6 +333,11 @@ describe("schema parity", () => {
         policySchema,
         "properties.newReleaseNoteSurfaces.enum",
         SURFACE_POLICIES,
+      ],
+      [
+        policySchema,
+        "properties.mobileReleaseNotePlacement.enum",
+        MOBILE_RELEASE_NOTE_PLACEMENTS,
       ],
       [
         policySchema,

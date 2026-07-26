@@ -2,10 +2,11 @@
   "schemaVersion": 1,
   "distribution": "full",
   "guidance": {
-    "version": 5,
+    "version": 6,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "none",
-  "newReleaseNoteSurfaces": "existing-only"
+  "newReleaseNoteSurfaces": "existing-only",
+  "mobileReleaseNotePlacement": "mobile-only"
 }

@@ -91,6 +91,51 @@ describe("repo policy", () => {
     expect(result.ok).toBe(true);
   });
 
+  test("accepts supported mobile release-note placement and rejects unknown placement", () => {
+    for (const mobileReleaseNotePlacement of [
+      "web-tabs",
+      "web-page",
+      "mobile-only",
+    ]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          mobileReleaseNotePlacement,
+        }).ok
+      ).toBe(true);
+    }
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        mobileReleaseNotePlacement: "same-page",
+      }).ok
+    ).toBe(false);
+  });
+
+  test("requires mobile placement for current full guidance while preserving older policies", () => {
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        guidance: { backfillStatus: "completed", version: 6 },
+      }).ok
+    ).toBe(false);
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        distribution: "full",
+        guidance: { backfillStatus: "completed", version: 6 },
+        mobileReleaseNotePlacement: "mobile-only",
+      }).ok
+    ).toBe(true);
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        distribution: "web",
+        guidance: { backfillStatus: "completed", version: 6 },
+      }).ok
+    ).toBe(true);
+  });
+
   test("accepts an explicit distribution and rejects an unknown one", () => {
     expect(
       validateRepoPolicy({
