@@ -9,7 +9,7 @@
     "eval": "bun tooling/distributions.check.ts && bun tooling/simple-changelogs/scripts/eval.ts contract && bun skills/simple-changelogs-cms/scripts/validate.ts tooling/simple-changelogs-cms/evals/fixtures/valid-repo",
     "format": "ultracite fix",
     "lint": "ultracite check",
-    "test": "bun tooling/simple-changelogs/scripts/test.ts && bun tooling/simple-changelogs-cms/scripts/test.ts",
+    "test": "bun tooling/simple-changelogs/scripts/test.ts && bun tooling/simple-changelogs-cms/scripts/test.ts && bun tooling/publish-skill/scripts/test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
