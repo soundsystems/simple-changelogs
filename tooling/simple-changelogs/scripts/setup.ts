@@ -42,6 +42,11 @@ const DISTRIBUTIONS = [
 ] as const;
 const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+const MOBILE_RELEASE_NOTE_PLACEMENTS = [
+  "web-tabs",
+  "web-page",
+  "mobile-only",
+] as const;
 const SETUP_STYLES = ["recommended", "customized"] as const;
 const SCOPES = ["repository", "all-projects", "run-only"] as const;
 const TASK_MODES = ["write", "read"] as const;
@@ -118,6 +123,8 @@ type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 type Distribution = (typeof DISTRIBUTIONS)[number];
 type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
 type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+type MobileReleaseNotePlacement =
+  (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 type SetupStyle = (typeof SETUP_STYLES)[number];
 type PreferenceScope = (typeof SCOPES)[number];
 type TaskMode = (typeof TASK_MODES)[number];
@@ -130,6 +137,14 @@ type SetupStatus =
   | "ready"
   | "run-only";
 
+const GUIDANCE_VERSIONS = {
+  full: 6,
+  mobile: 5,
+  "skill-repository": 4,
+  web: 5,
+  "web-cms": 5,
+} as const satisfies Record<Distribution, number>;
+
 interface RepoPolicy {
   developerChangelog: DeveloperChangelogPolicy;
   distribution?: Distribution;
@@ -137,6 +152,7 @@ interface RepoPolicy {
     backfillStatus: BackfillStatus;
     version: number;
   };
+  mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
@@ -199,11 +215,17 @@ interface Recommendation {
 interface Selection {
   backfillStatus?: BackfillStatus;
   developerChangelog?: DeveloperChangelogPolicy;
+  mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaces?: SurfacePolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
 }
+
+type CompleteSelection = Required<
+  Omit<Selection, "mobileReleaseNotePlacement">
+> &
+  Pick<Selection, "mobileReleaseNotePlacement">;
 
 interface WriteRecord {
   kind:
@@ -253,6 +275,7 @@ export interface ApplyOptions extends InspectOptions {
   cmsSurfaceProven?: boolean;
   confirm?: boolean;
   developerChangelog?: DeveloperChangelogPolicy;
+  mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaces?: SurfacePolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
@@ -306,7 +329,7 @@ const validateRepoPolicy = (
           "signatures",
           "newReleaseNoteSurfaces",
         ],
-        ["distribution"]
+        ["distribution", "mobileReleaseNotePlacement"]
       )
     )
   ) {
@@ -332,6 +355,12 @@ const validateRepoPolicy = (
     errors.push("newReleaseNoteSurfaces is unsupported");
   }
   if (
+    value.mobileReleaseNotePlacement !== undefined &&
+    !oneOf(value.mobileReleaseNotePlacement, MOBILE_RELEASE_NOTE_PLACEMENTS)
+  ) {
+    errors.push("mobileReleaseNotePlacement is unsupported");
+  }
+  if (
     !(
       isRecord(value.guidance) &&
       hasExactKeys(value.guidance, ["version", "backfillStatus"]) &&
@@ -342,6 +371,17 @@ const validateRepoPolicy = (
   ) {
     errors.push(
       "guidance must contain a positive version and supported backfillStatus"
+    );
+  }
+  if (
+    isRecord(value.guidance) &&
+    typeof value.guidance.version === "number" &&
+    value.guidance.version >= GUIDANCE_VERSIONS.full &&
+    (value.distribution === undefined || value.distribution === "full") &&
+    value.mobileReleaseNotePlacement === undefined
+  ) {
+    errors.push(
+      "mobileReleaseNotePlacement is required for full guidance version 6 or newer"
     );
   }
   return errors.length === 0
@@ -795,7 +835,7 @@ const recommendationFor = (
           distribution: installed,
           guidance: {
             backfillStatus: backfillStatus ?? ("partial" as const),
-            version: 4,
+            version: GUIDANCE_VERSIONS[installed],
           },
           newReleaseNoteSurfaces: reusableDefaults.newReleaseNoteSurfaces,
           schemaVersion: 1 as const,
@@ -825,6 +865,13 @@ const unresolvedFor = (
   }
   if (inventory.releasedHistoryCount > 0) {
     unresolved.push("released-history-audit");
+  }
+  if (
+    installed === "full" &&
+    (policy.state === "absent" ||
+      policy.value?.mobileReleaseNotePlacement === undefined)
+  ) {
+    unresolved.push("mobile-release-note-placement");
   }
   if (
     (installed === "cms" || installed === "web-cms") &&
@@ -1196,7 +1243,7 @@ const selectionFrom = (
   options: ApplyOptions,
   inspect: SetupResult,
   installed: Distribution | "cms"
-): Required<Selection> => {
+): CompleteSelection => {
   const defaults = inspect.recommendation.reusableDefaults;
   return {
     backfillStatus:
@@ -1206,6 +1253,7 @@ const selectionFrom = (
         : "partial"),
     developerChangelog:
       options.developerChangelog ?? defaults.developerChangelog,
+    mobileReleaseNotePlacement: options.mobileReleaseNotePlacement,
     newReleaseNoteSurfaces:
       options.newReleaseNoteSurfaces ??
       (installed === "cms" ? "existing-only" : defaults.newReleaseNoteSurfaces),
@@ -1230,7 +1278,7 @@ const blockResult = (
 });
 
 const cmsPolicyFor = (
-  selection: Required<Selection>,
+  selection: CompleteSelection,
   options: ApplyOptions
 ): CmsPolicy => ({
   changelogPath: options.cmsChangelog ?? DEFAULT_CMS_CHANGELOG,
@@ -1247,7 +1295,7 @@ const cmsPolicyFor = (
 });
 
 const globalFor = (
-  selection: Required<Selection>,
+  selection: CompleteSelection,
   newReleaseNoteSurfaces = selection.newReleaseNoteSurfaces
 ): GlobalPreferences => ({
   developerChangelog: selection.developerChangelog,
@@ -1260,18 +1308,24 @@ const globalFor = (
 
 const repoPolicyFor = (
   installed: Distribution,
-  selection: Required<Selection>
-): RepoPolicy => ({
-  developerChangelog: selection.developerChangelog,
-  distribution: installed,
-  guidance: {
-    backfillStatus: selection.backfillStatus,
-    version: 4,
-  },
-  newReleaseNoteSurfaces: selection.newReleaseNoteSurfaces,
-  schemaVersion: 1,
-  signatures: selection.signatures,
-});
+  selection: CompleteSelection
+): RepoPolicy => {
+  const policy: RepoPolicy = {
+    developerChangelog: selection.developerChangelog,
+    distribution: installed,
+    guidance: {
+      backfillStatus: selection.backfillStatus,
+      version: GUIDANCE_VERSIONS[installed],
+    },
+    newReleaseNoteSurfaces: selection.newReleaseNoteSurfaces,
+    schemaVersion: 1,
+    signatures: selection.signatures,
+  };
+  if (installed === "full") {
+    policy.mobileReleaseNotePlacement = selection.mobileReleaseNotePlacement;
+  }
+  return policy;
+};
 
 const validateStoredPolicies = async (
   installed: Distribution | "cms",
@@ -1403,10 +1457,18 @@ const preSetupResult = (inspect: SetupResult): SetupResult | null => {
 const selectionErrors = (
   options: ApplyOptions,
   inspect: SetupResult,
-  selection: Required<Selection>,
+  selection: CompleteSelection,
   installed: Distribution | "cms"
 ): string[] => {
   const errors: string[] = [];
+  if (
+    installed === "full" &&
+    selection.mobileReleaseNotePlacement === undefined
+  ) {
+    errors.push(
+      "Full web/mobile setup requires --mobile-placement with web-tabs, web-page, or mobile-only."
+    );
+  }
   if (
     inspect.inventory.releasedHistoryCount > 0 &&
     options.backfillStatus === undefined
@@ -1455,7 +1517,7 @@ const selectionErrors = (
 
 const runOnlyResult = (
   inspect: SetupResult,
-  selection: Required<Selection>
+  selection: CompleteSelection
 ): SetupResult => ({
   ...inspect,
   command: "apply",
@@ -1497,7 +1559,7 @@ const validateExistingCmsChangelog = async (
 const buildSetupCandidates = async (
   options: ApplyOptions,
   inspect: SetupResult,
-  selection: Required<Selection>,
+  selection: CompleteSelection,
   installed: Distribution | "cms"
 ): Promise<{ candidates: CandidateWrite[]; errors: string[] }> => {
   const root = inspect.repository;
@@ -1553,7 +1615,7 @@ interface PreparedGlobalPreferences {
 const prepareGlobalPreferences = async (
   options: ApplyOptions,
   inspect: SetupResult,
-  selection: Required<Selection>,
+  selection: CompleteSelection,
   installed: Distribution | "cms"
 ): Promise<PreparedGlobalPreferences> => {
   const globalPath = resolveGlobalPreferencesPath(options.configDirectory);
@@ -1619,7 +1681,7 @@ const finalizeGlobalPreferences = async (
 const persistSetup = async (
   options: ApplyOptions,
   inspect: SetupResult,
-  selection: Required<Selection>,
+  selection: CompleteSelection,
   installed: Distribution | "cms",
   candidates: CandidateWrite[]
 ): Promise<SetupResult> => {
@@ -1726,6 +1788,7 @@ const valueOptionNames = new Set([
   "--cms-changelog",
   "--cms-route",
   "--developer-history",
+  "--mobile-placement",
   "--new-surfaces",
   "--repo",
   "--scope",
@@ -1793,6 +1856,10 @@ const parseCli = (argv: string[]): ParsedCli => {
       developerChangelog: enumValue(
         "--developer-history",
         DEVELOPER_CHANGELOG_POLICIES
+      ),
+      mobileReleaseNotePlacement: enumValue(
+        "--mobile-placement",
+        MOBILE_RELEASE_NOTE_PLACEMENTS
       ),
       newReleaseNoteSurfaces: enumValue("--new-surfaces", SURFACE_POLICIES),
       repo: values.get("--repo") ?? ".",
