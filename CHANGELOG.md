@@ -14,6 +14,10 @@
   skill package as one installation, avoiding false duplicate-install warnings
   while retaining every logical alias in the inventory.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T16:16:12-05:00" -->
+- Setup now records the current guidance version for each selected distribution,
+  and the full distribution requires an explicit mobile release-note placement
+  before writing repository policy.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T17:15:35-05:00" -->
 - Publishing a skill update now reaches every local install of that skill
   instead of one chosen validation repository. The workflow discovers each
   consumer, applies its retention mode, and reinstalls consumers concurrently
