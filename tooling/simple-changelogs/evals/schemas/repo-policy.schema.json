@@ -10,6 +10,41 @@
     "signatures",
     "newReleaseNoteSurfaces"
   ],
+  "allOf": [
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "guidance": {
+                "properties": {
+                  "version": { "minimum": 6 }
+                },
+                "required": ["version"]
+              }
+            },
+            "required": ["guidance"]
+          },
+          {
+            "anyOf": [
+              {
+                "properties": {
+                  "distribution": { "const": "full" }
+                },
+                "required": ["distribution"]
+              },
+              {
+                "not": { "required": ["distribution"] }
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "required": ["mobileReleaseNotePlacement"]
+      }
+    }
+  ],
   "properties": {
     "schemaVersion": { "const": 1 },
     "distribution": {
@@ -35,6 +70,9 @@
     },
     "developerChangelog": {
       "enum": ["required", "optional"]
+    },
+    "mobileReleaseNotePlacement": {
+      "enum": ["web-tabs", "web-page", "mobile-only"]
     },
     "signatures": {
       "enum": ["agent-and-timestamp", "none"]

@@ -10,6 +10,11 @@ export const BACKFILL_STATUSES = [
   "failed",
 ] as const;
 export const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+export const MOBILE_RELEASE_NOTE_PLACEMENTS = [
+  "web-tabs",
+  "web-page",
+  "mobile-only",
+] as const;
 export const DEVELOPER_CHANGELOG_POLICIES = ["required", "optional"] as const;
 export const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 export const SETUP_STYLES = ["recommended", "customized"] as const;
@@ -75,6 +80,8 @@ export const ASSERTION_KINDS = [
 
 export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+export type MobileReleaseNotePlacement =
+  (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 export type DeveloperChangelogPolicy =
   (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 export type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
@@ -104,6 +111,7 @@ export interface RepoPolicy {
     version: number;
     backfillStatus: BackfillStatus;
   };
+  mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;

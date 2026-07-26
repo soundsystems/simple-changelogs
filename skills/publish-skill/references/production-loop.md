@@ -53,8 +53,9 @@ verify its output against repository policy before committing it.
 
 Inventory every exact-source consumer with
 `scripts/discover-local-consumers.ts`. Reconcile duplicate worktrees, aliases,
-unlocked installs, and lock-only records before writing. Do not select only one
-consumer for convenience.
+unlocked installs, and lock-only records before writing. Treat paths resolving
+to the same physical package as compatibility aliases, not duplicate installs.
+Do not select only one consumer for convenience.
 
 For every confirmed consumer:
 

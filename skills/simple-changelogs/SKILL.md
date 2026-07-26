@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 5
+Current guidance version: 6
 
 ## Distribution Checkpoint
 
@@ -46,7 +46,7 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
   `declined`.
 - When the request is read-only, answer without writing policy or changelog
   files. Offer setup as a possible next action.
-- When recorded guidance is older than version 4, read
+- When recorded guidance is older than version 6, read
   `references/guidance-updates.md` and follow its one-time disposition flow.
 
 Repository instructions take precedence when they establish a stricter scope,
@@ -77,8 +77,9 @@ Read repository instructions, Git state, recent history, both changelogs, and
 the files changed by the task. Inventory every affected release-note
 destination and its audience, product, app or package, platform, release train,
 source, inclusion rules, and exclusions. Inspect diffs when commit subjects do
-not reveal visible impact. Establish release intent before touching released
-headings or release metadata.
+not reveal visible impact. For repositories with web and mobile products, read
+the recorded mobile-release-note placement before synchronizing either history.
+Establish release intent before touching released headings or release metadata.
 
 ### 2. Classify
 

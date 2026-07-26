@@ -50,6 +50,14 @@ only when evidence proves that each audience is affected; positive and negative
 selector checks prevent unrelated platform or role details from leaking across
 surfaces.
 
+For the full distribution, setup also records where mobile-specific history
+belongs: labeled Web/Mobile tabs at one web changelog, a separate linked Mobile
+history page on the web, or only established in-app and app-store destinations.
+The feeds still come from one canonical item set with explicit surface
+selectors, and shared outcomes remain visible to every product they affect.
+The repository policy stores that choice as `mobileReleaseNotePlacement` with
+value `web-tabs`, `web-page`, or `mobile-only`.
+
 ## Install
 
 List names and discovery descriptions without installing:

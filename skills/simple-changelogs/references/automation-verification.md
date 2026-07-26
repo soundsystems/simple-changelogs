@@ -20,6 +20,9 @@ encode an uncertain or independently versioned relationship.
 
 - `.simple-changelogs.json` validates against the bundled schema.
 - Its recorded values match an actual user disposition or documented policy.
+- Full or combined web/mobile setup records the user's
+  `mobileReleaseNotePlacement`; a missing backward-compatible value is treated
+  as unresolved rather than assigned a default.
 - The repository maintains both customer and developer histories after
   adoption, unless policy records `developerChangelog: "optional"`.
 - Guidance state lives in the repository and no packaged skill files were used
@@ -87,6 +90,12 @@ encode an uncertain or independently versioned relationship.
 - Representative eligible entries render and representative wrong-platform or
   wrong-role entries remain absent; selectors do not rely on headings or
   keywords alone.
+- Web and Mobile histories derive from one canonical item set when local
+  architecture supports it; explicit item selectors, nested overrides, empty
+  group removal, independent latest-rendered versions, and product-scoped seen
+  state are verified.
+- Web exposure of the Mobile feed matches `mobileReleaseNotePlacement`:
+  labeled tabs, a separate linked page, or mobile-only destinations.
 - Renderers ignore raw HTML attribution comments.
 - Missing product UI was not created or wired without explicit current-request
   authorization, documented repository policy, or stored permission.
@@ -137,6 +146,8 @@ When local architecture supports them, tests may enforce:
 - surface selectors have positive and negative fixtures for shared, web-only,
   mobile-only, store-only, CMS-only, package-only, and internal-only outcomes
   that exist in the repository; and
+- web/mobile feed tests cover nested selectors, empty filtered sections,
+  independent seen versions, and all recorded mobile placement modes; and
 - long-form release media references resolve without placeholders.
 
 Run final commands after the last edit. Record command, outcome, and any skipped

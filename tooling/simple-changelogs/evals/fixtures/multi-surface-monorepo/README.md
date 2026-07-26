@@ -15,3 +15,8 @@ configure the dashboard, mobile offline queue, or account-recovery flow.
 
 The database migration and build-pipeline work are developer-only. A shared
 version controls chronology, not destination eligibility.
+
+Repository policy keeps mobile-specific history in the native app and store
+destinations. The Web history still includes shared outcomes that affect Web
+users. A later explicit request may change that preference to labeled Web tabs
+or a separate linked Mobile-history page.

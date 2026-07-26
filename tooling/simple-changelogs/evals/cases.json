@@ -255,11 +255,15 @@
                 "source": "none"
               }
             },
-            { "kind": "report.decision", "expected": "INITIAL_SETUP_REQUIRED" }
+            { "kind": "report.decision", "expected": "INITIAL_SETUP_REQUIRED" },
+            {
+              "kind": "report.decision",
+              "expected": "MOBILE_RELEASE_NOTE_PLACEMENT_REQUIRED"
+            }
           ]
         },
         {
-          "prompt": "Use the recommended setup for this repository, decline the historical audit,\nconfirm the receipt, and continue the pending changelog update.",
+          "prompt": "Use the recommended setup for this repository, decline the historical audit,\nkeep mobile-specific release notes only in the mobile app and app-store surfaces,\nconfirm the receipt, and continue the pending changelog update.",
           "assertions": [
             {
               "kind": "file.changed",
@@ -284,7 +288,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 5
+              "expected": 6
             },
             {
               "kind": "json.path",
@@ -310,6 +314,11 @@
               "kind": "json.path",
               "target": ".simple-changelogs.json#/signatures",
               "expected": "agent-and-timestamp"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/mobileReleaseNotePlacement",
+              "expected": "mobile-only"
             },
             {
               "kind": "report.authorization",
@@ -1038,7 +1047,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 5
+              "expected": 6
             },
             {
               "kind": "json.path",
@@ -1662,6 +1671,103 @@
             {
               "kind": "report.decision",
               "expected": "SURFACE_SCOPE_ISOLATED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": {
+                "code": "SURFACE_SCOPE_FILTERING",
+                "status": "passed"
+              }
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/mobileReleaseNotePlacement",
+              "expected": "mobile-only"
+            }
+          ]
+        },
+        {
+          "prompt": "Change the mobile release-note preference to Web tabs. Keep one canonical\nrelease-note source, and update the established web source to expose separately\nlabeled Web and Mobile feeds without changing the CMS scope.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/mobileReleaseNotePlacement",
+              "expected": "web-tabs"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Ww]eb"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Mm]obile"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Rr]econnect"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter|[Bb]ulk publishing"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MOBILE_HISTORY_EXPOSED_IN_WEB_TABS"
+            },
+            {
+              "kind": "report.verification",
+              "expected": {
+                "code": "SURFACE_SCOPE_FILTERING",
+                "status": "passed"
+              }
+            }
+          ]
+        },
+        {
+          "prompt": "Change the preference to a separate Web page. Put the independently scoped\nMobile history in `apps/web/src/mobile-release-notes.ts`, keep the normal Web\nfeed in `apps/web/src/release-notes.ts`, and preserve the native Mobile feed.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/mobileReleaseNotePlacement",
+              "expected": "web-page"
+            },
+            {
+              "kind": "path.exists",
+              "target": "apps/web/src/mobile-release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/mobile-release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Rr]econnect"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/web/src/mobile-release-notes.ts",
+              "expected": "[Aa]ccount recovery"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/web/src/mobile-release-notes.ts",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Ss]aved filter|[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Rr]econnect"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "MOBILE_HISTORY_EXPOSED_ON_WEB_PAGE"
             },
             {
               "kind": "report.verification",
