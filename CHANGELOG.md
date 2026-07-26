@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- First-time setup now offers a short recommended or customized onboarding
+  conversation, records confirmed repository or solo-developer preferences,
+  leaves read-only work untouched, and resumes the original changelog task
+  after setup.
+- The full distribution now asks where mobile-specific release history belongs
+  on the web and derives independently scoped Web and Mobile feeds from one
+  canonical history, without treating that placement choice as permission to
+  create new product UI.
+- Publishing now treats compatibility paths that resolve to the same physical
+  skill package as one installation, avoiding false duplicate-install warnings
+  while retaining every logical alias in the inventory.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T16:16:12-05:00" -->
 - Publishing a skill update now reaches every local install of that skill
   instead of one chosen validation repository. The workflow discovers each
   consumer, applies its retention mode, and reinstalls consumers concurrently

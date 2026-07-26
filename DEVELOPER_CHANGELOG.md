@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- Added conversational onboarding across all six distributions:
+  - Bundled inspection and apply helpers classify read-only versus write work,
+    recommend evidence-backed defaults, emit confirmation receipts, validate
+    repository and optional solo-developer preference state, and continue the
+    triggering task after setup.
+  - Closed schemas, fixture coverage, package checks, and setup tests preserve
+    distribution-specific policy while preventing unanswered audit choices or
+    read-only requests from writing state.
+- Added Guidance 6 to the full distribution:
+  - Repository policy now records `mobileReleaseNotePlacement` as `web-tabs`,
+    `web-page`, or `mobile-only`, while older policies remain valid but
+    unresolved until the user chooses.
+  - Surface guidance derives Web and Mobile feeds from explicit item and nested
+    selectors in one canonical history, removes empty filtered groups, and
+    keeps rendered-version and seen-state tracking independent by product.
+  - Runtime validation, JSON Schemas, fixtures, behavior cases, and package
+    checks cover the policy field and each placement mode.
+- Changed `publish-skill` consumer discovery to deduplicate installations by
+  physical package identity while preserving every logical compatibility alias.
+  Contributor-only coverage exercises aliased installs, true duplicate
+  packages, package boundaries, and the bundled scanner through the repository
+  test command.
+- Adopted the `skill-repository` policy at Guidance 4 and completed the
+  authorized released-history audit. The dated public and developer sections
+  already matched Guidance 4's durable-history and compact-highlight boundary;
+  no released wording, audience, boundary, or mirror repair was required.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T16:16:12-05:00" -->
 - Synchronized the local `publish-skill` distribution with canonical upstream
   `soundsystems/simple-changes` at `3b37e4b`:
   - Added the bundled `scripts/discover-local-consumers.ts` inventory, which
