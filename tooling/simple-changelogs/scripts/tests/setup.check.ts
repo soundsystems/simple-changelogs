@@ -162,6 +162,72 @@ describe("setup inspection", () => {
 });
 
 describe("setup application", () => {
+  test("requires mobile placement and records each distribution's current guidance", async () => {
+    const full = await fixture();
+    const fullOptions = {
+      backfillStatus: "not-applicable" as const,
+      configDirectory: full.config,
+      confirm: true,
+      distribution: "full" as const,
+      repo: full.repo,
+      scope: "repository" as const,
+    };
+
+    const blocked = await applySetup(fullOptions);
+    const configured = await applySetup({
+      ...fullOptions,
+      mobileReleaseNotePlacement: "web-tabs",
+    });
+    const fullPolicy = await readJson(
+      join(full.repo, ".simple-changelogs.json")
+    );
+
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain("--mobile-placement");
+    expect(configured.status).toBe("configured");
+    expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(6);
+
+    const distributionVersions = [
+      ["web", 5],
+      ["mobile", 5],
+      ["web-cms", 5],
+      ["skill-repository", 4],
+    ] as const;
+    const versions = await Promise.all(
+      distributionVersions.map(async ([distribution]) => {
+        const current = await fixture();
+        const result = await applySetup({
+          backfillStatus: "not-applicable",
+          cmsAuthProven: distribution === "web-cms",
+          cmsRoute: distribution === "web-cms" ? "/admin/changelog" : undefined,
+          cmsSurfaceProven: distribution === "web-cms",
+          configDirectory: current.config,
+          confirm: true,
+          distribution,
+          repo: current.repo,
+          scope: "repository",
+        });
+        const policy = await readJson(
+          join(current.repo, ".simple-changelogs.json")
+        );
+        return {
+          distribution,
+          status: result.status,
+          version: (policy.guidance as Record<string, unknown>).version,
+        };
+      })
+    );
+
+    expect(versions).toEqual(
+      distributionVersions.map(([distribution, version]) => ({
+        distribution,
+        status: "configured",
+        version,
+      }))
+    );
+  });
+
   test("maps customized choices, creates only selected histories, and is idempotent", async () => {
     const { config, repo } = await fixture();
     const options = {
@@ -432,7 +498,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 4 },
+      guidance: { backfillStatus: "not-applicable", version: 5 },
       newReleaseNoteSurfaces: "ask",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",

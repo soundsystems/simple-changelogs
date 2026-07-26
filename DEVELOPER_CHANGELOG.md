@@ -29,6 +29,12 @@
   already matched Guidance 4's durable-history and compact-highlight boundary;
   no released wording, audience, boundary, or mirror repair was required.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T16:16:12-05:00" -->
+- Hardened the shared setup helper to require and validate
+  `mobileReleaseNotePlacement` for full Guidance 6 policies, expose the
+  corresponding CLI selection, and persist each distribution's current
+  guidance version instead of a shared stale constant. Setup coverage now
+  verifies the full-distribution block and the complete version map.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T17:15:35-05:00" -->
 - Synchronized the local `publish-skill` distribution with canonical upstream
   `soundsystems/simple-changes` at `3b37e4b`:
   - Added the bundled `scripts/discover-local-consumers.ts` inventory, which
