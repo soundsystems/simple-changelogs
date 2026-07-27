@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Setup can now add a short changelog pointer to an existing agent-instruction
+  file such as `AGENTS.md` or `CLAUDE.md`, so the changelog step is reached
+  before an agent has already pushed, merged, or deployed. Adding it always
+  requires confirmation, and it records only when the decision is due, that the
+  outcome is stated even when nothing needs an entry, and which distribution
+  decides. Wording and classification rules stay in one place instead of being
+  copied into instructions that then drift.
+<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-07-27T02:30:29-05:00" -->
 - Publishing now preserves branches, worktrees, and merge or pull requests
   owned by another active agent, task, or person. Broad requests to ship,
   integrate, or prune do not transfer that ownership: mutation requires an

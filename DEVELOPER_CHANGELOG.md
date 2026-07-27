@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Added guidance 8 to the `simple-changelogs` distribution: a
+  Repository-instruction pointer onboarding step, and the matching
+  `references/guidance-updates.md` entry. `SKILL.md` moves from guidance
+  version 7 to 8.
+  - The distribution checkpoint already listed repository instructions among
+    the signals selecting a distribution, but no setup path wrote that signal,
+    so adopters hand-wrote it. Observed downstream result: a 20-line block whose
+    exclusion list was near-verbatim `references/entry-classification.md`, which
+    then had to be trimmed back to a pointer.
+  - The step is ask-first because an agent-instruction file governs agent
+    behavior beyond changelog work, writes a pointer rather than a copy because
+    duplicated rules drift while being read more often than the original, and
+    updates an existing pointer in place so re-running onboarding cannot append
+    a second one.
+  - Canonical distribution only. Propagation to the other distributions and to
+    local consumers is `publish-skill`'s job.
+<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-07-27T02:30:29-05:00" -->
 - Hardened `publish-skill` around externally owned active work:
   - `SKILL.md` now requires exact handoff before mutation, rejects broad
     terminal requests as ownership transfer, repeats ownership checks

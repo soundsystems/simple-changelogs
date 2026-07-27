@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 7
+Current guidance version: 8
 
 ## Distribution Checkpoint
 
