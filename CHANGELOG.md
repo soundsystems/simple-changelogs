@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Publishing now preserves branches, worktrees, and merge or pull requests
+  owned by another active agent, task, or person. Broad requests to ship,
+  integrate, or prune do not transfer that ownership: mutation requires an
+  exact explicit handoff, ownership is rechecked immediately beforehand, and
+  preserved work is listed with the authority still needed.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T02:11:26-05:00" -->
 - Setup now always offers release-note archive and latest-release surface
   choices in full, web, mobile, web+CMS, and CMS-only repositories, even when
   no candidate route exists; declining leaves product and operator UI
