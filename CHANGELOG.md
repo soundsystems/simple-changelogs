@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- App onboarding now treats Updates, News, Blog, Announcements, and
+  release-note-named routes as candidates to verify instead of assuming they
+  are release archives. First-time apps can choose a Release Notes tab or
+  section, a dedicated Release Notes page, or no archive, while returning-user
+  apps can separately opt into an automatic latest-release modal linked to the
+  archive. Customer-facing destinations default to “Release Notes”; protected
+  developer, admin, and operator history defaults to “Changelog” unless product
+  evidence or the user selects another name.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T00:26:33-05:00" -->
 - Recommended onboarding now includes a comprehensive initial backfill of every
   historic change from the oldest trustworthy evidence through setup across all
   six Simple Changelogs distributions. The final history question offers only

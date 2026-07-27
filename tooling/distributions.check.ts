@@ -301,6 +301,90 @@ for (const boundary of ["product-app", "CMS history", "mobile/store"]) {
   }
 }
 
+const releaseSurfaceChecks = await Promise.all(
+  [
+    "simple-changelogs",
+    "simple-changelogs-mobile",
+    "simple-changelogs-web",
+    "simple-changelogs-web-cms",
+  ].map(async (directoryName) => ({
+    directoryName,
+    source: await readFile(
+      join(skillsRoot, directoryName, "references", "release-note-surfaces.md"),
+      "utf8"
+    ),
+  }))
+);
+for (const { directoryName, source } of releaseSurfaceChecks) {
+  for (const requiredRule of [
+    "**Release Notes**",
+    "**Changelog**",
+    "Updates",
+    "tab or section",
+    "dedicated **Release Notes**",
+    "automatically shown",
+  ]) {
+    if (!source.includes(requiredRule)) {
+      failures.push(
+        `skills/${directoryName}/references/release-note-surfaces.md is missing contextual surface rule: ${requiredRule}`
+      );
+    }
+  }
+}
+
+const cmsSurfaceChecks = await Promise.all(
+  ["simple-changelogs-cms", "simple-changelogs-web-cms"].map(
+    async (directoryName) => ({
+      directoryName,
+      source: await readFile(
+        join(skillsRoot, directoryName, "references", "cms-surface.md"),
+        "utf8"
+      ),
+    })
+  )
+);
+for (const { directoryName, source } of cmsSurfaceChecks) {
+  if (
+    !(source.includes("**Changelog**") && source.includes("**Release Notes**"))
+  ) {
+    failures.push(
+      `skills/${directoryName}/references/cms-surface.md must default protected technical history to Changelog and customer history to Release Notes`
+    );
+  }
+}
+
+const onboardingChecks = await Promise.all(
+  [
+    "simple-changelogs",
+    "simple-changelogs-cms",
+    "simple-changelogs-mobile",
+    "simple-changelogs-web",
+    "simple-changelogs-web-cms",
+    "simple-changelogs-skill-maintainer",
+  ].map(async (directoryName) => ({
+    directoryName,
+    source: await readFile(
+      join(skillsRoot, directoryName, "references", "onboarding.md"),
+      "utf8"
+    ),
+  }))
+);
+for (const { directoryName, source } of onboardingChecks) {
+  for (const requiredChoice of [
+    "## Contextual product-surface choice",
+    "Add a Release Notes tab or section there",
+    "Create a dedicated Release Notes page",
+    "Automatic Release Notes modal",
+    "developer, administrator, operator",
+  ]) {
+    if (!source.includes(requiredChoice)) {
+      failures.push(
+        `skills/${directoryName}/references/onboarding.md is missing contextual release-note onboarding choice: ${requiredChoice}`
+      );
+    }
+  }
+}
+
 if (failures.length > 0) {
   process.stderr.write(
     `Distribution validation failed (${failures.length}):\n${failures

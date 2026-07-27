@@ -4,6 +4,18 @@ Use this reference only for web-facing release notes. `CHANGELOG.md` is the
 durable customer source; a web page, docs route, modal, panel, or structured
 data file is a destination selected for a particular audience and release.
 
+## Default visible names
+
+Use **Release Notes** for customer-facing full histories, recent summaries, and
+automatically shown compact surfaces unless the repository or current user
+establishes another product name. Use **Changelog** for protected developer,
+administrator, operator, or maintainer technical history.
+
+“What's New” describes the compact latest-release pattern in this guidance; it
+is not the default visible title. Preserve existing labels and explicit naming
+preferences. The raw filenames remain unchanged: `CHANGELOG.md` is the
+customer source and `DEVELOPER_CHANGELOG.md` is the technical source.
+
 ## Discover before editing
 
 Inspect routes, navigation, data imports, build scripts, tests, and repository
@@ -13,6 +25,23 @@ not an established release-note destination.
 Update an existing reachable destination when it belongs to the active release.
 Creating or wiring a missing destination is product implementation and requires
 an explicit current request or stored permission.
+
+Treat routes named Updates, News, Blog, Announcements, or Release Notes as
+candidates until their content and source prove their role. A blog or marketing
+feed that occasionally announces features is adjacent to release history, not
+automatically a full archive.
+
+When a suitable archive already exists, synchronize and backfill it. When only
+an adjacent editorial destination exists and a public archive is authorized,
+ask whether to add a distinct **Release Notes** tab or section there, create a
+dedicated **Release Notes** page (recommended for editorial destinations), or
+leave it unchanged and add no archive.
+
+Choose the compact surface separately. For a returning-user product, recommend
+an automatically shown **Release Notes** modal with only the latest qualifying
+highlights and one link to the selected archive. Also offer a manual-only
+summary or archive only. The confirmed selection authorizes only those exact
+surfaces for the current task.
 
 ## Destination scope
 

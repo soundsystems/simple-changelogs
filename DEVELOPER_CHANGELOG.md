@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Added prospective release-note destination verification to app setup:
+  - Setup inventory now reports `adjacentDestinations`, synchronized helper
+    copies share the same behavior, and the setup-result schema and TypeScript
+    contract expose the new inventory field.
+  - Static distribution checks protect destination-verification guidance and
+    helper parity across packaged variants.
+  - A two-turn `editorial-updates-app` fixture and evaluation cover tab versus
+    page selection, an independently authorized latest-release modal, protected
+    Changelog naming, one-off surface authority, and historical backfill.
+  - This changes prospective onboarding and surface selection only; released
+    history and recorded guidance versions remain unchanged.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T00:26:33-05:00" -->
 - Standardized comprehensive initial backfills as the confirmed onboarding
   default across all six distributions:
   - The final history question is ordered after every other onboarding choice,

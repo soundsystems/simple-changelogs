@@ -27,6 +27,22 @@ Authentication alone does not authorize developer, security, or operational
 notes. An internal destination also requires local evidence that its intended
 roles may read that information.
 
+## Default Visible Names
+
+Use **Release Notes** for customer- or user-facing full histories, recent
+summaries, and automatically shown compact surfaces unless repository evidence
+or the current user establishes another product name. Use **Changelog** for
+developer-, administrator-, operator-, or maintainer-facing technical history.
+
+“What's New” describes the compact latest-release pattern in this guidance; it
+is not the default visible title. Existing labels, explicit naming preferences,
+and product terminology outrank these fallbacks. Do not rename an established
+surface merely to apply the defaults.
+
+The raw sources keep their established filenames: `CHANGELOG.md` remains the
+canonical customer source and `DEVELOPER_CHANGELOG.md` remains the canonical
+technical source. Visible labels do not change source ownership.
+
 ## Find Existing Destinations First
 
 Inspect release-note data, routes, screens, modals, store metadata, public docs,
@@ -37,6 +53,27 @@ source are documented by code, tests, instructions, or release automation.
 Prefer updating the established source over maintaining parallel copy. Hidden,
 disabled, prototype, preview-only, unreachable, or wrong-audience components do
 not prove that a usable equivalent exists.
+
+Treat routes or screens named Updates, News, Blog, Announcements, or Release
+Notes as candidates until their content and source prove their role. A blog or
+marketing feed that occasionally announces features is adjacent to release
+history, not automatically the full-history destination.
+
+When a suitable full-history archive already exists, synchronize and backfill
+it rather than creating a duplicate. When only an adjacent editorial
+destination exists and a public archive is authorized, ask whether to:
+
+- add a distinct **Release Notes** tab or section to that destination;
+- create a dedicated **Release Notes** page, recommended when the existing
+  destination is primarily editorial or promotional; or
+- leave the candidate unchanged and add no public archive.
+
+After the archive location is chosen, treat the compact surface as a separate
+choice. For a product with returning users, recommend an automatically shown
+**Release Notes** modal containing only the latest qualifying highlights and
+one link to the selected archive. Also offer a manual-only summary or archive
+only. The confirmed choice supplies current-task authority only for the exact
+named surfaces.
 
 ## Destination Scope Map
 
