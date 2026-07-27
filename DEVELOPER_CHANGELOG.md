@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Added repository-instruction pointer onboarding across all six packaged
+  distributions:
+  - Onboarding now asks before adding a changelog pointer to an existing
+    repository-instruction file because that file governs agent behavior beyond
+    the changelog workflow.
+  - The pointer records decision timing, outcome reporting, and distribution
+    ownership without copying classification or wording rules, and reruns
+    update an existing pointer rather than appending a duplicate.
+  - Guidance advances from 7 to 8 for full, from 6 to 7 for web, mobile, and
+    web+CMS, and from 4 to 5 for skill-repository. Standalone CMS gains the
+    onboarding pointer while its independent schema guidance remains at 1.
+  - The shared setup runtime version map and setup tests now enforce the
+    propagated guidance levels and pointer behavior.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T02:42:34-05:00" -->
 - Hardened `publish-skill` around externally owned active work:
   - `SKILL.md` now requires exact handoff before mutation, rejects broad
     terminal requests as ownership transfer, repeats ownership checks

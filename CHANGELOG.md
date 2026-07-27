@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Across all six packaged distributions, onboarding now asks before adding a
+  short Simple Changelogs pointer to an existing repository-instruction file
+  such as `AGENTS.md` or `CLAUDE.md`. The pointer records when the changelog
+  decision is due, requires the outcome even when no entry is needed, and names
+  the owning distribution without copying its rules; rerunning onboarding
+  updates an existing pointer in place.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T02:42:34-05:00" -->
 - Publishing now preserves branches, worktrees, and merge or pull requests
   owned by another active agent, task, or person. Broad requests to ship,
   integrate, or prune do not transfer that ownership: mutation requires an

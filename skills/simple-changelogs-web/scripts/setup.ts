@@ -187,11 +187,11 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 7,
-  mobile: 6,
-  "skill-repository": 4,
-  web: 6,
-  "web-cms": 6,
+  full: 8,
+  mobile: 7,
+  "skill-repository": 5,
+  web: 7,
+  "web-cms": 7,
 } as const satisfies Record<Distribution, number>;
 
 // Pinned to the guidance version that introduced the requirement. Comparing

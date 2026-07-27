@@ -16,7 +16,7 @@ and maintenance, not an application changelog distribution.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
 
-Current guidance version: 4
+Current guidance version: 5
 
 ## Distribution checkpoint
 

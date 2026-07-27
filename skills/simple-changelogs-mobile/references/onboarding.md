@@ -153,6 +153,31 @@ change, so the later receipt must include it. Follow the component library's
 current documentation instead of embedding version-sensitive imports or props
 in the guidance.
 
+## Repository-instruction pointer
+
+The distribution checkpoint counts repository instructions among the signals
+that select a distribution, but nothing in onboarding ever writes that signal.
+It has to be added by hand, so a repository that wants the gate to fire reliably
+tends to grow a hand-written block that drifts into restating this skill.
+
+When the repository has an agent-instruction file — `AGENTS.md`, `CLAUDE.md`, a
+comparable always-loaded instruction file, or none — offer to add a short
+pointer to it:
+
+- **Add the pointer** — recommended when the repository has such a file.
+- **Leave instructions unchanged** — record the decision and ask no further.
+
+Never write to an agent-instruction file without explicit confirmation. That
+file governs agent behavior generally, so it is the user's to change even when
+the edit is small.
+
+Write a pointer, never a copy. Include only when the changelog decision is due,
+the requirement to state the outcome even when no entry is needed, and which
+distribution owns the decision. Classification, exclusions, and wording belong
+in this skill; duplicating them creates a second copy that drifts independently
+and is read more often than the original. Detect an existing pointer and update
+it in place rather than appending a second one.
+
 ## Preference scope
 
 Offer repository, all-projects solo-developer, or run-only scope.
