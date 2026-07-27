@@ -99,3 +99,21 @@ An approved historical audit may identify technical public archives that lost
 audience-relevant detail or destinations that exposed unrelated platform or
 role content. Preserve released history unless the audit separately authorizes
 the required meaning or visibility change.
+
+## Guidance 6
+
+Added evidence-based component selection and presentation verification for
+explicitly authorized public Web and authenticated operator surfaces.
+Established product and admin systems remain preferred; otherwise confirmed
+React work can use Base UI or retain Radix primitives.
+
+Onboarding now offers archive and compact-surface placement even without a
+candidate route, records approved dependencies, and seeds each confirmed
+surface from complete audience-eligible canonical history. Public and operator
+sources remain isolated, and surface authority cannot reconstruct released
+history or widen access.
+
+An approved audit may identify a surface that used the wrong component system,
+omitted eligible releases, crossed audience boundaries, or failed access,
+accessibility, containment, theming, or server-rendering checks. Preserve
+deployed visibility and released wording unless separately authorized.

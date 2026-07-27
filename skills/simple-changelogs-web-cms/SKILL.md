@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 5
+Current guidance version: 6
 Current CMS guidance version: 1
 
 ## Distribution checkpoint
@@ -61,6 +61,7 @@ access, release, source-of-truth, or surface rules.
 | Versions and metadata | `references/version-decisions.md` |
 | Stable majors and prereleases | `references/major-releases.md` |
 | Public web/CMS destination scoping and long-form web notes | `references/release-note-surfaces.md` |
+| Presentation and defect checks after an exact public or operator surface is authorized | `references/surface-design.md` |
 | CMS policy and structured source | `references/cms-setup.md` |
 | CMS operator classification | `references/cms-entry-classification.md` |
 | CMS historical reconstruction | `references/cms-backfill.md` |

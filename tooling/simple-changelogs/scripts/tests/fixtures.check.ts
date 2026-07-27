@@ -34,6 +34,10 @@ const FIXTURE_NAMES = [
   "routed-app",
   "single-changelog",
   "skill-package",
+  "surface-established-system",
+  "surface-mobile-store",
+  "surface-radix-app",
+  "surface-react-tailwind",
 ] as const;
 const FIXED_COMMIT_DATE = "2000-01-01T00:00:00Z";
 

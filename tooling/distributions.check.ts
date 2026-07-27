@@ -372,9 +372,11 @@ const onboardingChecks = await Promise.all(
 for (const { directoryName, source } of onboardingChecks) {
   for (const requiredChoice of [
     "## Contextual product-surface choice",
+    "always offer this choice",
     "Add a Release Notes tab or section there",
     "Create a dedicated Release Notes page",
     "Automatic Release Notes modal",
+    "## Component-source choice",
     "developer, administrator, operator",
   ]) {
     if (!source.includes(requiredChoice)) {
@@ -382,6 +384,63 @@ for (const { directoryName, source } of onboardingChecks) {
         `skills/${directoryName}/references/onboarding.md is missing contextual release-note onboarding choice: ${requiredChoice}`
       );
     }
+  }
+}
+
+// A skill repository ships no product application, so its onboarding records
+// no component source and seeds no archive.
+for (const { directoryName, source } of onboardingChecks.filter(
+  (candidate) =>
+    candidate.directoryName !== "simple-changelogs-skill-maintainer"
+)) {
+  for (const requiredChoice of [
+    "--surface-components",
+    "complete canonical history",
+  ]) {
+    if (!source.includes(requiredChoice)) {
+      failures.push(
+        `skills/${directoryName}/references/onboarding.md is missing product-surface onboarding guidance: ${requiredChoice}`
+      );
+    }
+  }
+}
+
+const surfaceDesignDistributions = [
+  "simple-changelogs",
+  "simple-changelogs-cms",
+  "simple-changelogs-mobile",
+  "simple-changelogs-web",
+  "simple-changelogs-web-cms",
+];
+const surfaceDesignSnapshots = await Promise.all(
+  surfaceDesignDistributions.map(async (directoryName) => {
+    const [skill, design] = await Promise.all([
+      readFile(join(skillsRoot, directoryName, "SKILL.md"), "utf8"),
+      readFile(
+        join(skillsRoot, directoryName, "references", "surface-design.md"),
+        "utf8"
+      ),
+    ]);
+    return { design, directoryName, skill };
+  })
+);
+for (const { design, directoryName, skill } of surfaceDesignSnapshots) {
+  for (const requiredRule of [
+    "explicit user approval",
+    "Component source",
+    "Verification",
+    "canonical history",
+  ]) {
+    if (!design.includes(requiredRule)) {
+      failures.push(
+        `skills/${directoryName}/references/surface-design.md is missing design rule: ${requiredRule}`
+      );
+    }
+  }
+  if (!skill.includes("`references/surface-design.md`")) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md does not route authorized presentation work to surface-design.md`
+    );
   }
 }
 

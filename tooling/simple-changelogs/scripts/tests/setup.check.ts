@@ -106,6 +106,8 @@ describe("setup inspection", () => {
 
     expect(inspection.inventory.releasedHistoryCount).toBe(1);
     expect(inspection.unresolvedQuestions).toEqual([
+      "release-note-surface-offer",
+      "release-note-surface-components",
       "preference-scope",
       "released-history-audit",
     ]);
@@ -206,6 +208,126 @@ describe("setup inspection", () => {
       "1 release-note-named destination candidate(s) found"
     );
   });
+
+  test("asks for component guidance when React has utility CSS but no design system", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { react: "19.0.0", tailwindcss: "4.0.0" },
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+    });
+
+    expect(result.inventory.designSystemEvidence).toEqual([]);
+    expect(result.detection.evidence).toContain("Utility CSS is present");
+    expect(result.detection.evidence).toContain(
+      "Package metadata indicates a React component model"
+    );
+    expect(result.unresolvedQuestions).toContain(
+      "release-note-surface-components"
+    );
+  });
+
+  test("detects established component libraries and raw Radix primitives separately", async () => {
+    const established = await fixture();
+    await writeJson(join(established.repo, "package.json"), {
+      dependencies: { "@mui/material": "7.0.0", react: "19.0.0" },
+    });
+    const establishedResult = await inspectRepository({
+      configDirectory: established.config,
+      distribution: "web",
+      repo: established.repo,
+    });
+
+    expect(establishedResult.inventory.designSystemEvidence).toEqual([
+      "Component library dependency: @mui/material",
+    ]);
+    expect(establishedResult.unresolvedQuestions).not.toContain(
+      "release-note-surface-components"
+    );
+
+    const radix = await fixture();
+    await writeJson(join(radix.repo, "package.json"), {
+      dependencies: { "@radix-ui/react-dialog": "1.0.0", react: "19.0.0" },
+    });
+    const radixResult = await inspectRepository({
+      configDirectory: radix.config,
+      distribution: "web",
+      repo: radix.repo,
+    });
+
+    expect(radixResult.inventory.designSystemEvidence).toEqual([]);
+    expect(radixResult.detection.evidence).toContain(
+      "Unstyled Radix component primitives are present"
+    );
+    expect(radixResult.unresolvedQuestions).toContain(
+      "release-note-surface-components"
+    );
+  });
+
+  test("offers a surface only where a distribution can own one", async () => {
+    const product = await fixture();
+    const productResult = await inspectRepository({
+      configDirectory: product.config,
+      distribution: "mobile",
+      repo: product.repo,
+    });
+
+    expect(productResult.unresolvedQuestions).toContain(
+      "release-note-surface-offer"
+    );
+
+    const cms = await fixture();
+    const cmsResult = await inspectRepository({
+      configDirectory: cms.config,
+      distribution: "cms",
+      repo: cms.repo,
+    });
+
+    expect(cmsResult.unresolvedQuestions).toContain(
+      "release-note-surface-offer"
+    );
+
+    const skill = await fixture();
+    const skillResult = await inspectRepository({
+      configDirectory: skill.config,
+      distribution: "skill-repository",
+      repo: skill.repo,
+    });
+
+    expect(skillResult.unresolvedQuestions).not.toContain(
+      "release-note-surface-offer"
+    );
+    expect(skillResult.unresolvedQuestions).not.toContain(
+      "release-note-surface-components"
+    );
+  });
+
+  test("keeps the mobile placement requirement pinned to guidance version 6", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      developerChangelog: "required",
+      distribution: "full",
+      guidance: { backfillStatus: "not-applicable", version: 6 },
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.policy?.state).toBe("malformed");
+    expect(result.errors.join(" ")).toContain(
+      "mobileReleaseNotePlacement is required"
+    );
+  });
 });
 
 describe("setup application", () => {
@@ -233,12 +355,12 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(6);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(7);
 
     const distributionVersions = [
-      ["web", 5],
-      ["mobile", 5],
-      ["web-cms", 5],
+      ["web", 6],
+      ["mobile", 6],
+      ["web-cms", 6],
       ["skill-repository", 4],
     ] as const;
     const versions = await Promise.all(
@@ -302,6 +424,43 @@ describe("setup application", () => {
     expect(second.status).toBe("already-configured");
     expect(await readFile(join(repo, "CHANGELOG.md"), "utf8")).toBe(
       firstChangelog
+    );
+  });
+
+  test("records an explicit component source and defaults detected systems to project components", async () => {
+    const explicit = await fixture();
+    const explicitResult = await applySetup({
+      ...recommendedOptions(explicit.repo, explicit.config),
+      newReleaseNoteSurfaceComponents: "recommended-web-components",
+    });
+    const explicitPolicy = await readJson(
+      join(explicit.repo, ".simple-changelogs.json")
+    );
+
+    expect(explicitResult.status).toBe("configured");
+    expect(explicitResult.selection.newReleaseNoteSurfaceComponents).toBe(
+      "recommended-web-components"
+    );
+    expect(explicitPolicy.newReleaseNoteSurfaceComponents).toBe(
+      "recommended-web-components"
+    );
+
+    const detected = await fixture();
+    await writeJson(join(detected.repo, "package.json"), {
+      dependencies: { "@mantine/core": "8.0.0", react: "19.0.0" },
+    });
+    const detectedResult = await applySetup(
+      recommendedOptions(detected.repo, detected.config)
+    );
+    const detectedPolicy = await readJson(
+      join(detected.repo, ".simple-changelogs.json")
+    );
+
+    expect(detectedResult.selection.newReleaseNoteSurfaceComponents).toBe(
+      "project-components"
+    );
+    expect(detectedPolicy.newReleaseNoteSurfaceComponents).toBe(
+      "project-components"
     );
   });
 
@@ -545,7 +704,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 5 },
+      guidance: { backfillStatus: "not-applicable", version: 6 },
       newReleaseNoteSurfaces: "ask",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",

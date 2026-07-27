@@ -56,6 +56,7 @@ release process, content source, or validation command.
 | Operator relevance, wording, grouping, or sensitive detail | `references/entry-classification.md` |
 | Historical reconstruction or audits | `references/backfill.md` |
 | Adding or synchronizing the authenticated route | `references/cms-surface.md` |
+| Presentation and defect checks after an exact operator surface is authorized | `references/surface-design.md` |
 | Final data, access, and repository checks | `references/verification.md` |
 
 ## Core workflow

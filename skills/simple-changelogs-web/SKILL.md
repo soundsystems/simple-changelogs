@@ -13,7 +13,7 @@ store, CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established public web release-note destinations mirror selected highlights.
 
-Current guidance version: 5
+Current guidance version: 6
 
 ## Distribution checkpoint
 
@@ -56,6 +56,7 @@ release flow, source of truth, or surface boundary.
 | Version choice and metadata alignment | `references/version-decisions.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
 | Public web destination scoping and long-form release notes | `references/release-note-surfaces.md` |
+| Presentation and defect checks after an exact web surface is authorized | `references/surface-design.md` |
 | Final repository-native checks | `references/automation-verification.md` |
 | Repository-specific forks | `references/fork-maintenance.md` |
 

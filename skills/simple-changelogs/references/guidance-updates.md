@@ -120,3 +120,22 @@ web surface contrary to the recorded preference, shared entries missing from an
 affected product, or hand-maintained Web and Mobile copies that have drifted.
 Preserve released history and deployed visibility unless the audit separately
 authorizes the required meaning or visibility change.
+
+## Guidance 7
+
+Added evidence-based component selection and presentation verification for
+explicitly authorized release-note archives and compact summaries. Existing
+project systems remain preferred; otherwise confirmed Web work can use Base UI
+or retained Radix primitives, while Mobile follows its native toolkit.
+
+Product onboarding now offers archive and compact-surface placement even when
+no candidate route exists, records any approved component source and added
+dependencies, and seeds confirmed archives from complete canonical history.
+Surface authority remains separate from permission to reconstruct or rewrite
+released history.
+
+An approved audit may identify an authorized surface that used the wrong
+product component system, omitted eligible canonical releases, leaked another
+platform's entries, or failed accessibility and containment checks. Preserve
+deployed visibility and released wording unless separate authority permits the
+required repair.

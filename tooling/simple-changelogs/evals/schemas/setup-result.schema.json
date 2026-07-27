@@ -76,6 +76,18 @@
       ]
     },
     "surfacePolicy": { "enum": ["ask", "allow", "existing-only"] },
+    "surfaceComponentSource": {
+      "enum": [
+        "project-components",
+        "recommended-web-components",
+        "recommended-web-radix",
+        "platform-native-components",
+        "minimal-markup"
+      ]
+    },
+    "mobileReleaseNotePlacement": {
+      "enum": ["web-tabs", "web-page", "mobile-only"]
+    },
     "repoPolicy": {
       "type": "object",
       "additionalProperties": false,
@@ -102,7 +114,13 @@
         },
         "developerChangelog": { "enum": ["required", "optional"] },
         "signatures": { "enum": ["agent-and-timestamp", "none"] },
-        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" }
+        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "newReleaseNoteSurfaceComponents": {
+          "$ref": "#/$defs/surfaceComponentSource"
+        },
+        "mobileReleaseNotePlacement": {
+          "$ref": "#/$defs/mobileReleaseNotePlacement"
+        }
       }
     },
     "cmsPolicy": {
@@ -136,7 +154,10 @@
             "access": { "const": "authenticated-operators" }
           }
         },
-        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" }
+        "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "newReleaseNoteSurfaceComponents": {
+          "$ref": "#/$defs/surfaceComponentSource"
+        }
       }
     },
     "globalPreferences": {
@@ -291,6 +312,7 @@
         "adjacentDestinations",
         "changelogs",
         "cmsEvidence",
+        "designSystemEvidence",
         "destinations",
         "developerHistoryEvidence",
         "releasedHistoryCount"
@@ -314,6 +336,10 @@
           }
         },
         "cmsEvidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "designSystemEvidence": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
@@ -348,7 +374,13 @@
       "properties": {
         "backfillStatus": { "$ref": "#/$defs/backfillStatus" },
         "developerChangelog": { "enum": ["required", "optional"] },
+        "mobileReleaseNotePlacement": {
+          "$ref": "#/$defs/mobileReleaseNotePlacement"
+        },
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "newReleaseNoteSurfaceComponents": {
+          "$ref": "#/$defs/surfaceComponentSource"
+        },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },
         "signatures": { "enum": ["agent-and-timestamp", "none"] }

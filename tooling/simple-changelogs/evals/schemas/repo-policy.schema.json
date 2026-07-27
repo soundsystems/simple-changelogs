@@ -79,6 +79,15 @@
     },
     "newReleaseNoteSurfaces": {
       "enum": ["ask", "allow", "existing-only"]
+    },
+    "newReleaseNoteSurfaceComponents": {
+      "enum": [
+        "project-components",
+        "recommended-web-components",
+        "recommended-web-radix",
+        "platform-native-components",
+        "minimal-markup"
+      ]
     }
   }
 }

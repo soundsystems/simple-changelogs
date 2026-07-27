@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Setup now always offers release-note archive and latest-release surface
+  choices in full, web, mobile, web+CMS, and CMS-only repositories, even when
+  no candidate route exists; declining leaves product and operator UI
+  unchanged.
+- Existing component systems are detected and kept automatically. Otherwise,
+  setup asks once whether to use the named Web or native recommendation,
+  preserve existing Radix primitives, choose another library, or add no
+  component dependency. The confirmation receipt names every dependency and
+  separately lets users seed approved archives from complete eligible history,
+  choose a narrower scope, or decline seeding.
+- Bundled Web, mobile, and operator design guidance now covers presentation,
+  theming, accessibility, responsive containment, reduced motion, long and
+  empty histories, and server-rendering defects for every authorized surface.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T01:38:30-05:00" -->
 - App onboarding now treats Updates, News, Blog, Announcements, and
   release-note-named routes as candidates to verify instead of assuming they
   are release archives. First-time apps can choose a Release Notes tab or

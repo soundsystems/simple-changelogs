@@ -10,6 +10,13 @@ export const BACKFILL_STATUSES = [
   "failed",
 ] as const;
 export const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+export const SURFACE_COMPONENT_SOURCES = [
+  "project-components",
+  "recommended-web-components",
+  "recommended-web-radix",
+  "platform-native-components",
+  "minimal-markup",
+] as const;
 export const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "web-tabs",
   "web-page",
@@ -80,6 +87,7 @@ export const ASSERTION_KINDS = [
 
 export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+export type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 export type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 export type DeveloperChangelogPolicy =
@@ -112,6 +120,7 @@ export interface RepoPolicy {
     backfillStatus: BackfillStatus;
   };
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
@@ -141,6 +150,8 @@ export interface SetupWriteRecord {
 export interface SetupSelection {
   backfillStatus?: BackfillStatus;
   developerChangelog?: DeveloperChangelogPolicy;
+  mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   scope?: SetupScope;
   setupStyle?: SetupStyle;
@@ -157,6 +168,7 @@ export interface CmsSetupPolicy {
     backfillStatus: BackfillStatus;
     version: 1;
   };
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
 }
@@ -182,6 +194,7 @@ export interface SetupInventory {
     releasedHeadings: number;
   }[];
   cmsEvidence: string[];
+  designSystemEvidence: string[];
   destinations: string[];
   developerHistoryEvidence: string[];
   releasedHistoryCount: number;

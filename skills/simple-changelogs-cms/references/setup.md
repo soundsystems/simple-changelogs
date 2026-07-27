@@ -21,7 +21,8 @@ confirmation receipt, and helper commands, follow
     "route": "/admin/changelog",
     "access": "authenticated-operators"
   },
-  "newReleaseNoteSurfaces": "existing-only"
+  "newReleaseNoteSurfaces": "existing-only",
+  "newReleaseNoteSurfaceComponents": "project-components"
 }
 ```
 
@@ -33,6 +34,13 @@ audit is unfinished and change it to `completed` only after verification.
 setup normally records `existing-only` after the explicitly authorized CMS
 route exists. A later request for another destination still needs fresh
 authority unless the policy says `allow`.
+
+`newReleaseNoteSurfaceComponents` is optional and accepts
+`project-components`, `recommended-web-components`,
+`recommended-web-radix`, `platform-native-components`, or `minimal-markup`.
+It records how an explicitly authorized operator surface is presented; it does
+not grant a route, dependency, access boundary, deployment, or publication.
+When absent, ask only after a surface is authorized.
 
 The configured changelog uses this shape:
 
