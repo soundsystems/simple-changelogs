@@ -288,6 +288,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "adjacentDestinations",
         "changelogs",
         "cmsEvidence",
         "destinations",
@@ -295,6 +296,10 @@
         "releasedHistoryCount"
       ],
       "properties": {
+        "adjacentDestinations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
         "changelogs": {
           "type": "array",
           "items": {

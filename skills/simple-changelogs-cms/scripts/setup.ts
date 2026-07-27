@@ -62,6 +62,8 @@ const NON_DESTINATION_FILES = new Set([
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
 const RELEASE_DESTINATION_PATH = /(?:what.?s.?new|release.?notes?|changelog)/u;
+const ADJACENT_UPDATE_DESTINATION_PATH =
+  /(?:^|\/)(?:announcements?|blog|news|updates?)(?:[./_-]|\/|$)/u;
 const CMS_PATH = /(?:^|\/)(?:admin|cms)(?:\/|$)/u;
 const AUTH_RELATED_PATH = /(?:route|page|middleware|auth|session|guard)/u;
 const AUTH_RELATED_CONTENT =
@@ -195,6 +197,7 @@ interface Detection {
 }
 
 interface Inventory {
+  adjacentDestinations: string[];
   changelogs: {
     exists: boolean;
     path: string;
@@ -650,6 +653,7 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
     developerHistoryEvidence.push("DEVELOPER_CHANGELOG.md exists");
   }
   const destinations = new Set<string>();
+  const adjacentDestinations = new Set<string>();
   const cmsEvidence = new Set<string>();
   const fileEvidence = await Promise.all(
     files.map(async (path) => {
@@ -659,6 +663,11 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
         AUTH_RELATED_PATH.test(lowerPath) &&
         AUTH_RELATED_CONTENT.test(await readSmallText(path));
       return {
+        adjacentDestination:
+          path !== publicPath &&
+          path !== developerPath &&
+          !NON_DESTINATION_FILES.has(localPath) &&
+          ADJACENT_UPDATE_DESTINATION_PATH.test(lowerPath),
         authenticationRelated,
         cmsPath: CMS_PATH.test(lowerPath),
         destination:
@@ -672,6 +681,9 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
   );
   for (const evidence of fileEvidence) {
     const { localPath } = evidence;
+    if (evidence.adjacentDestination) {
+      adjacentDestinations.add(localPath);
+    }
     if (evidence.destination) {
       destinations.add(localPath);
     }
@@ -697,6 +709,7 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
     }
   }
   return {
+    adjacentDestinations: [...adjacentDestinations].sort(),
     changelogs: [
       {
         exists: existsSync(publicPath),
@@ -766,7 +779,12 @@ const inspectProjectEvidence = async (
   }
   if (inventory.destinations.length > 0) {
     evidence.add(
-      `${inventory.destinations.length} established release-note destination(s) found`
+      `${inventory.destinations.length} release-note-named destination candidate(s) found`
+    );
+  }
+  if (inventory.adjacentDestinations.length > 0) {
+    evidence.add(
+      `${inventory.adjacentDestinations.length} updates, news, blog, or announcement destination candidate(s) found`
     );
   }
   return [...evidence].sort();
@@ -879,6 +897,15 @@ const unresolvedFor = (
       "cms-protected-route",
       "cms-changelog-path"
     );
+  }
+  if (
+    installed !== "cms" &&
+    installed !== "skill-repository" &&
+    policy.state === "absent" &&
+    (inventory.destinations.length > 0 ||
+      inventory.adjacentDestinations.length > 0)
+  ) {
+    unresolved.push("release-note-destination-verification");
   }
   if (installed !== "cms" && policy.state === "absent") {
     unresolved.push("preference-scope");

@@ -7,6 +7,16 @@ This distribution owns two release-note channels with different audiences.
   CMS.
 - `DEVELOPER_CHANGELOG.md` is maintainer history, not an automatic CMS feed.
 
+## Default visible names
+
+Use **Release Notes** for public customer histories and compact summaries. Use
+**Changelog** for authenticated developer, administrator, operator, or
+maintainer technical history. “What's New” describes a compact latest-release
+pattern in this guidance; it is not the default visible title.
+
+Preserve established labels and explicit naming preferences. These visible
+names do not change the source filenames or audience boundaries above.
+
 ## Public web channel
 
 Update only reachable, established public destinations that belong to the
@@ -16,6 +26,22 @@ page. Strip signature comments before rendering.
 
 Creating or wiring a new public route, page, modal, navigation item, or
 dismissal store requires explicit current authority or documented policy.
+
+Treat routes named Updates, News, Blog, Announcements, or Release Notes as
+candidates until their content and source prove their role. A blog or marketing
+feed that occasionally announces features is adjacent to release history, not
+automatically a full archive.
+
+When a suitable archive already exists, synchronize and backfill it. When only
+an adjacent editorial destination exists and a public archive is authorized,
+ask whether to add a distinct **Release Notes** tab or section there, create a
+dedicated **Release Notes** page (recommended for editorial destinations), or
+leave it unchanged and add no archive.
+
+For a returning-user product, separately recommend an automatically shown
+**Release Notes** modal with only the latest qualifying highlights and one link
+to the selected archive. Also offer a manual-only summary or archive only. The
+confirmed choice authorizes only those exact surfaces for the current task.
 
 ## CMS operator channel
 

@@ -3,6 +3,13 @@
 The CMS route presents the structured operator history; it is not a second
 source of truth.
 
+## Default visible name
+
+Label the authenticated developer, administrator, or operator history
+**Changelog** unless the repository or current user establishes another product
+name. Reserve **Release Notes** for customer-facing history by default. Preserve
+an existing explicit CMS label rather than renaming it automatically.
+
 ## Access
 
 Place the route beneath the application's established authenticated CMS or

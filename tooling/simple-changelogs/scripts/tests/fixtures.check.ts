@@ -26,6 +26,7 @@ const GIT_SHA_PATTERN = /^[0-9a-f]{40}$/;
 const UNSAFE_ASSERTION_PATTERN = /unsafe|unsupported|symlink/i;
 const FIXTURE_NAMES = [
   "dual-changelog",
+  "editorial-updates-app",
   "forked-skill",
   "minimal-git",
   "mobile-monorepo",

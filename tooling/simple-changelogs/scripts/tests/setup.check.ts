@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import {
   cp,
   lstat,
+  mkdir,
   mkdtemp,
   readdir,
   readFile,
@@ -166,6 +167,43 @@ describe("setup inspection", () => {
 
     expect(result.detection.evidence).toContain(
       "Package metadata indicates a web application"
+    );
+  });
+
+  test("separates editorial update candidates from release-note-named candidates", async () => {
+    const { config, repo } = await fixture();
+    await mkdir(join(repo, "src", "routes"), { recursive: true });
+    await writeFile(
+      join(repo, "src", "routes", "updates.tsx"),
+      "export const Updates = () => 'Editorial product stories';\n",
+      "utf8"
+    );
+    await writeFile(
+      join(repo, "src", "routes", "release-notes.tsx"),
+      "export const ReleaseNotes = () => 'Version history';\n",
+      "utf8"
+    );
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+    });
+
+    expect(result.inventory.adjacentDestinations).toEqual([
+      "src/routes/updates.tsx",
+    ]);
+    expect(result.inventory.destinations).toEqual([
+      "src/routes/release-notes.tsx",
+    ]);
+    expect(result.unresolvedQuestions).toContain(
+      "release-note-destination-verification"
+    );
+    expect(result.detection.evidence).toContain(
+      "1 updates, news, blog, or announcement destination candidate(s) found"
+    );
+    expect(result.detection.evidence).toContain(
+      "1 release-note-named destination candidate(s) found"
     );
   });
 });

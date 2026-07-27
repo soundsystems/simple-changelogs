@@ -175,6 +175,7 @@ export interface SetupDetection {
 }
 
 export interface SetupInventory {
+  adjacentDestinations: string[];
   changelogs: {
     exists: boolean;
     path: string;

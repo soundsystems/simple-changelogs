@@ -23,10 +23,12 @@ read-only. Valid policy suppresses repeat onboarding. Malformed policy is
 reported and preserved.
 
 The inspection result provides policy state, detected distribution and
-evidence, history counts, established destinations, developer-history and CMS
-evidence, global defaults, a recommendation, and unresolved questions. Do not
-ask for a choice already established by current instructions, repository
-policy, or trustworthy evidence.
+evidence, history counts, release-note-named destination candidates, adjacent
+Updates, News, Blog, or Announcements candidates, developer-history and CMS
+evidence, global defaults, a recommendation, and unresolved questions. A path
+name is discovery evidence, not proof that the route is reachable or contains
+release history. Do not ask for a choice already established by current
+instructions, repository policy, or trustworthy evidence.
 
 ## First screen
 
@@ -74,6 +76,59 @@ Ask what to do when a release needs a new release-note destination:
 destination. It never grants deployment, publication, store submission, hosted
 release, new-audience, or internal-information authority.
 
+## Contextual product-surface choice
+
+For the `full`, `web`, `mobile`, and `web-cms` distributions, resolve this
+choice before the final history question when inspection finds a candidate
+destination or the original task asks to establish customer release notes.
+Skip it for CMS-only and skill-repository onboarding.
+
+Inspect each candidate's route wiring, navigation, content model, source,
+audience, and release coverage. Classify it as:
+
+- an established full-history release archive only when it is reachable and
+  actually presents canonical versioned or dated release history;
+- an adjacent editorial destination when it publishes product stories,
+  announcements, news, or blog-style updates without serving as the canonical
+  release archive; or
+- unrelated when neither use applies.
+
+Do not treat a route called Updates or Release Notes as an established archive
+from its name alone. When a suitable archive already exists, propose
+synchronizing and backfilling that archive instead of creating a duplicate.
+When only an adjacent or editorial destination exists, ask where the
+customer-facing release archive should live:
+
+- **Add a Release Notes tab or section there** — use when the existing
+  destination can keep editorial posts and chronological release history
+  clearly separated.
+- **Create a dedicated Release Notes page** — recommended when the existing
+  destination is primarily a blog, newsroom, announcement feed, or marketing
+  channel.
+- **Do not add a public archive now** — keep the candidate unchanged and limit
+  the task to canonical changelog work.
+
+If the product has returning users and the user selects a public archive, offer
+the compact surface separately:
+
+- **Automatic Release Notes modal** — recommended; show only the latest
+  qualifying highlights to eligible returning users and link to the selected
+  full archive.
+- **Manual Release Notes summary** — keep a compact summary reachable without
+  automatic display.
+- **Archive only** — add no compact surface.
+
+The confirmed receipt must name the exact candidate classification, archive
+choice, compact-surface choice, route or placement, and visible labels. That
+confirmation authorizes only those named surfaces for the current task; it does
+not silently change the ongoing `newReleaseNoteSurfaces` policy.
+
+Use **Release Notes** by default for customer-facing archives and compact
+summaries. Use **Changelog** by default for developer, administrator, operator,
+or maintainer-facing technical history. Treat “What's New” as a compact-summary
+pattern, not the default visible label. Preserve an established or explicitly
+requested product naming preference instead of renaming it automatically.
+
 ## Preference scope
 
 Offer repository, all-projects solo-developer, or run-only scope.
@@ -114,10 +169,10 @@ receipt accepts the displayed default.
 ## Confirm, apply, and continue
 
 Before durable writes, show a receipt naming the selected distribution,
-audiences, signatures, missing-destination behavior, history disposition, and
-every policy or preference path. State that setup grants no deployment,
-publication, store-submission, CMS-access, or unrelated released-history
-authority. Require confirmation.
+audiences, signatures, missing-destination behavior, any contextual product
+surface choices, history disposition, and every policy or preference path.
+State that setup grants no deployment, publication, store-submission,
+CMS-access, or unrelated released-history authority. Require confirmation.
 
 Then pass explicit choices to the helper:
 

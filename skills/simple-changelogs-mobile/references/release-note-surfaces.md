@@ -4,6 +4,18 @@ Use this reference for mobile in-app notes and existing App Store, Google Play,
 TestFlight, internal-testing, or marketplace metadata. `CHANGELOG.md` remains
 the durable customer source.
 
+## Default visible names
+
+Use **Release Notes** for customer-facing in-app histories, recent summaries,
+modals, and sheets unless the repository or current user establishes another
+product name. Use **Changelog** for protected developer, administrator,
+operator, or maintainer technical history.
+
+“What's New” describes the compact latest-release pattern in this guidance; it
+is not the default visible title. Preserve existing labels and explicit naming
+preferences. The raw filenames remain unchanged: `CHANGELOG.md` is the
+customer source and `DEVELOPER_CHANGELOG.md` is the technical source.
+
 ## Scope by app and release
 
 Inspect each mobile target independently. In a monorepo, prove which application
@@ -13,6 +25,23 @@ content identical. Never synchronize an unrelated web or package version.
 
 Use established repository-native destinations and locale conventions. A store
 metadata path is evidence of a destination, not authority to submit it.
+
+Treat screens or routes named Updates, News, Blog, Announcements, or Release
+Notes as candidates until their content and source prove their role. A
+story-style update feed is adjacent to release history, not automatically a
+full archive.
+
+When a suitable in-app archive already exists, synchronize and backfill it.
+When only an adjacent editorial destination exists and an archive is
+authorized, ask whether to add a distinct **Release Notes** tab or section
+there, create a dedicated **Release Notes** screen (recommended for editorial
+destinations), or leave it unchanged and add no archive.
+
+Choose the compact surface separately. For an app with returning users,
+recommend an automatically shown **Release Notes** modal or sheet with only the
+latest qualifying highlights and one path to the selected archive. Also offer a
+manual-only summary or archive only. The confirmed selection authorizes only
+those exact surfaces for the current task.
 
 Build a scope map for each affected destination: record its path or identity,
 mobile application, platform, audience, release train, source, positive

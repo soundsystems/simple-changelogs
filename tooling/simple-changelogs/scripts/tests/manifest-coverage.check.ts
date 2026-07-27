@@ -30,6 +30,7 @@ const EXPLICIT_INITIAL_BACKFILL_PATTERN = /backfill|review history/iu;
 
 const FIXTURE_IDS = new Set([
   "dual-changelog",
+  "editorial-updates-app",
   "expert-release",
   "forked-skill",
   "initial-backfill",
@@ -101,6 +102,7 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-customer-visible-feature",
   "behavior-developer-only-migration",
   "behavior-durable-ui-polish-changelog-only",
+  "behavior-editorial-updates-surface-choice",
   "behavior-expert-public-release-ledger",
   "behavior-first-time-feature-naming",
   "behavior-fork-sync-provenance-pin",
@@ -194,8 +196,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(55);
-    expect(new Set(ids).size).toBe(55);
+    expect(ids).toHaveLength(56);
+    expect(new Set(ids).size).toBe(56);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
