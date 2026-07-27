@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Publishing now distinguishes preserved baseline state from active external
+  work. Dirty or unrelated original checkouts and pre-existing worktrees,
+  commits, or proposals stay untouched but do not block publication through an
+  independent remote-default worktree. External ownership requires new activity
+  observed after the baseline or a live claim on the exact target; ownership is
+  rechecked before mutation, exact handoff is still required for active work,
+  and finished reports separate published results, preserved baseline details,
+  and genuinely outstanding targets.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T09:13:11-05:00" -->
 - Across all six packaged distributions, onboarding now asks before adding a
   short Simple Changelogs pointer to an existing repository-instruction file
   such as `AGENTS.md` or `CLAUDE.md`. The pointer records when the changelog

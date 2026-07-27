@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Corrected `publish-skill` ownership classification:
+  - `SKILL.md` and `references/release-map.md` now capture a concrete baseline
+    for checkouts, refs, status fingerprints, worktrees, proposals, and live
+    exact-target claims. Static dirty state and pre-existing artifacts are
+    preserved baseline information; only post-baseline activity or a live
+    exact-target claim becomes externally owned active work.
+  - `references/production-loop.md` continues canonical, fork, and consumer
+    publication from isolated remote-default worktrees unless new external
+    activity overlaps the exact target. Active work still requires explicit
+    handoff and cannot be delegated into scope.
+  - `references/merge-verification.md` keeps preserved artifacts out of cleanup
+    and separates published results, informational baseline state,
+    externally-owned active work, and other failed or blocked targets in the
+    final matrix.
+  - Agent metadata and package-design regression coverage now enforce the
+    baseline comparison, independent-continuation, pre-mutation recheck, and
+    three-part completion-report contract.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T09:13:11-05:00" -->
 - Added repository-instruction pointer onboarding across all six packaged
   distributions:
   - Onboarding now asks before adding a changelog pointer to an existing
