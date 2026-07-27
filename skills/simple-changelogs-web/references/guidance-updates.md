@@ -116,3 +116,22 @@ An approved audit may identify an authorized Web surface that used the wrong
 component system, omitted eligible canonical releases, or failed accessibility,
 zoom, containment, theming, or server-rendering checks. Preserve deployed
 visibility and released wording unless separate authority permits the repair.
+
+## Guidance 7
+
+Onboarding now offers to add a short changelog pointer to an existing
+agent-instruction file such as `AGENTS.md` or `CLAUDE.md`. The distribution
+checkpoint already counted repository instructions among the signals selecting a
+distribution, but no part of setup established that signal, so it had to be
+written by hand.
+
+The offer requires explicit confirmation, since an agent-instruction file
+governs agent behavior beyond changelog work. It writes a pointer only: when the
+decision is due, the requirement to state the outcome even when no entry is
+needed, and which distribution owns the decision. Classification, exclusions,
+and wording stay in the skill. A hand-written block that restates them becomes a
+second copy that drifts independently and is read on every turn, while the
+skill's own text is read only once an agent already decided to open it.
+
+Repositories that already carry such a block can have it replaced in place. An
+existing pointer is updated rather than duplicated.

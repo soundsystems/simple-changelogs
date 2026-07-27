@@ -2,23 +2,20 @@
 
 ## Unreleased
 
-- Added guidance 8 to the `simple-changelogs` distribution: a
-  Repository-instruction pointer onboarding step, and the matching
-  `references/guidance-updates.md` entry. `SKILL.md` moves from guidance
-  version 7 to 8.
-  - The distribution checkpoint already listed repository instructions among
-    the signals selecting a distribution, but no setup path wrote that signal,
-    so adopters hand-wrote it. Observed downstream result: a 20-line block whose
-    exclusion list was near-verbatim `references/entry-classification.md`, which
-    then had to be trimmed back to a pointer.
-  - The step is ask-first because an agent-instruction file governs agent
-    behavior beyond changelog work, writes a pointer rather than a copy because
-    duplicated rules drift while being read more often than the original, and
-    updates an existing pointer in place so re-running onboarding cannot append
-    a second one.
-  - Canonical distribution only. Propagation to the other distributions and to
-    local consumers is `publish-skill`'s job.
-<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-07-27T02:30:29-05:00" -->
+- Added repository-instruction pointer onboarding across all six packaged
+  distributions:
+  - Onboarding now asks before adding a changelog pointer to an existing
+    repository-instruction file because that file governs agent behavior beyond
+    the changelog workflow.
+  - The pointer records decision timing, outcome reporting, and distribution
+    ownership without copying classification or wording rules, and reruns
+    update an existing pointer rather than appending a duplicate.
+  - Guidance advances from 7 to 8 for full, from 6 to 7 for web, mobile, and
+    web+CMS, and from 4 to 5 for skill-repository. Standalone CMS gains the
+    onboarding pointer while its independent schema guidance remains at 1.
+  - The shared setup runtime version map and setup tests now enforce the
+    propagated guidance levels and pointer behavior.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T02:42:34-05:00" -->
 - Hardened `publish-skill` around externally owned active work:
   - `SKILL.md` now requires exact handoff before mutation, rejects broad
     terminal requests as ownership transfer, repeats ownership checks

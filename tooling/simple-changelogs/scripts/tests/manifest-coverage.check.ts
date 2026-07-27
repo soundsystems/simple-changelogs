@@ -27,6 +27,8 @@ const SHARED_RELEASE_SCOPE_PATTERN =
 const WRONG_SURFACE_EXCLUSION_PATTERN =
   /representative wrong-platform or\s+wrong-role entries remain absent/;
 const EXPLICIT_INITIAL_BACKFILL_PATTERN = /backfill|review history/iu;
+const IN_PLACE_POINTER_UPDATE_PATTERN =
+  /update\s+it in place rather than appending a second one/;
 
 const FIXTURE_IDS = new Set([
   "dual-changelog",
@@ -833,6 +835,36 @@ describe("canonical evaluation manifest", () => {
 });
 
 describe("portable guidance consistency", () => {
+  test("offers the ask-first repository-instruction pointer in every distribution", async () => {
+    const skillsRoot = join(SKILL_ROOT, "..");
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-cms",
+      "simple-changelogs-mobile",
+      "simple-changelogs-skill-maintainer",
+      "simple-changelogs-web",
+      "simple-changelogs-web-cms",
+    ];
+
+    const onboardingReferences = await Promise.all(
+      distributions.map((distribution) =>
+        readFile(
+          join(skillsRoot, distribution, "references", "onboarding.md"),
+          "utf8"
+        )
+      )
+    );
+
+    for (const onboarding of onboardingReferences) {
+      expect(onboarding).toContain("## Repository-instruction pointer");
+      expect(onboarding).toContain(
+        "Never write to an agent-instruction file without explicit confirmation"
+      );
+      expect(onboarding).toContain("Write a pointer, never a copy");
+      expect(onboarding).toMatch(IN_PLACE_POINTER_UPDATE_PATTERN);
+    }
+  });
+
   test("packages expert public detail and destination isolation in every product distribution", async () => {
     const skillsRoot = join(SKILL_ROOT, "..");
     const distributions = [
