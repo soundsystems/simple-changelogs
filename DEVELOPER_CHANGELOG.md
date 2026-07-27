@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Hardened `publish-skill` around externally owned active work:
+  - `SKILL.md` now requires exact handoff before mutation, rejects broad
+    terminal requests as ownership transfer, repeats ownership checks
+    immediately before each mutation, and includes preserved targets in the
+    outstanding-work ledger.
+  - `references/release-map.md` classifies current-loop, externally owned, and
+    proven-stale branches, worktrees, and proposals before release scope is
+    chosen.
+  - `references/production-loop.md` adds an ownership gate that preserves
+    external state, permits independent remote-default worktrees only when
+    changes do not overlap, and forbids delegated takeovers.
+  - `references/merge-verification.md` now requires no active owner, proposal,
+    dirty state, or unmerged or unpushed commits before cleanup can be treated
+    as stale, with ownership checked again immediately before removal.
+  - Agent metadata advertises the protected scope, and the package-design
+    regression test locks the skill, release-map, production-loop,
+    merge-verification, and metadata contracts together.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T02:11:26-05:00" -->
 - Added release-note surface design and component-source contracts:
   - `references/surface-design.md` now ships in the full, web, mobile, web+CMS,
     and CMS-only distributions, with Web, native, and authenticated-operator
