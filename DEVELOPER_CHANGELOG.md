@@ -18,9 +18,16 @@
     not serve. Both scopes remain ask-first.
   - Amends the same unreleased guidance entry rather than adding a version:
     the incomplete form shipped earlier the same day and nothing consumes it.
-  - `manifest-coverage.check.ts` asserts the in-place-update sentence as a
-    literal wrap (`/update\s+it in place rather than appending a second one/`),
-    so the rewrap is load-bearing, not cosmetic.
+  - Fixed the check that caught this. `manifest-coverage.check.ts` asserted the
+    pointer prose against raw file text, so a line break falling between any two
+    words failed it even though the wording was unchanged; the `\s+` in the
+    in-place-update pattern was a band-aid over the same problem at one known
+    wrap point. The assertions now collapse whitespace first and compare
+    phrases, so reflowing a paragraph no longer breaks the suite while a real
+    wording change still does. Verified by reflowing the sentence to the wrap
+    that previously failed and confirming the suite passes.
+  - `PLATFORM_ROLE_ABSENCE_PATTERN` (line 28) carries the same `\s+` band-aid
+    and is left alone here as unrelated scope.
 <!-- simple-changelogs-signature agent="claude-opus-5" at="2026-07-27T03:20:00-05:00" -->
 - Corrected `publish-skill` ownership classification:
   - `SKILL.md` and `references/release-map.md` now capture a concrete baseline

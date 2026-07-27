@@ -217,8 +217,8 @@ Write a pointer, never a copy. Include only when the changelog decision is due,
 the requirement to state the outcome even when no entry is needed, and which
 skill owns the decision. Classification, exclusions, and wording belong in this
 skill; duplicating them creates a second copy that drifts independently and is
-read more often than the original. Detect an existing pointer and update
-it in place rather than appending a second one.
+read more often than the original. Detect an existing pointer and update it in
+place rather than appending a second one.
 
 ## Final history question
 

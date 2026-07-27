@@ -27,8 +27,19 @@ const SHARED_RELEASE_SCOPE_PATTERN =
 const WRONG_SURFACE_EXCLUSION_PATTERN =
   /representative wrong-platform or\s+wrong-role entries remain absent/;
 const EXPLICIT_INITIAL_BACKFILL_PATTERN = /backfill|review history/iu;
-const IN_PLACE_POINTER_UPDATE_PATTERN =
-  /update\s+it in place rather than appending a second one/;
+// Reference prose is hard-wrapped, so a line break can fall between any two
+// words. Assert against whitespace-collapsed text instead of guessing where
+// the wrap lands -- otherwise reflowing a paragraph fails the check without
+// changing what it says.
+const collapseWhitespace = (value: string): string =>
+  value.replace(/\s+/gu, " ");
+
+const REQUIRED_POINTER_PHRASES = [
+  "## Repository-instruction pointer",
+  "Never write to an agent-instruction file without explicit confirmation",
+  "Write a pointer, never a copy",
+  "update it in place rather than appending a second one",
+];
 
 const FIXTURE_IDS = new Set([
   "dual-changelog",
@@ -856,12 +867,10 @@ describe("portable guidance consistency", () => {
     );
 
     for (const onboarding of onboardingReferences) {
-      expect(onboarding).toContain("## Repository-instruction pointer");
-      expect(onboarding).toContain(
-        "Never write to an agent-instruction file without explicit confirmation"
-      );
-      expect(onboarding).toContain("Write a pointer, never a copy");
-      expect(onboarding).toMatch(IN_PLACE_POINTER_UPDATE_PATTERN);
+      const collapsed = collapseWhitespace(onboarding);
+      for (const phrase of REQUIRED_POINTER_PHRASES) {
+        expect(collapsed).toContain(phrase);
+      }
     }
   });
 
