@@ -5,10 +5,11 @@ does not turn every commit into release copy.
 
 ## Authority
 
-Start only when the user explicitly approves the audit, repository policy
-already records permission, or repository instructions require it. Record
-`backfillStatus: "partial"` before editing and `completed` only after the final
-history and route are verified.
+Start an initial backfill when the user confirms onboarding with its displayed
+default, unless they defer or decline in the final question. Later audits still
+require explicit current approval, recorded policy permission, or repository
+instructions. Record `backfillStatus: "partial"` before editing and `completed`
+only after the final history and route are verified.
 
 ## Evidence order
 
@@ -24,10 +25,14 @@ deployment dates. Omit a version when evidence does not establish one.
 
 ## Reconstruction
 
-Cover the full authorized history while grouping small commits into meaningful
-operator milestones. Preserve reversions and superseding work so the resulting
-history describes the final durable outcome. Mark reconstructed entries with
-`kind: "backfill"` and keep them newest-first.
+The initial backfill during adoption always covers the complete accessible
+history, from the oldest trustworthy evidence through the setup boundary.
+Cover that entire range while grouping small commits into meaningful operator
+milestones. Account for every historical change; record why abandoned,
+reverted, noisy, private, or unsupported candidates were omitted instead of
+silently using a recent window, commit-count limit, highlight set, or
+representative sample. Mark reconstructed entries with `kind: "backfill"` and
+keep them newest-first.
 
 Inspect changes rather than repeating vague subjects such as “fix,” “v1,” or
 “maintenance.” If evidence cannot support a useful operator statement, leave
@@ -38,4 +43,7 @@ that candidate out and report the uncertainty.
 Review the oldest and newest evidence boundaries, validate dates and versions,
 confirm every entry has a concrete operator consequence, and run the bundled
 repository validator. Record the inspected range and any intentionally omitted
-ambiguous periods in the handoff.
+ambiguous periods in the handoff. Set `completed` only after every intervening
+range and established mirror has been verified. Shallow history, missing
+release records, or another evidence gap keeps the initial backfill `partial`
+or `failed` until resolved.

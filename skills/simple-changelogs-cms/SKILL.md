@@ -39,8 +39,9 @@ root.
 - When policy is absent and the request authorizes CMS changelog work, read
   `references/setup.md`, confirm the CMS-specific receipt, create the
   repository-local state, then continue the original request.
-- When released history exists, backfill only after the user or repository
-  policy explicitly authorizes the audit. Read `references/backfill.md`.
+- When released history exists, confirmed initial onboarding includes the full
+  backfill by default; its final question offers deferral or refusal. Read
+  `references/backfill.md`.
 - Treat the recorded CMS route as presentation metadata, not permission to
   weaken or bypass its authentication.
 

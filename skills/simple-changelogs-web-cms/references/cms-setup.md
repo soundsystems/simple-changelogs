@@ -64,11 +64,14 @@ When the request authorizes CMS changelog adoption:
 2. Choose one repository-root JSON source and one route inside that protected
    surface.
 3. Create policy with `backfillStatus: "not-applicable"` when no released
-   history exists. If an audit is authorized, record `partial` before starting.
+   history exists. When released history exists, default the confirmed setup to
+   `partial` and begin the comprehensive initial backfill unless the user uses
+   the final onboarding question to defer or decline it.
 4. Create the JSON source, add the authenticated route, and link it from the
    existing CMS navigation without adding a public destination.
-5. Complete any authorized historical audit, validate the data, then record
-   `completed`.
+5. Complete the initial backfill across the full accessible history, validate
+   the data, then record `completed`.
 
-If released history exists and no audit decision is available, ask once before
-reconstructing it. Do not treat silence as approval.
+Do not require a separate “Review it now” approval. Confirmation of the setup
+receipt accepts the displayed backfill default; without confirmation, write
+nothing.

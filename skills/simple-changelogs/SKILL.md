@@ -41,9 +41,9 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
 - When it is absent and the request authorizes changelog work, follow
   `references/setup.md`, confirm the helper's receipt, apply the chosen setup,
   then continue the original task without asking the user to repeat it.
-- If released history exists and the request does not decide its audit, ask and
-  stop before writing policy or changelogs. Silence is not `deferred` or
-  `declined`.
+- If released history exists, recommended initial onboarding includes the full
+  backfill by default and asks last whether the user wants to defer or decline.
+  Nothing is written until the user confirms the displayed setup receipt.
 - When the request is read-only, answer without writing policy or changelog
   files. Offer setup as a possible next action.
 - When recorded guidance is older than version 6, read

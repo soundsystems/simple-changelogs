@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Standardized comprehensive initial backfills as the confirmed onboarding
+  default across all six distributions:
+  - The final history question is ordered after every other onboarding choice,
+    offers only defer or decline opt-outs, and starts the audit as `partial`
+    when the user confirms the receipt without separate review approval.
+  - Setup and evaluation tests enforce the default and question ordering, while
+    the full-history fixture, manifest coverage, and package-distribution checks
+    protect complete public and developer reconstruction through setup.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T23:37:21-05:00" -->
 - Added conversational onboarding across all six distributions:
   - Bundled inspection and apply helpers classify read-only versus write work,
     recommend evidence-backed defaults, emit confirmation receipts, validate

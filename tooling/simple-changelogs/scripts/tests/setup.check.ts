@@ -82,7 +82,7 @@ describe("setup inspection", () => {
     expect(readInspection.writes).toEqual([]);
   });
 
-  test("reports released history and refuses to imply a disposition", async () => {
+  test("offers released history last and defaults confirmed setup to a backfill", async () => {
     const { config, repo } = await fixture();
     await writeFile(
       join(repo, "CHANGELOG.md"),
@@ -101,12 +101,21 @@ describe("setup inspection", () => {
       distribution: "web",
       repo,
     });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
 
     expect(inspection.inventory.releasedHistoryCount).toBe(1);
-    expect(inspection.unresolvedQuestions).toContain("released-history-audit");
-    expect(result.status).toBe("blocked");
-    expect(result.errors.join(" ")).toContain("Choose partial");
-    expect(existsSync(join(repo, ".simple-changelogs.json"))).toBe(false);
+    expect(inspection.unresolvedQuestions).toEqual([
+      "preference-scope",
+      "released-history-audit",
+    ]);
+    expect(inspection.unresolvedQuestions.at(-1)).toBe(
+      "released-history-audit"
+    );
+    expect(result.status).toBe("configured");
+    expect(result.selection.backfillStatus).toBe("partial");
+    expect((policy.guidance as Record<string, unknown>).backfillStatus).toBe(
+      "partial"
+    );
   });
 
   test("valid repository policy suppresses repeat onboarding and wins over global defaults", async () => {

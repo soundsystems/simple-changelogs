@@ -176,6 +176,13 @@ It then offers recommended setup, customization, or run-only preferences. The
 user confirms a plain-language receipt before durable writes, and the agent
 continues the original changelog task after setup.
 
+When released history exists, recommended onboarding includes an initial
+backfill of the complete accessible history from the oldest trustworthy
+evidence through setup. Large histories may be processed in reviewable batches,
+but a recent window or representative sample cannot be recorded as completed.
+The final onboarding question asks only whether to defer or decline that
+default; confirming the receipt starts it without a separate approval.
+
 ```sh
 bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --developer-history required \

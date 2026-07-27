@@ -93,10 +93,12 @@ For authorized setup:
    `developerChangelog: "optional"`.
 3. When no released history exists, write the current guidance version with
    `backfillStatus: "not-applicable"`.
-4. When released history exists, first check whether the current request already
-   and explicitly decides the audit. Use that decision when its scope is clear;
-   otherwise explain the current guidance briefly and ask once whether to audit
-   that history. Do not repeat permission the user already granted.
+4. When released history exists, default initial setup to a comprehensive audit
+   of the complete accessible history. Honor a current request that already
+   defers or declines it; otherwise present the full backfill as the recommended
+   default and ask, as the final onboarding question, only whether the user
+   wants to defer or decline. Confirmation accepts `partial` and starts the
+   audit without a separate “Review it now” approval.
 5. Record the user's actual disposition and set `newReleaseNoteSurfaces` to
    `ask`, then continue the originally requested task. An authorized audit starts
    as `partial` and becomes `completed` only after verification.
@@ -105,9 +107,9 @@ Setup does not authorize a new modal, route, screen, panel, navigation entry, or
 other product UI. Follow `references/release-note-surfaces.md` when later work
 needs a missing destination.
 
-If the user does not answer the setup question, do not guess a disposition or
-write policy state that implies one. A declined or deferred historical audit
-does not prevent prospective changelog work after that decision is recorded.
+If the user does not confirm the setup receipt, write no policy or changelog
+state. A declined or deferred historical audit does not prevent prospective
+changelog work after that decision is recorded.
 
 ## One Prompt per Guidance Version
 

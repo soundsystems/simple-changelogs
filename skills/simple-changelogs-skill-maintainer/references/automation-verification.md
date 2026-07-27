@@ -14,7 +14,10 @@ Run repository-native checks and inspect the final diff. At minimum verify:
   read-only notes agree for the intended release;
 - raw signature comments stay out of rendered or CLI release notes;
 - README selection names and exact Skills CLI commands match real directories;
-- forks retain an honest provenance pin and intentional deltas.
+- forks retain an honest provenance pin and intentional deltas;
+- an initial backfill reaches the oldest trustworthy evidence, covers every
+  intervening range through setup, accounts for intentional omissions, and
+  leaves incomplete evidence gaps resumable instead of recording `completed`.
 
 Use the repository's package-shape test and create a real temporary consumer
 install when that workflow exists. A source-tree pass alone does not prove that
