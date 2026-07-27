@@ -12,8 +12,13 @@
   and genuinely outstanding targets.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T09:13:11-05:00" -->
 - Across all six packaged distributions, onboarding now asks before adding a
-  short Simple Changelogs pointer to an existing repository-instruction file
-  such as `AGENTS.md` or `CLAUDE.md`. The pointer records when the changelog
+  short Simple Changelogs pointer to an existing agent-instruction file such as
+  `AGENTS.md` or `CLAUDE.md`. It follows the scope you already picked: a
+  per-repository setup offers that repository's instruction file, while an
+  all-projects setup offers your global one, so a single instruction file is
+  updated once instead of once per project, and a run-only setup writes nothing.
+  A global pointer names no specific changelog tool, so it stays correct in
+  projects that use a different one. The pointer records when the changelog
   decision is due, requires the outcome even when no entry is needed, and names
   the owning distribution without copying its rules; rerunning onboarding
   updates an existing pointer in place.
