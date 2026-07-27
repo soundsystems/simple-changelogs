@@ -247,14 +247,6 @@
               "target": ".simple-changelogs.json",
               "expected": true
             },
-            {
-              "kind": "report.authorization",
-              "expected": {
-                "code": "GUIDANCE_BACKFILL",
-                "status": "required",
-                "source": "none"
-              }
-            },
             { "kind": "report.decision", "expected": "INITIAL_SETUP_REQUIRED" },
             {
               "kind": "report.decision",
@@ -989,6 +981,96 @@
             {
               "kind": "report.verification",
               "expected": { "code": "BACKFILL_AUDIT", "status": "passed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-comprehensive-initial-backfill",
+      "suite": "behavior",
+      "fixture": "initial-backfill",
+      "tags": ["backfill", "setup", "customer", "developer"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Adopt Simple Changelogs with the recommended setup, keep mobile-specific notes in mobile-only destinations, confirm the receipt, and continue the original task.",
+          "assertions": [
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Ww]orkspace owners can export project data"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Kk]eyboard navigation"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "SAML single sign-on"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Ss]ervice-status alerts"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "non-ASCII characters"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "[Ss]chedule recurring exports"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Vv]ersioned export schema"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Ss]hort-lived signed URLs"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Tt]enant-scoped identity index"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Dd]ead-letter handling"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Ff]ont fallback"
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "[Ii]dempotency keys"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus",
+              "expected": "completed"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "BACKFILL_COMPLETED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": {
+                "code": "BACKFILL_AUDIT",
+                "status": "passed"
+              }
             }
           ]
         }

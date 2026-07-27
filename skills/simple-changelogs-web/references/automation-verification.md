@@ -105,6 +105,8 @@ encode an uncertain or independently versioned relationship.
 ## Backfills
 
 - The inspected ranges and release boundaries are named.
+- An initial backfill reaches the oldest trustworthy evidence, covers every
+  intervening range through setup, and accounts for intentional omissions.
 - Automatic repairs were deterministic and preserved meaning, visibility, and
   release boundaries.
 - Semantic candidates had the required authority or remained unchanged.

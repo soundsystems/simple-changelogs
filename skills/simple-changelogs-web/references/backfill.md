@@ -28,6 +28,11 @@ first real item rather than keeping a placeholder section.
 
 ## Historical Reconstruction
 
+An initial backfill performed while adopting Simple Changelogs must cover the
+complete accessible repository history, from the oldest trustworthy evidence
+through the setup boundary. Do not substitute a recent window, a commit-count
+limit, selected highlights, or a representative sample.
+
 1. Find trustworthy release boundaries from tags, published versions,
    repository-hosted releases, app metadata, or deployment milestones.
 2. Walk one bounded range at a time. Use `git log` to locate candidates and
@@ -39,9 +44,15 @@ first real item rather than keeping a placeholder section.
    history.
 5. Preserve established headings and dates. Mark uncertainty instead of
    inventing shipped behavior or a release boundary.
+6. Account for every historical change in the inspected range. Group related
+   commits into durable outcomes, but record why abandoned, reverted, noisy,
+   private, or unsupported candidates were omitted instead of silently
+   skipping them.
 
-For a large repository, propose reviewable batches before rewriting extensive
-history. A conservative omission is better than fabricated certainty.
+For a large repository, use reviewable batches, then continue through every
+remaining range before completing the initial backfill. A conservative
+omission is better than fabricated certainty, but an unexplained gap is not a
+completed backfill.
 
 ## Guidance Audit Authority
 
@@ -90,6 +101,12 @@ and why it is not deterministic, and ask one bounded question.
 An audit can be complete while reporting semantic candidates that were
 intentionally left unchanged. Use an unfinished status only when the authorized
 audit itself stopped before its planned review or repairs finished.
+
+For an initial backfill, set `completed` only after the oldest reachable
+boundary, every intervening range, the setup boundary, and all established
+mirrors have been inspected. If shallow history, missing tags, unavailable
+release data, or inaccessible records prevent that full review, keep the audit
+resumable as `partial` or `failed` and name the missing evidence.
 
 The handoff should state:
 

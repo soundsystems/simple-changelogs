@@ -42,7 +42,8 @@ Before write-capable work, run the bundled `scripts/setup.ts` inspection helper:
 - For operator-history setup, follow `references/cms-setup.md`.
 - Confirm one combined receipt, apply both policies as one transaction, and
   continue the original request without asking the user to repeat it.
-- Existing released history is never audited without an explicit disposition.
+- Existing released history defaults to a full initial backfill after the user
+  confirms onboarding; the final question offers deferral or refusal.
 - Read-only questions never create policy, changelog, JSON, or UI files.
 
 Repository instructions take precedence when they define stricter audience,

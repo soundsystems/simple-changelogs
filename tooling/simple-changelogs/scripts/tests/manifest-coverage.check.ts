@@ -26,11 +26,13 @@ const SHARED_RELEASE_SCOPE_PATTERN =
   /shared\s+(?:repository,\s+release date,\s+or version|version or release date)/;
 const WRONG_SURFACE_EXCLUSION_PATTERN =
   /representative wrong-platform or\s+wrong-role entries remain absent/;
+const EXPLICIT_INITIAL_BACKFILL_PATTERN = /backfill|review history/iu;
 
 const FIXTURE_IDS = new Set([
   "dual-changelog",
   "expert-release",
   "forked-skill",
+  "initial-backfill",
   "initial-major",
   "minimal-git",
   "mobile-monorepo",
@@ -95,6 +97,7 @@ const TRIGGER_CASE_IDS = new Set([
 
 const BEHAVIOR_CASE_IDS = new Set([
   "behavior-clone-sensitive-public-detail",
+  "behavior-comprehensive-initial-backfill",
   "behavior-customer-visible-feature",
   "behavior-developer-only-migration",
   "behavior-durable-ui-polish-changelog-only",
@@ -191,8 +194,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(54);
-    expect(new Set(ids).size).toBe(54);
+    expect(ids).toHaveLength(55);
+    expect(new Set(ids).size).toBe(55);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -256,6 +259,36 @@ describe("canonical evaluation manifest", () => {
 
   test("encodes approved backfill and repo-local guidance corrections", async () => {
     const manifest = await loadManifest();
+    const initialBackfill = caseById(
+      manifest,
+      "behavior-comprehensive-initial-backfill"
+    );
+    expect(initialBackfill.turns).toHaveLength(1);
+    expect(initialBackfill.turns[0]?.prompt).not.toMatch(
+      EXPLICIT_INITIAL_BACKFILL_PATTERN
+    );
+    for (const [target, expected] of [
+      ["CHANGELOG.md", "[Ww]orkspace owners can export project data"],
+      ["CHANGELOG.md", "[Ss]ervice-status alerts"],
+      ["CHANGELOG.md", "[Ss]chedule recurring exports"],
+      ["DEVELOPER_CHANGELOG.md", "[Vv]ersioned export schema"],
+      ["DEVELOPER_CHANGELOG.md", "[Dd]ead-letter handling"],
+      ["DEVELOPER_CHANGELOG.md", "[Ii]dempotency keys"],
+    ] as const) {
+      expect(
+        hasAssertion(initialBackfill, 0, "text.match", expected, target)
+      ).toBe(true);
+    }
+    expect(
+      hasAssertion(
+        initialBackfill,
+        0,
+        "json.path",
+        "completed",
+        ".simple-changelogs.json#/guidance/backfillStatus"
+      )
+    ).toBe(true);
+
     const explicitBackfill = caseById(
       manifest,
       "behavior-guidance-driven-backfill-audit"
@@ -300,7 +333,7 @@ describe("canonical evaluation manifest", () => {
     ).toBe(true);
   });
 
-  test("waits for historical-audit and mobile-placement answers before writing policy", async () => {
+  test("offers backfill opt-out last and waits for confirmed setup", async () => {
     const manifest = await loadManifest();
     const setup = caseById(manifest, "behavior-customer-visible-feature");
 
@@ -309,12 +342,15 @@ describe("canonical evaluation manifest", () => {
       hasAssertion(setup, 0, "path.absent", true, ".simple-changelogs.json")
     ).toBe(true);
     expect(
-      hasAssertion(setup, 0, "report.authorization", {
-        code: "GUIDANCE_BACKFILL",
-        source: "none",
-        status: "required",
-      })
-    ).toBe(true);
+      turnByIndex(setup, 0).assertions.some(
+        (assertion) =>
+          assertion.kind === "report.authorization" &&
+          typeof assertion.expected === "object" &&
+          assertion.expected !== null &&
+          !Array.isArray(assertion.expected) &&
+          assertion.expected.code === "GUIDANCE_BACKFILL"
+      )
+    ).toBe(false);
     expect(
       hasAssertion(
         setup,
@@ -819,14 +855,15 @@ describe("portable guidance consistency", () => {
     }
   });
 
-  test("does not repeat explicit audit authority or broaden one-off surface answers", async () => {
+  test("defaults initial backfills without broadening one-off surface answers", async () => {
     const setup = await readFile(
       join(SKILL_ROOT, "references", "setup.md"),
       "utf8"
     );
 
-    expect(setup).toContain("current request already");
-    expect(setup).toContain("Do not repeat permission");
+    expect(setup).toContain("default initial setup to a comprehensive audit");
+    expect(setup).toContain("Confirmation accepts `partial`");
+    expect(setup).toContain("without a separate “Review it now” approval");
     expect(setup).toContain(
       "one-off approval or rejection leaves policy at `ask`"
     );

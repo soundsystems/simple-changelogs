@@ -863,9 +863,6 @@ const unresolvedFor = (
   if (detection.confidence === "conflict") {
     unresolved.push("distribution-conflict");
   }
-  if (inventory.releasedHistoryCount > 0) {
-    unresolved.push("released-history-audit");
-  }
   if (
     installed === "full" &&
     (policy.state === "absent" ||
@@ -885,6 +882,9 @@ const unresolvedFor = (
   }
   if (installed !== "cms" && policy.state === "absent") {
     unresolved.push("preference-scope");
+  }
+  if (inventory.releasedHistoryCount > 0) {
+    unresolved.push("released-history-audit");
   }
   return [...new Set(unresolved)];
 };
@@ -1467,14 +1467,6 @@ const selectionErrors = (
   ) {
     errors.push(
       "Full web/mobile setup requires --mobile-placement with web-tabs, web-page, or mobile-only."
-    );
-  }
-  if (
-    inspect.inventory.releasedHistoryCount > 0 &&
-    options.backfillStatus === undefined
-  ) {
-    errors.push(
-      "Released history exists. Choose partial, deferred, declined, or another explicit audit disposition before setup."
     );
   }
   if (selection.backfillStatus === "completed" && !options.auditVerified) {

@@ -90,18 +90,29 @@ const distributionSnapshots = await Promise.all(
   skillDirectories.map(async (directoryName) => {
     const directory = join(skillsRoot, directoryName);
     const setupPath = join(directory, "scripts", "setup.ts");
-    const [entries, source] = await Promise.all([
-      walk(directory),
-      readFile(join(directory, "SKILL.md"), "utf8"),
-    ]);
+    const backfillPath = join(directory, "references", "backfill.md");
+    const onboardingPath = join(directory, "references", "onboarding.md");
+    const [backfillSource, entries, onboardingSource, source] =
+      await Promise.all([
+        changelogDistributions.has(directoryName) && existsSync(backfillPath)
+          ? readFile(backfillPath, "utf8")
+          : Promise.resolve(null),
+        walk(directory),
+        changelogDistributions.has(directoryName) && existsSync(onboardingPath)
+          ? readFile(onboardingPath, "utf8")
+          : Promise.resolve(null),
+        readFile(join(directory, "SKILL.md"), "utf8"),
+      ]);
     const setupSource =
       changelogDistributions.has(directoryName) && existsSync(setupPath)
         ? await readFile(setupPath, "utf8")
         : null;
     return {
+      backfillSource,
       directory,
       directoryName,
       entries,
+      onboardingSource,
       setupSource,
       source,
     };
@@ -110,9 +121,11 @@ const distributionSnapshots = await Promise.all(
 
 const descriptions = new Map<string, string>();
 for (const {
+  backfillSource,
   directory,
   directoryName,
   entries,
+  onboardingSource,
   setupSource,
   source,
 } of distributionSnapshots) {
@@ -205,6 +218,45 @@ for (const {
     } else if (setupSource !== canonicalSetupHelper) {
       failures.push(
         `skills/${directoryName}/scripts/setup.ts is out of sync with maintainer tooling`
+      );
+    }
+
+    if (backfillSource === null) {
+      failures.push(
+        `skills/${directoryName} is missing references/backfill.md`
+      );
+    } else {
+      for (const requiredBoundary of [
+        "initial backfill",
+        "complete accessible",
+        "`partial`",
+        "`failed`",
+      ]) {
+        if (!backfillSource.includes(requiredBoundary)) {
+          failures.push(
+            `skills/${directoryName}/references/backfill.md is missing comprehensive initial-backfill boundary: ${requiredBoundary}`
+          );
+        }
+      }
+    }
+
+    if (onboardingSource === null) {
+      failures.push(
+        `skills/${directoryName} is missing references/onboarding.md`
+      );
+    } else if (
+      !(
+        onboardingSource.includes("## Final history question") &&
+        onboardingSource.includes(
+          "immediately before the confirmation receipt"
+        ) &&
+        onboardingSource.includes("include the full backfill") &&
+        onboardingSource.includes("Do not require a") &&
+        onboardingSource.includes("“Review it now” approval")
+      )
+    ) {
+      failures.push(
+        `skills/${directoryName}/references/onboarding.md must default the full backfill and offer opt-out last`
       );
     }
   }

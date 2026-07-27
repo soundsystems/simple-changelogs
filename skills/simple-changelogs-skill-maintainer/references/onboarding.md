@@ -32,15 +32,18 @@ policy, or trustworthy evidence.
 
 Summarize concrete findings in one short paragraph, then offer:
 
-- **Use recommended setup** — Apply evidence-backed safe defaults. Ask only
-  about released-history review when released history exists.
+- **Use recommended setup** — Apply evidence-backed safe defaults. When
+  released history exists, include the full backfill and ask last only whether
+  the user wants to defer or decline it.
 - **Customize** — Ask only the unresolved questions below.
 - **Use preferences for this run only** — Apply the choices to the current task
   without writing policy; onboarding appears again next time.
 
 The recommended path uses a developer history, hidden agent-and-time audit
 comments, and `ask` for a missing release-note destination. With no released
-history, record `not-applicable`. With released history, never infer an answer.
+history, record `not-applicable`. With released history, include a comprehensive
+initial backfill by default and offer deferral or refusal as the final
+onboarding choice. Record nothing until the user confirms the setup receipt.
 
 ## Customized questions
 
@@ -71,11 +74,6 @@ Ask what to do when a release needs a new release-note destination:
 destination. It never grants deployment, publication, store submission, hosted
 release, new-audience, or internal-information authority.
 
-When released history exists, offer Review it now (`partial` until verified,
-then `completed`), Maybe later (`deferred`), or Leave existing history alone
-(`declined`). With no released history, use `not-applicable` without asking.
-Silence records nothing.
-
 ## Preference scope
 
 Offer repository, all-projects solo-developer, or run-only scope.
@@ -101,6 +99,17 @@ The global path is:
 
 `SIMPLE_CHANGELOGS_CONFIG_DIR` overrides the containing directory for
 deterministic automation.
+
+## Final history question
+
+After every other unresolved onboarding choice, ask about released history
+last, immediately before the confirmation receipt. State that the recommended
+setup includes a comprehensive initial backfill (`partial` until verified, then
+`completed`) and ask only whether to change that default to Maybe later
+(`deferred`) or Leave existing history alone (`declined`). Do not require a
+separate “Review it now” approval. With no released history, use
+`not-applicable` without asking. Silence records nothing; confirmation of the
+receipt accepts the displayed default.
 
 ## Confirm, apply, and continue
 

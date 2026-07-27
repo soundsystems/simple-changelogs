@@ -43,7 +43,8 @@ and inspect `.simple-changelogs.json`.
   `references/setup.md`, confirm and apply the selected setup with
   `distribution: "skill-repository"`, then continue the original request.
 - Read-only questions never create policy or changelog files.
-- Existing released history requires an explicit audit disposition.
+- Existing released history defaults to a full initial backfill after the user
+  confirms onboarding; the final question offers deferral or refusal.
 
 Repository instructions take precedence for package layout, release source,
 versioning, eval requirements, publication flow, and generated mirrors.

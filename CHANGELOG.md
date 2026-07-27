@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recommended onboarding now includes a comprehensive initial backfill of every
+  historic change from the oldest trustworthy evidence through setup across all
+  six Simple Changelogs distributions. The final history question offers only
+  defer or decline opt-outs, and confirming the setup receipt starts the
+  default without separate “Review it now” approval.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-26T23:37:21-05:00" -->
 - First-time setup now offers a short recommended or customized onboarding
   conversation, records confirmed repository or solo-developer preferences,
   leaves read-only work untouched, and resumes the original changelog task

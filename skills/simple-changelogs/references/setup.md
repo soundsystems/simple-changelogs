@@ -124,10 +124,12 @@ For authorized setup:
    `developerChangelog: "optional"`.
 3. When no released history exists, write the current guidance version with
    `backfillStatus: "not-applicable"`.
-4. When released history exists, first check whether the current request already
-   and explicitly decides the audit. Use that decision when its scope is clear;
-   otherwise explain the current guidance briefly and ask once whether to audit
-   that history. Do not repeat permission the user already granted.
+4. When released history exists, default initial setup to a comprehensive audit
+   of the complete accessible history. Honor a current request that already
+   defers or declines it; otherwise present the full backfill as the recommended
+   default and ask, as the final onboarding question, only whether the user
+   wants to defer or decline. Confirmation accepts `partial` and starts the
+   audit without a separate “Review it now” approval.
 5. Ask how mobile-specific release history should be placed: `web-tabs`,
    `web-page`, or `mobile-only`. Explain that shared cross-platform outcomes
    remain eligible for Web history under every choice and that new UI still
@@ -141,10 +143,9 @@ Setup does not authorize a new modal, route, screen, panel, navigation entry, or
 other product UI. Follow `references/release-note-surfaces.md` when later work
 needs a missing destination.
 
-If the user does not answer either setup question, do not guess a disposition
-or placement and do not write policy state that implies one. A declined or
-deferred historical audit does not prevent prospective changelog work after
-that decision and the mobile placement are recorded.
+If the user does not confirm the setup receipt, do not write policy or changelog
+state. A declined or deferred historical audit does not prevent prospective
+changelog work after that decision and the mobile placement are recorded.
 
 ## One Prompt per Guidance Version
 
