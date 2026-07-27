@@ -26,8 +26,12 @@
     phrases, so reflowing a paragraph no longer breaks the suite while a real
     wording change still does. Verified by reflowing the sentence to the wrap
     that previously failed and confirming the suite passes.
-  - `PLATFORM_ROLE_ABSENCE_PATTERN` (line 28) carries the same `\s+` band-aid
-    and is left alone here as unrelated scope.
+  - Applied the same hardening to the three other patterns carrying that
+    band-aid: `RECORDED_DISPOSITION_PATTERN`, `SHARED_RELEASE_SCOPE_PATTERN`,
+    and `WRONG_SURFACE_EXCLUSION_PATTERN` (wrong-platform/wrong-role absence).
+    Each now compares whitespace-collapsed text. Mutation-checked: altering the
+    role-absence wording in a distribution's `automation-verification.md` fails
+    the suite, and restoring it passes.
 <!-- simple-changelogs-signature agent="claude-opus-5" at="2026-07-27T03:20:00-05:00" -->
 - Corrected `publish-skill` ownership classification:
   - `SKILL.md` and `references/release-map.md` now capture a concrete baseline
