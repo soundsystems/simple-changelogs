@@ -148,13 +148,24 @@ checkpoint already counted repository instructions among the signals selecting a
 distribution, but no part of setup established that signal, so it had to be
 written by hand.
 
-The offer requires explicit confirmation, since an agent-instruction file
-governs agent behavior beyond changelog work. It writes a pointer only: when the
-decision is due, the requirement to state the outcome even when no entry is
-needed, and which distribution owns the decision. Classification, exclusions,
-and wording stay in the skill. A hand-written block that restates them becomes a
-second copy that drifts independently and is read on every turn, while the
-skill's own text is read only once an agent already decided to open it.
+The offer follows the preference scope already chosen. Repository scope targets
+the repository's own instruction file; all-projects scope targets the user's
+global instruction file, so a solo developer who keeps one file across projects
+is asked once rather than once per repository; run-only scope writes nothing.
+
+Every write requires explicit confirmation, since an agent-instruction file
+governs agent behavior beyond changelog work, and the global file applies to
+every repository on that machine. A global pointer therefore stays
+distribution-neutral: it says a repository's own changelog skill owns the
+decision and names no distribution, path, or repository, matching the constraint
+already placed on global preferences.
+
+It writes a pointer only: when the decision is due, the requirement to state the
+outcome even when no entry is needed, and which skill owns the decision.
+Classification, exclusions, and wording stay in the skill. A hand-written block
+that restates them becomes a second copy that drifts independently and is read
+on every turn, while the skill's own text is read only once an agent already
+decided to open it.
 
 Repositories that already carry such a block can have it replaced in place. An
 existing pointer is updated rather than duplicated.

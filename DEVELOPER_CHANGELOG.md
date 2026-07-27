@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- Scoped the Repository-instruction pointer onboarding step and moved it after
+  the preference-scope question in all six distributions.
+  - It previously asked only about a repository file, and ran *before* the scope
+    question, so it asked for a file target before the flow knew whether the
+    user works per-repository at all. Repository scope now targets the
+    repository's instruction file, all-projects scope targets the user's global
+    one, and run-only writes nothing.
+  - A global pointer stays distribution-neutral -- no distribution, path, route,
+    or repository named -- matching the constraint already carried by global
+    preferences. Naming one would be wrong in any repository using a different
+    distribution or a local fork.
+  - The global file is called out as the higher-consequence write, since it
+    applies to every repository on the machine including ones this skill does
+    not serve. Both scopes remain ask-first.
+  - Amends the same unreleased guidance entry rather than adding a version:
+    the incomplete form shipped earlier the same day and nothing consumes it.
+  - Fixed the check that caught this. `manifest-coverage.check.ts` asserted the
+    pointer prose against raw file text, so a line break falling between any two
+    words failed it even though the wording was unchanged; the `\s+` in the
+    in-place-update pattern was a band-aid over the same problem at one known
+    wrap point. The assertions now collapse whitespace first and compare
+    phrases, so reflowing a paragraph no longer breaks the suite while a real
+    wording change still does. Verified by reflowing the sentence to the wrap
+    that previously failed and confirming the suite passes.
+  - Applied the same hardening to the three other patterns carrying that
+    band-aid: `RECORDED_DISPOSITION_PATTERN`, `SHARED_RELEASE_SCOPE_PATTERN`,
+    and `WRONG_SURFACE_EXCLUSION_PATTERN` (wrong-platform/wrong-role absence).
+    Each now compares whitespace-collapsed text. Mutation-checked: altering the
+    role-absence wording in a distribution's `automation-verification.md` fails
+    the suite, and restoring it passes.
+<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-07-27T03:20:00-05:00" -->
 - Corrected `publish-skill` ownership classification:
   - `SKILL.md` and `references/release-map.md` now capture a concrete baseline
     for checkouts, refs, status fingerprints, worktrees, proposals, and live
