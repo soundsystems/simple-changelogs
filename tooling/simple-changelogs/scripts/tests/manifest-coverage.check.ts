@@ -44,10 +44,15 @@ const FIXTURE_IDS = new Set([
   "routed-app",
   "single-changelog",
   "skill-package",
+  "surface-established-system",
+  "surface-mobile-store",
+  "surface-radix-app",
+  "surface-react-tailwind",
 ]);
 
 const REQUIRED_COVERAGE_TAGS = new Set([
   "backfill",
+  "design",
   "forks",
   "lifecycle",
   "major-releases",
@@ -135,6 +140,11 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-single-changelog-policy",
   "behavior-skill-maintenance-regression",
   "behavior-superseded-developer-note",
+  "behavior-surface-components-established-system",
+  "behavior-surface-components-minimal-markup",
+  "behavior-surface-components-radix-preserved",
+  "behavior-surface-components-recommended",
+  "behavior-surface-history-seed-declined",
   "behavior-terse-policy-terms-update",
 ]);
 
@@ -196,8 +206,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(56);
-    expect(new Set(ids).size).toBe(56);
+    expect(ids).toHaveLength(61);
+    expect(new Set(ids).size).toBe(61);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

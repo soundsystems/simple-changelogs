@@ -64,6 +64,11 @@ omit the item from the narrow web destination, and report the mapping.
 
 ## Content budget
 
+After explicit user approval identifies the exact archive or compact web
+surface, read `references/surface-design.md` before product implementation.
+That reference owns component choice, presentation, seeding, and UI-defect
+checks; this file continues to own authorization and destination scope.
+
 Keep the full durable history in `CHANGELOG.md`. Compact surfaces select
 material highlights rather than copying every customer entry.
 

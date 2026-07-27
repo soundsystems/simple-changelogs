@@ -57,6 +57,12 @@ omit the item from the narrow mobile destination, and report the mapping.
 
 ## Content budget
 
+After explicit user approval identifies the exact in-app archive or compact
+sheet, read `references/surface-design.md` before product implementation. That
+reference owns native component choice, presentation, seeding, and UI-defect
+checks; this file continues to own authorization, app scope, and store
+isolation.
+
 Store notes are short, plain, and mobile-scoped:
 
 - Lead with user-visible capability or material repair outcomes.

@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- Added release-note surface design and component-source contracts:
+  - `references/surface-design.md` now ships in the full, web, mobile, web+CMS,
+    and CMS-only distributions, with Web, native, and authenticated-operator
+    guidance routed from each owning skill and surface reference.
+  - Setup always emits `release-note-surface-offer` for those five
+    distributions when policy is absent, while destination verification remains
+    evidence-gated and skill-repository onboarding remains surface-free.
+  - Inspection reports `designSystemEvidence` from dependencies, component
+    configuration, repository-owned library paths, and native toolkits. It
+    distinguishes established systems from unstyled primitives, defaults proven
+    systems to `project-components`, and otherwise requests an explicit
+    component-source choice.
+  - The optional `newReleaseNoteSurfaceComponents` policy field is synchronized
+    across repository and CMS schemas, setup-result schemas, TypeScript types,
+    runtime validators, helper selection and persistence, and the
+    `--surface-components` CLI contract. The previously omitted
+    `mobileReleaseNotePlacement` setup-result fields were added at the same
+    closed-schema boundary.
+  - Surface receipts keep history seeding independently optional: complete
+    eligible canonical history, a narrower confirmed scope, or no seed. The
+    runner vocabulary now includes `SURFACE_COMPONENTS_SELECTED`,
+    `SURFACE_DEPENDENCY_ADDED`, `SURFACE_HISTORY_SEEDED`, and
+    `SURFACE_HISTORY_SEED_DECLINED`.
+  - Four new fixtures and five behavior evaluations cover the Base UI
+    recommendation, minimal markup, retained Radix, an established design
+    system, native components, dependency reporting, successful seeding, and a
+    declined seed; setup, schema-parity, manifest, and distribution checks
+    protect the same contracts, including CMS-only surface offers.
+  - Guidance versions advanced to full 7 and web, mobile, and web+CMS 6. The
+    full distribution's Guidance 6 mobile-placement invariant is now pinned to
+    its introduction version rather than the moving current version, matching
+    schema validation and regression coverage.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T01:38:30-05:00" -->
 - Added prospective release-note destination verification to app setup:
   - Setup inventory now reports `adjacentDestinations`, synchronized helper
     copies share the same behavior, and the setup-result schema and TypeScript

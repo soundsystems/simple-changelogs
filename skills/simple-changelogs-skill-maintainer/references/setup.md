@@ -23,7 +23,8 @@ file records decisions; it does not copy the skill's prose rules.
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
-  "newReleaseNoteSurfaces": "ask"
+  "newReleaseNoteSurfaces": "ask",
+  "newReleaseNoteSurfaceComponents": "minimal-markup"
 }
 ```
 
@@ -66,6 +67,18 @@ some history unchanged on purpose.
 - `allow`: documented ongoing permission for new release-note surfaces.
 - `existing-only`: update established destinations, but do not add another one
   without a new explicit request.
+
+`newReleaseNoteSurfaceComponents` is optional and accepts:
+
+- `project-components`: follow the established repository design system.
+- `recommended-web-components`: use the confirmed Base UI web recommendation.
+- `recommended-web-radix`: retain existing Radix primitives.
+- `platform-native-components`: follow the established native app toolkit.
+- `minimal-markup`: add no component-library dependency.
+
+Skill-repository onboarding does not offer product surfaces; this optional field
+is preserved only for schema portability and never grants product UI,
+dependency, deployment, or publication authority.
 
 The `guidance.version` is the newest guidance version for which the repository
 recorded a disposition. It is not proof that released history conforms. Current

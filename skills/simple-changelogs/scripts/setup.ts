@@ -42,6 +42,13 @@ const DISTRIBUTIONS = [
 ] as const;
 const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+const SURFACE_COMPONENT_SOURCES = [
+  "project-components",
+  "recommended-web-components",
+  "recommended-web-radix",
+  "platform-native-components",
+  "minimal-markup",
+] as const;
 const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "web-tabs",
   "web-page",
@@ -85,13 +92,52 @@ const MOBILE_DEPENDENCIES = new Set([
   "expo",
   "react-native",
 ]);
+const COMPONENT_LIBRARY_DEPENDENCIES = new Set([
+  "@chakra-ui/react",
+  "@fluentui/react-components",
+  "@mantine/core",
+  "@mui/material",
+  "antd",
+  "bootstrap",
+  "primereact",
+  "vuetify",
+]);
+const MOBILE_COMPONENT_KIT_DEPENDENCIES = new Set([
+  "@rneui/themed",
+  "@shopify/restyle",
+  "react-native-paper",
+  "tamagui",
+]);
+const UTILITY_CSS_DEPENDENCIES = new Set(["nativewind", "tailwindcss"]);
+const GLUESTACK_DEPENDENCY = /^@gluestack-ui\//u;
+const RADIX_DEPENDENCY = /^@radix-ui\//u;
+const BASE_UI_DEPENDENCY = /^@base-ui-components\//u;
+// Distributions that can own a customer- or user-facing product surface, and
+// therefore receive the archive and compact-surface offer during onboarding.
+const PRODUCT_SURFACE_DISTRIBUTIONS = new Set<Distribution | "cms">([
+  "cms",
+  "full",
+  "mobile",
+  "web",
+  "web-cms",
+]);
+const DESIGN_SYSTEM_PATH =
+  /(?:^|\/)(\.storybook|design-system|ui-kit|packages\/ui)(?:\/|$)/u;
+const COMPONENT_CONFIG_FILE = "components.json";
+const SWIFT_SOURCE_PATH = /\.swift$/u;
+const SWIFT_UI_CONTENT = /\bSwiftUI\b/u;
+const GRADLE_SOURCE_PATH = /\.(?:gradle|kts)$/u;
+const COMPOSE_CONTENT =
+  /(?:androidx\.compose|composeOptions|org\.jetbrains\.compose)/u;
 const TEXT_EXTENSIONS = new Set([
   ".cjs",
   ".css",
+  ".gradle",
   ".html",
   ".js",
   ".json",
   ".jsx",
+  ".kts",
   ".md",
   ".mjs",
   ".php",
@@ -125,6 +171,7 @@ type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 type Distribution = (typeof DISTRIBUTIONS)[number];
 type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
 type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 type SetupStyle = (typeof SETUP_STYLES)[number];
@@ -140,12 +187,17 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 6,
-  mobile: 5,
+  full: 7,
+  mobile: 6,
   "skill-repository": 4,
-  web: 5,
-  "web-cms": 5,
+  web: 6,
+  "web-cms": 6,
 } as const satisfies Record<Distribution, number>;
+
+// Pinned to the guidance version that introduced the requirement. Comparing
+// against the current version would silently retire the invariant on the next
+// guidance bump.
+const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
 
 interface RepoPolicy {
   developerChangelog: DeveloperChangelogPolicy;
@@ -155,6 +207,7 @@ interface RepoPolicy {
     version: number;
   };
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
@@ -170,6 +223,7 @@ interface CmsPolicy {
     backfillStatus: BackfillStatus;
     version: 1;
   };
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   schemaVersion: 1;
 }
@@ -204,6 +258,7 @@ interface Inventory {
     releasedHeadings: number;
   }[];
   cmsEvidence: string[];
+  designSystemEvidence: string[];
   destinations: string[];
   developerHistoryEvidence: string[];
   releasedHistoryCount: number;
@@ -219,16 +274,19 @@ interface Selection {
   backfillStatus?: BackfillStatus;
   developerChangelog?: DeveloperChangelogPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
 }
 
-type CompleteSelection = Required<
-  Omit<Selection, "mobileReleaseNotePlacement">
-> &
-  Pick<Selection, "mobileReleaseNotePlacement">;
+type OptionalSelectionKeys =
+  | "mobileReleaseNotePlacement"
+  | "newReleaseNoteSurfaceComponents";
+
+type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
+  Pick<Selection, OptionalSelectionKeys>;
 
 interface WriteRecord {
   kind:
@@ -279,6 +337,7 @@ export interface ApplyOptions extends InspectOptions {
   confirm?: boolean;
   developerChangelog?: DeveloperChangelogPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
+  newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
@@ -332,7 +391,11 @@ const validateRepoPolicy = (
           "signatures",
           "newReleaseNoteSurfaces",
         ],
-        ["distribution", "mobileReleaseNotePlacement"]
+        [
+          "distribution",
+          "mobileReleaseNotePlacement",
+          "newReleaseNoteSurfaceComponents",
+        ]
       )
     )
   ) {
@@ -358,6 +421,12 @@ const validateRepoPolicy = (
     errors.push("newReleaseNoteSurfaces is unsupported");
   }
   if (
+    value.newReleaseNoteSurfaceComponents !== undefined &&
+    !oneOf(value.newReleaseNoteSurfaceComponents, SURFACE_COMPONENT_SOURCES)
+  ) {
+    errors.push("newReleaseNoteSurfaceComponents is unsupported");
+  }
+  if (
     value.mobileReleaseNotePlacement !== undefined &&
     !oneOf(value.mobileReleaseNotePlacement, MOBILE_RELEASE_NOTE_PLACEMENTS)
   ) {
@@ -379,7 +448,7 @@ const validateRepoPolicy = (
   if (
     isRecord(value.guidance) &&
     typeof value.guidance.version === "number" &&
-    value.guidance.version >= GUIDANCE_VERSIONS.full &&
+    value.guidance.version >= MOBILE_PLACEMENT_MIN_GUIDANCE &&
     (value.distribution === undefined || value.distribution === "full") &&
     value.mobileReleaseNotePlacement === undefined
   ) {
@@ -406,13 +475,17 @@ const validateCmsPolicy = (
   if (
     !(
       isRecord(value) &&
-      hasExactKeys(value, [
-        "schemaVersion",
-        "guidance",
-        "changelogPath",
-        "cmsSurface",
-        "newReleaseNoteSurfaces",
-      ])
+      hasExactKeys(
+        value,
+        [
+          "schemaVersion",
+          "guidance",
+          "changelogPath",
+          "cmsSurface",
+          "newReleaseNoteSurfaces",
+        ],
+        ["newReleaseNoteSurfaceComponents"]
+      )
     )
   ) {
     return { errors: ["CMS policy has missing or unknown fields"] };
@@ -452,6 +525,12 @@ const validateCmsPolicy = (
   }
   if (!oneOf(value.newReleaseNoteSurfaces, SURFACE_POLICIES)) {
     errors.push("CMS newReleaseNoteSurfaces is unsupported");
+  }
+  if (
+    value.newReleaseNoteSurfaceComponents !== undefined &&
+    !oneOf(value.newReleaseNoteSurfaceComponents, SURFACE_COMPONENT_SOURCES)
+  ) {
+    errors.push("CMS newReleaseNoteSurfaceComponents is unsupported");
   }
   return errors.length === 0
     ? { errors, value: value as unknown as CmsPolicy }
@@ -640,7 +719,113 @@ const readSmallText = async (path: string): Promise<string> => {
   }
 };
 
-const inspectInventory = async (root: string): Promise<Inventory> => {
+const dependencyNames = (value: unknown): string[] => {
+  if (!isRecord(value)) {
+    return [];
+  }
+  const sections = ["dependencies", "devDependencies"];
+  return sections.flatMap((section) => {
+    const dependencies = value[section];
+    return isRecord(dependencies) ? Object.keys(dependencies) : [];
+  });
+};
+
+const readPackageDependencies = async (root: string): Promise<string[]> => {
+  try {
+    const packageJson = JSON.parse(
+      await readFile(join(root, "package.json"), "utf8")
+    ) as unknown;
+    return dependencyNames(packageJson);
+  } catch {
+    // package.json is optional inspection evidence.
+    return [];
+  }
+};
+
+const designSystemDependencyEvidence = (dependencies: string[]): string[] =>
+  dependencies.flatMap((name) => {
+    if (COMPONENT_LIBRARY_DEPENDENCIES.has(name)) {
+      return [`Component library dependency: ${name}`];
+    }
+    if (
+      MOBILE_COMPONENT_KIT_DEPENDENCIES.has(name) ||
+      GLUESTACK_DEPENDENCY.test(name)
+    ) {
+      return [`Mobile component kit dependency: ${name}`];
+    }
+    return [];
+  });
+
+const nativeToolkitFor = (
+  lowerPath: string,
+  content: string
+): string | undefined => {
+  if (SWIFT_SOURCE_PATH.test(lowerPath) && SWIFT_UI_CONTENT.test(content)) {
+    return "SwiftUI";
+  }
+  if (GRADLE_SOURCE_PATH.test(lowerPath) && COMPOSE_CONTENT.test(content)) {
+    return "Jetpack Compose";
+  }
+};
+
+interface FileEvidence {
+  adjacentDestination: boolean;
+  authenticationRelated: boolean;
+  cmsPath: boolean;
+  componentConfiguration: boolean;
+  designSystemPath: string | undefined;
+  destination: boolean;
+  localPath: string;
+  nativeToolkit: string | undefined;
+}
+
+interface EvidenceSets {
+  adjacentDestinations: Set<string>;
+  cmsEvidence: Set<string>;
+  designSystemEvidence: Set<string>;
+  destinations: Set<string>;
+}
+
+const collectFileEvidence = (
+  fileEvidence: FileEvidence[],
+  sets: EvidenceSets
+): void => {
+  for (const evidence of fileEvidence) {
+    const { localPath } = evidence;
+    if (evidence.adjacentDestination) {
+      sets.adjacentDestinations.add(localPath);
+    }
+    if (evidence.destination) {
+      sets.destinations.add(localPath);
+    }
+    if (evidence.componentConfiguration) {
+      sets.designSystemEvidence.add(
+        `Component configuration file: ${COMPONENT_CONFIG_FILE}`
+      );
+    }
+    if (evidence.designSystemPath) {
+      sets.designSystemEvidence.add(
+        `Repository-owned component library path: ${evidence.designSystemPath}`
+      );
+    }
+    if (evidence.nativeToolkit) {
+      sets.designSystemEvidence.add(
+        `Platform-native component toolkit: ${evidence.nativeToolkit}`
+      );
+    }
+    if (evidence.cmsPath) {
+      sets.cmsEvidence.add(`CMS path: ${localPath}`);
+    }
+    if (evidence.authenticationRelated) {
+      sets.cmsEvidence.add(`Authentication-related code: ${localPath}`);
+    }
+  }
+};
+
+const inspectInventory = async (
+  root: string,
+  dependencies: string[]
+): Promise<Inventory> => {
   const publicPath = join(root, "CHANGELOG.md");
   const developerPath = join(root, "DEVELOPER_CHANGELOG.md");
   const [publicReleases, developerReleases, files] = await Promise.all([
@@ -655,13 +840,16 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
   const destinations = new Set<string>();
   const adjacentDestinations = new Set<string>();
   const cmsEvidence = new Set<string>();
+  const designSystemEvidence = new Set(
+    designSystemDependencyEvidence(dependencies)
+  );
   const fileEvidence = await Promise.all(
     files.map(async (path) => {
       const localPath = relative(root, path).split(sep).join("/");
       const lowerPath = localPath.toLowerCase();
+      const content = await readSmallText(path);
       const authenticationRelated =
-        AUTH_RELATED_PATH.test(lowerPath) &&
-        AUTH_RELATED_CONTENT.test(await readSmallText(path));
+        AUTH_RELATED_PATH.test(lowerPath) && AUTH_RELATED_CONTENT.test(content);
       return {
         adjacentDestination:
           path !== publicPath &&
@@ -670,30 +858,24 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
           ADJACENT_UPDATE_DESTINATION_PATH.test(lowerPath),
         authenticationRelated,
         cmsPath: CMS_PATH.test(lowerPath),
+        componentConfiguration: localPath === COMPONENT_CONFIG_FILE,
+        designSystemPath: DESIGN_SYSTEM_PATH.exec(lowerPath)?.[1],
         destination:
           path !== publicPath &&
           path !== developerPath &&
           !NON_DESTINATION_FILES.has(localPath) &&
           RELEASE_DESTINATION_PATH.test(lowerPath),
         localPath,
+        nativeToolkit: nativeToolkitFor(lowerPath, content),
       };
     })
   );
-  for (const evidence of fileEvidence) {
-    const { localPath } = evidence;
-    if (evidence.adjacentDestination) {
-      adjacentDestinations.add(localPath);
-    }
-    if (evidence.destination) {
-      destinations.add(localPath);
-    }
-    if (evidence.cmsPath) {
-      cmsEvidence.add(`CMS path: ${localPath}`);
-    }
-    if (evidence.authenticationRelated) {
-      cmsEvidence.add(`Authentication-related code: ${localPath}`);
-    }
-  }
+  collectFileEvidence(fileEvidence, {
+    adjacentDestinations,
+    cmsEvidence,
+    designSystemEvidence,
+    destinations,
+  });
   const cmsChangelogPath = join(root, DEFAULT_CMS_CHANGELOG);
   let cmsReleased = 0;
   if (existsSync(cmsChangelogPath)) {
@@ -728,6 +910,7 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
       },
     ],
     cmsEvidence: [...cmsEvidence].sort(),
+    designSystemEvidence: [...designSystemEvidence].sort(),
     destinations: [...destinations].sort(),
     developerHistoryEvidence,
     releasedHistoryCount: Math.max(
@@ -738,35 +921,39 @@ const inspectInventory = async (root: string): Promise<Inventory> => {
   };
 };
 
-const dependencyNames = (value: unknown): string[] => {
-  if (!isRecord(value)) {
-    return [];
+const componentStackEvidence = (dependencies: string[]): string[] => {
+  const evidence: string[] = [];
+  if (dependencies.some((name) => RADIX_DEPENDENCY.test(name))) {
+    evidence.push("Unstyled Radix component primitives are present");
   }
-  const sections = ["dependencies", "devDependencies"];
-  return sections.flatMap((section) => {
-    const dependencies = value[section];
-    return isRecord(dependencies) ? Object.keys(dependencies) : [];
-  });
+  if (dependencies.some((name) => BASE_UI_DEPENDENCY.test(name))) {
+    evidence.push("Unstyled Base UI component primitives are present");
+  }
+  if (dependencies.some((name) => UTILITY_CSS_DEPENDENCIES.has(name))) {
+    evidence.push("Utility CSS is present");
+  }
+  if (dependencies.includes("react")) {
+    evidence.push("Package metadata indicates a React component model");
+  }
+  return evidence;
 };
 
-const inspectProjectEvidence = async (
+const inspectProjectEvidence = (
   root: string,
-  inventory: Inventory
-): Promise<string[]> => {
-  const evidence = new Set<string>();
-  try {
-    const packageJson = JSON.parse(
-      await readFile(join(root, "package.json"), "utf8")
-    ) as unknown;
-    const dependencies = dependencyNames(packageJson);
-    if (dependencies.some((name) => WEB_DEPENDENCIES.has(name))) {
-      evidence.add("Package metadata indicates a web application");
-    }
-    if (dependencies.some((name) => MOBILE_DEPENDENCIES.has(name))) {
-      evidence.add("Package metadata indicates a mobile application");
-    }
-  } catch {
-    // package.json is optional inspection evidence.
+  inventory: Inventory,
+  dependencies: string[]
+): string[] => {
+  const evidence = new Set(componentStackEvidence(dependencies));
+  if (dependencies.some((name) => WEB_DEPENDENCIES.has(name))) {
+    evidence.add("Package metadata indicates a web application");
+  }
+  if (dependencies.some((name) => MOBILE_DEPENDENCIES.has(name))) {
+    evidence.add("Package metadata indicates a mobile application");
+  }
+  if (inventory.designSystemEvidence.length > 0) {
+    evidence.add(
+      "An established design system or component library is present"
+    );
   }
   if (existsSync(join(root, "ios")) || existsSync(join(root, "android"))) {
     evidence.add("Native mobile project directories are present");
@@ -898,6 +1085,10 @@ const unresolvedFor = (
       "cms-changelog-path"
     );
   }
+  const policyAbsent =
+    installed === "cms"
+      ? cmsPolicy.state === "absent"
+      : policy.state === "absent";
   if (
     installed !== "cms" &&
     installed !== "skill-repository" &&
@@ -906,6 +1097,16 @@ const unresolvedFor = (
       inventory.adjacentDestinations.length > 0)
   ) {
     unresolved.push("release-note-destination-verification");
+  }
+  if (PRODUCT_SURFACE_DISTRIBUTIONS.has(installed) && policyAbsent) {
+    unresolved.push("release-note-surface-offer");
+  }
+  if (
+    installed !== "skill-repository" &&
+    policyAbsent &&
+    inventory.designSystemEvidence.length === 0
+  ) {
+    unresolved.push("release-note-surface-components");
   }
   if (installed !== "cms" && policy.state === "absent") {
     unresolved.push("preference-scope");
@@ -974,6 +1175,7 @@ export const inspectRepository = async (
   const root = resolve(options.repo);
   const installed = options.distribution ?? distributionFromInstall();
   const taskMode = options.taskMode ?? "write";
+  const dependencies = await readPackageDependencies(root);
   const [policy, cmsPolicy, globalPreferences, inventory] = await Promise.all([
     readState(join(root, POLICY_FILENAME), validateRepoPolicy),
     readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
@@ -981,9 +1183,9 @@ export const inspectRepository = async (
       resolveGlobalPreferencesPath(options.configDirectory),
       validateGlobalPreferences
     ),
-    inspectInventory(root),
+    inspectInventory(root, dependencies),
   ]);
-  const projectEvidence = await inspectProjectEvidence(root, inventory);
+  const projectEvidence = inspectProjectEvidence(root, inventory, dependencies);
   const detection = detectDistribution(
     installed,
     policy,
@@ -1281,6 +1483,11 @@ const selectionFrom = (
     developerChangelog:
       options.developerChangelog ?? defaults.developerChangelog,
     mobileReleaseNotePlacement: options.mobileReleaseNotePlacement,
+    newReleaseNoteSurfaceComponents:
+      options.newReleaseNoteSurfaceComponents ??
+      (inspect.inventory.designSystemEvidence.length > 0
+        ? "project-components"
+        : undefined),
     newReleaseNoteSurfaces:
       options.newReleaseNoteSurfaces ??
       (installed === "cms" ? "existing-only" : defaults.newReleaseNoteSurfaces),
@@ -1307,19 +1514,26 @@ const blockResult = (
 const cmsPolicyFor = (
   selection: CompleteSelection,
   options: ApplyOptions
-): CmsPolicy => ({
-  changelogPath: options.cmsChangelog ?? DEFAULT_CMS_CHANGELOG,
-  cmsSurface: {
-    access: "authenticated-operators",
-    route: options.cmsRoute ?? "",
-  },
-  guidance: {
-    backfillStatus: selection.backfillStatus,
-    version: 1,
-  },
-  newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "existing-only",
-  schemaVersion: 1,
-});
+): CmsPolicy => {
+  const policy: CmsPolicy = {
+    changelogPath: options.cmsChangelog ?? DEFAULT_CMS_CHANGELOG,
+    cmsSurface: {
+      access: "authenticated-operators",
+      route: options.cmsRoute ?? "",
+    },
+    guidance: {
+      backfillStatus: selection.backfillStatus,
+      version: 1,
+    },
+    newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "existing-only",
+    schemaVersion: 1,
+  };
+  if (selection.newReleaseNoteSurfaceComponents !== undefined) {
+    policy.newReleaseNoteSurfaceComponents =
+      selection.newReleaseNoteSurfaceComponents;
+  }
+  return policy;
+};
 
 const globalFor = (
   selection: CompleteSelection,
@@ -1350,6 +1564,10 @@ const repoPolicyFor = (
   };
   if (installed === "full") {
     policy.mobileReleaseNotePlacement = selection.mobileReleaseNotePlacement;
+  }
+  if (selection.newReleaseNoteSurfaceComponents !== undefined) {
+    policy.newReleaseNoteSurfaceComponents =
+      selection.newReleaseNoteSurfaceComponents;
   }
   return policy;
 };
@@ -1813,6 +2031,7 @@ const valueOptionNames = new Set([
   "--scope",
   "--setup-style",
   "--signatures",
+  "--surface-components",
   "--task-mode",
 ]);
 const booleanOptionNames = new Set([
@@ -1879,6 +2098,10 @@ const parseCli = (argv: string[]): ParsedCli => {
       mobileReleaseNotePlacement: enumValue(
         "--mobile-placement",
         MOBILE_RELEASE_NOTE_PLACEMENTS
+      ),
+      newReleaseNoteSurfaceComponents: enumValue(
+        "--surface-components",
+        SURFACE_COMPONENT_SOURCES
       ),
       newReleaseNoteSurfaces: enumValue("--new-surfaces", SURFACE_POLICIES),
       repo: values.get("--repo") ?? ".",

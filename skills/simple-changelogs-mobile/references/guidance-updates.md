@@ -99,3 +99,21 @@ An approved historical audit may identify technical public archives that lost
 audience-relevant detail or destinations that exposed unrelated platform or
 role content. Preserve released history unless the audit separately authorizes
 the required meaning or visibility change.
+
+## Guidance 6
+
+Added native component selection and presentation verification for explicitly
+authorized in-app release-note archives and compact sheets. Established app
+systems remain preferred; otherwise confirmed work follows Expo UI, React
+Native, SwiftUI, Jetpack Compose, or the app's proven native kit.
+
+Onboarding now offers archive and compact-surface placement even without a
+candidate screen, records approved dependencies, and seeds a confirmed archive
+from complete app-eligible canonical history. Store metadata remains a
+separately scoped destination, and surface authority cannot reconstruct or
+rewrite released history.
+
+An approved audit may identify an authorized in-app surface that used the wrong
+toolkit, omitted eligible releases, duplicated store-only content, or failed
+accessibility, large-text, safe-area, containment, or theming checks. Preserve
+deployed visibility and released wording unless separately authorized.

@@ -18,12 +18,13 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "full",
   "guidance": {
-    "version": 6,
+    "version": 7,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
+  "newReleaseNoteSurfaceComponents": "project-components",
   "mobileReleaseNotePlacement": "mobile-only"
 }
 ```
@@ -68,6 +69,17 @@ some history unchanged on purpose.
 - `allow`: documented ongoing permission for new release-note surfaces.
 - `existing-only`: update established destinations, but do not add another one
   without a new explicit request.
+
+`newReleaseNoteSurfaceComponents` is optional and accepts:
+
+- `project-components`: follow the established repository design system.
+- `recommended-web-components`: use the confirmed Base UI web recommendation.
+- `recommended-web-radix`: retain existing Radix primitives.
+- `platform-native-components`: follow the established native app toolkit.
+- `minimal-markup`: add no component-library dependency.
+
+When absent, ask only after a release-note surface is authorized. The field
+never grants a new surface, dependency, deployment, or publication.
 
 `mobileReleaseNotePlacement` accepts:
 

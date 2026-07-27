@@ -99,3 +99,20 @@ An approved historical audit may identify technical public archives that lost
 audience-relevant detail or destinations that exposed unrelated platform or
 role content. Preserve released history unless the audit separately authorizes
 the required meaning or visibility change.
+
+## Guidance 6
+
+Added evidence-based component selection and presentation verification for
+explicitly authorized Web release-note archives and compact summaries.
+Established design systems remain preferred; React repositories without one
+can use a confirmed Base UI recommendation or retain existing Radix primitives.
+
+Onboarding now offers archive and compact-surface placement even without a
+candidate route, records approved dependencies, and seeds a confirmed archive
+from complete canonical history. Surface authority remains separate from
+permission to reconstruct or rewrite released history.
+
+An approved audit may identify an authorized Web surface that used the wrong
+component system, omitted eligible canonical releases, or failed accessibility,
+zoom, containment, theming, or server-rendering checks. Preserve deployed
+visibility and released wording unless separate authority permits the repair.

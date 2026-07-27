@@ -2289,6 +2289,236 @@
       ]
     },
     {
+      "id": "behavior-surface-components-recommended",
+      "suite": "behavior",
+      "fixture": "surface-react-tailwind",
+      "tags": ["design", "setup", "surfaces", "backfill"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Set up changelogs and add a customer release archive plus an automatic latest-release modal. Use the recommended choices.",
+          "assertions": [
+            {
+              "kind": "path.absent",
+              "target": "src/routes/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": "src/components/release-notes-modal.tsx",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_PLACEMENT_REQUIRED"
+            }
+          ]
+        },
+        {
+          "prompt": "Confirmed: create /release-notes and the automatic Release Notes modal, use the recommended shadcn/ui on Base UI component source and named dependencies, and seed the archive with the complete canonical history.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "src/routes/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/components/release-notes-modal.tsx",
+              "expected": true
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaceComponents",
+              "expected": "recommended-web-components"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/release-notes.tsx",
+              "expected": "1\\.1\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "src/routes/release-notes.tsx",
+              "expected": "1\\.0\\.0"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_COMPONENTS_SELECTED"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_DEPENDENCY_ADDED"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_HISTORY_SEEDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-surface-components-minimal-markup",
+      "suite": "behavior",
+      "fixture": "surface-react-tailwind",
+      "tags": ["design", "setup", "surfaces"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Create a dedicated Release Notes archive at /release-notes using minimal semantic markup and the existing CSS. Add no component dependency. This is explicit approval for that page only; seed all existing canonical releases.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "src/routes/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaceComponents",
+              "expected": "minimal-markup"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "package.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_COMPONENTS_SELECTED"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_HISTORY_SEEDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-surface-components-radix-preserved",
+      "suite": "behavior",
+      "fixture": "surface-radix-app",
+      "tags": ["design", "setup", "surfaces"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Create an explicitly approved Release Notes archive and latest-release dialog. Keep the existing Radix primitive layer, do not migrate it to Base UI, and seed the complete canonical history.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "src/components/dialog.tsx",
+              "expected": true
+            },
+            {
+              "kind": "path.exists",
+              "target": "src/routes/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaceComponents",
+              "expected": "recommended-web-radix"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "package.json",
+              "expected": "@base-ui-components"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_COMPONENTS_SELECTED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-surface-components-established-system",
+      "suite": "behavior",
+      "fixture": "surface-established-system",
+      "tags": ["design", "setup", "surfaces"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Create an explicitly approved Release Notes page and latest-release dialog using the repository's established component system. Seed the full canonical history and do not ask me to choose another library.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": "src/components/ui/dialog.tsx",
+              "expected": true
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaceComponents",
+              "expected": "project-components"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "package.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_COMPONENTS_SELECTED"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_HISTORY_SEEDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-surface-history-seed-declined",
+      "suite": "behavior",
+      "fixture": "surface-mobile-store",
+      "tags": ["design", "setup", "surfaces", "backfill"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Create an explicitly approved in-app Release Notes archive and latest-release sheet using platform-native components. Keep store notes separate. Seed only 1.2.0 in the in-app archive; do not include older releases.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "app/release-notes.tsx",
+              "expected": true
+            },
+            {
+              "kind": "path.exists",
+              "target": "app/release-notes-sheet.tsx",
+              "expected": true
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/newReleaseNoteSurfaceComponents",
+              "expected": "platform-native-components"
+            },
+            {
+              "kind": "text.match",
+              "target": "app/release-notes.tsx",
+              "expected": "1\\.2\\.0"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "app/release-notes.tsx",
+              "expected": "1\\.1\\.0"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "fastlane/metadata/android/en-US/changelogs/120.txt",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_HISTORY_SEED_DECLINED"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "behavior-single-changelog-policy",
       "suite": "behavior",
       "fixture": "single-changelog",

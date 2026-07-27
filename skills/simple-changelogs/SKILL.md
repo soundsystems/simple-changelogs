@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 6
+Current guidance version: 7
 
 ## Distribution Checkpoint
 
@@ -66,6 +66,7 @@ Read only the references needed for the current branch of work:
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |
+| Presentation and defect checks after an exact product surface is authorized | `references/surface-design.md` |
 | Final checks and repository-native automation | `references/automation-verification.md` |
 | Fork provenance, selection convention, or upstream drift | `references/fork-maintenance.md` |
 

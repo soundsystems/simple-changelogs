@@ -230,6 +230,12 @@ version and role.
 
 ## Authorized Missing-Surface Implementation
 
+After explicit user approval identifies the exact archive or compact surface,
+read `references/surface-design.md` before product implementation. That
+reference owns component-source selection, presentation constraints, canonical
+history seeding, and UI-defect verification; this file continues to own
+authorization, audience, timing, and destination scope.
+
 After authority is recorded, follow the application's existing architecture and
 design language. Use the same release-note source as other destinations, add a
 short maintenance comment near new parsing or data wiring, and keep manual

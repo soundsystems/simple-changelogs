@@ -25,10 +25,11 @@ reported and preserved.
 The inspection result provides policy state, detected distribution and
 evidence, history counts, release-note-named destination candidates, adjacent
 Updates, News, Blog, or Announcements candidates, developer-history and CMS
-evidence, global defaults, a recommendation, and unresolved questions. A path
-name is discovery evidence, not proof that the route is reachable or contains
-release history. Do not ask for a choice already established by current
-instructions, repository policy, or trustworthy evidence.
+evidence, component-library evidence, global defaults, a recommendation, and
+unresolved questions. A path name or dependency is discovery evidence, not
+proof that a route is reachable, contains release history, or uses that
+component stack for product UI. Do not ask for a choice already established by
+current instructions, repository policy, or trustworthy evidence.
 
 ## First screen
 
@@ -42,10 +43,11 @@ Summarize concrete findings in one short paragraph, then offer:
   without writing policy; onboarding appears again next time.
 
 The recommended path uses a developer history, hidden agent-and-time audit
-comments, and `ask` for a missing release-note destination. With no released
-history, record `not-applicable`. With released history, include a comprehensive
-initial backfill by default and offer deferral or refusal as the final
-onboarding choice. Record nothing until the user confirms the setup receipt.
+comments, `ask` for future missing destinations, and an archive plus compact
+release summary for product distributions. With no released history, record
+`not-applicable`. With released history, include a comprehensive initial
+backfill by default and offer deferral or refusal as the final onboarding
+choice. Record nothing until the user confirms the setup receipt.
 
 ## Customized questions
 
@@ -78,10 +80,10 @@ release, new-audience, or internal-information authority.
 
 ## Contextual product-surface choice
 
-For the `full`, `web`, `mobile`, and `web-cms` distributions, resolve this
-choice before the final history question when inspection finds a candidate
-destination or the original task asks to establish customer release notes.
-Skip it for CMS-only and skill-repository onboarding.
+For the `full`, `web`, `mobile`, `web-cms`, and CMS-only distributions,
+always offer this choice before the final history question. Skip it only for
+skill-repository onboarding. An explicit decline keeps product UI unchanged
+and does not block ordinary changelog work.
 
 Inspect each candidate's route wiring, navigation, content model, source,
 audience, and release coverage. Classify it as:
@@ -95,9 +97,8 @@ audience, and release coverage. Classify it as:
 
 Do not treat a route called Updates or Release Notes as an established archive
 from its name alone. When a suitable archive already exists, propose
-synchronizing and backfilling that archive instead of creating a duplicate.
-When only an adjacent or editorial destination exists, ask where the
-customer-facing release archive should live:
+synchronizing and seeding that archive instead of creating a duplicate. When
+no suitable archive exists, ask where the release archive should live:
 
 - **Add a Release Notes tab or section there** — use when the existing
   destination can keep editorial posts and chronological release history
@@ -128,6 +129,29 @@ summaries. Use **Changelog** by default for developer, administrator, operator,
 or maintainer-facing technical history. Treat “What's New” as a compact-summary
 pattern, not the default visible label. Preserve an established or explicitly
 requested product naming preference instead of renaming it automatically.
+
+## Component-source choice
+
+When the user selects a surface and inspection finds an established component
+library or repository-owned design system, use it and record
+`project-components`; do not ask a redundant styling question. State the
+evidence and let the user correct a false positive.
+
+When no established system is found, ask one question:
+
+- **Use the recommendation** — for React web projects, recommend shadcn/ui on
+  Base UI; when Radix primitives already exist, recommend shadcn/ui on Radix
+  without migrating the primitive layer; for mobile, recommend the app's
+  platform-native components.
+- **Use another component library** — record the library named by the user and
+  map the policy to the applicable project or platform component source.
+- **Use minimal markup** — add no component dependency and follow the
+  repository's existing CSS or native styling approach.
+
+Name every package the recommended option would add. A dependency is a product
+change, so the later receipt must include it. Follow the component library's
+current documentation instead of embedding version-sensitive imports or props
+in the guidance.
 
 ## Preference scope
 
@@ -170,9 +194,10 @@ receipt accepts the displayed default.
 
 Before durable writes, show a receipt naming the selected distribution,
 audiences, signatures, missing-destination behavior, any contextual product
-surface choices, history disposition, and every policy or preference path.
-State that setup grants no deployment, publication, store-submission,
-CMS-access, or unrelated released-history authority. Require confirmation.
+surface choices, component source, every dependency to add, archive-seeding
+disposition, history disposition, and every policy or preference path. State
+that setup grants no deployment, publication, store-submission, CMS-access, or
+unrelated released-history authority. Require confirmation.
 
 Then pass explicit choices to the helper:
 
@@ -190,8 +215,12 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
 
 Use `--scope all-projects` for the solo profile or `--scope run-only` for no
 durable state. The JSON result reports selected values and every write. Re-read
-and validate stored state after application, then resume the original changelog
-request.
+and validate stored state after application.
+
+A skill repository ships no product application, so onboarding here records no
+archive, compact summary, or component source. Skip the surface and
+component questions, leave `newReleaseNoteSurfaceComponents` unrecorded, and
+resume the original changelog request after the stored state revalidates.
 
 ## CMS branches
 

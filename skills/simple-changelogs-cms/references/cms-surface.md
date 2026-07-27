@@ -22,6 +22,11 @@ application.
 
 ## Rendering
 
+After explicit user approval identifies the authenticated operator surface,
+read `references/surface-design.md` before product implementation. That
+reference owns component choice, presentation, seeding, and UI-defect checks;
+this file continues to own authentication, route, and source isolation.
+
 Import and validate `CMS_CHANGELOG.json` through repository code. Render entries
 newest-first with their date, optional version, title, summary, and changes.
 Ignore unknown data only after the repository validator rejects it during CI;

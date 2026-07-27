@@ -56,6 +56,11 @@ CMS changelog work.
 
 ## Audience isolation
 
+After explicit user approval identifies the exact public or authenticated
+surface, read `references/surface-design.md` before product implementation.
+That reference owns component choice, presentation, seeding, and UI-defect
+checks; this file continues to own authorization and audience isolation.
+
 Classify and word an outcome independently for each channel.
 
 - Customer copy explains visible product outcomes with minimum necessary
