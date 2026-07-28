@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 7
+Current guidance version: 8
 Current CMS guidance version: 1
 
 ## Distribution checkpoint
@@ -81,8 +81,11 @@ access, release, source-of-truth, or surface rules.
    each audience.
 3. Edit each canonical source. Keep Markdown pending work under `Unreleased`;
    keep CMS JSON valid, newest-first, and stable-ID based.
-4. Reconcile only destinations and metadata proven to belong to the intended
-   release. Never render CMS-only detail into public history.
+4. Reconcile the intended release boundary. A production Web deployment is
+   always a product release: version and integrate every target-contained
+   public or developer `Unreleased` item first, then update only destinations
+   and metadata proven to share that release. Never render CMS-only detail into
+   public history.
 5. Run `bun scripts/validate-cms.ts /path/to/repository`, inspect the actual
    diff, verify the CMS access boundary, and run repository-native checks.
 6. Hand off source decisions by audience, release state, destination
@@ -106,4 +109,6 @@ Complete only when all affected sources validate, audience boundaries are
 preserved, public and protected destinations agree with their own source,
 released/pending state is honest, authentication is proven from code and tests,
 representative wrong-channel entries remain absent, and repository-native checks
-have fresh evidence.
+have fresh evidence. Web production is incomplete while its release version is
+unresolved, release reconciliation is unmerged, or target-contained work
+remains under `Unreleased`.

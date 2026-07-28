@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 2026-07-27
+
+- Web production deployments now count as product releases. Every change
+  included in the target must be assigned to a dated, versioned release and
+  integrated across established changelogs, release-note mirrors, and product
+  version metadata before production. Unresolved versions or unmerged
+  reconciliation block deployment; exact already-reconciled retries reuse
+  their release, and earlier violations are repaired forward.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T22:04:07-05:00" -->
 
 - Publishing now distinguishes preserved baseline state from active external
   work. Dirty or unrelated original checkouts and pre-existing worktrees,

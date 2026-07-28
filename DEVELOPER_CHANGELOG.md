@@ -1,6 +1,26 @@
 # Developer Changelog
 
-## Unreleased
+## 2026-07-27
+
+- Established production Web deployment as an unconditional product-release
+  boundary across the full, Web, and Web+CMS distributions:
+  - Every target-contained customer or developer `Unreleased` item must enter
+    one dated, versioned release, with canonical histories, established Web
+    mirrors, and proven product-version metadata merged into the deployment
+    target first.
+  - Pending items require evidence that they are absent from the target or
+    belong to another unshipped train. Version ambiguity, unmerged
+    reconciliation, or deploy-contained pending work blocks production.
+  - Retries and promotions may reuse a version only for the exact
+    already-reconciled target. Already-deployed violations require forward
+    reconciliation rather than rewriting deployed history.
+  - Advanced guidance from 8 to 9 for full and from 7 to 8 for Web and Web+CMS.
+    Synchronized setup version maps and deterministic setup coverage enforce
+    the new levels and distribution boundaries.
+  - Completed the repository's Guidance 5 historical audit. That guidance
+    changed prospective onboarding pointers only, so the released range through
+    2026-07-08 required no wording, audience, boundary, or mirror repair.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-27T22:04:07-05:00" -->
 
 - Scoped the Repository-instruction pointer onboarding step and moved it after
   the preference-scope question in all six distributions.

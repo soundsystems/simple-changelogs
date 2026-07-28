@@ -146,3 +146,23 @@ decided to open it.
 
 Repositories that already carry such a block can have it replaced in place. An
 existing pointer is updated rather than duplicated.
+
+## Guidance 8
+
+Production Web deployment is now always the product-release boundary. Before
+production, every `Unreleased` customer or developer item whose implementation
+is contained in the target must enter one dated, versioned release; established
+Web release-note mirrors and proven product-version metadata must be integrated
+into the canonical deployment target first.
+
+An item may remain pending only with evidence that it is absent from the target
+or belongs to another unshipped release train. An unresolved version, unmerged
+release reconciliation, or deploy-contained pending item blocks production.
+Retries and promotions of the exact same reconciled revision reuse its release
+version instead of creating a duplicate release.
+
+An approved audit may identify a production Web revision whose deploy-contained
+work remained under `Unreleased`, lacked a product release version, or shipped
+before its release mirrors were merged. Repair that state with a forward
+release-reconciliation change; do not rewrite deployed history merely to hide
+the gap.

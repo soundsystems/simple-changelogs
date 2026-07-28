@@ -119,11 +119,44 @@ This reconciliation is separate from ordinary feature-branch checks. A generic
 changelog check may validate structure while still allowing a non-empty
 `Unreleased` section, so agents must inspect release-bearing targets directly.
 
-## Public Deployments
+## Web Production Deployments
 
-When local evidence establishes that a production or public deployment is the
-release boundary, finalize the changelogs even if no branch merge is involved.
-Before deployment, move shipped customer outcomes into the matching heading,
-align documented existing destinations and affected version fields, and leave
-only genuinely unshipped work pending. Authorization for any missing product
-surface remains governed by `references/release-note-surfaces.md`.
+A production deployment of a Web product is a product release. It establishes
+release intent and the release boundary even when repository documentation does
+not separately name deployment as the boundary. Preview, branch, staging, and
+internal test deployments do not.
+
+Before Web production:
+
+1. Inspect the exact target revision and classify every nonempty `Unreleased`
+   customer and developer item by whether its implementation is contained in
+   that target.
+2. Assign every target-contained item to one dated, versioned release. Select
+   the version from repository policy or the rules in
+   `references/version-decisions.md`; an unresolved version blocks production.
+3. Move the included customer and developer entries into that release and
+   synchronize every established Web release-note destination and version field
+   proven to share it.
+4. Commit or propose the release reconciliation, merge it into the canonical
+   deployment target, and refresh that target before deployment.
+5. Verify the refreshed target contains the versioned release, its established
+   mirrors agree, and no target-contained item remains under `Unreleased`.
+
+An `Unreleased` item may remain only when evidence shows its implementation is
+absent from the production target or belongs to a separate, still-unshipped
+release train. Record that evidence in the handoff. Do not deploy while the
+version is ambiguous, release reconciliation is unmerged, or an item that would
+ship remains pending.
+
+If a completed deployment is later found to violate this invariant, mark the
+release incomplete and use a forward release-reconciliation change. Do not
+rewrite an already deployed release section merely to conceal the gap.
+
+## Other Public Deployments
+
+For non-Web public deployments, finalize changelogs when local evidence
+establishes the deployment as the release boundary. Before deployment, move
+shipped customer outcomes into the matching heading, align established
+destinations and affected version fields, and leave only genuinely unshipped
+work pending. Authorization for a missing product surface remains governed by
+`references/release-note-surfaces.md`.

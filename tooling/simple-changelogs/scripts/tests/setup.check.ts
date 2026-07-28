@@ -355,12 +355,12 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(8);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(9);
 
     const distributionVersions = [
-      ["web", 7],
+      ["web", 8],
       ["mobile", 7],
-      ["web-cms", 7],
+      ["web-cms", 8],
       ["skill-repository", 5],
     ] as const;
     const versions = await Promise.all(
@@ -704,7 +704,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 7 },
+      guidance: { backfillStatus: "not-applicable", version: 8 },
       newReleaseNoteSurfaces: "ask",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",
