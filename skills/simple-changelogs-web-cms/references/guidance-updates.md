@@ -168,3 +168,29 @@ work remained under `Unreleased`, lacked a product release version, or shipped
 before its public release mirrors were merged. Repair that state with a forward
 release-reconciliation change; do not rewrite deployed history merely to hide
 the gap or cross the CMS audience boundary.
+
+## Guidance 9
+
+Canonical public history, selected product UI, and authenticated CMS history
+are now explicit editorial layers. Keep qualifying durable customer outcomes in
+`CHANGELOG.md`, then decide independently which items belong in each public Web
+or operator destination. Structured feeds should preserve their canonical
+source while recording destination eligibility and surface-scoped copy.
+
+Selected public UI now favors material capabilities, workflows, onboarding,
+and important access, payment, privacy, safety, or trust outcomes. Routine
+repairs, generic performance work, internal changes, minor polish, copy churn,
+and quiet or self-explanatory features stay out unless product strategy
+explicitly calls for an announcement. CMS-only work remains isolated from the
+public channel.
+
+Selected copy now uses one concrete thought per bullet, calm declarative
+language, consistent product naming, and sparse emphasis for real user-facing
+terms. Supported emphasis must render semantically with the established product
+treatment; raw Markdown markers must never appear to users.
+
+An approved audit may identify a destination that mirrors an unrelated source,
+advertises quiet initial-development work, crosses the public/CMS boundary, or
+leaks raw emphasis markers. Keep canonical history intact while repairing
+eligibility, audience-scoped copy, and rendering under the destination's
+existing authority.
