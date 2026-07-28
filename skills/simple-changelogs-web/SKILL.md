@@ -13,7 +13,7 @@ store, CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established public web release-note destinations mirror selected highlights.
 
-Current guidance version: 7
+Current guidance version: 8
 
 ## Distribution checkpoint
 
@@ -69,8 +69,10 @@ release flow, source of truth, or surface boundary.
    include it in a web destination only when web or proven shared impact exists.
 3. Edit the established Markdown structure. Keep pending work under a nonempty
    `Unreleased` section and follow the recorded signature policy.
-4. For release-bearing work, reconcile the intended boundary and update only
-   metadata and existing web destinations proven to share that release.
+4. For release-bearing work, reconcile the intended boundary. A production Web
+   deployment is always a product release: version and integrate every
+   target-contained `Unreleased` item first, then update only metadata and
+   existing Web destinations proven to share that release.
 5. Review the actual diff and run repository-native checks.
 6. Hand off customer/developer decisions, release state, synchronized
    destinations, checks, and any authority still needed.
@@ -90,4 +92,6 @@ release flow, source of truth, or surface boundary.
 Complete only when changelog decisions are explicit, raw files and established
 web mirrors agree, pending/released boundaries are honest, required signatures
 are present, wrong-platform and wrong-role details remain absent, and relevant
-checks have fresh evidence.
+checks have fresh evidence. Production is incomplete while its release version
+is unresolved, release reconciliation is unmerged, or target-contained work
+remains under `Unreleased`.

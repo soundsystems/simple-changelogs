@@ -56,11 +56,16 @@ encode an uncertain or independently versioned relationship.
 
 ## Release Lifecycle
 
-- Release intent came from repository evidence before pending entries moved.
+- Release intent came from repository evidence before pending entries moved;
+  production Web deployment itself supplied that evidence when applicable.
 - `Unreleased` contains only genuine pending work and no empty placeholder.
 - Merge reconciliation accounted for all release-bearing inputs.
 - Released headings, dates, and established mirrors agree.
-- A deploy was not mistaken for a release without evidence connecting them.
+- Every production Web target resolves to a product release version, contains
+  its merged release reconciliation, and has no target-contained work left
+  under `Unreleased`.
+- Non-Web deploys were not mistaken for releases without evidence connecting
+  them.
 
 ## Version Alignment
 

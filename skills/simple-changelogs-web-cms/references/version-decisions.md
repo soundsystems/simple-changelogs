@@ -38,6 +38,29 @@ Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior
 or published package contract changes.
 
+## Web Production Release Identity
+
+Every production Web deployment must resolve to one product release version.
+Reuse an existing version only when the exact target revision was already
+reconciled into that version and the current action is a retry, promotion, or
+target repair of the same release. Otherwise select the next version before
+production.
+
+Target-contained `Unreleased` work must enter that version even when some items
+belong only in developer history. A production target change with no
+customer-facing note still receives the next patch release identity unless
+repository policy documents another product-version convention. Do not create
+an empty customer bullet to justify the version.
+
+This release identity does not make every package manifest share the product
+version. Continue to update only metadata proven to belong to the Web product
+release, and leave deployment IDs, build numbers, independently versioned
+packages, and remote-owned counters under their documented authorities.
+
+If the current version, bump level, or product-version source cannot be resolved
+from repository policy and release evidence, block production and ask for that
+decision. Do not deploy an unversioned target and repair the history afterward.
+
 ## Initial-Development Products
 
 SemVer uses `0.x.y` for initial development. It does not make those versions

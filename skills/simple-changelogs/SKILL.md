@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 8
+Current guidance version: 9
 
 ## Distribution Checkpoint
 
@@ -101,9 +101,10 @@ raw-markdown block you change.
 ### 4. Reconcile
 
 For release-bearing work, reconcile pending entries with the intended release
-boundary. Update only metadata and existing release-note destinations proven to
-belong to that same release flow, and filter each destination through its own
-scope map.
+boundary. A production Web deployment is always a product release: version and
+integrate every target-contained `Unreleased` item before deployment, then
+update only metadata and existing release-note destinations proven to belong to
+that release flow. Filter each destination through its own scope map.
 
 ### 5. Verify
 
@@ -158,7 +159,9 @@ The task is complete only when the changelog decision is explicit, affected raw
 files and established mirrors agree, pending/released boundaries are honest,
 required signatures are present, every affected destination contains only its
 relevant audience and platform outcomes, and relevant verification has fresh
-evidence.
+evidence. Web production is incomplete while its release version is unresolved,
+its release reconciliation is unmerged, or target-contained work remains under
+`Unreleased`.
 
 If blocked, leave resumable repository state and name the exact decision,
 authority, credential, or source-of-truth evidence that is missing.
