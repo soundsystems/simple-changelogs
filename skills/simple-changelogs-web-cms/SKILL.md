@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 8
+Current guidance version: 9
 Current CMS guidance version: 1
 
 ## Distribution checkpoint

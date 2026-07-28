@@ -147,3 +147,28 @@ decided to open it.
 
 Repositories that already carry such a block can have it replaced in place. An
 existing pointer is updated rather than duplicated.
+
+## Guidance 8
+
+Canonical Mobile history and selected in-app or store copy are now separate
+editorial layers. Keep qualifying durable outcomes in `CHANGELOG.md`, then make
+an independent inclusion decision for every app, platform, release train, and
+destination. Structured feeds should preserve canonical text while recording
+explicit eligibility and surface-scoped copy.
+
+Selected Mobile UI now favors material capabilities, workflows, onboarding,
+and important access, payment, privacy, safety, or trust outcomes. Routine
+repairs, generic performance work, internal changes, minor polish, copy churn,
+and quiet or self-explanatory features stay out unless product strategy
+explicitly calls for an announcement.
+
+Selected copy now uses one concrete thought per bullet, calm declarative
+language, consistent product naming, and sparse emphasis for real user-facing
+terms. Supported emphasis must render semantically with the native product
+treatment; raw Markdown markers must never appear to users.
+
+An approved audit may identify an in-app or store destination that mirrors the
+full changelog, crosses app boundaries, advertises quiet initial-development
+work, or leaks raw emphasis markers. Keep canonical history intact while
+repairing eligibility, scoped copy, and rendering under the destination's
+existing authority.

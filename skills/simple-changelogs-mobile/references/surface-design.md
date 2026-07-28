@@ -42,6 +42,22 @@ Record dismissal by product and release identity, return focus or accessibility
 position, and retain a manual path after dismissal. Timing, depth, and
 eligibility remain governed by `references/release-note-surfaces.md`.
 
+## Inline emphasis
+
+Treat supported inline Markdown as presentation data, not visible punctuation.
+Render `**named term**` as semantic strong emphasis or the native equivalent,
+using the product's established emphasis or accent token when one exists.
+Never expose raw emphasis delimiters such as `**` or `****` to users.
+
+Normalize an unambiguous doubled strong wrapper such as
+`****named term****` to one strong span. Treat other malformed or unmatched
+markers as a content error to correct at the source; do not guess at nesting or
+silently discard punctuation.
+
+Keep emphasis accessible without relying on color alone, escape or render
+untrusted text safely, and cover plain text, repeated terms, malformed markers,
+and emphasized text containing reserved characters in renderer tests.
+
 ## Verification
 
 Verify every authorized surface:

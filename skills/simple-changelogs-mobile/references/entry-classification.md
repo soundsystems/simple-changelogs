@@ -67,6 +67,26 @@ Exclude implementation details, raw enum names, migration numbers, pipeline
 markers, internal package names, or function names unless the requested audience
 explicitly needs technical release notes.
 
+## Selected Product Release-Note Copy
+
+After an item qualifies for canonical customer history, write any selected
+product-surface version as a compact editorial update:
+
+- Express one concrete idea per bullet.
+- Lead with the named user-facing capability or outcome, then state the
+  practical benefit when it is not self-evident.
+- Use calm, declarative language that matches the product's established voice.
+- Keep names, capitalization, punctuation, and grammatical shape consistent
+  across bullets in the same release.
+- Use emphasis sparingly for a real product term that helps readers scan; do
+  not decorate ordinary prose.
+
+Avoid hype, jokes that obscure meaning, blame, implementation proof, exhaustive
+background, and defect-confessional wording such as "fixed our broken login."
+Do not make a routine repair sound like a newly launched capability. Rewrite
+surface copy independently when a canonical history bullet is accurate but too
+detailed, too broad, or poorly shaped for the selected destination.
+
 ## Audience Profiles and Public Technical Ledgers
 
 `Public` describes who can reach a destination, not how technical its readers
@@ -91,6 +111,11 @@ recognize a resolved problem:
   debug options that the audience can safely use; and
 - narrow verified fixes and crashes when the established archive promises a
   comprehensive public patch ledger.
+
+An administrator-only capability belongs in canonical customer history only
+when administrators or operators are part of that history's established
+audience. Otherwise record it in the authorized operator history, and add a
+developer entry only when maintainers need technical context.
 
 An exhaustive ledger means every verified change relevant to that destination's
 promised audience and product surface, not every commit or internal change.

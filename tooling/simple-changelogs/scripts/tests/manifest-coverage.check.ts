@@ -912,6 +912,58 @@ describe("portable guidance consistency", () => {
     }
   });
 
+  test("packages curated product UI copy and semantic emphasis in every product distribution", async () => {
+    const skillsRoot = join(SKILL_ROOT, "..");
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-web",
+      "simple-changelogs-mobile",
+      "simple-changelogs-web-cms",
+    ];
+
+    const packages = await Promise.all(
+      distributions.map(async (distribution) => {
+        const referenceRoot = join(skillsRoot, distribution, "references");
+        const [classification, surfaces, design, verification] =
+          await Promise.all([
+            readFile(join(referenceRoot, "entry-classification.md"), "utf8"),
+            readFile(join(referenceRoot, "release-note-surfaces.md"), "utf8"),
+            readFile(join(referenceRoot, "surface-design.md"), "utf8"),
+            readFile(join(referenceRoot, "automation-verification.md"), "utf8"),
+          ]);
+        return { classification, design, surfaces, verification };
+      })
+    );
+
+    for (const { classification, design, surfaces, verification } of packages) {
+      expect(classification).toContain("Selected Product Release-Note Copy");
+      expect(classification).toContain("one concrete idea per bullet");
+      expect(classification).toContain(
+        "administrator-only capability belongs in canonical customer history only"
+      );
+      expect(
+        surfaces.includes("Product UI Editorial Selection") ||
+          surfaces.includes("Product UI editorial selection")
+      ).toBe(true);
+      expect(collapseWhitespace(surfaces)).toContain(
+        "require each item to earn inclusion"
+      );
+      expect(surfaces).toContain("badges, achievements, rewards, easter eggs");
+      expect(surfaces).toContain(
+        "defer the customer entry until disclosure no longer defeats"
+      );
+      expect(design).toContain("## Inline emphasis");
+      expect(design).toContain("semantic strong emphasis");
+      expect(design).toContain("Never expose raw emphasis delimiters");
+      expect(collapseWhitespace(design)).toContain(
+        "Normalize an unambiguous doubled strong wrapper"
+      );
+      expect(collapseWhitespace(verification)).toContain(
+        "raw `**` or `****` delimiters never reach visible copy"
+      );
+    }
+  });
+
   test("defaults initial backfills without broadening one-off surface answers", async () => {
     const setup = await readFile(
       join(SKILL_ROOT, "references", "setup.md"),

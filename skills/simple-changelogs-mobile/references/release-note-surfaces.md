@@ -55,6 +55,38 @@ and established structured tags as evidence. Do not filter by headings or
 keywords alone. If relevance remains ambiguous, preserve canonical history,
 omit the item from the narrow mobile destination, and report the mapping.
 
+## Product UI editorial selection
+
+Treat canonical customer history and selected product UI as separate editorial
+layers. Keep every qualifying durable outcome in `CHANGELOG.md`, but require
+each item to earn inclusion independently in every compact or in-product
+destination. When structured release data supports it, preserve canonical text
+and store explicit destination eligibility plus surface-scoped copy; do not
+delete history merely to quiet a product surface.
+
+Default product UI to material, useful changes that help a returning user
+discover or use a capability, understand a changed workflow, complete
+onboarding, or respond to an important access, payment, privacy, safety, or
+trust outcome. Omit routine fixes, generic performance work, internal or
+administrative changes, release plumbing, minor polish, copy churn, and
+self-explanatory background mechanics.
+
+Keep intentionally quiet or discoverable features out of release-note UI unless
+the current product strategy explicitly calls for an announcement. Examples
+include badges, achievements, rewards, easter eggs, experiments, and softly
+launched capabilities. For an initial-development product, apply an especially
+high bar to baseline repairs and performance claims; canonical history may
+remain broader without turning those items into product news.
+
+When public canonical history would itself spoil an intentionally discoverable
+feature or disclose an experiment too early, preserve the change in developer
+history and defer the customer entry until disclosure no longer defeats the
+product intent. Record that disposition; do not silently lose the history.
+
+An in-app or store destination must contain only copy selected for that app and
+release train. A separate surface is an audience boundary, not permission to
+repeat unrelated product behavior.
+
 ## Content budget
 
 After explicit user approval identifies the exact in-app archive or compact
