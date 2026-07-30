@@ -912,6 +912,36 @@ describe("portable guidance consistency", () => {
     }
   });
 
+  test("keeps keyword emphasis sparse and outcome-focused in every product distribution", async () => {
+    const skillsRoot = join(SKILL_ROOT, "..");
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-web",
+      "simple-changelogs-mobile",
+      "simple-changelogs-web-cms",
+    ];
+
+    const references = await Promise.all(
+      distributions.map((distribution) =>
+        readFile(
+          join(skillsRoot, distribution, "references", "surface-design.md"),
+          "utf8"
+        )
+      )
+    );
+
+    for (const reference of references) {
+      const collapsed = collapseWhitespace(reference);
+      expect(reference).toContain("## Inline emphasis");
+      expect(collapsed).toContain("smallest exact named product term");
+      expect(collapsed).toContain(
+        "Product and app surfaces, core components, filters"
+      );
+      expect(collapsed).toContain("capability and practical outcome");
+      expect(collapsed).toContain("without relying on color alone");
+    }
+  });
+
   test("defaults initial backfills without broadening one-off surface answers", async () => {
     const setup = await readFile(
       join(SKILL_ROOT, "references", "setup.md"),

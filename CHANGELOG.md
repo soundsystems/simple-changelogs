@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-30
+
+- Release-note surfaces now use sparse emphasis for named product terms such as
+  app surfaces, core components, filters, categories, and formats. Feature
+  summaries stay focused on the capability and practical outcome instead of
+  cataloging every supported control or interaction detail.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-30T16:05:31-05:00" -->
+
 ## 2026-07-27
 
 - Web production deployments now count as product releases. Every change
