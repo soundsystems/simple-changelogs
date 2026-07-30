@@ -12,9 +12,9 @@
   - Feature bullets stop at the capability and practical outcome instead of
     inventorying every emoji, gesture, shortcut, role recommendation, or
     transient control state.
-  - Advanced guidance from 9 to 10 for full, 8 to 9 for Web and Web+CMS, and 7
-    to 8 for Mobile. Synchronized every setup version map across packaged and
-    maintainer tooling.
+  - Advanced guidance from 10 to 11 for full, 9 to 10 for Web and Web+CMS, and
+    8 to 9 for Mobile. Synchronized every setup version map across packaged
+    and maintainer tooling.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-30T16:05:31-05:00" -->
 
 ## 2026-07-27

@@ -87,6 +87,10 @@ encode an uncertain or independently versioned relationship.
 
 - Existing public, mobile, documentation, and internal destinations use copy
   appropriate to their audience and platform.
+- Compact and in-product destinations include only deliberately selected
+  highlights; routine repairs, generic performance claims, internal work,
+  minor polish, and intentionally quiet features remain absent unless product
+  strategy explicitly approved their announcement.
 - Every affected destination has an evidence-backed scope map naming its
   audience, product or app, platform, release train, canonical source, positive
   inclusion rules, and explicit exclusions.
@@ -102,6 +106,9 @@ encode an uncertain or independently versioned relationship.
 - Web exposure of the Mobile feed matches `mobileReleaseNotePlacement`:
   labeled tabs, a separate linked page, or mobile-only destinations.
 - Renderers ignore raw HTML attribution comments.
+- Supported strong emphasis renders semantically with the established product
+  emphasis treatment, and raw `**` or `****` delimiters never reach visible
+  copy.
 - Missing product UI was not created or wired without explicit current-request
   authorization, documented repository policy, or stored permission.
 - Internal technical notes appear only where access policy authorizes the

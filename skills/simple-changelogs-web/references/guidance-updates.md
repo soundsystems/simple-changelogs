@@ -166,8 +166,31 @@ work remained under `Unreleased`, lacked a product release version, or shipped
 before its release mirrors were merged. Repair that state with a forward
 release-reconciliation change; do not rewrite deployed history merely to hide
 the gap.
-
 ## Guidance 9
+
+Canonical Web history and selected product UI are now separate editorial
+layers. Keep qualifying durable outcomes in `CHANGELOG.md`, then decide
+independently which items earn inclusion in each compact or in-product Web
+destination. Structured feeds should retain canonical text while storing
+explicit destination eligibility and surface-scoped copy.
+
+Product UI now defaults to material capabilities, workflows, onboarding, and
+important access, payment, privacy, safety, or trust outcomes. Routine repairs,
+generic performance work, internal changes, minor polish, copy churn, and quiet
+or self-explanatory features stay out unless product strategy explicitly calls
+for an announcement.
+
+Selected copy now uses one concrete thought per bullet, calm declarative
+language, consistent product naming, and sparse emphasis for real user-facing
+terms. Supported emphasis must render semantically with the established product
+treatment; raw Markdown markers must never appear to users.
+
+An approved audit may identify a Web destination that mirrors the full
+changelog, advertises quiet initial-development work, or leaks raw emphasis
+markers. Keep canonical history intact while repairing destination eligibility,
+surface copy, and rendering under the surface's existing authority.
+
+## Guidance 10
 
 Release-note surfaces now use semantic strong emphasis as a sparse scan anchor
 for named product vocabulary. Product and app surfaces, core components,
