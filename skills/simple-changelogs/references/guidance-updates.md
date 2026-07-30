@@ -189,7 +189,6 @@ work remained under `Unreleased`, lacked a product release version, or shipped
 before its release mirrors were merged. Repair that state with a forward
 release-reconciliation change; do not rewrite deployed history merely to hide
 the gap.
-
 ## Guidance 10
 
 Canonical customer history and selected product UI are now explicitly separate
@@ -217,3 +216,16 @@ changelog, exposes another platform's work, over-announces an
 initial-development repair, or displays raw emphasis markers. Preserve
 canonical history while repairing destination eligibility, scoped copy, and
 rendering under the authority already established for that surface.
+
+## Guidance 11
+
+Release-note surfaces now use semantic strong emphasis as a sparse scan anchor
+for named product vocabulary. Product and app surfaces, core components,
+filters, categories, formats, and other public product-contract terms are
+candidates when emphasis helps readers scan. Emphasize the smallest exact term
+and follow the product's established strong or accent treatment without relying
+on color alone.
+
+Feature bullets now stop at the capability and practical outcome. Do not
+inventory every emoji, gesture, shortcut, role-specific recommendation, or
+transient control state unless that detail is itself the announcement.

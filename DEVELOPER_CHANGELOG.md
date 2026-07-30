@@ -1,5 +1,22 @@
 # Developer Changelog
 
+## 2026-07-30
+
+- Added portable release-note keyword-emphasis and detail-budget guidance to
+  the full, Web, Web+CMS, and Mobile distributions:
+  - Semantic strong emphasis is a sparse scan anchor for the smallest exact
+    product term and follows the product's established strong or accent
+    treatment without relying on color alone.
+  - Product and app surfaces, core components, filters, categories, formats,
+    and other public product-contract nouns are explicit candidates.
+  - Feature bullets stop at the capability and practical outcome instead of
+    inventorying every emoji, gesture, shortcut, role recommendation, or
+    transient control state.
+  - Advanced guidance from 10 to 11 for full, 9 to 10 for Web and Web+CMS, and
+    8 to 9 for Mobile. Synchronized every setup version map across packaged
+    and maintainer tooling.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-07-30T16:05:31-05:00" -->
+
 ## 2026-07-27
 
 - Established production Web deployment as an unconditional product-release

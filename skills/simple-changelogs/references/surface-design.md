@@ -53,10 +53,19 @@ Normalize an unambiguous doubled strong wrapper such as
 markers as a content error to correct at the source; do not guess at nesting or
 silently discard punctuation.
 
+Use semantic strong emphasis as a sparse scan anchor for the smallest exact
+named product term. Product and app surfaces, core components, filters,
+categories, formats, and other public product-contract nouns are good
+candidates. Do not emphasize connective prose, descriptive filler, whole
+sentences, or every repeated noun.
+
+Keep feature bullets focused on the capability and practical outcome rather
+than inventorying every emoji, gesture, shortcut, role-specific recommendation,
+or transient control state.
+
 Keep emphasis accessible without relying on color alone, escape or render
 untrusted text safely, and cover plain text, repeated terms, malformed markers,
 and emphasized text containing reserved characters in renderer tests.
-
 ## Verification
 
 Verify every authorized surface:
@@ -74,6 +83,10 @@ Verify every authorized surface:
 11. Signature comments never become visible copy.
 12. Overlays respect sticky chrome, safe areas, and required notices.
 13. Server-rendered Web stacks have no unstyled flash or hydration mismatch.
+14. Named product terms use sparse semantic emphasis without turning whole
+    sentences into accent text.
+14. Named product terms use sparse semantic emphasis without turning whole
+    sentences into accent text.
 
 ## Seed from canonical history
 

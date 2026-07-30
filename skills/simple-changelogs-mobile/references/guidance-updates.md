@@ -147,7 +147,6 @@ decided to open it.
 
 Repositories that already carry such a block can have it replaced in place. An
 existing pointer is updated rather than duplicated.
-
 ## Guidance 8
 
 Canonical Mobile history and selected in-app or store copy are now separate
@@ -172,3 +171,16 @@ full changelog, crosses app boundaries, advertises quiet initial-development
 work, or leaks raw emphasis markers. Keep canonical history intact while
 repairing eligibility, scoped copy, and rendering under the destination's
 existing authority.
+
+## Guidance 9
+
+Release-note surfaces now use semantic strong emphasis as a sparse scan anchor
+for named product vocabulary. Product and app surfaces, core components,
+filters, categories, formats, and other public product-contract terms are
+candidates when emphasis helps readers scan. Emphasize the smallest exact term
+and follow the product's established strong or accent treatment without relying
+on color alone.
+
+Feature bullets now stop at the capability and practical outcome. Do not
+inventory every emoji, gesture, shortcut, role-specific recommendation, or
+transient control state unless that detail is itself the announcement.
