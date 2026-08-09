@@ -245,3 +245,15 @@ An approved historical audit may find public notes attached to a build
 identifier, unrelated product versions forced together, or build and development
 identifiers leaked into public copy. Preserve released history unless a separate
 historical rewrite is authorized.
+
+## Guidance 13
+
+Added public-product preference `releaseNoteLinks` with `when-useful`, `ask`,
+and `disabled` owner choices. The onboarding diagram separates a customer
+feature route from protected CMS navigation, and archive links are explicitly
+unaffected.
+
+An authorized review should verify that customer actions ship with the release
+and match audience, tenant, permission, flag, and environment eligibility.
+Record broken or over-broad links and their disposition. This setting never
+grants operator access or permission to expose administrator destinations.

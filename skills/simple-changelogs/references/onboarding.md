@@ -213,9 +213,29 @@ publication.
 Record the selected value as repository policy
 `releaseNoteEnvironmentScope`.
 
+When any product release-note destination is selected, ask **Should individual
+release items link directly to the feature they describe? Choose one:**
+
+```text
+Release item ── Open feature ──▶ Eligible app route or screen
+```
+
+1. **Link when useful — Recommended** — Add an action only when it materially
+   helps the eligible reader use, configure, or inspect the released feature.
+   Save `when-useful`.
+2. **Ask before linking** — Show the exact action label and destination, then
+   wait for owner approval before wiring it. Save `ask`.
+3. **No feature links** — Keep individual items informational. Save `disabled`.
+
+Explain that a new route is only a candidate: its release, stability, audience,
+authentication, role, tenant, platform, flag, and environment eligibility must
+all be verified. Structural navigation from a summary to the Release Notes
+archive remains available. Record the answer as repository policy
+`releaseNoteLinks`; never store it in all-projects preferences.
+
 The confirmed receipt must name the exact candidate classification, archive
-choice, environment scope, compact-surface choice, route or placement, and
-visible labels. That
+choice, environment scope, feature-link policy, compact-surface choice, route
+or placement, and visible labels. That
 confirmation authorizes only those named surfaces for the current task; it does
 not silently change the ongoing `newReleaseNoteSurfaces` policy.
 
@@ -355,7 +375,7 @@ the receipt accepts the displayed default.
 
 Before durable writes, show a receipt naming the selected distribution,
 audiences, signatures, missing-destination behavior, any contextual product
-surface choices, release-note environment scope, component source, every dependency to
+surface choices, release-note environment scope, feature-link policy, component source, every dependency to
 add, archive-seeding
 disposition, history disposition, and every policy or preference path. State
 that setup grants no deployment, publication, store-submission, CMS-access, or
@@ -370,6 +390,7 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --new-surfaces ask \
   --surface-components recommended-web-components \
   --release-note-environments non-production \
+  --release-note-links when-useful \
   --backfill deferred \
   --scope repository \
   --setup-style recommended \

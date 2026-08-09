@@ -500,6 +500,60 @@ for (const {
     );
   }
 }
+const releaseNoteLinkDistributions = [
+  "simple-changelogs",
+  "simple-changelogs-mobile",
+  "simple-changelogs-web",
+  "simple-changelogs-web-cms",
+];
+const releaseNoteLinkSnapshots = await Promise.all(
+  releaseNoteLinkDistributions.map(async (directoryName) => {
+    const referenceRoot = join(skillsRoot, directoryName, "references");
+    const [automation, onboarding, setup, surfaces] = await Promise.all([
+      readFile(join(referenceRoot, "automation-verification.md"), "utf8"),
+      readFile(join(referenceRoot, "onboarding.md"), "utf8"),
+      readFile(join(referenceRoot, "setup.md"), "utf8"),
+      readFile(join(referenceRoot, "release-note-surfaces.md"), "utf8"),
+    ]);
+    return { automation, directoryName, onboarding, setup, surfaces };
+  })
+);
+for (const snapshot of releaseNoteLinkSnapshots) {
+  for (const requiredRule of [
+    "releaseNoteLinks",
+    "when-useful",
+    "ask",
+    "disabled",
+  ]) {
+    if (
+      !(
+        snapshot.onboarding.includes(requiredRule) &&
+        snapshot.setup.includes(requiredRule) &&
+        snapshot.surfaces.includes(requiredRule) &&
+        snapshot.automation.includes(requiredRule)
+      )
+    ) {
+      failures.push(
+        `skills/${snapshot.directoryName} is missing contextual release-note link rule: ${requiredRule}`
+      );
+    }
+  }
+  if (!snapshot.onboarding.includes("```text")) {
+    failures.push(
+      `skills/${snapshot.directoryName} must diagram the contextual link choice during onboarding`
+    );
+  }
+  if (
+    !(
+      snapshot.surfaces.includes("candidate") &&
+      snapshot.surfaces.toLowerCase().includes("archive")
+    )
+  ) {
+    failures.push(
+      `skills/${snapshot.directoryName} must distinguish route candidates from structural archive navigation`
+    );
+  }
+}
 const surfaceDesignSnapshots = await Promise.all(
   surfaceDesignDistributions.map(async (directoryName) => {
     const [skill, design] = await Promise.all([
@@ -641,7 +695,8 @@ for (const { directoryName, source } of otherCmsSchemas) {
 for (const { directoryName, source } of cmsPolicySchemas) {
   if (
     source.includes("crossSurfaceVersioning") ||
-    source.includes("releaseNoteEnvironmentScope")
+    source.includes("releaseNoteEnvironmentScope") ||
+    source.includes("releaseNoteLinks")
   ) {
     failures.push(
       `skills/${directoryName}/schemas/repo-policy.schema.json must not carry repository-only app policy`

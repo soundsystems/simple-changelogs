@@ -222,3 +222,15 @@ An approved historical audit may find public notes attached to a build
 identifier, unrelated product versions forced together, or build and development
 identifiers leaked into public copy. Preserve released history unless a separate
 historical rewrite is authorized.
+
+## Guidance 12
+
+Added repository policy `releaseNoteLinks` for in-app release actions. Setup
+offers `when-useful` (recommended), `ask`, and `disabled` with a screen and Web
+fallback diagram; a compact summary's archive link remains separate.
+
+Deep-link candidates must belong to the same app and release train and honor
+the established link contract, sign-in, role, subscription, feature-flag, and
+platform rules. Authorized historical audits should test installed-app,
+unavailable-feature, and fallback states, then record the disposition of any
+broken or internal-only destination.

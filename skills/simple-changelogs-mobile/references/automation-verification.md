@@ -77,6 +77,11 @@ encode an uncertain or independently versioned relationship.
 
 ## Release-Note Destinations
 
+- In-app `when-useful` actions honor `releaseNoteLinks`, target the shipped app
+  and release train, and use the established deep-link or universal-link
+  contract.
+- Installed, signed-out, ineligible, flagged-off, unavailable, and Web-fallback
+  behavior is verified; ask mode has approval and disabled mode has no action.
 - Existing public, mobile, documentation, and internal destinations use copy
   appropriate to their audience and platform.
 - Compact and in-product destinations include only deliberately selected

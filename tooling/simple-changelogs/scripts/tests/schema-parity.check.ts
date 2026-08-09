@@ -26,6 +26,7 @@ import {
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
+  RELEASE_NOTE_LINK_POLICIES,
   RUNNER_MESSAGE_ROLES,
   RUNNER_STATUSES,
   SETUP_COMMANDS,
@@ -387,6 +388,16 @@ describe("schema parity", () => {
         setupResultSchema,
         "$defs.releaseNoteEnvironmentScope.enum",
         RELEASE_NOTE_ENVIRONMENT_SCOPES,
+      ],
+      [
+        policySchema,
+        "properties.releaseNoteLinks.enum",
+        RELEASE_NOTE_LINK_POLICIES,
+      ],
+      [
+        setupResultSchema,
+        "$defs.releaseNoteLinks.enum",
+        RELEASE_NOTE_LINK_POLICIES,
       ],
       [
         responseSchema,

@@ -213,9 +213,29 @@ publication.
 Record the selected value as repository policy
 `releaseNoteEnvironmentScope`.
 
+Once a public product history is approved, ask **Can individual customer
+release items link to the released feature? Choose one:**
+
+```text
+Public release item ── Try feature ──▶ Eligible product route
+CMS operator entry  ── not authorized by this preference ──▶ protected CMS
+```
+
+1. **Link when useful — Recommended** — Include an action only where it helps
+   an eligible customer act on the released feature. Persist `when-useful`.
+2. **Ask before linking** — Name the action and destination for approval before
+   implementation. Persist `ask`.
+3. **No public feature links** — Keep customer items informational. Persist
+   `disabled`.
+
+Explain that this is public-product policy, not CMS authorization. Validate the
+route's release, stability, audience, tenant, permissions, flags, and exposure
+environment. It does not disable archive navigation. Record `releaseNoteLinks`
+only in repository policy and never in all-projects preferences.
+
 The confirmed receipt must name the exact candidate classification, archive
-choice, environment scope, compact-surface choice, route or placement, and
-visible labels. That
+choice, environment scope, feature-link policy, compact-surface choice, route
+or placement, and visible labels. That
 confirmation authorizes only those named surfaces for the current task; it does
 not silently change the ongoing `newReleaseNoteSurfaces` policy.
 
@@ -355,7 +375,7 @@ the receipt accepts the displayed default.
 
 Before durable writes, show a receipt naming the selected distribution,
 audiences, signatures, missing-destination behavior, any contextual product
-surface choices, release-note environment scope, component source, every dependency to
+surface choices, release-note environment scope, feature-link policy, component source, every dependency to
 add, archive-seeding
 disposition, history disposition, and every policy or preference path. State
 that setup grants no deployment, publication, store-submission, CMS-access, or
@@ -370,6 +390,7 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --new-surfaces ask \
   --surface-components recommended-web-components \
   --release-note-environments non-production \
+  --release-note-links when-useful \
   --backfill deferred \
   --scope repository \
   --setup-style recommended \

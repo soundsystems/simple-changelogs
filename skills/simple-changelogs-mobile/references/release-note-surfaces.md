@@ -43,6 +43,22 @@ latest qualifying highlights and one path to the selected archive. Also offer a
 manual-only summary or archive only. The confirmed selection authorizes only
 those exact surfaces for the current task.
 
+## Deep Links to Released Features
+
+Apply `releaseNoteLinks` to actions on individual in-app release items.
+`when-useful` may deep-link when the action helps the eligible user open or
+configure the released capability; `ask` proposes the exact label and target
+for owner confirmation; `disabled` keeps feature items informational. A link
+from a compact summary to the established archive remains structural and is
+not controlled by this preference.
+
+A new screen or route is only a candidate. Prove that it belongs to the same
+app and release train, uses the app's established deep-link or universal-link
+contract, and respects sign-in, role, subscription, feature-flag, and platform
+eligibility. Provide the established safe Web fallback when one exists. Test
+installed-app, unavailable-feature, and fallback behavior; omit ambiguous or
+internal-only destinations rather than exposing a broken or unauthorized path.
+
 Build a scope map for each affected destination: record its path or identity,
 mobile application, platform, audience, release train, source, positive
 inclusion rules, and explicit exclusions. Include mobile-visible outcomes and

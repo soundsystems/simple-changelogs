@@ -60,6 +60,7 @@ const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
   "production-only",
   "disabled",
 ] as const;
+const RELEASE_NOTE_LINK_POLICIES = ["when-useful", "ask", "disabled"] as const;
 const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "web-tabs",
   "web-page",
@@ -137,6 +138,12 @@ const WEB_RELEASE_NOTE_DISTRIBUTIONS = new Set<Distribution>([
   "web",
   "web-cms",
 ]);
+const PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS = new Set<Distribution>([
+  "full",
+  "mobile",
+  "web",
+  "web-cms",
+]);
 const DESIGN_SYSTEM_PATH =
   /(?:^|\/)(\.storybook|design-system|ui-kit|packages\/ui)(?:\/|$)/u;
 const COMPONENT_CONFIG_FILE = "components.json";
@@ -192,6 +199,7 @@ type CrossSurfaceVersioning =
   (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
 type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
+type ReleaseNoteLinkPolicy = (typeof RELEASE_NOTE_LINK_POLICIES)[number];
 type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 type SetupStyle = (typeof SETUP_STYLES)[number];
@@ -207,11 +215,11 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 13,
-  mobile: 11,
+  full: 14,
+  mobile: 12,
   "skill-repository": 6,
-  web: 12,
-  "web-cms": 12,
+  web: 13,
+  "web-cms": 13,
 } as const satisfies Record<Distribution, number>;
 
 // Pinned to the guidance version that introduced the requirement. Comparing
@@ -231,6 +239,7 @@ interface RepoPolicy {
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
 }
@@ -300,6 +309,7 @@ interface Selection {
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
@@ -309,7 +319,8 @@ type OptionalSelectionKeys =
   | "crossSurfaceVersioning"
   | "mobileReleaseNotePlacement"
   | "newReleaseNoteSurfaceComponents"
-  | "releaseNoteEnvironmentScope";
+  | "releaseNoteEnvironmentScope"
+  | "releaseNoteLinks";
 
 type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
   Pick<Selection, OptionalSelectionKeys>;
@@ -367,6 +378,7 @@ export interface ApplyOptions extends InspectOptions {
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
@@ -436,6 +448,7 @@ const validateRepoPolicy = (
           "mobileReleaseNotePlacement",
           "newReleaseNoteSurfaceComponents",
           "releaseNoteEnvironmentScope",
+          "releaseNoteLinks",
         ]
       )
     )
@@ -478,6 +491,12 @@ const validateRepoPolicy = (
     "releaseNoteEnvironmentScope",
     value.releaseNoteEnvironmentScope,
     RELEASE_NOTE_ENVIRONMENT_SCOPES
+  );
+  reportUnsupportedOptionalEnum(
+    errors,
+    "releaseNoteLinks",
+    value.releaseNoteLinks,
+    RELEASE_NOTE_LINK_POLICIES
   );
   if (
     value.mobileReleaseNotePlacement !== undefined &&
@@ -1546,6 +1565,7 @@ const selectionFrom = (
       options.newReleaseNoteSurfaces ??
       (installed === "cms" ? "existing-only" : defaults.newReleaseNoteSurfaces),
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
+    releaseNoteLinks: options.releaseNoteLinks,
     scope: options.scope ?? "repository",
     setupStyle: options.setupStyle ?? defaults.setupStyle,
     signatures: options.signatures ?? defaults.signatures,
@@ -1629,6 +1649,9 @@ const repoPolicyFor = (
   }
   if (selection.releaseNoteEnvironmentScope !== undefined) {
     policy.releaseNoteEnvironmentScope = selection.releaseNoteEnvironmentScope;
+  }
+  if (selection.releaseNoteLinks !== undefined) {
+    policy.releaseNoteLinks = selection.releaseNoteLinks;
   }
   return policy;
 };
@@ -1759,6 +1782,16 @@ const updateContextualPreferences = async (
       "Release-note environment scope applies only to full, web, and web+CMS distributions.",
     ]);
   }
+  if (
+    options.releaseNoteLinks !== undefined &&
+    !PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS.has(
+      inspect.detection.distribution as Distribution
+    )
+  ) {
+    return blockResult(inspect, [
+      "Release-note link policy applies only to full, web, mobile, and web+CMS distributions.",
+    ]);
+  }
   const selection: Selection = {};
   const updates: Partial<RepoPolicy> = {};
   if (options.crossSurfaceVersioning !== undefined) {
@@ -1768,6 +1801,10 @@ const updateContextualPreferences = async (
   if (options.releaseNoteEnvironmentScope !== undefined) {
     selection.releaseNoteEnvironmentScope = options.releaseNoteEnvironmentScope;
     updates.releaseNoteEnvironmentScope = options.releaseNoteEnvironmentScope;
+  }
+  if (options.releaseNoteLinks !== undefined) {
+    selection.releaseNoteLinks = options.releaseNoteLinks;
+    updates.releaseNoteLinks = options.releaseNoteLinks;
   }
   const record = inspect.policy;
   if (
@@ -1871,6 +1908,14 @@ const selectionErrors = (
   ) {
     errors.push(
       "Release-note environment scope applies only to full, web, and web+CMS distributions."
+    );
+  }
+  if (
+    selection.releaseNoteLinks !== undefined &&
+    !PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS.has(installed as Distribution)
+  ) {
+    errors.push(
+      "Release-note link policy applies only to full, web, mobile, and web+CMS distributions."
     );
   }
   if (selection.backfillStatus === "completed" && !options.auditVerified) {
@@ -2192,6 +2237,7 @@ const valueOptionNames = new Set([
   "--mobile-placement",
   "--new-surfaces",
   "--release-note-environments",
+  "--release-note-links",
   "--repo",
   "--scope",
   "--setup-style",
@@ -2276,6 +2322,10 @@ const parseCli = (argv: string[]): ParsedCli => {
       releaseNoteEnvironmentScope: enumValue(
         "--release-note-environments",
         RELEASE_NOTE_ENVIRONMENT_SCOPES
+      ),
+      releaseNoteLinks: enumValue(
+        "--release-note-links",
+        RELEASE_NOTE_LINK_POLICIES
       ),
       repo: values.get("--repo") ?? ".",
       scope: enumValue("--scope", SCOPES),

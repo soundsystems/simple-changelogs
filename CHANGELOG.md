@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Release notes can now include contextual links to the exact product route or
+  screen for a released feature. During setup, owners choose **Link when useful**
+  (recommended), **Ask before linking**, or **No feature links**, with a compact
+  diagram explaining each path.
+- A discovered route remains a candidate until it ships in the same release and
+  matches the note’s audience, authentication, role, tenant, feature flag,
+  platform, and environment. Structural links between summaries and release
+  archives remain available. The preference applies to full, Web, Mobile, and
+  Web+CMS repositories, but not CMS-only or skill repositories.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-09T02:28:39-05:00" -->
 - Setup now walks owners through every unresolved preference as one
   plain-language, numbered multiple-choice question at a time. Each option
   explains the outcome, marks the recommendation, says what setup will save or

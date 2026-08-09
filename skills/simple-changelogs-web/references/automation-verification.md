@@ -82,6 +82,11 @@ encode an uncertain or independently versioned relationship.
 
 ## Release-Note Destinations
 
+- Web feature actions follow `releaseNoteLinks`: `when-useful` targets are
+  stable and shipped, ask-mode targets are approved, and disabled mode renders
+  no action.
+- Representative signed-out, wrong-role, flagged-off, and unavailable states
+  do not reveal restricted application URLs; archive navigation still works.
 - The route or page, navigation and manual links, summaries, and modal all
   obey `releaseNoteEnvironmentScope`; `non-production` serves them locally and
   in recognized previews but not in production.

@@ -213,9 +213,28 @@ publication.
 Record the selected value as repository policy
 `releaseNoteEnvironmentScope`.
 
+After a Web release-note destination is chosen, ask **Should a release item
+offer a direct action to its feature? Choose one:**
+
+```text
+Release highlight ── Open it ──▶ Verified application URL
+```
+
+1. **Link when useful — Recommended** — Add the action only when the intended
+   customer can meaningfully use or inspect the shipped capability. Store
+   `when-useful`.
+2. **Ask before linking** — Present the proposed label and route and wait for
+   explicit approval. Store `ask`.
+3. **No feature actions** — Leave item copy unlinked. Store `disabled`.
+
+Make clear that route creation alone does not qualify it. Confirm the target's
+release, stable URL, audience, sign-in, permissions, flags, and environment.
+The normal summary-to-archive path is structural and remains unaffected. Save
+this repository-only choice as `releaseNoteLinks`, never as a global default.
+
 The confirmed receipt must name the exact candidate classification, archive
-choice, environment scope, compact-surface choice, route or placement, and
-visible labels. That
+choice, environment scope, feature-link policy, compact-surface choice, route
+or placement, and visible labels. That
 confirmation authorizes only those named surfaces for the current task; it does
 not silently change the ongoing `newReleaseNoteSurfaces` policy.
 
@@ -355,7 +374,7 @@ the receipt accepts the displayed default.
 
 Before durable writes, show a receipt naming the selected distribution,
 audiences, signatures, missing-destination behavior, any contextual product
-surface choices, release-note environment scope, component source, every dependency to
+surface choices, release-note environment scope, feature-link policy, component source, every dependency to
 add, archive-seeding
 disposition, history disposition, and every policy or preference path. State
 that setup grants no deployment, publication, store-submission, CMS-access, or
@@ -370,6 +389,7 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --new-surfaces ask \
   --surface-components recommended-web-components \
   --release-note-environments non-production \
+  --release-note-links when-useful \
   --backfill deferred \
   --scope repository \
   --setup-style recommended \

@@ -88,6 +88,9 @@
         "disabled"
       ]
     },
+    "releaseNoteLinks": {
+      "enum": ["when-useful", "ask", "disabled"]
+    },
     "newReleaseNoteSurfaceComponents": {
       "enum": [
         "project-components",

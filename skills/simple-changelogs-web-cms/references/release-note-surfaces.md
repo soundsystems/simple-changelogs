@@ -59,6 +59,22 @@ hostname or branch-name guess. Unknown environments fail closed for scoped
 values. This gate controls exposure only; changelog generation, archive-data
 synchronization, deployment, and publication remain independent.
 
+## Public Feature Actions
+
+Repository value `releaseNoteLinks` controls contextual actions from public
+release items. `when-useful` permits a proven route that helps the eligible
+customer act on the released capability, `ask` requires approval of the exact
+action and destination, and `disabled` leaves those items without feature
+links. The value does not suppress the established path from a compact summary
+to its complete archive.
+
+Confirm that each proposed route ships with the release and shares the note's
+public audience, tenant, feature-flag, and environment eligibility. Use stable
+application-relative URLs and test successful navigation plus unavailable
+states. Never copy a CMS or administrator route into customer notes, and never
+let a public preference authorize an operator link. Protected CMS actions need
+separate audience evidence and current authority.
+
 ## Product UI editorial selection
 
 Treat canonical customer history and selected product UI as separate editorial

@@ -18,13 +18,14 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "mobile",
   "guidance": {
-    "version": 11,
+    "version": 12,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
-  "newReleaseNoteSurfaceComponents": "platform-native-components"
+  "newReleaseNoteSurfaceComponents": "platform-native-components",
+  "releaseNoteLinks": "when-useful"
 }
 ```
 
@@ -77,6 +78,14 @@ some history unchanged on purpose.
 
 When absent, ask only after a release-note surface is authorized. The field
 never grants a new surface, dependency, deployment, or publication.
+
+`releaseNoteLinks` is optional. Use `when-useful` (recommended) for an
+established deep or universal link that materially helps the eligible user,
+`ask` when the owner must approve the proposed label and target, or `disabled`
+to keep individual items informational. Archive navigation remains separate.
+This repository policy never becomes a global preference and does not create a
+screen, define a deep-link contract, bypass eligibility, or authorize
+publication. Older policies without the field remain valid and unanswered.
 
 The `guidance.version` is the newest guidance version for which the repository
 recorded a disposition. It is not proof that released history conforms. Current

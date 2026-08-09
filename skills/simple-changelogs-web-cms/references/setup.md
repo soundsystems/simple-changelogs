@@ -18,14 +18,15 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "web-cms",
   "guidance": {
-    "version": 12,
+    "version": 13,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
   "newReleaseNoteSurfaceComponents": "project-components",
-  "releaseNoteEnvironmentScope": "non-production"
+  "releaseNoteEnvironmentScope": "non-production",
+  "releaseNoteLinks": "when-useful"
 }
 ```
 
@@ -97,6 +98,15 @@ reach them. Enforce the choice at the route or build boundary and every
 navigation, manual-link, summary, and modal entry point. This field is
 repository-specific, never joins all-projects preferences, and does not change
 archive-data synchronization, generation, deployment, or publication.
+
+Optional `releaseNoteLinks` governs contextual actions in public product
+release items: `when-useful` (recommended) allows a verified helpful route,
+`ask` requires approval of its exact label and target, and `disabled` emits no
+feature action. It leaves structural archive links intact and never authorizes
+a protected CMS or administrator destination. Keep this setting repository
+local; it cannot join global preferences or grant a route, permission,
+deployment, or publication. An older policy without it remains valid but
+unresolved.
 
 The `guidance.version` is the newest guidance version for which the repository
 recorded a disposition. It is not proof that released history conforms. Current

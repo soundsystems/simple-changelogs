@@ -161,6 +161,36 @@ describe("repo policy", () => {
     ).toBe(false);
   });
 
+  test("accepts every release-note link policy", () => {
+    for (const releaseNoteLinks of ["when-useful", "ask", "disabled"]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          releaseNoteLinks,
+        }).ok
+      ).toBe(true);
+    }
+  });
+
+  test("rejects unsupported release-note link policies", () => {
+    for (const releaseNoteLinks of [
+      "always",
+      "automatic",
+      "",
+      1,
+      null,
+      true,
+      [],
+    ]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          releaseNoteLinks,
+        }).ok
+      ).toBe(false);
+    }
+  });
+
   test("accepts an optional developer changelog and disabled signatures", () => {
     const result = validateRepoPolicy({
       ...portableRepoPolicy(),

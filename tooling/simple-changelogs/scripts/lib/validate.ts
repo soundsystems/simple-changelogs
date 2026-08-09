@@ -28,6 +28,7 @@ import {
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
+  RELEASE_NOTE_LINK_POLICIES,
   type RepoPolicy,
   RUNNER_MESSAGE_ROLES,
   RUNNER_STATUSES,
@@ -423,6 +424,7 @@ const repoPolicyBase = objectOf({
   releaseNoteEnvironmentScope: optional(
     enumOf(RELEASE_NOTE_ENVIRONMENT_SCOPES)
   ),
+  releaseNoteLinks: optional(enumOf(RELEASE_NOTE_LINK_POLICIES)),
   schemaVersion: literal(1),
   signatures: enumOf(SIGNATURE_POLICIES),
 });
