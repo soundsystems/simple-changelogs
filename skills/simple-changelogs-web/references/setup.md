@@ -18,13 +18,14 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "web",
   "guidance": {
-    "version": 6,
+    "version": 11,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
-  "newReleaseNoteSurfaceComponents": "project-components"
+  "newReleaseNoteSurfaceComponents": "project-components",
+  "releaseNoteEnvironmentScope": "non-production"
 }
 ```
 
@@ -77,6 +78,15 @@ some history unchanged on purpose.
 
 When absent, ask only after a release-note surface is authorized. The field
 never grants a new surface, dependency, deployment, or publication.
+
+`releaseNoteEnvironmentScope` is optional: `all-environments` exposes the
+approved page and all selected entry points locally, in previews, and in
+production; `non-production` exposes them only locally and in recognized
+previews; `production-only` exposes them only in production; and `disabled`
+exposes them nowhere. Recommend `non-production` for marketing and client
+sites. Gate the route itself plus navigation, manual links, summaries, and
+modals. This repository-only preference does not control generation,
+archive-data synchronization, deployment, or publication.
 
 The `guidance.version` is the newest guidance version for which the repository
 recorded a disposition. It is not proof that released history conforms. Current

@@ -229,3 +229,13 @@ on color alone.
 Feature bullets now stop at the capability and practical outcome. Do not
 inventory every emoji, gesture, shortcut, role-specific recommendation, or
 transient control state unless that detail is itself the announcement.
+
+## Guidance 12
+
+Setup now explains unresolved preferences in plain language as numbered,
+choose-one options with diagrams where useful. Added repository-only
+`releaseNoteEnvironmentScope` for the complete approved public Web surface:
+route or page, links, summaries, and modals. Recommend `non-production`
+(**Local and preview only**) for marketing and client sites. Unknown scoped
+environments fail closed and hidden routes are unserved; generation,
+synchronization, deployment, and publication remain separate.

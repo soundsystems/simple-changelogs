@@ -184,3 +184,11 @@ on color alone.
 Feature bullets now stop at the capability and practical outcome. Do not
 inventory every emoji, gesture, shortcut, role-specific recommendation, or
 transient control state unless that detail is itself the announcement.
+
+## Guidance 10
+
+Setup now explains unresolved preferences as numbered, choose-one options with
+diagrams where useful. The Web-only `releaseNoteEnvironmentScope` is not asked
+or recorded for standalone Mobile applications. This clarity update rewrites
+no released notes and grants no surface, store, deployment, or publication
+authority.

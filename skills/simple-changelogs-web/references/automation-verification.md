@@ -82,6 +82,12 @@ encode an uncertain or independently versioned relationship.
 
 ## Release-Note Destinations
 
+- The route or page, navigation and manual links, summaries, and modal all
+  obey `releaseNoteEnvironmentScope`; `non-production` serves them locally and
+  in recognized previews but not in production.
+- A production-hidden route is unserved or omitted, and unknown scoped
+  environments fail closed.
+
 - Existing public, mobile, documentation, and internal destinations use copy
   appropriate to their audience and platform.
 - Compact and in-product destinations include only deliberately selected

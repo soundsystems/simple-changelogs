@@ -80,6 +80,14 @@
     "newReleaseNoteSurfaces": {
       "enum": ["ask", "allow", "existing-only"]
     },
+    "releaseNoteEnvironmentScope": {
+      "enum": [
+        "all-environments",
+        "non-production",
+        "production-only",
+        "disabled"
+      ]
+    },
     "newReleaseNoteSurfaceComponents": {
       "enum": [
         "project-components",
