@@ -82,6 +82,11 @@ encode an uncertain or independently versioned relationship.
 
 ## Release-Note Destinations
 
+- Public `when-useful` actions allowed by `releaseNoteLinks` reach same-release
+  product routes for eligible customers and never reuse protected CMS
+  destinations.
+- Ask-mode labels and URLs are approved, disabled mode emits no feature action,
+  and tenant, permission, flag, environment, and unavailable cases are tested.
 - The route or page, navigation and manual links, summaries, and modal all
   obey `releaseNoteEnvironmentScope`; `non-production` serves them locally and
   in recognized previews but not in production.

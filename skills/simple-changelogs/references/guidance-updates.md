@@ -269,3 +269,17 @@ An approved historical audit may find public notes attached to a build
 identifier, unrelated product versions forced together, or build and development
 identifiers leaked into public copy. Preserve released history unless a separate
 historical rewrite is authorized.
+
+## Guidance 14
+
+Added optional repository policy `releaseNoteLinks` for contextual actions from
+individual product release items. Owner setup now presents `when-useful`
+(recommended), `ask`, and `disabled` as explained multiple-choice options with
+a route diagram. Structural archive navigation is outside this preference.
+
+A feature route is a candidate rather than an automatic link. The target must
+ship in the same release and pass stability, audience, authorization, tenant,
+platform, flag, release-train, and environment checks. Historical review should
+find broken, internal, admin, preview-only, or production-hidden actions and
+record whether each was repaired, removed, or intentionally retained under
+separate evidence.

@@ -85,6 +85,13 @@ encode an uncertain or independently versioned relationship.
 
 ## Release-Note Destinations
 
+- Every contextual action permitted by `releaseNoteLinks: when-useful` has a
+  stable target in the same release and is reachable by the note's eligible
+  audience.
+- `ask` actions have explicit owner approval, `disabled` emits none, and
+  summary-to-archive navigation remains intact.
+- Authentication, role, tenant, platform, flag, environment, unavailable, and
+  fallback states were exercised without exposing internal or hidden routes.
 - The route or page, navigation and manual links, summaries, and modal all
   obey `releaseNoteEnvironmentScope`; `non-production` serves them locally and
   in recognized previews but not in production.

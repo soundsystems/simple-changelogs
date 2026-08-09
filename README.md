@@ -151,14 +151,15 @@ record one of:
   "schemaVersion": 1,
   "distribution": "web",
   "guidance": {
-    "version": 9,
+    "version": 13,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
   "crossSurfaceVersioning": "independent",
-  "releaseNoteEnvironmentScope": "non-production"
+  "releaseNoteEnvironmentScope": "non-production",
+  "releaseNoteLinks": "when-useful"
 }
 ```
 
@@ -179,6 +180,13 @@ preview only (`non-production`) is recommended for marketing and client sites:
 production does not serve the route or expose an entry point, while development
 and recognized previews keep it available. Generation, archive-data sync,
 deployment, and publication remain separate decisions.
+
+Product distributions may also record `releaseNoteLinks` as `when-useful`
+(recommended), `ask`, or `disabled`. This controls contextual actions from an
+individual release item to a verified app route or screen; it does not disable
+summary-to-archive navigation. The setting is repository-only, and every target
+must ship in the same release and match audience, permission, feature-flag,
+platform, and environment eligibility.
 A sole repo-local distribution is selection evidence. A global installation is
 only availability; it does not override a repo-local distro or explicit
 repository instructions. When selection conflicts, agents stop before writing

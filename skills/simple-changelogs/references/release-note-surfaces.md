@@ -90,6 +90,29 @@ hostname or branch-name guess. Unknown environments fail closed for scoped
 values. This gate controls exposure only; changelog generation, archive-data
 synchronization, deployment, and publication remain independent.
 
+## Contextual Feature Links
+
+Read repository policy `releaseNoteLinks` as the rule for contextual actions
+from an individual release item to the feature it describes:
+
+- `when-useful` adds a link only when it materially helps an eligible reader
+  open, try, configure, or review the released capability;
+- `ask` identifies the exact label and destination but waits for owner approval
+  before wiring it; and
+- `disabled` emits no contextual feature links.
+
+This preference does not remove structural navigation such as a compact
+summary's link to the full Release Notes archive. A newly created route is a
+candidate, not an automatic link: prove it ships in the same release, uses a
+stable public contract, and is reachable by the note's audience. Check
+authentication, role, tenant, platform, feature-flag, release-train, and
+environment eligibility. Never expose an internal, admin, preview-only, or
+production-hidden destination through broader notes.
+
+Prefer a repository-relative Web URL or established mobile app or universal
+link. Use a safe Web fallback when the native convention provides one.
+Validate the final rendered action and its access-denied or unavailable
+behavior; omit the action when evidence remains ambiguous.
 
 ## Destination Scope Map
 

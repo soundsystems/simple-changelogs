@@ -211,9 +211,29 @@ closed and exposes none of the surfaces. This preference controls Web exposure,
 not changelog generation, archive-data synchronization, deployment, or
 publication.
 
+When an in-app release destination is selected, ask **Should a release item
+open the feature it describes? Choose one:**
+
+```text
+What's new item ── Open feature ──▶ App screen
+                              └──▶ Safe Web fallback, when established
+```
+
+1. **Deep-link when useful — Recommended** — Link only when the eligible user
+   can meaningfully open or configure the shipped capability. Save
+   `when-useful`.
+2. **Ask before deep-linking** — Propose the exact label and target, then wait
+   for owner confirmation. Save `ask`.
+3. **No feature deep links** — Keep each item informational. Save `disabled`.
+
+Explain that a new screen is merely a candidate. Verify the app, release train,
+deep-link contract, sign-in, role, subscription, feature flag, and platform.
+The compact-summary link to an established archive is not controlled by this
+choice. Store `releaseNoteLinks` in repository policy only.
+
 The confirmed receipt must name the exact candidate classification, archive
-choice, environment scope, compact-surface choice, route or placement, and
-visible labels. That
+choice, environment scope, feature-link policy, compact-surface choice, route
+or placement, and visible labels. That
 confirmation authorizes only those named surfaces for the current task; it does
 not silently change the ongoing `newReleaseNoteSurfaces` policy.
 
@@ -353,7 +373,7 @@ the receipt accepts the displayed default.
 
 Before durable writes, show a receipt naming the selected distribution,
 audiences, signatures, missing-destination behavior, any contextual product
-surface choices, release-note environment scope, component source, every dependency to
+surface choices, release-note environment scope, feature-link policy, component source, every dependency to
 add, archive-seeding
 disposition, history disposition, and every policy or preference path. State
 that setup grants no deployment, publication, store-submission, CMS-access, or
@@ -367,6 +387,7 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
   --surface-components recommended-web-components \
+  --release-note-links when-useful \
   --backfill deferred \
   --scope repository \
   --setup-style recommended \

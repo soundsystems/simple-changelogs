@@ -18,7 +18,7 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "full",
   "guidance": {
-    "version": 13,
+    "version": 14,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
@@ -26,7 +26,8 @@ file records decisions; it does not copy the skill's prose rules.
   "newReleaseNoteSurfaces": "ask",
   "newReleaseNoteSurfaceComponents": "project-components",
   "mobileReleaseNotePlacement": "mobile-only",
-  "releaseNoteEnvironmentScope": "non-production"
+  "releaseNoteEnvironmentScope": "non-production",
+  "releaseNoteLinks": "when-useful"
 }
 ```
 
@@ -99,6 +100,20 @@ reach them. Enforce the choice at the route or build boundary and every
 navigation, manual-link, summary, and modal entry point. This field is
 repository-specific, never joins all-projects preferences, and does not change
 archive-data synchronization, generation, deployment, or publication.
+
+`releaseNoteLinks` is optional and accepts:
+
+- `when-useful`: recommended; add a contextual action only when an eligible
+  reader benefits from opening, using, configuring, or inspecting the released
+  feature;
+- `ask`: propose the exact label and destination and wait for approval; or
+- `disabled`: keep individual release items informational.
+
+This repository-only field never joins all-projects preferences. It does not
+disable structural archive navigation, authorize a new route, or make an
+inaccessible destination safe to expose. A missing value remains unresolved
+for older policy files; ask during owner-facing setup when a product
+release-note destination is selected.
 
 `crossSurfaceVersioning` is optional and accepts:
 

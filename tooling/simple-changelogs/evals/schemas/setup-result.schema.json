@@ -99,6 +99,9 @@
         "disabled"
       ]
     },
+    "releaseNoteLinks": {
+      "enum": ["when-useful", "ask", "disabled"]
+    },
     "repoPolicy": {
       "type": "object",
       "additionalProperties": false,
@@ -137,6 +140,9 @@
         },
         "releaseNoteEnvironmentScope": {
           "$ref": "#/$defs/releaseNoteEnvironmentScope"
+        },
+        "releaseNoteLinks": {
+          "$ref": "#/$defs/releaseNoteLinks"
         }
       }
     },
@@ -403,6 +409,9 @@
         },
         "releaseNoteEnvironmentScope": {
           "$ref": "#/$defs/releaseNoteEnvironmentScope"
+        },
+        "releaseNoteLinks": {
+          "$ref": "#/$defs/releaseNoteLinks"
         },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },

@@ -13,7 +13,7 @@ CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established mobile and store destinations mirror release-scoped highlights.
 
-Current guidance version: 11
+Current guidance version: 12
 
 ## Distribution checkpoint
 

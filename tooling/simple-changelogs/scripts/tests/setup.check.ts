@@ -355,12 +355,12 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(13);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(14);
 
     const distributionVersions = [
-      ["web", 12],
-      ["mobile", 11],
-      ["web-cms", 12],
+      ["web", 13],
+      ["mobile", 12],
+      ["web-cms", 13],
       ["skill-repository", 6],
     ] as const;
     const versions = await Promise.all(
@@ -778,6 +778,73 @@ describe("setup application", () => {
       false
     );
   });
+
+  test("persists every release-note link policy", async () => {
+    await Promise.all(
+      (["when-useful", "ask", "disabled"] as const).map(
+        async (releaseNoteLinks) => {
+          const { config, repo } = await fixture();
+          const result = await applySetup({
+            ...recommendedOptions(repo, config),
+            releaseNoteLinks,
+          });
+          const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+          expect(result.status).toBe("configured");
+          expect(result.selection.releaseNoteLinks).toBe(releaseNoteLinks);
+          expect(policy.releaseNoteLinks).toBe(releaseNoteLinks);
+        }
+      )
+    );
+  });
+
+  test("updates release-note links without disturbing configured policy", async () => {
+    const { config, repo } = await fixture();
+    const stored = {
+      developerChangelog: "optional" as const,
+      distribution: "web" as const,
+      guidance: { backfillStatus: "declined" as const, version: 12 },
+      newReleaseNoteSurfaceComponents: "recommended-web-radix" as const,
+      newReleaseNoteSurfaces: "existing-only" as const,
+      releaseNoteEnvironmentScope: "non-production" as const,
+      schemaVersion: 1 as const,
+      signatures: "none" as const,
+    };
+    await writeJson(join(repo, ".simple-changelogs.json"), stored);
+
+    const blocked = await applySetup({
+      configDirectory: config,
+      distribution: "web",
+      releaseNoteLinks: "when-useful",
+      repo,
+    });
+    const updated = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      releaseNoteLinks: "when-useful",
+      repo,
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain("Confirmation is required");
+    expect(updated.status).toBe("configured");
+    expect(policy).toEqual({ ...stored, releaseNoteLinks: "when-useful" });
+  });
+
+  test("keeps release-note links out of global preferences", async () => {
+    const { config, repo } = await fixture();
+
+    await applySetup({
+      ...recommendedOptions(repo, config),
+      releaseNoteLinks: "when-useful",
+      scope: "all-projects",
+    });
+    const preferences = await readJson(resolveGlobalPreferencesPath(config));
+
+    expect(Object.hasOwn(preferences, "releaseNoteLinks")).toBe(false);
+  });
 });
 
 describe("distribution and CMS boundaries", () => {
@@ -952,12 +1019,37 @@ describe("distribution and CMS boundaries", () => {
     expect(existsSync(join(repo, ".simple-changelogs-cms.json"))).toBe(false);
   });
 
+  test("non-product distributions reject release-note links", async () => {
+    await Promise.all(
+      (["cms", "skill-repository"] as const).map(async (distribution) => {
+        const { config, repo } = await fixture();
+        const result = await applySetup({
+          backfillStatus: "not-applicable",
+          cmsAuthProven: distribution === "cms",
+          cmsRoute: distribution === "cms" ? "/admin/changelog" : undefined,
+          cmsSurfaceProven: distribution === "cms",
+          configDirectory: config,
+          confirm: true,
+          distribution,
+          releaseNoteLinks: "when-useful",
+          repo,
+          scope: "repository",
+        });
+
+        expect(result.status).toBe("blocked");
+        expect(result.errors.join(" ")).toContain(
+          "applies only to full, web, mobile, and web+CMS"
+        );
+      })
+    );
+  });
+
   test("web+CMS resumes a matching interrupted setup transaction", async () => {
     const { config, repo } = await fixture();
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 12 },
+      guidance: { backfillStatus: "not-applicable", version: 13 },
       newReleaseNoteSurfaces: "ask",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Added repository-local contextual release-note link policy:
+  - `releaseNoteLinks` accepts `when-useful` (recommended), `ask`, or `disabled`
+    across full, Web, Mobile, and Web+CMS distributions. CMS-only and
+    skill-repository selections reject it, and portable global preferences never
+    store it.
+  - Added shared runtime constants and types, repository-policy and setup-result
+    schema coverage, validation, setup receipts, confirmed updates for already
+    configured repositories, and CLI option `--release-note-links`.
+  - Surface guidance treats discovered routes as candidates only. Contextual
+    actions require same-release availability plus matching audience,
+    authentication, role, tenant, feature-flag, platform, and environment
+    eligibility; structural summary-to-archive links remain outside this policy.
+  - Propagated the setup helper across all packaged distributions and extended
+    setup, validation, schema-parity, production-boundary, and distribution
+    contract coverage.
+  - Advanced guidance to full 14, Web and Web+CMS 13, and Mobile 12.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-09T02:28:39-05:00" -->
 - Standardized progressive setup questions and added public Web Release Notes
   environment scope:
   - Every unresolved preference now uses a plain-language, numbered, choose-one

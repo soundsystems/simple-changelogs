@@ -58,6 +58,22 @@ hostname or branch-name guess. Unknown environments fail closed for scoped
 values. This gate controls exposure only; changelog generation, archive-data
 synchronization, deployment, and publication remain independent.
 
+## Links to Released Features
+
+Use `releaseNoteLinks` for actions attached to individual Web release items.
+With `when-useful`, link only when the destination lets the intended reader
+meaningfully use or inspect that release. With `ask`, present the proposed
+label and route for approval before adding it. With `disabled`, keep feature
+items informational. Archive navigation remains governed by the selected
+Release Notes surface and is not disabled by this field.
+
+Treat a new route as evidence to inspect, not a reason to emit a link. Verify
+that it is included in the target release, stable, and reachable under the same
+authentication, role, tenant, flag, and environment conditions as the note.
+Prefer repository-relative application URLs. Do not leak admin paths, preview
+routes, disabled features, or a route hidden by
+`releaseNoteEnvironmentScope`. Exercise the rendered link and its unavailable
+state before calling the Web destination synchronized.
 
 ## Destination scope
 

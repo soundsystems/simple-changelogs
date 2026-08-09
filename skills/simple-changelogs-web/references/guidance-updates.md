@@ -241,3 +241,15 @@ An approved historical audit may find public notes attached to a build
 identifier, unrelated product versions forced together, or build and development
 identifiers leaked into public copy. Preserve released history unless a separate
 historical rewrite is authorized.
+
+## Guidance 13
+
+Introduced repository-only `releaseNoteLinks`: `when-useful` for a verified
+helpful application URL, `ask` for per-action approval, or `disabled` for
+informational items. Setup explains the three choices beside a simple Web-route
+diagram. Links between compact summaries and the archive remain structural.
+
+During an authorized audit, exercise existing feature actions and document any
+that lead to unstable, unauthorized, flagged-off, preview-only, or
+environment-hidden routes. Preserve released copy unless correction authority
+also covers the destination.
