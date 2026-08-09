@@ -16,7 +16,25 @@
   the surface safely, while changelog generation, archive-data synchronization,
   deployment, and publication remain independent.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-09T00:39:40-05:00" -->
-
+- Version fields are now read by role instead of compared as one flat set. A
+  canonical release version owns chronology for a release train, public app
+  versions mirror it, and build numbers, version codes, and development
+  identifiers are tracked as linked release evidence. A public version or SemVer
+  bump is never derived from a build number.
+- A single repository can hold several independent release trains. Mobile on
+  3.2.0 while Web is on 6.7.0 is no longer treated as version drift, releasing
+  one product no longer bumps another to match, and two fields that happen to
+  hold the same string are not assumed to be joined. When several public version
+  owners exist and the relationship is genuinely unclear, setup asks once whether
+  surfaces are shared, independent, or mixed, records the answer, and reuses it.
+  Until that answer exists, version fields, tags, and released headings are left
+  untouched.
+- App Store and Play Store descriptions are now tied to the submitted public
+  version even when their files hold only prose, and keep build numbers, version
+  codes, CI identifiers, and internal prerelease suffixes out of public copy.
+  Optional release names such as “Summer Update” may appear beside a version on
+  an established surface without ever replacing the canonical value.
+<!-- simple-changelogs-signature agent="Claude Opus 5" at="2026-07-29T17:07:03-05:00" -->
 ## 2026-07-30
 
 - Release-note surfaces now use sparse emphasis for named product terms such as

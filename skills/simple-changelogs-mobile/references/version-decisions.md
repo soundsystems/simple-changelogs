@@ -38,6 +38,29 @@ Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior
 or published package contract changes.
 
+## Web Production Release Identity
+
+Every production Web deployment must resolve to one product release version.
+Reuse an existing version only when the exact target revision was already
+reconciled into that version and the current action is a retry, promotion, or
+target repair of the same release. Otherwise select the next version before
+production.
+
+Target-contained `Unreleased` work must enter that version even when some items
+belong only in developer history. A production target change with no
+customer-facing note still receives the next patch release identity unless
+repository policy documents another product-version convention. Do not create
+an empty customer bullet to justify the version.
+
+This release identity does not make every package manifest share the product
+version. Continue to update only metadata proven to belong to the Web product
+release, and leave deployment IDs, build numbers, independently versioned
+packages, and remote-owned counters under their documented authorities.
+
+If the current version, bump level, or product-version source cannot be resolved
+from repository policy and release evidence, block production and ask for that
+decision. Do not deploy an unversioned target and repair the history afterward.
+
 ## Initial-Development Products
 
 SemVer uses `0.x.y` for initial development. It does not make those versions
@@ -63,7 +86,82 @@ During initial development:
 Before finalizing `1.0.0`, a later stable major, or a next-major prerelease,
 follow `references/major-releases.md` for boundary detection and synthesis.
 
+## Version Identifier Roles
+
+Version fields do not all mean the same thing. Classify each one before
+comparing, reporting, or changing it:
+
+- **Canonical release version** owns chronology for one release train. Normally
+  the released `CHANGELOG.md` heading, or the release manifest or generated feed
+  the repository documents as the source of truth. Exactly one owner per train.
+- **Public version** is the user-visible app version that reproduces the
+  canonical value: `CFBundleShortVersionString` on Apple platforms, which Apple
+  calls the marketing version, and `versionName` on Android. Here, marketing
+  version never means a friendly campaign name.
+- **Build number** is a submission or installation-order identifier such as
+  `CFBundleVersion`, `versionCode`, an EAS build number, or a CI build. It maps
+  to a public release without matching its text.
+- **Development version** is a prerelease, branch, commit-derived, or CI
+  identifier such as `3.2.0-rc.4+abc123`. It is public only when repository
+  evidence proves that prerelease is publicly distributed.
+- **Release name** such as `Summer Update` is optional presentation only. It
+  never replaces a canonical value in native metadata, store fields, changelog
+  headings, or consistency checks.
+- **Release train** is the set of artifacts and destinations sharing one release
+  boundary and canonical version.
+
+A shared repository proves shared source ownership, not a shared release train.
+A monorepo, a shared canonical history, a shared release date, and a single
+commit are all insufficient evidence that every product version must match.
+Two separately owned fields that currently read `3.2.0` remain separately owned
+until stronger evidence joins them.
+
+Never derive a public version or a SemVer bump from a build number. A larger
+build number is not a release.
+
+Establish the relationship in this order before touching any version field:
+
+1. explicit `.simple-changelogs.json` policy;
+2. repository instructions and release documentation;
+3. release scripts, CI workflows, tag conventions, store submission
+   configuration, and generated metadata ownership;
+4. released headings, hosted releases, store history, and version history
+   across more than one release;
+5. imports or generators proving several destinations consume one canonical
+   source; then
+6. current values in app and package files.
+
+The first five can establish a relationship. Current values alone usually
+cannot.
+
+Recorded policy `crossSurfaceVersioning` resolves the relationship directly:
+`shared` means the covered surfaces mirror one canonical public version,
+`independent` means each documented train advances on its own, and `mixed`
+means local configuration or documentation identifies which subgroups share.
+A `mixed` or `independent` value permits distinct trains but still requires
+repository evidence to name the owner for each affected release.
+
+Before finalizing a multi-product or multi-platform release, build a
+release-train map naming, for each train, its canonical owner, its public
+mirrors, its build and development identifiers, and its destinations.
+
+When multiple public version owners exist, the relationship stays ambiguous
+after that inspection, and the current write depends on the answer, ask exactly
+one question — shared, independent, or mixed — and record it. Recommend
+independent only when separate product or store cadences exist with no shared
+release mechanism; recommend shared when one release mechanism is evident but
+its version ownership is undocumented. While the answer is outstanding, leave
+public versions, build numbers, tags, and released headings unchanged, do not
+call the mismatch drift, draft copy only when its target release and audience
+are already known, and name the exact files or remote fields still unresolved.
+Afterward, record the answer and resume the original request without asking the
+user to repeat it.
+
 ## Version Field Alignment
+
+Alignment means a proven relationship, not universal string equality. Apply
+equality checks only among fields proven to mirror the same canonical public
+version, and only inside one release train.
 
 When preparing a release or doing explicit version-tracking work, keep the
 changelog, release-note data, and app/workspace version fields aligned in the
@@ -83,9 +181,12 @@ same pass only after release intent and source-of-truth policy are clear:
   - root package metadata when it is product-facing
   - app package metadata for affected web, mobile, desktop, extension, or CLI
     apps
-  - mobile store metadata such as `app.json`, native marketing version,
-    `versionCode`, `buildNumber`, or runtime version when local policy ties it
-    to the product release
+  - mobile public version metadata such as `app.json` or the native marketing
+    version when local policy ties it to the product release
+  - build and development identifiers such as `versionCode`, `buildNumber`,
+    runtime version, or a CI build, recorded as linked evidence for the release
+    they belong to. Report them with their own identifier role; never match them
+    to a changelog heading or a public version
   - mobile store release-note metadata such as App Store Connect `What's New in
     this Version`, Google Play `What's new in this release?`, TestFlight notes,
     internal testing notes, Fastlane metadata, Play Console metadata, or EAS
@@ -97,8 +198,9 @@ same pass only after release intent and source-of-truth policy are clear:
     document the same version relationship
 - Update only affected app, package, or release-note version fields that local
   docs, config, tests, or release data identify as belonging to this release
-  flow. Match the current changelog release heading unless the repo documents
-  independent per-surface versioning.
+  flow. Match the canonical release version of that field's own train, which is
+  the current changelog heading only when the field belongs to the train that
+  heading owns. Releasing one train never bumps another merely to match it.
 - Handle routine version tracking end to end when release intent, shipped
   surface, and repo policy are clear. Do not ask for human approval just to align
   local changelog, release-note, app, or workspace metadata that is proven to be
@@ -127,4 +229,6 @@ same pass only after release intent and source-of-truth policy are clear:
 - In the final response, explain which version fields changed, which fields were
   already aligned, and which were intentionally skipped because of repo release
   policy. Use concrete file/field names, not a vague "versions are aligned"
-  sentence.
+  sentence. Distinguish fields that already agree with their canonical value
+  from fields that are related but intentionally different, and report each
+  identifier with its role and release train rather than as one flat list.

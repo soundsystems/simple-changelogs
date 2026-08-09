@@ -1,0 +1,11 @@
+name: release-all
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - run: node scripts/apply-canonical-version.mjs
+      - run: eas submit --platform all
+      - run: pnpm --filter @trailhead/web deploy

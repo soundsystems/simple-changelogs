@@ -95,13 +95,33 @@ reference owns native component choice, presentation, seeding, and UI-defect
 checks; this file continues to own authorization, app scope, and store
 isolation.
 
+Store description copy belongs to one submitted public version, even when the
+file it lives in holds only prose. Resolve that public version from its proven
+owner; a store-note file is copy, never the version owner.
+
 Store notes are short, plain, and mobile-scoped:
 
 - Lead with user-visible capability or material repair outcomes.
 - Omit developer-only changes, backend mechanics, private vendor details,
   internal codenames, security-control specifics, and unsupported claims.
+- Keep build numbers, `versionCode`, `buildNumber`, CI identifiers, and
+  internal prerelease suffixes out of the copy. An established testing-track
+  audience may receive a build identifier only when repository evidence proves
+  that audience needs it.
+- Do not repeat the version number the store already displays unless local
+  style requires it.
 - Respect repository or store length limits and locale ownership.
 - Do not turn baseline defect repair into promotional copy.
+
+An optional release name such as `Summer Update` is presentation only. It may
+accompany a public version on an established in-app surface, but it never
+overwrites the native marketing version, `versionName`, a store version field,
+a changelog heading, or a consistency check, and it never appears in the version
+map. Read a recorded version display preference as `exact` for the stored
+canonical value, `friendly` for an established treatment that still preserves
+that value and never substitutes a build or development identifier, and `hidden`
+for surfaces that render no version while the canonical value stays in source
+data and release reports.
 
 Mobile in-app notes can provide more context than store notes but should still
 default to the latest release. Keep older history in a reachable changelog or
@@ -134,6 +154,13 @@ For release-bearing work, report each mobile application, package/bundle
 version, build number when relevant, changelog section, in-app destination, and
 store metadata destination as updated, already aligned, intentionally skipped,
 or blocked.
+
+Give every reported record its identifier role — canonical release, public
+version, build number, or development version — and name its release train
+whenever more than one mobile application or platform train is involved.
+Distinguish records that agree with their canonical value from build and
+development identifiers that are related but intentionally different. Never
+present a public version and a build number as if equality were expected.
 
 Verify both positive and negative scope examples for every destination:
 qualifying mobile and shared outcomes render, while representative web-only,

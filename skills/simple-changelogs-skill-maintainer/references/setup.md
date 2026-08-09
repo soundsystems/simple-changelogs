@@ -18,7 +18,7 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "skill-repository",
   "guidance": {
-    "version": 4,
+    "version": 6,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
@@ -87,6 +87,22 @@ guidance applies prospectively regardless of the recorded backfill status.
 Commit the policy with the changelogs unless repository instructions explicitly
 classify it as local-only. Report malformed or unsupported state and leave it
 untouched until the user authorizes a repair.
+
+`crossSurfaceVersioning` is optional and accepts:
+
+- `shared`: the covered product surfaces mirror one canonical public release
+  version unless a narrower repository rule excludes a surface.
+- `independent`: each documented release train owns its public version and may
+  advance without the others.
+- `mixed`: the repository holds both relationships, and local release
+  configuration or documentation identifies the groups.
+
+When absent, inspect first and ask only when several public version owners
+exist, their relationship is still ambiguous, and the current write depends on
+it. Never infer and persist a value from equal or unequal current strings. A
+`mixed` or `independent` value permits distinct trains but still requires
+repository evidence naming each affected train's version owner. This field is
+repository-specific and never joins the all-projects preferences.
 
 ## Authorized Initial Setup
 

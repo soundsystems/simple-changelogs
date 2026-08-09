@@ -13,7 +13,7 @@ store, CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established public web release-note destinations mirror selected highlights.
 
-Current guidance version: 11
+Current guidance version: 12
 
 ## Distribution checkpoint
 

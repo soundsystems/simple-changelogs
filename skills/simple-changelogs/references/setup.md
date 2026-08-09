@@ -18,15 +18,15 @@ file records decisions; it does not copy the skill's prose rules.
   "schemaVersion": 1,
   "distribution": "full",
   "guidance": {
-    "version": 12,
+    "version": 13,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
   "newReleaseNoteSurfaceComponents": "project-components",
-  "releaseNoteEnvironmentScope": "non-production",
-  "mobileReleaseNotePlacement": "mobile-only"
+  "mobileReleaseNotePlacement": "mobile-only",
+  "releaseNoteEnvironmentScope": "non-production"
 }
 ```
 
@@ -82,14 +82,39 @@ some history unchanged on purpose.
 When absent, ask only after a release-note surface is authorized. The field
 never grants a new surface, dependency, deployment, or publication.
 
-`releaseNoteEnvironmentScope` is optional: `all-environments` exposes the
-approved Web page and all selected entry points locally, in previews, and in
-production; `non-production` exposes them only locally and in recognized
-previews; `production-only` exposes them only in production; and `disabled`
-exposes them nowhere. Recommend `non-production` for marketing and client
-sites. Gate the route itself plus navigation, manual links, summaries, and
-modals. This repository-only preference does not control generation,
-archive-data synchronization, deployment, or publication.
+`releaseNoteEnvironmentScope` is optional and accepts:
+
+- `all-environments`: serve the approved Release Notes page and allow its
+  selected entry points and modal locally, in preview, and in production;
+- `non-production`: expose them only in local development and every recognized
+  non-production environment;
+- `production-only`: expose them only in production deployments; or
+- `disabled`: expose none of them in any environment.
+
+Ask after the user selects a public Web archive, whether its compact surface is
+automatic, manual, or absent. `all-environments` preserves existing behavior;
+recommend `non-production` for marketing and client sites where developers and
+reviewers need the page and any selected summary but public visitors should not
+reach them. Enforce the choice at the route or build boundary and every
+navigation, manual-link, summary, and modal entry point. This field is
+repository-specific, never joins all-projects preferences, and does not change
+archive-data synchronization, generation, deployment, or publication.
+
+`crossSurfaceVersioning` is optional and accepts:
+
+- `shared`: the covered product surfaces mirror one canonical public release
+  version unless a narrower repository rule excludes a surface.
+- `independent`: each documented release train owns its public version and may
+  advance without the others.
+- `mixed`: the repository holds both relationships, and local release
+  configuration or documentation identifies the groups.
+
+When absent, inspect first and ask only when several public version owners
+exist, their relationship is still ambiguous, and the current write depends on
+it. Never infer and persist a value from equal or unequal current strings. A
+`mixed` or `independent` value permits distinct trains but still requires
+repository evidence naming each affected train's version owner. This field is
+repository-specific and never joins the all-projects preferences.
 
 `mobileReleaseNotePlacement` accepts:
 

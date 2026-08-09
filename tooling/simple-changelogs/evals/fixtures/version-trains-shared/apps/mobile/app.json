@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "Trailhead",
+    "version": "3.2.0",
+    "ios": { "buildNumber": "1842" },
+    "android": { "versionCode": 1842 }
+  }
+}

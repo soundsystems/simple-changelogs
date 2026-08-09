@@ -15,7 +15,7 @@
     "responseSchema"
   ],
   "properties": {
-    "protocolVersion": { "const": 1 },
+    "protocolVersion": { "const": 2 },
     "case": {
       "$ref": "eval-manifest.schema.json#/$defs/evalCase"
     },

@@ -1,5 +1,5 @@
 export const MANIFEST_VERSION = 1;
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export const BACKFILL_STATUSES = [
   "not-applicable",
@@ -72,6 +72,17 @@ export const VERSION_ROLES = [
   "application",
   "store",
 ] as const;
+export const VERSION_IDENTIFIER_ROLES = [
+  "canonical-release",
+  "public-version",
+  "build-number",
+  "development-version",
+] as const;
+export const CROSS_SURFACE_VERSIONING_POLICIES = [
+  "shared",
+  "independent",
+  "mixed",
+] as const;
 export const VERIFICATION_STATUSES = ["passed", "failed", "not-run"] as const;
 export const ASSERTION_KINDS = [
   "activation",
@@ -94,10 +105,12 @@ export const ASSERTION_KINDS = [
 export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
 export type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
-export type MobileReleaseNotePlacement =
-  (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
+export type CrossSurfaceVersioning =
+  (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
 export type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
+export type MobileReleaseNotePlacement =
+  (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 export type DeveloperChangelogPolicy =
   (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 export type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
@@ -121,6 +134,7 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 export interface RepoPolicy {
+  crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog: DeveloperChangelogPolicy;
   distribution?: Distribution;
   guidance: {
@@ -158,6 +172,7 @@ export interface SetupWriteRecord {
 
 export interface SetupSelection {
   backfillStatus?: BackfillStatus;
+  crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
@@ -271,7 +286,7 @@ export interface RunnerRequest {
   activationMode: ActivationMode;
   case: EvalCase;
   prompt: string;
-  protocolVersion: 1;
+  protocolVersion: 2;
   responseSchema: string;
   skillDirectory: string;
   timeoutMs: number;
@@ -291,9 +306,13 @@ export interface AuthorizationRecord {
 }
 
 export type VersionRole = (typeof VERSION_ROLES)[number];
+export type VersionIdentifierRole = (typeof VERSION_IDENTIFIER_ROLES)[number];
 
 export interface VersionMapRecord {
+  field?: string;
+  identifierRole: VersionIdentifierRole;
   path: string;
+  releaseTrain?: string;
   role: VersionRole;
   version: string;
 }
@@ -329,7 +348,7 @@ export interface RunnerResponse {
   diagnostics?: RunnerDiagnostic[];
   evaluationReport: EvaluationReport;
   finalResponse: string;
-  protocolVersion: 1;
+  protocolVersion: 2;
   runtimeIdentity?: string;
   status: RunnerStatus;
 }

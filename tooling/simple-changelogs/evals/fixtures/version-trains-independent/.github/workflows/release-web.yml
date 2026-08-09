@@ -1,0 +1,9 @@
+name: release-web
+on:
+  push:
+    tags: ["web-v*"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pnpm --filter @trailhead/web deploy

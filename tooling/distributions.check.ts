@@ -371,11 +371,15 @@ const onboardingChecks = await Promise.all(
 );
 for (const { directoryName, source } of onboardingChecks) {
   for (const requiredChoice of [
+    "## Question presentation contract",
+    "numbered, choose-one list",
     "## Contextual product-surface choice",
     "always offer this choice",
     "Add a Release Notes tab or section there",
     "Create a dedicated Release Notes page",
     "Automatic Release Notes modal",
+    "Local and preview only",
+    "Local       Preview       Production",
     "## Component-source choice",
     "developer, administrator, operator",
   ]) {
@@ -412,6 +416,90 @@ const surfaceDesignDistributions = [
   "simple-changelogs-web",
   "simple-changelogs-web-cms",
 ];
+
+const webReleaseNoteScopeDistributions = [
+  "simple-changelogs",
+  "simple-changelogs-web",
+  "simple-changelogs-web-cms",
+];
+const webReleaseNoteScopeSnapshots = await Promise.all(
+  webReleaseNoteScopeDistributions.map(async (directoryName) => {
+    const [onboarding, setup, surfaces] = await Promise.all([
+      readFile(
+        join(skillsRoot, directoryName, "references", "onboarding.md"),
+        "utf8"
+      ),
+      readFile(
+        join(skillsRoot, directoryName, "references", "setup.md"),
+        "utf8"
+      ),
+      readFile(
+        join(
+          skillsRoot,
+          directoryName,
+          "references",
+          "release-note-surfaces.md"
+        ),
+        "utf8"
+      ),
+    ]);
+    return { directoryName, onboarding, setup, surfaces };
+  })
+);
+for (const {
+  directoryName,
+  onboarding,
+  setup,
+  surfaces,
+} of webReleaseNoteScopeSnapshots) {
+  for (const requiredRule of [
+    "releaseNoteEnvironmentScope",
+    "all-environments",
+    "non-production",
+    "production-only",
+    "disabled",
+  ]) {
+    if (
+      !(
+        onboarding.includes(requiredRule) &&
+        setup.includes(requiredRule) &&
+        surfaces.includes(requiredRule)
+      )
+    ) {
+      failures.push(
+        `skills/${directoryName} is missing release-note environment rule: ${requiredRule}`
+      );
+    }
+  }
+  for (const requiredExposureRule of [
+    "navigation",
+    "route",
+    "summary",
+    "modal",
+  ]) {
+    if (
+      !(
+        onboarding.includes(requiredExposureRule) &&
+        setup.includes(requiredExposureRule) &&
+        surfaces.includes(requiredExposureRule)
+      )
+    ) {
+      failures.push(
+        `skills/${directoryName} is missing full-surface environment gating: ${requiredExposureRule}`
+      );
+    }
+  }
+  if (
+    !(
+      onboarding.includes("standard not-found response") &&
+      surfaces.includes("standard not-found response")
+    )
+  ) {
+    failures.push(
+      `skills/${directoryName} must leave hidden release-note routes unserved`
+    );
+  }
+}
 const surfaceDesignSnapshots = await Promise.all(
   surfaceDesignDistributions.map(async (directoryName) => {
     const [skill, design] = await Promise.all([
@@ -440,6 +528,123 @@ for (const { design, directoryName, skill } of surfaceDesignSnapshots) {
   if (!skill.includes("`references/surface-design.md`")) {
     failures.push(
       `skills/${directoryName}/SKILL.md does not route authorized presentation work to surface-design.md`
+    );
+  }
+}
+
+// Required prose is asserted against whitespace-collapsed source so ordinary
+// reflow across lines never fails a check.
+const collapsed = (source: string): string =>
+  source.replace(/\s+/gu, " ").trim();
+
+const productVersionDistributions = [
+  "simple-changelogs",
+  "simple-changelogs-mobile",
+  "simple-changelogs-web",
+  "simple-changelogs-web-cms",
+];
+const versionGuidanceSnapshots = await Promise.all(
+  productVersionDistributions.map(async (directoryName) => {
+    const referenceRoot = join(skillsRoot, directoryName, "references");
+    const [surfaces, versions] = await Promise.all([
+      readFile(join(referenceRoot, "release-note-surfaces.md"), "utf8"),
+      readFile(join(referenceRoot, "version-decisions.md"), "utf8"),
+    ]);
+    return { directoryName, surfaces, versions };
+  })
+);
+const canonicalVersionGuidance = versionGuidanceSnapshots[0]?.versions;
+for (const { directoryName, surfaces, versions } of versionGuidanceSnapshots) {
+  const versionProse = collapsed(versions);
+  for (const requiredRule of [
+    "Alignment means a proven relationship, not universal string equality",
+    "proves shared source ownership, not a shared release train",
+    "Never derive a public version or a SemVer bump from a build number",
+    "leave public versions, build numbers, tags, and released headings unchanged",
+    "crossSurfaceVersioning",
+    "canonical release version",
+  ]) {
+    if (!versionProse.includes(collapsed(requiredRule))) {
+      failures.push(
+        `skills/${directoryName}/references/version-decisions.md is missing identifier-role rule: ${requiredRule}`
+      );
+    }
+  }
+  if (versions !== canonicalVersionGuidance) {
+    failures.push(
+      `skills/${directoryName}/references/version-decisions.md diverges from the shared product copy`
+    );
+  }
+
+  const surfaceProse = collapsed(surfaces);
+  for (const requiredRule of [
+    "identifier role",
+    "release train",
+    "presentation only",
+  ]) {
+    if (!surfaceProse.includes(collapsed(requiredRule))) {
+      failures.push(
+        `skills/${directoryName}/references/release-note-surfaces.md is missing version-identifier rule: ${requiredRule}`
+      );
+    }
+  }
+}
+
+const storeCopyDistributions = [
+  "simple-changelogs",
+  "simple-changelogs-mobile",
+];
+const storeCopySnapshots = await Promise.all(
+  storeCopyDistributions.map(async (directoryName) => ({
+    directoryName,
+    source: await readFile(
+      join(skillsRoot, directoryName, "references", "release-note-surfaces.md"),
+      "utf8"
+    ),
+  }))
+);
+for (const { directoryName, source } of storeCopySnapshots) {
+  const prose = collapsed(source);
+  for (const requiredRule of [
+    "belongs to one submitted public version",
+    "a store-note file is copy, never the version owner",
+    "versionCode",
+    "out of the copy",
+  ]) {
+    if (!prose.includes(collapsed(requiredRule))) {
+      failures.push(
+        `skills/${directoryName}/references/release-note-surfaces.md is missing public store-copy rule: ${requiredRule}`
+      );
+    }
+  }
+}
+
+const cmsPolicySchemas = await Promise.all(
+  ["simple-changelogs-cms", "simple-changelogs-web-cms"].map(
+    async (directoryName) => ({
+      directoryName,
+      source: await readFile(
+        join(skillsRoot, directoryName, "schemas", "repo-policy.schema.json"),
+        "utf8"
+      ),
+    })
+  )
+);
+const [canonicalCmsSchema, ...otherCmsSchemas] = cmsPolicySchemas;
+for (const { directoryName, source } of otherCmsSchemas) {
+  if (source !== canonicalCmsSchema?.source) {
+    failures.push(
+      `skills/${directoryName}/schemas/repo-policy.schema.json diverges from the shared bundled CMS policy schema`
+    );
+  }
+}
+for (const { directoryName, source } of cmsPolicySchemas) {
+  if (
+    source.includes("crossSurfaceVersioning") ||
+    source.includes("releaseNoteEnvironmentScope")
+  ) {
+    failures.push(
+      `skills/${directoryName}/schemas/repo-policy.schema.json must not carry repository-only app policy`
     );
   }
 }

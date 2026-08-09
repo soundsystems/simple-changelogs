@@ -50,6 +50,24 @@ only when evidence proves that each audience is affected; positive and negative
 selector checks prevent unrelated platform or role details from leaking across
 surfaces.
 
+One repository and one canonical customer history can also contain several
+independent release trains. A monorepo proves shared source ownership, not a
+shared release version, so different products may sit on different public
+versions without that being drift:
+
+```text
+Mobile public version: 3.2.0     iOS build number:     1842
+Web public version:    6.7.0     Android version code: 1842
+Development version:   3.2.0-rc.4+abc123
+```
+
+Build numbers and development identifiers are linked release evidence, never
+alternate public versions and never a reason to bump one. Optional
+`crossSurfaceVersioning` records whether surfaces are `shared`, `independent`,
+or `mixed`; when several public version owners exist and the relationship stays
+ambiguous, the skill asks once, records the answer, and leaves version fields
+untouched until then.
+
 For the full distribution, setup also records where mobile-specific history
 belongs: labeled Web/Mobile tabs at one web changelog, a separate linked Mobile
 history page on the web, or only established in-app and app-store destinations.
@@ -133,12 +151,13 @@ record one of:
   "schemaVersion": 1,
   "distribution": "web",
   "guidance": {
-    "version": 5,
+    "version": 9,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
+  "crossSurfaceVersioning": "independent",
   "releaseNoteEnvironmentScope": "non-production"
 }
 ```
@@ -160,7 +179,6 @@ preview only (`non-production`) is recommended for marketing and client sites:
 production does not serve the route or expose an entry point, while development
 and recognized previews keep it available. Generation, archive-data sync,
 deployment, and publication remain separate decisions.
-
 A sole repo-local distribution is selection evidence. A global installation is
 only availability; it does not override a repo-local distro or explicit
 repository instructions. When selection conflicts, agents stop before writing

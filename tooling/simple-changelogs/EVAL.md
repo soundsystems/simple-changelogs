@@ -133,6 +133,14 @@ are:
 - `report.status`, `report.decision`, `report.authorization`,
   `report.versionMap`, and `report.verification`.
 
+Runner requests and responses use protocol version 2. Every version-map record
+carries a required `identifierRole` of `canonical-release`, `public-version`,
+`build-number`, or `development-version`, plus an optional `field` for a named
+field inside the path and an optional `releaseTrain`. At most one record per
+release train may claim `canonical-release`. `report.versionMap` expectations
+may assert `path`, `version`, `role`, `identifierRole`, `field`, and
+`releaseTrain` independently; unasserted properties are ignored.
+
 Manifest assertions never execute caller-supplied commands. Git inspection and
 other subprocess checks use evaluator-owned argument arrays only.
 

@@ -211,3 +211,33 @@ choose-one options with diagrams where useful. Added repository-only
 `non-production` (**Local and preview only**) for marketing and client sites.
 Unknown scoped environments fail closed and hidden routes are unserved;
 generation, synchronization, deployment, and publication remain separate.
+
+## Guidance 12
+
+Separated version identifiers by role. A canonical release version owns
+chronology for one release train; a public version is the user-visible value
+that reproduces it; build numbers and development identifiers are linked
+evidence. Exactly one record per release train owns chronology, and a public
+version or SemVer bump is never derived from a build number.
+
+Replaced universal version equality with relationship-aware reconciliation. A
+shared repository proves shared source ownership, not a shared release train, and
+two separately owned fields holding the same string stay separately owned.
+Equality checks now apply only among proven mirrors of one canonical value,
+inside one train.
+
+Added the optional `crossSurfaceVersioning` policy recording whether product
+surfaces are `shared`, `independent`, or `mixed`. When several public version
+owners exist, the relationship stays ambiguous after inspection, and the write
+depends on the answer, one precise question is asked once and recorded. While it
+is outstanding, version fields, tags, and released headings stay unchanged and
+the mismatch is not called drift.
+
+Defined release names as presentation only and store description copy as
+belonging to one submitted public version, with build numbers, version codes, CI
+identifiers, and internal prerelease suffixes kept out of public store copy.
+
+An approved historical audit may find public notes attached to a build
+identifier, unrelated product versions forced together, or build and development
+identifiers leaked into public copy. Preserve released history unless a separate
+historical rewrite is authorized.

@@ -641,7 +641,10 @@ interface VerificationExpectation {
 }
 
 interface VersionMapExpectation {
+  field?: string;
+  identifierRole?: string;
   path: string;
+  releaseTrain?: string;
   role?: string;
   version?: string;
 }
@@ -695,19 +698,30 @@ const versionMapExpectation = (
   if (typeof value === "string") {
     return { path: value };
   }
+  const optionalKeys = [
+    "field",
+    "identifierRole",
+    "releaseTrain",
+    "role",
+    "version",
+  ] as const;
   if (
-    !isRecordWithOnlyKeys(value, ["path", "role", "version"]) ||
+    !isRecordWithOnlyKeys(value, ["path", ...optionalKeys]) ||
     typeof value.path !== "string" ||
-    (value.role !== undefined && typeof value.role !== "string") ||
-    (value.version !== undefined && typeof value.version !== "string")
+    optionalKeys.some(
+      (key) => value[key] !== undefined && typeof value[key] !== "string"
+    )
   ) {
     return;
   }
-  return {
-    path: value.path,
-    ...(value.role === undefined ? {} : { role: value.role }),
-    ...(value.version === undefined ? {} : { version: value.version }),
-  };
+  const expectation: VersionMapExpectation = { path: value.path };
+  for (const key of optionalKeys) {
+    const candidate = value[key];
+    if (typeof candidate === "string") {
+      expectation[key] = candidate;
+    }
+  }
+  return expectation;
 };
 
 const activationExpectation = (
@@ -898,7 +912,12 @@ const evaluateReportAssertion = (
             record.path === version.path &&
             (version.role === undefined || record.role === version.role) &&
             (version.version === undefined ||
-              record.version === version.version)
+              record.version === version.version) &&
+            (version.field === undefined || record.field === version.field) &&
+            (version.identifierRole === undefined ||
+              record.identifierRole === version.identifierRole) &&
+            (version.releaseTrain === undefined ||
+              record.releaseTrain === version.releaseTrain)
         );
       break;
     }

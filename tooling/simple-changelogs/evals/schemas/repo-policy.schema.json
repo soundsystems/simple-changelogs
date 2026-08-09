@@ -96,6 +96,9 @@
         "platform-native-components",
         "minimal-markup"
       ]
+    },
+    "crossSurfaceVersioning": {
+      "enum": ["shared", "independent", "mixed"]
     }
   }
 }

@@ -42,7 +42,57 @@
     clearer question presentation without recording the Web-only environment
     preference; standalone CMS retains its independent guidance version.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-09T00:39:40-05:00" -->
-
+- Added release-identifier semantics and cross-surface version policy:
+  - `VERSION_IDENTIFIER_ROLES` adds `canonical-release`, `public-version`,
+    `build-number`, and `development-version`. `VersionMapRecord` now requires
+    `identifierRole` and accepts optional `field` and `releaseTrain`, mirrored in
+    the response schema and covered by schema parity.
+  - A cross-field validator enforces at most one `canonical-release` per
+    `releaseTrain`, an invariant JSON Schema cannot express.
+  - `PROTOCOL_VERSION` moves to 2 because existing version-map response objects
+    are invalid without `identifierRole`. Updated `lib/model-eval.ts`, both
+    runner schemas, and every hard-coded response in the adapter, validator,
+    fixture, and CLI tests, flipping their negative cases to version 3. No
+    bundled skill file or `agents/openai.yaml` references the protocol, so
+    installed packages are unaffected.
+  - Extended all three closed version-map expectation definitions in lockstep —
+    `lib/validate.ts`, `evals/schemas/eval-manifest.schema.json`, and the
+    `isRecordWithOnlyKeys` list plus matcher in `lib/fixtures.ts` — so each new
+    property can be asserted independently.
+  - Repository policy accepts optional `crossSurfaceVersioning` with `shared`,
+    `independent`, and `mixed`, plumbed through both policy validators, the
+    setup selection and apply options, `--cross-surface-versioning`, and both
+    closed definitions in the setup-result schema. Absence stays valid and the
+    field never reaches global preferences or either CMS policy schema.
+  - Added a surgical update path: ordinary apply refuses configured
+    repositories, so `updateCrossSurfaceVersioning` runs before
+    `preSetupResult`, requires `--confirm`, rewrites one field, revalidates, and
+    is tested field-by-field against distribution, guidance version, backfill
+    status, signatures, developer-history policy, surface policy, component
+    policy, and mobile placement.
+  - Guidance moves to full 9 and mobile, web, and web+CMS 8, with matching
+    `guidance-updates.md` entries. `MOBILE_PLACEMENT_MIN_GUIDANCE` stayed pinned
+    at 6 and its regression test still passes after the bump.
+  - New contract assertions match against whitespace-collapsed source so
+    ordinary prose reflow cannot fail them; verified by wrapping a required
+    phrase across three lines and by mutating two rules to confirm both bite.
+    They also assert byte parity for `version-decisions.md` across the four
+    product distributions and for the two bundled CMS policy schemas.
+  - Repaired pre-existing drift: the web+CMS bundled CMS policy schema was
+    missing `newReleaseNoteSurfaceComponents` that its CMS twin carried, with
+    nothing enforcing parity between them.
+  - Added four `version-trains-*` fixtures (independent, ambiguous, shared,
+    mixed) and seven behavior cases covering both independent directions, shared
+    mirror reconciliation, mixed subgroups, the three-turn ambiguity flow, release
+    names, and store-only copy. Each fixture policy was validated through the
+    setup helper first; all four needed an explicit `distribution` and
+    `mobileReleaseNotePlacement` to avoid being reported malformed at guidance 6
+    or newer.
+  - Note: `bun run check` runs the suite in parallel and the spawn-heavy
+    contract, CLI, and fork-sync tests time out under load on this machine
+    regardless of these changes — unmodified `main` failed 11 and 18 tests on
+    two consecutive baseline runs. All 288 tests pass when files run serially.
+<!-- simple-changelogs-signature agent="Claude Opus 5" at="2026-07-29T17:07:03-05:00" -->
 ## 2026-07-30
 
 - Added portable release-note keyword-emphasis and detail-budget guidance to
