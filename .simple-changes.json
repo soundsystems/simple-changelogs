@@ -1,0 +1,14 @@
+{
+  "changelogHandling": "delegate-if-available",
+  "concurrentWork": "allow-claimed",
+  "defaultFinish": "ship",
+  "guidance": {
+    "version": 1
+  },
+  "handoffTiming": "confirm-ready",
+  "productionDeploy": "ask",
+  "questions": "blocking-only",
+  "review": "repository-policy",
+  "schemaVersion": 1,
+  "uiArtifactVersioning": "repository-convention"
+}
