@@ -138,7 +138,8 @@ record one of:
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
-  "newReleaseNoteSurfaces": "ask"
+  "newReleaseNoteSurfaces": "ask",
+  "releaseNoteEnvironmentScope": "non-production"
 }
 ```
 
@@ -150,6 +151,15 @@ another one.
 CMS-only uses `.simple-changelogs-cms.json` and a validated
 `CMS_CHANGELOG.json`. The combined web+CMS distribution uses both the standard
 policy and the CMS policy because their sources and audiences remain separate.
+
+For an approved public Web archive, `releaseNoteEnvironmentScope` can expose
+the complete surface in `all-environments`, `non-production`,
+`production-only`, or `disabled`. The gate includes the route or page,
+navigation and manual links, compact summaries, and automatic modals. Local and
+preview only (`non-production`) is recommended for marketing and client sites:
+production does not serve the route or expose an entry point, while development
+and recognized previews keep it available. Generation, archive-data sync,
+deployment, and publication remain separate decisions.
 
 A sole repo-local distribution is selection evidence. A global installation is
 only availability; it does not override a repo-local distro or explicit
@@ -172,9 +182,13 @@ bun skills/simple-changelogs-web/scripts/setup.ts inspect \
 
 When policy is missing, the agent summarizes detected distribution, histories,
 released headings, established destinations, and applicable global defaults.
-It then offers recommended setup, customization, or run-only preferences. The
-user confirms a plain-language receipt before durable writes, and the agent
-continues the original changelog task after setup.
+It then offers recommended setup, customization, or run-only preferences as a
+numbered, choose-one question. Every unresolved option explains the outcome,
+user impact, saved change, and tradeoff; diagrams are included where audience,
+environment, data flow, or write scope is easier to compare visually. Questions
+are presented one at a time so production users receive the setup in digestible
+pieces. The user confirms a plain-language receipt before durable writes, and
+the agent continues the original changelog task after setup.
 
 When released history exists, recommended onboarding includes an initial
 backfill of the complete accessible history from the oldest trustworthy

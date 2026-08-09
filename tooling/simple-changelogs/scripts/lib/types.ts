@@ -22,6 +22,12 @@ export const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "web-page",
   "mobile-only",
 ] as const;
+export const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
+  "all-environments",
+  "non-production",
+  "production-only",
+  "disabled",
+] as const;
 export const DEVELOPER_CHANGELOG_POLICIES = ["required", "optional"] as const;
 export const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 export const SETUP_STYLES = ["recommended", "customized"] as const;
@@ -90,6 +96,8 @@ export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
 export type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 export type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
+export type ReleaseNoteEnvironmentScope =
+  (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 export type DeveloperChangelogPolicy =
   (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 export type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
@@ -122,6 +130,7 @@ export interface RepoPolicy {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
+  releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   schemaVersion: 1;
   signatures: SignaturePolicy;
 }
@@ -153,6 +162,7 @@ export interface SetupSelection {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   scope?: SetupScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;

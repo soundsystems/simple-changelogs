@@ -88,6 +88,14 @@
     "mobileReleaseNotePlacement": {
       "enum": ["web-tabs", "web-page", "mobile-only"]
     },
+    "releaseNoteEnvironmentScope": {
+      "enum": [
+        "all-environments",
+        "non-production",
+        "production-only",
+        "disabled"
+      ]
+    },
     "repoPolicy": {
       "type": "object",
       "additionalProperties": false,
@@ -120,6 +128,9 @@
         },
         "mobileReleaseNotePlacement": {
           "$ref": "#/$defs/mobileReleaseNotePlacement"
+        },
+        "releaseNoteEnvironmentScope": {
+          "$ref": "#/$defs/releaseNoteEnvironmentScope"
         }
       }
     },
@@ -380,6 +391,9 @@
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
         "newReleaseNoteSurfaceComponents": {
           "$ref": "#/$defs/surfaceComponentSource"
+        },
+        "releaseNoteEnvironmentScope": {
+          "$ref": "#/$defs/releaseNoteEnvironmentScope"
         },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },

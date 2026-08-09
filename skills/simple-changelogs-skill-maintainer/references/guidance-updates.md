@@ -103,3 +103,11 @@ decided to open it.
 
 Repositories that already carry such a block can have it replaced in place. An
 existing pointer is updated rather than duplicated.
+
+## Guidance 6
+
+Setup now explains unresolved preferences as numbered, choose-one options with
+diagrams where useful. Skill repositories record no product archive, compact
+summary, component source, or `releaseNoteEnvironmentScope` value. This clarity
+update rewrites no released notes and grants no product-surface, deployment, or
+publication authority.

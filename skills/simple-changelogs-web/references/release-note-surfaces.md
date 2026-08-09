@@ -43,6 +43,22 @@ highlights and one link to the selected archive. Also offer a manual-only
 summary or archive only. The confirmed selection authorizes only those exact
 surfaces for the current task.
 
+For an approved public Web archive, apply repository policy
+`releaseNoteEnvironmentScope` to the complete Release Notes surface:
+`all-environments` exposes it locally, in preview, and in production;
+`non-production` exposes it locally and in recognized previews;
+`production-only` exposes it only in production; and `disabled` exposes it
+nowhere. Gate the route or page itself, navigation and manual links, compact
+summaries, and automatic modals together. A hidden dynamic route returns the
+framework's standard not-found response; omit it from static production builds
+when supported.
+
+Use the deployment platform's authoritative environment signal, never a
+hostname or branch-name guess. Unknown environments fail closed for scoped
+values. This gate controls exposure only; changelog generation, archive-data
+synchronization, deployment, and publication remain independent.
+
+
 ## Destination scope
 
 Record each affected web destination's path or identity, audience, web

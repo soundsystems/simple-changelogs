@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- Setup now walks owners through every unresolved preference as one
+  plain-language, numbered multiple-choice question at a time. Each option
+  explains the outcome, marks the recommendation, says what setup will save or
+  change, and names the important tradeoff; compact diagrams make audience,
+  environment, data-flow, and write-scope differences easier to compare.
+- Approved public Web Release Notes can now appear in all environments, in local
+  development and recognized previews only, in production only, or nowhere.
+  One choice controls the complete surface: the route or page, navigation and
+  manual links, compact summaries, and automatic modal. Local and preview only
+  is recommended for marketing and client sites, where production does not
+  serve the route or expose an entry point. Unknown scoped environments hide
+  the surface safely, while changelog generation, archive-data synchronization,
+  deployment, and publication remain independent.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-09T00:39:40-05:00" -->
+
 ## 2026-07-30
 
 - Release-note surfaces now use sparse emphasis for named product terms such as

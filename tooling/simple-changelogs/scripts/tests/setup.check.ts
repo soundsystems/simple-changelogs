@@ -355,13 +355,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(11);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(12);
 
     const distributionVersions = [
-      ["web", 10],
-      ["mobile", 9],
-      ["web-cms", 10],
-      ["skill-repository", 5],
+      ["web", 11],
+      ["mobile", 10],
+      ["web-cms", 11],
+      ["skill-repository", 6],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -595,6 +595,47 @@ describe("setup application", () => {
     ).toBe("completed");
     expect(completed.status).toBe("configured");
   });
+  test("persists release-note environment scope only in repository policy", async () => {
+    const { config, repo } = await fixture();
+    const result = await applySetup({
+      ...recommendedOptions(repo, config),
+      releaseNoteEnvironmentScope: "non-production",
+      scope: "all-projects",
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+    const preferences = await readJson(resolveGlobalPreferencesPath(config));
+
+    expect(result.status).toBe("configured");
+    expect(policy.releaseNoteEnvironmentScope).toBe("non-production");
+    expect(Object.hasOwn(preferences, "releaseNoteEnvironmentScope")).toBe(
+      false
+    );
+  });
+
+  test("updates environment scope without disturbing configured policy", async () => {
+    const { config, repo } = await fixture();
+    const stored = {
+      developerChangelog: "optional" as const,
+      distribution: "web" as const,
+      guidance: { backfillStatus: "declined" as const, version: 10 },
+      newReleaseNoteSurfaces: "existing-only" as const,
+      schemaVersion: 1 as const,
+      signatures: "none" as const,
+    };
+    await writeJson(join(repo, ".simple-changelogs.json"), stored);
+    const updated = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      releaseNoteEnvironmentScope: "non-production",
+      repo,
+    });
+    expect(updated.status).toBe("configured");
+    expect(await readJson(join(repo, ".simple-changelogs.json"))).toEqual({
+      ...stored,
+      releaseNoteEnvironmentScope: "non-production",
+    });
+  });
 });
 
 describe("distribution and CMS boundaries", () => {
@@ -704,7 +745,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 10 },
+      guidance: { backfillStatus: "not-applicable", version: 11 },
       newReleaseNoteSurfaces: "ask",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",

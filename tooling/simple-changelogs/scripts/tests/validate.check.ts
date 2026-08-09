@@ -82,6 +82,37 @@ describe("repo policy", () => {
     expect(input).toEqual(snapshot);
   });
 
+  test("accepts every release-note environment scope", () => {
+    for (const releaseNoteEnvironmentScope of [
+      "all-environments",
+      "non-production",
+      "production-only",
+      "disabled",
+    ]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          releaseNoteEnvironmentScope,
+        }).ok
+      ).toBe(true);
+    }
+  });
+
+  test("rejects unsupported and superseded environment fields", () => {
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        releaseNoteEnvironmentScope: "preview",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        releaseNoteModalEnvironmentScope: "non-production",
+      }).ok
+    ).toBe(false);
+  });
+
   test("accepts an optional developer changelog and disabled signatures", () => {
     const result = validateRepoPolicy({
       ...portableRepoPolicy(),

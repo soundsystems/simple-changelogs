@@ -40,6 +40,16 @@ Record dismissal by product and release identity, return focus or accessibility
 position, and retain a manual path after dismissal. Timing, depth, and
 eligibility remain governed by `references/release-note-surfaces.md`.
 
+## Environment boundary
+
+Apply `releaseNoteEnvironmentScope` before rendering any approved Web Release
+Notes surface. The route or page, navigation and manual links, compact summary,
+and automatic modal share one gate. In `non-production`, local development and
+recognized previews remain available while production returns not found or
+omits the static route and exposes no entry point. Use an authoritative
+environment signal and fail closed when a scoped environment is unknown.
+
+
 ## Inline emphasis
 
 Treat supported inline Markdown as presentation data, not visible punctuation.

@@ -49,6 +49,12 @@ const SURFACE_COMPONENT_SOURCES = [
   "platform-native-components",
   "minimal-markup",
 ] as const;
+const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
+  "all-environments",
+  "non-production",
+  "production-only",
+  "disabled",
+] as const;
 const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "web-tabs",
   "web-page",
@@ -121,6 +127,11 @@ const PRODUCT_SURFACE_DISTRIBUTIONS = new Set<Distribution | "cms">([
   "web",
   "web-cms",
 ]);
+const WEB_RELEASE_NOTE_DISTRIBUTIONS = new Set<Distribution>([
+  "full",
+  "web",
+  "web-cms",
+]);
 const DESIGN_SYSTEM_PATH =
   /(?:^|\/)(\.storybook|design-system|ui-kit|packages\/ui)(?:\/|$)/u;
 const COMPONENT_CONFIG_FILE = "components.json";
@@ -172,6 +183,8 @@ type Distribution = (typeof DISTRIBUTIONS)[number];
 type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
 type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
 type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
+type ReleaseNoteEnvironmentScope =
+  (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 type SetupStyle = (typeof SETUP_STYLES)[number];
@@ -187,11 +200,11 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 11,
-  mobile: 9,
-  "skill-repository": 5,
-  web: 10,
-  "web-cms": 10,
+  full: 12,
+  mobile: 10,
+  "skill-repository": 6,
+  web: 11,
+  "web-cms": 11,
 } as const satisfies Record<Distribution, number>;
 
 // Pinned to the guidance version that introduced the requirement. Comparing
@@ -209,6 +222,7 @@ interface RepoPolicy {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
+  releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   schemaVersion: 1;
   signatures: SignaturePolicy;
 }
@@ -276,6 +290,7 @@ interface Selection {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
@@ -283,7 +298,8 @@ interface Selection {
 
 type OptionalSelectionKeys =
   | "mobileReleaseNotePlacement"
-  | "newReleaseNoteSurfaceComponents";
+  | "newReleaseNoteSurfaceComponents"
+  | "releaseNoteEnvironmentScope";
 
 type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
   Pick<Selection, OptionalSelectionKeys>;
@@ -339,6 +355,7 @@ export interface ApplyOptions extends InspectOptions {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
@@ -395,6 +412,7 @@ const validateRepoPolicy = (
           "distribution",
           "mobileReleaseNotePlacement",
           "newReleaseNoteSurfaceComponents",
+          "releaseNoteEnvironmentScope",
         ]
       )
     )
@@ -425,6 +443,12 @@ const validateRepoPolicy = (
     !oneOf(value.newReleaseNoteSurfaceComponents, SURFACE_COMPONENT_SOURCES)
   ) {
     errors.push("newReleaseNoteSurfaceComponents is unsupported");
+  }
+  if (
+    value.releaseNoteEnvironmentScope !== undefined &&
+    !oneOf(value.releaseNoteEnvironmentScope, RELEASE_NOTE_ENVIRONMENT_SCOPES)
+  ) {
+    errors.push("releaseNoteEnvironmentScope is unsupported");
   }
   if (
     value.mobileReleaseNotePlacement !== undefined &&
@@ -1491,6 +1515,7 @@ const selectionFrom = (
     newReleaseNoteSurfaces:
       options.newReleaseNoteSurfaces ??
       (installed === "cms" ? "existing-only" : defaults.newReleaseNoteSurfaces),
+    releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
     scope: options.scope ?? "repository",
     setupStyle: options.setupStyle ?? defaults.setupStyle,
     signatures: options.signatures ?? defaults.signatures,
@@ -1568,6 +1593,9 @@ const repoPolicyFor = (
   if (selection.newReleaseNoteSurfaceComponents !== undefined) {
     policy.newReleaseNoteSurfaceComponents =
       selection.newReleaseNoteSurfaceComponents;
+  }
+  if (selection.releaseNoteEnvironmentScope !== undefined) {
+    policy.releaseNoteEnvironmentScope = selection.releaseNoteEnvironmentScope;
   }
   return policy;
 };
@@ -1679,6 +1707,84 @@ const completePartialAudit = async (
       };
 };
 
+/**
+ * Records the explicit Web release-note environment preference against an
+ * already-valid repository policy without disturbing other setup values.
+ */
+const updateReleaseNoteEnvironmentScope = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<SetupResult | null> => {
+  const selected = options.releaseNoteEnvironmentScope;
+  if (
+    selected !== undefined &&
+    !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(
+      inspect.detection.distribution as Distribution
+    )
+  ) {
+    return blockResult(inspect, [
+      "Release-note environment scope applies only to full, web, and web+CMS distributions.",
+    ]);
+  }
+  const record = inspect.policy;
+  if (
+    selected === undefined ||
+    record?.state !== "valid" ||
+    record.value === undefined
+  ) {
+    return null;
+  }
+  const selection: Selection = { releaseNoteEnvironmentScope: selected };
+  if (record.value.releaseNoteEnvironmentScope === selected) {
+    return {
+      ...inspect,
+      command: "apply",
+      selection,
+      status: "already-configured",
+      summary:
+        "Repository policy already records the selected release-note environment scope.",
+    };
+  }
+  if (!options.confirm) {
+    return blockResult(inspect, [
+      "Confirmation is required before recording the release-note environment scope.",
+    ]);
+  }
+  const candidate: CandidateWrite = {
+    content: json({
+      ...record.value,
+      releaseNoteEnvironmentScope: selected,
+    }),
+    kind: "repository-policy",
+    mode: 0o644,
+    path: record.path,
+  };
+  const staged = await stageCandidates([candidate]);
+  await Promise.all(
+    staged.map(async ({ candidate: pending, temporaryPath }) => {
+      await ensureNoSymlink(pending.path);
+      await rename(temporaryPath, pending.path);
+      await chmod(pending.path, pending.mode);
+    })
+  );
+  const errors = await validateStoredPolicies(
+    inspect.detection.distribution ?? "full",
+    inspect.repository
+  );
+  return errors.length > 0
+    ? blockResult(inspect, errors)
+    : {
+        ...inspect,
+        command: "apply",
+        errors: [],
+        selection,
+        status: "configured",
+        summary:
+          "Repository policy now records the selected release-note environment scope; no other setup value changed.",
+        writes: [{ kind: candidate.kind, path: candidate.path, written: true }],
+      };
+};
+
 const preSetupResult = (inspect: SetupResult): SetupResult | null => {
   if (!inspect.writeCapable) {
     return blockResult(inspect, [
@@ -1712,6 +1818,14 @@ const selectionErrors = (
   ) {
     errors.push(
       "Full web/mobile setup requires --mobile-placement with web-tabs, web-page, or mobile-only."
+    );
+  }
+  if (
+    selection.releaseNoteEnvironmentScope !== undefined &&
+    !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(installed as Distribution)
+  ) {
+    errors.push(
+      "Release-note environment scope applies only to full, web, and web+CMS distributions."
     );
   }
   if (selection.backfillStatus === "completed" && !options.auditVerified) {
@@ -1991,6 +2105,13 @@ export const applySetup = async (
   if (auditCompletion) {
     return auditCompletion;
   }
+  const environmentUpdate = await updateReleaseNoteEnvironmentScope(
+    options,
+    inspect
+  );
+  if (environmentUpdate) {
+    return environmentUpdate;
+  }
   const earlyResult = preSetupResult(inspect);
   if (earlyResult) {
     return earlyResult;
@@ -2027,6 +2148,7 @@ const valueOptionNames = new Set([
   "--developer-history",
   "--mobile-placement",
   "--new-surfaces",
+  "--release-note-environments",
   "--repo",
   "--scope",
   "--setup-style",
@@ -2104,6 +2226,10 @@ const parseCli = (argv: string[]): ParsedCli => {
         SURFACE_COMPONENT_SOURCES
       ),
       newReleaseNoteSurfaces: enumValue("--new-surfaces", SURFACE_POLICIES),
+      releaseNoteEnvironmentScope: enumValue(
+        "--release-note-environments",
+        RELEASE_NOTE_ENVIRONMENT_SCOPES
+      ),
       repo: values.get("--repo") ?? ".",
       scope: enumValue("--scope", SCOPES),
       setupStyle: enumValue("--setup-style", SETUP_STYLES),

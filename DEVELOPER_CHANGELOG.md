@@ -1,5 +1,48 @@
 # Developer Changelog
 
+## Unreleased
+
+- Standardized progressive setup questions and added public Web Release Notes
+  environment scope:
+  - Every unresolved preference now uses a plain-language, numbered, choose-one
+    list presented one question at a time. Options name their outcome, mark the
+    evidence-backed recommendation, explain owner and user impact, state the
+    saved change, and give the important tradeoff. Compact text diagrams
+    accompany audience, environment, data-flow, and write-scope decisions where
+    the paths are easier to compare visually.
+  - Added optional repository policy `releaseNoteEnvironmentScope` and CLI
+    option `--release-note-environments` for the full, Web, and Web+CMS
+    distributions. Runtime types, repository-policy and setup-result schemas,
+    validators, setup receipts, confirmed in-place policy updates, and tests
+    cover `all-environments`, `non-production`, `production-only`, and
+    `disabled`.
+  - The field is intentionally excluded from portable global preferences and
+    rejected for unsupported Mobile, skill-repository, and CMS-only policy
+    selections. Validation also rejects unknown and superseded field forms
+    without replacing existing repository state.
+  - One environment gate controls the entire approved public Web surface:
+    route or page, navigation and manual links, compact summaries, and automatic
+    modal. `all-environments` exposes it locally, in previews, and in
+    production; `non-production` exposes it only in local development and
+    recognized previews; `production-only` exposes it only in production; and
+    `disabled` exposes it nowhere. Local and preview only (`non-production`) is
+    recommended for marketing and client sites.
+  - Enforcement occurs at the route, server, or build boundary and at every
+    entry point. Hidden dynamic routes return the framework-standard not-found
+    response, while static builds omit the route when supported instead of
+    merely unlinking it.
+  - Environment classification uses the deployment platform's authoritative
+    signal, treats local development as non-production, forbids hostname and
+    branch-name guesses, and fails closed when a scoped environment is unknown.
+    The preference controls exposure only: it grants no new surface, dependency,
+    deployment, or publication authority and does not change changelog
+    generation or archive-data synchronization.
+  - Advanced guidance moves to full 12, Web and Web+CMS 11, Mobile 10, and
+    skill-repository 6. Standalone Mobile and skill-repository setup adopt the
+    clearer question presentation without recording the Web-only environment
+    preference; standalone CMS retains its independent guidance version.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-09T00:39:40-05:00" -->
+
 ## 2026-07-30
 
 - Added portable release-note keyword-emphasis and detail-budget guidance to

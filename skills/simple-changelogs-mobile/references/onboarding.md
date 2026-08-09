@@ -31,15 +31,36 @@ proof that a route is reachable, contains release history, or uses that
 component stack for product UI. Do not ask for a choice already established by
 current instructions, repository policy, or trustworthy evidence.
 
+## Question presentation contract
+
+Setup is for the repository owner or product owner, not an implementation
+quiz. Explain every unresolved preference in plain language before asking and
+present it as a numbered, choose-one list. Each option includes:
+
+- a short outcome label, with **Recommended** on the evidence-backed default;
+- what the owner and their users will experience;
+- what setup will save or change; and
+- the important tradeoff or boundary in one sentence.
+
+Ask one question at a time unless two choices are inseparable. Accept either
+the number or the option label. Do not lead with policy field names, enum values,
+framework jargon, or an unexplained yes/no prompt; show the stored value only as
+secondary detail when it helps an expert verify the receipt.
+
+Use a compact text diagram when a choice changes audience, environment, data
+flow, or write scope. Keep the diagram beside the options it explains and
+label both the shown and suppressed path. Skip diagrams for choices whose
+effect is already obvious from one sentence.
+
 ## First screen
 
-Summarize concrete findings in one short paragraph, then offer:
+Summarize concrete findings in one short paragraph, then ask **Choose one:**
 
-- **Use recommended setup** — Apply evidence-backed safe defaults. When
+1. **Use recommended setup — Recommended** — Apply evidence-backed safe defaults. When
   released history exists, include the full backfill and ask last only whether
   the user wants to defer or decline it.
-- **Customize** — Ask only the unresolved questions below.
-- **Use preferences for this run only** — Apply the choices to the current task
+2. **Customize** — Explain and ask only the unresolved questions below.
+3. **Use preferences for this run only** — Apply the choices to the current task
   without writing policy; onboarding appears again next time.
 
 The recommended path uses a developer history, hidden agent-and-time audit
@@ -49,30 +70,62 @@ release summary for product distributions. With no released history, record
 backfill by default and offer deferral or refusal as the final onboarding
 choice. Record nothing until the user confirms the setup receipt.
 
+When that compact summary is an automatic Web modal, recommend **Local and
+preview only** for a marketing, portfolio, brochure, agency, or client-review
+site. For a returning-user product app whose customers should receive automatic
+announcements, preserve **All environments** unless repository evidence or the
+owner selects another scope.
+
 ## Customized questions
 
 Ask project type only when selected distribution and repository evidence remain
-unresolved or conflicting. Map Web product to `web`, Mobile application to
-`mobile`, Web product with an internal CMS to `web-cms`, Agent skill or skill
-package to `skill-repository`, Multiple product surfaces to `full`, and
-Internal CMS only to the CMS-only policy. Never silently convert valid policy.
+unresolved or conflicting. Ask **What kind of project is this? Choose one:**
 
-Skip the history-audience question for CMS-only. Otherwise offer customer and
-developer histories (`required`) or customer history only (`optional`). For a
-skill repository, label the audiences as skill users and maintainers or skill
-users only. In a customer-only workflow, preserve technical context in commits
-and change-request descriptions.
+1. **Web product** — Public or customer-facing Web history; select `web`.
+2. **Mobile application** — Native app and established store destinations;
+   select `mobile`.
+3. **Web product with an internal CMS** — Public Web history plus protected
+   operator history; select `web-cms`.
+4. **Agent skill or skill package** — Skill-user and maintainer history; select
+   `skill-repository`.
+5. **Multiple product surfaces** — Web, mobile, store, internal, or other
+   destinations share this repository; select `full`.
+6. **Internal CMS only** — Protected operator history only; select the CMS-only
+   policy.
 
-For Markdown distributions, ask whether raw edits receive hidden audit
-comments. `Yes` maps to `agent-and-timestamp`; `No` maps to `none`. Explain that
-rendered notes omit the comments and that they are informational, not
-cryptographic proof. CMS-only has no raw-Markdown signature field.
+Show only plausible choices and mark the evidence-backed one **Recommended**.
+Never silently convert valid policy.
 
-Ask what to do when a release needs a new release-note destination:
+Skip the history-audience question for CMS-only. Otherwise ask **Who needs a
+maintained history? Choose one:**
 
-- **Ask me first** maps to `ask` and is recommended.
-- **You may add it** maps to `allow`.
-- **Use existing destinations only** maps to `existing-only`.
+1. **Customers and developers — Recommended** — Maintain `CHANGELOG.md` and
+   `DEVELOPER_CHANGELOG.md`; save `required`.
+2. **Customers only** — Maintain only `CHANGELOG.md`; save `optional` and keep
+   technical context in commits and change-request descriptions.
+
+For a skill repository, label those choices **Skill users and maintainers** and
+**Skill users only**.
+
+For Markdown distributions, ask **Should raw changelog edits include hidden
+agent-and-time audit comments? Choose one:**
+
+1. **Include hidden comments — Recommended** — Save `agent-and-timestamp`.
+   Rendered notes omit them; they are informational, not cryptographic proof.
+2. **Do not add comments** — Save `none` and preserve any comments already
+   present.
+
+CMS-only has no raw-Markdown signature field.
+
+Ask **When a release needs a release-notes page or modal that this project does
+not have yet, what should happen? Choose one:**
+
+1. **Ask me first — Recommended** — Pause before adding product UI. Save `ask`.
+2. **You may add it** — The skill may add a release-note destination when the
+   active release needs one. Save `allow`; deployment and publication still
+   require separate authority.
+3. **Use existing destinations only** — Update proven destinations but never
+   add another without a new explicit request. Save `existing-only`.
 
 `allow` covers only scoped product implementation for a missing release-note
 destination. It never grants deployment, publication, store submission, hosted
@@ -98,29 +151,69 @@ audience, and release coverage. Classify it as:
 Do not treat a route called Updates or Release Notes as an established archive
 from its name alone. When a suitable archive already exists, propose
 synchronizing and seeding that archive instead of creating a duplicate. When
-no suitable archive exists, ask where the release archive should live:
+no suitable archive exists, ask **Where should the complete release history
+live? Choose one:**
 
-- **Add a Release Notes tab or section there** — use when the existing
+1. **Add a Release Notes tab or section there** — use when the existing
   destination can keep editorial posts and chronological release history
   clearly separated.
-- **Create a dedicated Release Notes page** — recommended when the existing
+2. **Create a dedicated Release Notes page — Recommended for editorial
+   sites** — use when the existing
   destination is primarily a blog, newsroom, announcement feed, or marketing
   channel.
-- **Do not add a public archive now** — keep the candidate unchanged and limit
+3. **Do not add a public archive now** — keep the candidate unchanged and limit
   the task to canonical changelog work.
 
-If the product has returning users and the user selects a public archive, offer
-the compact surface separately:
+If the product has returning users and the user selects a public archive, ask
+**How should people discover the latest release? Choose one:**
 
-- **Automatic Release Notes modal** — recommended; show only the latest
+1. **Automatic Release Notes modal — Recommended for product apps** — show only the latest
   qualifying highlights to eligible returning users and link to the selected
   full archive.
-- **Manual Release Notes summary** — keep a compact summary reachable without
+2. **Manual Release Notes summary** — keep a compact summary reachable without
   automatic display.
-- **Archive only** — add no compact surface.
+3. **Archive only** — add no compact surface.
+
+For every approved public Web archive, immediately ask **In which environments
+should Release Notes be available? Choose one:**
+
+```text
+                         Local       Preview       Production
+1. All environments    AVAILABLE     AVAILABLE       AVAILABLE
+2. Local + preview     AVAILABLE     AVAILABLE         HIDDEN
+3. Production only      HIDDEN        HIDDEN         AVAILABLE
+4. Disabled             HIDDEN        HIDDEN           HIDDEN
+```
+
+1. **All environments — Current behavior** — Local developers, preview
+   reviewers, and production visitors can open the Release Notes page; any
+   selected navigation, manual summary, or automatic modal may also appear.
+   Save `all-environments`.
+2. **Local and preview only — Recommended for marketing and client sites** —
+   Keep the page and any selected entry points or modal available throughout
+   local development and recognized previews. In production, do not serve the
+   route or expose navigation, manual links, summaries, or the modal. Save
+   `non-production`.
+3. **Production deployments only** — Hide the page and every entry point in
+   local development and previews; expose the selected Release Notes surfaces
+   only in production. Save `production-only`.
+4. **Disabled everywhere** — Do not serve or link the Release Notes page and do
+   not render a summary or modal in any environment. Save `disabled`; canonical
+   changelog generation and archive-data synchronization can still continue.
+
+Use the repository's authoritative environment signal. Local development is
+non-production. Do not guess from hostnames or branch names. Enforce the choice
+at the route, server, or build boundary and at every navigation, manual-link,
+summary, and modal entry point. A hidden dynamic route returns the framework's
+standard not-found response; a static production build omits the route when the
+framework supports that. For a scoped choice, an unknown environment fails
+closed and exposes none of the surfaces. This preference controls Web exposure,
+not changelog generation, archive-data synchronization, deployment, or
+publication.
 
 The confirmed receipt must name the exact candidate classification, archive
-choice, compact-surface choice, route or placement, and visible labels. That
+choice, environment scope, compact-surface choice, route or placement, and
+visible labels. That
 confirmation authorizes only those named surfaces for the current task; it does
 not silently change the ongoing `newReleaseNoteSurfaces` policy.
 
@@ -137,15 +230,16 @@ library or repository-owned design system, use it and record
 `project-components`; do not ask a redundant styling question. State the
 evidence and let the user correct a false positive.
 
-When no established system is found, ask one question:
+When no established system is found, ask **Which component source should the
+release-notes surface use? Choose one:**
 
-- **Use the recommendation** — for React web projects, recommend shadcn/ui on
+1. **Use the recommendation — Recommended** — for React web projects, recommend shadcn/ui on
   Base UI; when Radix primitives already exist, recommend shadcn/ui on Radix
   without migrating the primitive layer; for mobile, recommend the app's
   platform-native components.
-- **Use another component library** — record the library named by the user and
+2. **Use another component library** — record the library named by the user and
   map the policy to the applicable project or platform component source.
-- **Use minimal markup** — add no component dependency and follow the
+3. **Use minimal markup** — add no component dependency and follow the
   repository's existing CSS or native styling approach.
 
 Name every package the recommended option would add. A dependency is a product
@@ -155,7 +249,20 @@ in the guidance.
 
 ## Preference scope
 
-Offer repository, all-projects solo-developer, or run-only scope.
+Ask **Where should these reusable setup preferences apply? Choose one:**
+
+```text
+1. This repository   -> .simple-changelogs.json
+2. All my projects   -> private preferences.json + repository policy
+3. This run only     -> no preference file
+```
+
+1. **This repository — Recommended for teams** — Commit visible project policy
+   beside the changelogs.
+2. **All my projects** — Also save only the portable solo-developer defaults
+   listed below in a private global preferences file.
+3. **This run only** — Write no durable policy or preferences; ask again next
+   time.
 
 Repository scope writes visible policy beside the histories. All-projects scope
 also writes a private `preferences.json` containing only:
@@ -197,9 +304,15 @@ Ask this after preference scope, and target the scope already chosen:
   repository.
 - Run-only scope writes nothing.
 
-Offer **Add the pointer** or **Leave instructions unchanged**, and name the
-exact file in the receipt. When the chosen scope has no such file, say so and
-move on rather than creating one.
+Ask **Should setup add the short changelog pointer to `[exact file]`? Choose
+one:**
+
+1. **Add the pointer — Recommended when this file is always loaded** — Add or
+   update one concise pointer after confirmation.
+2. **Leave instructions unchanged** — Make no change to the instruction file.
+
+Name the exact file in the question and receipt. When the chosen scope has no
+such file, say so and move on rather than creating one.
 
 Never write to an agent-instruction file without explicit confirmation. That
 file governs agent behavior generally, so it is the user's to change even when
@@ -223,19 +336,25 @@ place rather than appending a second one.
 ## Final history question
 
 After every other unresolved onboarding choice, ask about released history
-last, immediately before the confirmation receipt. State that the recommended
-setup includes a comprehensive initial backfill (`partial` until verified, then
-`completed`) and ask only whether to change that default to Maybe later
-(`deferred`) or Leave existing history alone (`declined`). Do not require a
-separate “Review it now” approval. With no released history, use
-`not-applicable` without asking. Silence records nothing; confirmation of the
-receipt accepts the displayed default.
+last, immediately before the confirmation receipt. Ask **How should setup
+handle the released history already in this repository? Choose one:**
+
+1. **Review the complete history now — Recommended** — Start the comprehensive
+   initial backfill as `partial`, then record `completed` only after verification.
+2. **Maybe later** — Save `deferred` and continue prospective changelog work.
+3. **Leave existing history alone** — Save `declined` and apply new guidance
+   only to future work.
+
+Do not require a separate “Review it now” approval. With no released history,
+use `not-applicable` without asking. Silence records nothing; confirmation of
+the receipt accepts the displayed default.
 
 ## Confirm, apply, and continue
 
 Before durable writes, show a receipt naming the selected distribution,
 audiences, signatures, missing-destination behavior, any contextual product
-surface choices, component source, every dependency to add, archive-seeding
+surface choices, release-note environment scope, component source, every dependency to
+add, archive-seeding
 disposition, history disposition, and every policy or preference path. State
 that setup grants no deployment, publication, store-submission, CMS-access, or
 unrelated released-history authority. Require confirmation.
