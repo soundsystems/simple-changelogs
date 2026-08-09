@@ -355,12 +355,12 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(12);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(13);
 
     const distributionVersions = [
-      ["web", 11],
-      ["mobile", 10],
-      ["web-cms", 11],
+      ["web", 12],
+      ["mobile", 11],
+      ["web-cms", 12],
       ["skill-repository", 6],
     ] as const;
     const versions = await Promise.all(
@@ -595,34 +595,157 @@ describe("setup application", () => {
     ).toBe("completed");
     expect(completed.status).toBe("configured");
   });
-  test("persists release-note environment scope only in repository policy", async () => {
+
+  test("persists an explicit cross-surface versioning answer", async () => {
     const { config, repo } = await fixture();
+
     const result = await applySetup({
       ...recommendedOptions(repo, config),
-      releaseNoteEnvironmentScope: "non-production",
-      scope: "all-projects",
+      crossSurfaceVersioning: "independent",
     });
     const policy = await readJson(join(repo, ".simple-changelogs.json"));
-    const preferences = await readJson(resolveGlobalPreferencesPath(config));
 
     expect(result.status).toBe("configured");
-    expect(policy.releaseNoteEnvironmentScope).toBe("non-production");
-    expect(Object.hasOwn(preferences, "releaseNoteEnvironmentScope")).toBe(
-      false
-    );
+    expect(result.selection.crossSurfaceVersioning).toBe("independent");
+    expect(policy.crossSurfaceVersioning).toBe("independent");
   });
 
-  test("updates environment scope without disturbing configured policy", async () => {
+  test("omits cross-surface versioning when no answer is supplied", async () => {
+    const { config, repo } = await fixture();
+
+    const result = await applySetup(recommendedOptions(repo, config));
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(result.status).toBe("configured");
+    expect(Object.hasOwn(policy, "crossSurfaceVersioning")).toBe(false);
+  });
+
+  test("records a relationship answer against valid policy without disturbing other values", async () => {
     const { config, repo } = await fixture();
     const stored = {
       developerChangelog: "optional" as const,
-      distribution: "web" as const,
-      guidance: { backfillStatus: "declined" as const, version: 10 },
+      distribution: "full" as const,
+      guidance: { backfillStatus: "declined" as const, version: 8 },
+      mobileReleaseNotePlacement: "web-tabs" as const,
+      newReleaseNoteSurfaceComponents: "recommended-web-radix" as const,
       newReleaseNoteSurfaces: "existing-only" as const,
       schemaVersion: 1 as const,
       signatures: "none" as const,
     };
     await writeJson(join(repo, ".simple-changelogs.json"), stored);
+
+    const blocked = await applySetup({
+      configDirectory: config,
+      crossSurfaceVersioning: "mixed",
+      distribution: "full",
+      repo,
+    });
+    const updated = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      crossSurfaceVersioning: "mixed",
+      distribution: "full",
+      repo,
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain("Confirmation is required");
+    expect(updated.status).toBe("configured");
+    expect(updated.writes).toEqual([
+      {
+        kind: "repository-policy",
+        path: join(repo, ".simple-changelogs.json"),
+        written: true,
+      },
+    ]);
+    expect(policy).toEqual({ ...stored, crossSurfaceVersioning: "mixed" });
+  });
+
+  test("treats a matching stored relationship as already configured", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      crossSurfaceVersioning: "shared",
+      developerChangelog: "required",
+      distribution: "web",
+      guidance: { backfillStatus: "not-applicable", version: 7 },
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+
+    const result = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      crossSurfaceVersioning: "shared",
+      distribution: "web",
+      repo,
+    });
+
+    expect(result.status).toBe("already-configured");
+    expect(result.writes).toEqual([]);
+  });
+
+  test("keeps cross-surface versioning out of global preferences", async () => {
+    const { config, repo } = await fixture();
+
+    await applySetup({
+      ...recommendedOptions(repo, config),
+      crossSurfaceVersioning: "independent",
+      scope: "all-projects",
+    });
+    const preferences = await readJson(resolveGlobalPreferencesPath(config));
+
+    expect(Object.hasOwn(preferences, "crossSurfaceVersioning")).toBe(false);
+  });
+
+  test("persists every release-note environment scope", async () => {
+    await Promise.all(
+      (
+        [
+          "all-environments",
+          "non-production",
+          "production-only",
+          "disabled",
+        ] as const
+      ).map(async (releaseNoteEnvironmentScope) => {
+        const { config, repo } = await fixture();
+        const result = await applySetup({
+          ...recommendedOptions(repo, config),
+          releaseNoteEnvironmentScope,
+        });
+        const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+        expect(result.status).toBe("configured");
+        expect(result.selection.releaseNoteEnvironmentScope).toBe(
+          releaseNoteEnvironmentScope
+        );
+        expect(policy.releaseNoteEnvironmentScope).toBe(
+          releaseNoteEnvironmentScope
+        );
+      })
+    );
+  });
+
+  test("updates release-note environment scope without disturbing configured policy", async () => {
+    const { config, repo } = await fixture();
+    const stored = {
+      developerChangelog: "optional" as const,
+      distribution: "web" as const,
+      guidance: { backfillStatus: "declined" as const, version: 8 },
+      newReleaseNoteSurfaceComponents: "recommended-web-radix" as const,
+      newReleaseNoteSurfaces: "existing-only" as const,
+      schemaVersion: 1 as const,
+      signatures: "none" as const,
+    };
+    await writeJson(join(repo, ".simple-changelogs.json"), stored);
+
+    const blocked = await applySetup({
+      configDirectory: config,
+      distribution: "web",
+      releaseNoteEnvironmentScope: "non-production",
+      repo,
+    });
     const updated = await applySetup({
       configDirectory: config,
       confirm: true,
@@ -630,11 +753,30 @@ describe("setup application", () => {
       releaseNoteEnvironmentScope: "non-production",
       repo,
     });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain("Confirmation is required");
     expect(updated.status).toBe("configured");
-    expect(await readJson(join(repo, ".simple-changelogs.json"))).toEqual({
+    expect(policy).toEqual({
       ...stored,
       releaseNoteEnvironmentScope: "non-production",
     });
+  });
+
+  test("keeps release-note environment scope out of global preferences", async () => {
+    const { config, repo } = await fixture();
+
+    await applySetup({
+      ...recommendedOptions(repo, config),
+      releaseNoteEnvironmentScope: "non-production",
+      scope: "all-projects",
+    });
+    const preferences = await readJson(resolveGlobalPreferencesPath(config));
+
+    expect(Object.hasOwn(preferences, "releaseNoteEnvironmentScope")).toBe(
+      false
+    );
   });
 });
 
@@ -740,12 +882,82 @@ describe("distribution and CMS boundaries", () => {
     ).toBe(false);
   });
 
+  test("CMS-only setup never records app-version relationships", async () => {
+    const { config, repo } = await fixture();
+
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      crossSurfaceVersioning: "independent",
+      distribution: "cms",
+      repo,
+      scope: "repository",
+    });
+    const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
+
+    expect(result.status).toBe("configured");
+    expect(existsSync(join(repo, ".simple-changelogs.json"))).toBe(false);
+    expect(Object.hasOwn(cmsPolicy, "crossSurfaceVersioning")).toBe(false);
+    expect(result.unresolvedQuestions).not.toContain(
+      "cross-surface-versioning"
+    );
+  });
+
+  test("non-Web distributions reject release-note environment scope", async () => {
+    await Promise.all(
+      (["mobile", "skill-repository"] as const).map(async (distribution) => {
+        const { config, repo } = await fixture();
+        const result = await applySetup({
+          backfillStatus: "not-applicable",
+          configDirectory: config,
+          confirm: true,
+          distribution,
+          releaseNoteEnvironmentScope: "non-production",
+          repo,
+          scope: "repository",
+        });
+
+        expect(result.status).toBe("blocked");
+        expect(result.errors.join(" ")).toContain(
+          "applies only to full, web, and web+CMS"
+        );
+        expect(existsSync(join(repo, ".simple-changelogs.json"))).toBe(false);
+      })
+    );
+  });
+
+  test("CMS-only setup rejects release-note environment scope", async () => {
+    const { config, repo } = await fixture();
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      distribution: "cms",
+      releaseNoteEnvironmentScope: "non-production",
+      repo,
+      scope: "repository",
+    });
+
+    expect(result.status).toBe("blocked");
+    expect(result.errors.join(" ")).toContain(
+      "applies only to full, web, and web+CMS"
+    );
+    expect(existsSync(join(repo, ".simple-changelogs-cms.json"))).toBe(false);
+  });
+
   test("web+CMS resumes a matching interrupted setup transaction", async () => {
     const { config, repo } = await fixture();
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 11 },
+      guidance: { backfillStatus: "not-applicable", version: 12 },
       newReleaseNoteSurfaces: "ask",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",

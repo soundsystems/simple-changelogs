@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "distribution": "full",
+  "guidance": {
+    "version": 8,
+    "backfillStatus": "completed"
+  },
+  "developerChangelog": "required",
+  "signatures": "agent-and-timestamp",
+  "newReleaseNoteSurfaces": "ask",
+  "mobileReleaseNotePlacement": "mobile-only",
+  "crossSurfaceVersioning": "shared"
+}

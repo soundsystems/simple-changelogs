@@ -48,7 +48,14 @@ const evaluationReport: EvaluationReport = {
   },
   reasonCodes: ["USER_VISIBLE_CHANGE"],
   verificationResults: [{ code: "CHANGELOG_FORMAT", status: "passed" }],
-  versionMap: [{ path: "CHANGELOG.md", role: "source", version: "Unreleased" }],
+  versionMap: [
+    {
+      identifierRole: "canonical-release",
+      path: "CHANGELOG.md",
+      role: "source",
+      version: "Unreleased",
+    },
+  ],
 };
 
 const portableRepoPolicy = () => ({
@@ -82,6 +89,34 @@ describe("repo policy", () => {
     expect(input).toEqual(snapshot);
   });
 
+  test("accepts every cross-surface versioning relationship", () => {
+    for (const relationship of ["shared", "independent", "mixed"]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          crossSurfaceVersioning: relationship,
+        }).ok
+      ).toBe(true);
+    }
+  });
+
+  test("rejects unsupported and non-string cross-surface versioning", () => {
+    for (const relationship of ["Shared", "separate", "", 1, null, true, []]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          crossSurfaceVersioning: relationship,
+        }).ok
+      ).toBe(false);
+    }
+  });
+
+  test("keeps a policy without cross-surface versioning valid", () => {
+    const policy = portableRepoPolicy();
+    expect(Object.hasOwn(policy, "crossSurfaceVersioning")).toBe(false);
+    expect(validateRepoPolicy(policy).ok).toBe(true);
+  });
+
   test("accepts every release-note environment scope", () => {
     for (const releaseNoteEnvironmentScope of [
       "all-environments",
@@ -98,13 +133,26 @@ describe("repo policy", () => {
     }
   });
 
-  test("rejects unsupported and superseded environment fields", () => {
-    expect(
-      validateRepoPolicy({
-        ...portableRepoPolicy(),
-        releaseNoteEnvironmentScope: "preview",
-      }).ok
-    ).toBe(false);
+  test("rejects unsupported release-note environment scopes", () => {
+    for (const releaseNoteEnvironmentScope of [
+      "preview",
+      "staging-only",
+      "",
+      1,
+      null,
+      true,
+      [],
+    ]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          releaseNoteEnvironmentScope,
+        }).ok
+      ).toBe(false);
+    }
+  });
+
+  test("rejects the superseded modal-only environment field", () => {
     expect(
       validateRepoPolicy({
         ...portableRepoPolicy(),
@@ -287,8 +335,10 @@ describe("portable inputs", () => {
 });
 
 test("runner contracts reject incompatible protocol versions", () => {
-  expect(validateRunnerRequest({ protocolVersion: 2 }).ok).toBe(false);
-  expect(validateRunnerResponse({ protocolVersion: 2 }).ok).toBe(false);
+  expect(validateRunnerRequest({ protocolVersion: 1 }).ok).toBe(false);
+  expect(validateRunnerResponse({ protocolVersion: 1 }).ok).toBe(false);
+  expect(validateRunnerRequest({ protocolVersion: 3 }).ok).toBe(false);
+  expect(validateRunnerResponse({ protocolVersion: 3 }).ok).toBe(false);
 });
 
 describe("manifest", () => {
@@ -385,7 +435,7 @@ describe("runner request", () => {
       activationMode: "explicit",
       case: behaviorCase,
       prompt: "Update the pending changelogs.",
-      protocolVersion: 1,
+      protocolVersion: 2,
       responseSchema: "/tmp/runner-response.schema.json",
       skillDirectory: "/tmp/skill",
       timeoutMs: 30_000,
@@ -402,7 +452,7 @@ describe("runner request", () => {
       case: behaviorCase,
       command: "runtime-specific-command",
       prompt: "Update the pending changelogs.",
-      protocolVersion: 1,
+      protocolVersion: 2,
       responseSchema: "/tmp/runner-response.schema.json",
       skillDirectory: "/tmp/skill",
       timeoutMs: 30_000,
@@ -431,7 +481,7 @@ describe("runner response", () => {
       diagnostics: [{ code: "TRACE_CAPTURED", message: "Trace captured." }],
       evaluationReport,
       finalResponse: "Updated the pending changelogs.",
-      protocolVersion: 1,
+      protocolVersion: 2,
       runtimeIdentity: "Example Agent",
       status: "completed",
     };
@@ -447,7 +497,7 @@ describe("runner response", () => {
         reasonCodes: ["user_visible_change"],
       },
       finalResponse: "Updated the pending changelogs.",
-      protocolVersion: 1,
+      protocolVersion: 2,
       status: "completed",
     });
 
@@ -466,6 +516,140 @@ describe("runner response", () => {
     }
   });
 
+  test("separates identifier roles for several fields in one file", () => {
+    const input: RunnerResponse = {
+      evaluationReport: {
+        ...evaluationReport,
+        versionMap: [
+          {
+            identifierRole: "canonical-release",
+            path: "CHANGELOG.md",
+            releaseTrain: "mobile",
+            role: "source",
+            version: "3.2.0",
+          },
+          {
+            field: "expo.version",
+            identifierRole: "public-version",
+            path: "apps/mobile/app.json",
+            releaseTrain: "mobile",
+            role: "application",
+            version: "3.2.0",
+          },
+          {
+            field: "expo.ios.buildNumber",
+            identifierRole: "build-number",
+            path: "apps/mobile/app.json",
+            releaseTrain: "ios",
+            role: "application",
+            version: "1842",
+          },
+          {
+            field: "version",
+            identifierRole: "development-version",
+            path: "apps/mobile/package.json",
+            releaseTrain: "mobile",
+            role: "package",
+            version: "3.2.0-rc.4+abc123",
+          },
+        ],
+      },
+      finalResponse: "Reported each identifier separately.",
+      protocolVersion: 2,
+      status: "completed",
+    };
+
+    expect(validateRunnerResponse(input)).toEqual({ ok: true, value: input });
+  });
+
+  test("rejects unsupported, empty, and missing identifier metadata", () => {
+    for (const record of [
+      { identifierRole: "marketing-name", path: "a.json", role: "package" },
+      { field: "", identifierRole: "public-version", path: "a.json" },
+      { identifierRole: "public-version", path: "a.json", releaseTrain: "" },
+      { path: "a.json" },
+    ]) {
+      const result = validateRunnerResponse({
+        evaluationReport: {
+          ...evaluationReport,
+          versionMap: [{ role: "package", version: "1.0.0", ...record }],
+        },
+        finalResponse: "Reported an unsupported identifier.",
+        protocolVersion: 2,
+        status: "completed",
+      });
+
+      expect(result.ok).toBe(false);
+    }
+  });
+
+  test("rejects two canonical releases claiming one release train", () => {
+    const result = validateRunnerResponse({
+      evaluationReport: {
+        ...evaluationReport,
+        versionMap: [
+          {
+            identifierRole: "canonical-release",
+            path: "CHANGELOG.md",
+            releaseTrain: "mobile",
+            role: "source",
+            version: "3.2.0",
+          },
+          {
+            identifierRole: "canonical-release",
+            path: "releases/mobile.json",
+            releaseTrain: "mobile",
+            role: "mirror",
+            version: "3.2.0",
+          },
+        ],
+      },
+      finalResponse: "Claimed two chronology owners.",
+      protocolVersion: 2,
+      status: "completed",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.errors.some((error) =>
+          error.includes(
+            "duplicates canonical-release for release train mobile"
+          )
+        )
+      ).toBe(true);
+    }
+  });
+
+  test("allows one canonical release per distinct train", () => {
+    const result = validateRunnerResponse({
+      evaluationReport: {
+        ...evaluationReport,
+        versionMap: [
+          {
+            identifierRole: "canonical-release",
+            path: "CHANGELOG.md",
+            releaseTrain: "mobile",
+            role: "source",
+            version: "3.2.0",
+          },
+          {
+            identifierRole: "canonical-release",
+            path: "apps/web/CHANGELOG.md",
+            releaseTrain: "web",
+            role: "source",
+            version: "6.7.0",
+          },
+        ],
+      },
+      finalResponse: "Two trains, two owners.",
+      protocolVersion: 2,
+      status: "completed",
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
   test("rejects final prose nested inside the evaluation report", () => {
     const result = validateRunnerResponse({
       evaluationReport: {
@@ -473,7 +657,7 @@ describe("runner response", () => {
         finalResponse: "Duplicated prose.",
       },
       finalResponse: "Normal prose.",
-      protocolVersion: 1,
+      protocolVersion: 2,
       status: "completed",
     });
 

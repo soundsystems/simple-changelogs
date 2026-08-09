@@ -262,12 +262,46 @@ store field from the same mobile-scoped outcomes. Inspect local metadata,
 submission configuration, native version files, scripts, documentation, and CI
 before deciding where that copy belongs.
 
+Store description copy belongs to one submitted public version, even when the
+file it lives in holds only prose. Resolve that public version from its proven
+owner; a store-note file is copy, never the version owner.
+
 Normal store notes should be a compact paragraph or a few concise bullets:
 
 - lead with a concrete mobile capability or material outcome;
 - omit web-only, admin-only, migration, package, and release-process detail;
 - avoid promotional claims and implementation mechanics;
+- keep build numbers, `versionCode`, CI identifiers, internal prerelease
+  suffixes, and private codenames out of the copy. An established testing-track
+  audience may receive a build identifier only when repository evidence proves
+  that audience needs it;
+- do not repeat the version number the store already displays unless local
+  style requires it;
 - respect the repository's existing localization flow and current store limits.
+
+Include relevant store fields in the final version map with their observed
+version, artifact role, identifier role, and release train.
+
+## Release Names and Version Display
+
+An optional release name such as `Summer Update` is presentation only. It may
+accompany a public version on an established surface, but it never overwrites
+native metadata, store version fields, changelog headings, or
+version-consistency checks, and it never appears in the version map.
+
+When a surface records a version display preference, read it as:
+
+- `exact` shows the canonical public version as stored;
+- `friendly` applies an established treatment such as adding “Version” or
+  dropping an unhelpful prefix, while preserving the underlying public version
+  and never substituting a build number, development version, or release name;
+- `hidden` renders no version on that surface while the canonical value remains
+  in source data and release reports.
+
+An established surface may therefore show `Summer Update · Version 3.2.0`.
+Store description copy normally omits both, because the store already supplies
+version context. Preserve established product style when it deliberately
+includes a release name.
 
 If the source is remote-only and the task does not authorize that remote
 release action, provide exact copy plus the documented command, dashboard, or

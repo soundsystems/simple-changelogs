@@ -49,6 +49,11 @@ const SURFACE_COMPONENT_SOURCES = [
   "platform-native-components",
   "minimal-markup",
 ] as const;
+const CROSS_SURFACE_VERSIONING_POLICIES = [
+  "shared",
+  "independent",
+  "mixed",
+] as const;
 const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
   "all-environments",
   "non-production",
@@ -183,6 +188,8 @@ type Distribution = (typeof DISTRIBUTIONS)[number];
 type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
 type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
 type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
+type CrossSurfaceVersioning =
+  (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
 type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 type MobileReleaseNotePlacement =
@@ -200,11 +207,11 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 12,
-  mobile: 10,
+  full: 13,
+  mobile: 11,
   "skill-repository": 6,
-  web: 11,
-  "web-cms": 11,
+  web: 12,
+  "web-cms": 12,
 } as const satisfies Record<Distribution, number>;
 
 // Pinned to the guidance version that introduced the requirement. Comparing
@@ -213,6 +220,7 @@ const GUIDANCE_VERSIONS = {
 const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
 
 interface RepoPolicy {
+  crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog: DeveloperChangelogPolicy;
   distribution?: Distribution;
   guidance: {
@@ -286,6 +294,7 @@ interface Recommendation {
 
 interface Selection {
   backfillStatus?: BackfillStatus;
+  crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
@@ -297,6 +306,7 @@ interface Selection {
 }
 
 type OptionalSelectionKeys =
+  | "crossSurfaceVersioning"
   | "mobileReleaseNotePlacement"
   | "newReleaseNoteSurfaceComponents"
   | "releaseNoteEnvironmentScope";
@@ -351,6 +361,7 @@ export interface ApplyOptions extends InspectOptions {
   cmsRoute?: string;
   cmsSurfaceProven?: boolean;
   confirm?: boolean;
+  crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
@@ -388,6 +399,17 @@ const oneOf = <T extends string>(
   values: readonly T[]
 ): value is T => typeof value === "string" && values.includes(value as T);
 
+const reportUnsupportedOptionalEnum = <T extends string>(
+  errors: string[],
+  field: string,
+  value: unknown,
+  values: readonly T[]
+): void => {
+  if (value !== undefined && !oneOf(value, values)) {
+    errors.push(`${field} is unsupported`);
+  }
+};
+
 const stringifyError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -409,6 +431,7 @@ const validateRepoPolicy = (
           "newReleaseNoteSurfaces",
         ],
         [
+          "crossSurfaceVersioning",
           "distribution",
           "mobileReleaseNotePlacement",
           "newReleaseNoteSurfaceComponents",
@@ -444,12 +467,18 @@ const validateRepoPolicy = (
   ) {
     errors.push("newReleaseNoteSurfaceComponents is unsupported");
   }
-  if (
-    value.releaseNoteEnvironmentScope !== undefined &&
-    !oneOf(value.releaseNoteEnvironmentScope, RELEASE_NOTE_ENVIRONMENT_SCOPES)
-  ) {
-    errors.push("releaseNoteEnvironmentScope is unsupported");
-  }
+  reportUnsupportedOptionalEnum(
+    errors,
+    "crossSurfaceVersioning",
+    value.crossSurfaceVersioning,
+    CROSS_SURFACE_VERSIONING_POLICIES
+  );
+  reportUnsupportedOptionalEnum(
+    errors,
+    "releaseNoteEnvironmentScope",
+    value.releaseNoteEnvironmentScope,
+    RELEASE_NOTE_ENVIRONMENT_SCOPES
+  );
   if (
     value.mobileReleaseNotePlacement !== undefined &&
     !oneOf(value.mobileReleaseNotePlacement, MOBILE_RELEASE_NOTE_PLACEMENTS)
@@ -1504,6 +1533,7 @@ const selectionFrom = (
       (inspect.inventory.releasedHistoryCount === 0
         ? "not-applicable"
         : "partial"),
+    crossSurfaceVersioning: options.crossSurfaceVersioning,
     developerChangelog:
       options.developerChangelog ?? defaults.developerChangelog,
     mobileReleaseNotePlacement: options.mobileReleaseNotePlacement,
@@ -1593,6 +1623,9 @@ const repoPolicyFor = (
   if (selection.newReleaseNoteSurfaceComponents !== undefined) {
     policy.newReleaseNoteSurfaceComponents =
       selection.newReleaseNoteSurfaceComponents;
+  }
+  if (selection.crossSurfaceVersioning !== undefined) {
+    policy.crossSurfaceVersioning = selection.crossSurfaceVersioning;
   }
   if (selection.releaseNoteEnvironmentScope !== undefined) {
     policy.releaseNoteEnvironmentScope = selection.releaseNoteEnvironmentScope;
@@ -1708,16 +1741,16 @@ const completePartialAudit = async (
 };
 
 /**
- * Records the explicit Web release-note environment preference against an
- * already-valid repository policy without disturbing other setup values.
+ * Records explicit contextual preferences against already-valid repository
+ * policy. Ordinary apply refuses to touch configured repositories, so this
+ * rewrites only the supplied fields and preserves everything else.
  */
-const updateReleaseNoteEnvironmentScope = async (
+const updateContextualPreferences = async (
   options: ApplyOptions,
   inspect: SetupResult
 ): Promise<SetupResult | null> => {
-  const selected = options.releaseNoteEnvironmentScope;
   if (
-    selected !== undefined &&
+    options.releaseNoteEnvironmentScope !== undefined &&
     !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(
       inspect.detection.distribution as Distribution
     )
@@ -1726,38 +1759,50 @@ const updateReleaseNoteEnvironmentScope = async (
       "Release-note environment scope applies only to full, web, and web+CMS distributions.",
     ]);
   }
+  const selection: Selection = {};
+  const updates: Partial<RepoPolicy> = {};
+  if (options.crossSurfaceVersioning !== undefined) {
+    selection.crossSurfaceVersioning = options.crossSurfaceVersioning;
+    updates.crossSurfaceVersioning = options.crossSurfaceVersioning;
+  }
+  if (options.releaseNoteEnvironmentScope !== undefined) {
+    selection.releaseNoteEnvironmentScope = options.releaseNoteEnvironmentScope;
+    updates.releaseNoteEnvironmentScope = options.releaseNoteEnvironmentScope;
+  }
   const record = inspect.policy;
   if (
-    selected === undefined ||
+    Object.keys(updates).length === 0 ||
     record?.state !== "valid" ||
     record.value === undefined
   ) {
     return null;
   }
-  const selection: Selection = { releaseNoteEnvironmentScope: selected };
-  if (record.value.releaseNoteEnvironmentScope === selected) {
+  const current = record.value;
+  const { path } = record;
+  if (
+    Object.entries(updates).every(
+      ([key, value]) => current[key as keyof RepoPolicy] === value
+    )
+  ) {
     return {
       ...inspect,
       command: "apply",
       selection,
       status: "already-configured",
       summary:
-        "Repository policy already records the selected release-note environment scope.",
+        "Repository policy already records the selected contextual preferences.",
     };
   }
   if (!options.confirm) {
     return blockResult(inspect, [
-      "Confirmation is required before recording the release-note environment scope.",
+      "Confirmation is required before recording contextual repository preferences.",
     ]);
   }
   const candidate: CandidateWrite = {
-    content: json({
-      ...record.value,
-      releaseNoteEnvironmentScope: selected,
-    }),
+    content: json({ ...current, ...updates }),
     kind: "repository-policy",
     mode: 0o644,
-    path: record.path,
+    path,
   };
   const staged = await stageCandidates([candidate]);
   await Promise.all(
@@ -1780,7 +1825,7 @@ const updateReleaseNoteEnvironmentScope = async (
         selection,
         status: "configured",
         summary:
-          "Repository policy now records the selected release-note environment scope; no other setup value changed.",
+          "Repository policy now records the selected contextual preferences; no other setup value changed.",
         writes: [{ kind: candidate.kind, path: candidate.path, written: true }],
       };
 };
@@ -2105,12 +2150,9 @@ export const applySetup = async (
   if (auditCompletion) {
     return auditCompletion;
   }
-  const environmentUpdate = await updateReleaseNoteEnvironmentScope(
-    options,
-    inspect
-  );
-  if (environmentUpdate) {
-    return environmentUpdate;
+  const contextualUpdate = await updateContextualPreferences(options, inspect);
+  if (contextualUpdate) {
+    return contextualUpdate;
   }
   const earlyResult = preSetupResult(inspect);
   if (earlyResult) {
@@ -2145,6 +2187,7 @@ const valueOptionNames = new Set([
   "--backfill",
   "--cms-changelog",
   "--cms-route",
+  "--cross-surface-versioning",
   "--developer-history",
   "--mobile-placement",
   "--new-surfaces",
@@ -2213,6 +2256,10 @@ const parseCli = (argv: string[]): ParsedCli => {
       cmsRoute: values.get("--cms-route"),
       cmsSurfaceProven: flags.has("--cms-surface-proven"),
       confirm: flags.has("--confirm"),
+      crossSurfaceVersioning: enumValue(
+        "--cross-surface-versioning",
+        CROSS_SURFACE_VERSIONING_POLICIES
+      ),
       developerChangelog: enumValue(
         "--developer-history",
         DEVELOPER_CHANGELOG_POLICIES

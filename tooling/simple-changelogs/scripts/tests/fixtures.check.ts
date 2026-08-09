@@ -71,10 +71,17 @@ const completedResponse = (
     nativeActivationEvidence: { activated: true, trace: ["simple-changelogs"] },
     reasonCodes: ["CUSTOMER_VISIBLE_OUTCOME"],
     verificationResults: [{ code: "release-notes-sync", status: "passed" }],
-    versionMap: [{ path: "package.json", role: "package", version: "2.0.0" }],
+    versionMap: [
+      {
+        identifierRole: "public-version",
+        path: "package.json",
+        role: "package",
+        version: "2.0.0",
+      },
+    ],
   },
   finalResponse: "Updated both changelogs.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   status: "completed",
   ...overrides,
 });

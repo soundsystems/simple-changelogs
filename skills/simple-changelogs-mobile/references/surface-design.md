@@ -42,6 +42,13 @@ Record dismissal by product and release identity, return focus or accessibility
 position, and retain a manual path after dismissal. Timing, depth, and
 eligibility remain governed by `references/release-note-surfaces.md`.
 
+Show the canonical public version for the release being presented. A version
+display preference of `exact` keeps the stored value, `friendly` allows an
+established treatment such as adding “Version” while preserving that value, and
+`hidden` renders no version at all. Never substitute a build number, a
+development identifier, or a release name for the public version. An optional
+release name may sit beside it, as in `Summer Update · Version 3.2.0`.
+
 ## Inline emphasis
 
 Treat supported inline Markdown as presentation data, not visible punctuation.

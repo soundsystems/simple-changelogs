@@ -26,7 +26,7 @@ const response: RunnerResponse = {
     versionMap: [],
   },
   finalResponse: "Updated the pending changelog.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   runtimeIdentity: "Fake Adapter",
   status: "completed",
 };
@@ -55,7 +55,7 @@ const createRequest = (workspace: string, timeoutMs = 1000): RunnerRequest => ({
     ],
   },
   prompt: "Update the pending changelog.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   responseSchema: join(workspace, "runner-response.schema.json"),
   skillDirectory: join(workspace, "skill"),
   timeoutMs,
@@ -274,7 +274,7 @@ process.exit(23);
       `
 await Bun.stdin.text();
 process.stdout.write(${JSON.stringify(
-        JSON.stringify({ ...response, protocolVersion: 2 })
+        JSON.stringify({ ...response, protocolVersion: 3 })
       )});
 `
     );
@@ -284,7 +284,7 @@ process.stdout.write(${JSON.stringify(
     const error = resultError(result);
     expect(error).toMatchObject({ kind: "protocol" });
     if (error.kind === "protocol") {
-      expect(error.errors).toContain("$.protocolVersion must equal 1");
+      expect(error.errors).toContain("$.protocolVersion must equal 2");
     }
   });
 

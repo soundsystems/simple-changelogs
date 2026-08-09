@@ -10,7 +10,12 @@
       "turns": [
         {
           "prompt": "Update CHANGELOG.md and DEVELOPER_CHANGELOG.md for the last three commits.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -23,7 +28,12 @@
       "turns": [
         {
           "prompt": "We are about to publish 0.4.0. Move the right Unreleased entries into the release and tell me if the package version needs to change.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -36,7 +46,12 @@
       "turns": [
         {
           "prompt": "We're cutting the stable 2.0.0 GA from the beta line today. Write the major release announcement and get the release notes ready.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -49,7 +64,12 @@
       "turns": [
         {
           "prompt": "Backfill a changelog from this repo's tags, but keep customer notes readable.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -62,7 +82,12 @@
       "turns": [
         {
           "prompt": "Does this migration belong in the customer changelog or only the developer changelog?",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -75,7 +100,12 @@
       "turns": [
         {
           "prompt": "Prepare release notes for the app's What's New modal from the changelog.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -88,7 +118,12 @@
       "turns": [
         {
           "prompt": "Review this feature branch and decide whether any changelog entry is needed before I open the pull or merge request.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -101,7 +136,12 @@
       "turns": [
         {
           "prompt": "The copy changed on the pricing page. Decide whether that should appear in the release notes.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -114,7 +154,12 @@
       "turns": [
         {
           "prompt": "We pushed to the public docs repo default branch. Reconcile Unreleased if the docs changelog is now shipped.",
-          "assertions": [{ "kind": "activation", "expected": true }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
         }
       ]
     },
@@ -127,7 +172,12 @@
       "turns": [
         {
           "prompt": "Bump this package from 1.2.3 to 1.2.4 for an internal dependency test.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -140,7 +190,12 @@
       "turns": [
         {
           "prompt": "Summarize the last commit for Slack.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -153,7 +208,12 @@
       "turns": [
         {
           "prompt": "Deploy the staging preview and paste the URL.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -166,7 +226,12 @@
       "turns": [
         {
           "prompt": "Review this React component for accessibility issues.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -179,7 +244,12 @@
       "turns": [
         {
           "prompt": "Fix the button spacing on the dashboard.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -192,7 +262,12 @@
       "turns": [
         {
           "prompt": "Create a git tag for the current commit.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -205,7 +280,12 @@
       "turns": [
         {
           "prompt": "Run the package manager's version command.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -218,7 +298,12 @@
       "turns": [
         {
           "prompt": "Write a commit message for these changes.",
-          "assertions": [{ "kind": "activation", "expected": false }]
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": false
+            }
+          ]
         }
       ]
     },
@@ -247,7 +332,10 @@
               "target": ".simple-changelogs.json",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "INITIAL_SETUP_REQUIRED" },
+            {
+              "kind": "report.decision",
+              "expected": "INITIAL_SETUP_REQUIRED"
+            },
             {
               "kind": "report.decision",
               "expected": "MOBILE_RELEASE_NOTE_PLACEMENT_REQUIRED"
@@ -320,7 +408,10 @@
                 "source": "user-response"
               }
             },
-            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+            {
+              "kind": "report.decision",
+              "expected": "CUSTOMER_ENTRY_ADDED"
+            }
           ]
         }
       ]
@@ -350,8 +441,14 @@
               "target": "DEVELOPER_CHANGELOG.md",
               "expected": "[Mm]igration|[Qq]ueue|[Mm]odel"
             },
-            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_OMITTED" },
-            { "kind": "report.decision", "expected": "DEVELOPER_ENTRY_ADDED" }
+            {
+              "kind": "report.decision",
+              "expected": "CUSTOMER_ENTRY_OMITTED"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "DEVELOPER_ENTRY_ADDED"
+            }
           ]
         }
       ]
@@ -414,7 +511,10 @@
               "target": ".simple-changelogs.json",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_OMITTED" }
+            {
+              "kind": "report.decision",
+              "expected": "CUSTOMER_ENTRY_OMITTED"
+            }
           ]
         }
       ]
@@ -449,7 +549,10 @@
               "target": "release-notes.json",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+            {
+              "kind": "report.decision",
+              "expected": "CUSTOMER_ENTRY_ADDED"
+            }
           ]
         }
       ]
@@ -479,7 +582,10 @@
               "target": "CHANGELOG.md",
               "expected": "[Cc]lause|[Cc]ompliance reasoning"
             },
-            { "kind": "report.decision", "expected": "POLICY_NOTE_TERSE" }
+            {
+              "kind": "report.decision",
+              "expected": "POLICY_NOTE_TERSE"
+            }
           ]
         }
       ]
@@ -514,7 +620,10 @@
               "target": "CHANGELOG.md",
               "expected": "API|api|[Dd]atabase|[Cc]omponent|[Tt]emplate"
             },
-            { "kind": "report.decision", "expected": "FEATURE_GROUPED" }
+            {
+              "kind": "report.decision",
+              "expected": "FEATURE_GROUPED"
+            }
           ]
         }
       ]
@@ -549,7 +658,10 @@
               "target": "CHANGELOG.md",
               "expected": "[Pp]recedence|[Pp]arser|[Rr]anking weight|AI review|[Cc]onfidence threshold|[Qq]ueue routing"
             },
-            { "kind": "report.decision", "expected": "PUBLIC_DETAIL_REDACTED" }
+            {
+              "kind": "report.decision",
+              "expected": "PUBLIC_DETAIL_REDACTED"
+            }
           ]
         }
       ]
@@ -650,7 +762,10 @@
             },
             {
               "kind": "report.verification",
-              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+              "expected": {
+                "code": "RELEASE_NOTES_SYNC",
+                "status": "passed"
+              }
             }
           ]
         }
@@ -681,7 +796,10 @@
               "target": "CHANGELOG.md",
               "expected": "[Ee]asier|[Cc]learer|[Bb]etter|[Ii]mproved|mailto|[Pp]refilled subject|[Cc]omponent"
             },
-            { "kind": "report.decision", "expected": "FEATURE_NAMED" }
+            {
+              "kind": "report.decision",
+              "expected": "FEATURE_NAMED"
+            }
           ]
         }
       ]
@@ -711,7 +829,10 @@
               "target": "CHANGELOG.md",
               "expected": "Product Page Corrections[\\s\\S]{0,300}<!-- simple-changelogs-signature agent=\"[^\"]+\" at=\"(?:unreported|[^\"]*(?:Z|[+-][0-9]{2}:[0-9]{2}))\" -->"
             },
-            { "kind": "report.decision", "expected": "SIGNATURE_ADDED" }
+            {
+              "kind": "report.decision",
+              "expected": "SIGNATURE_ADDED"
+            }
           ]
         }
       ]
@@ -810,7 +931,10 @@
               "target": "CHANGELOG.md",
               "expected": "[Rr]egression|[Rr]oot cause|[Bb]lame"
             },
-            { "kind": "report.decision", "expected": "PUBLIC_FIX_ADDED" }
+            {
+              "kind": "report.decision",
+              "expected": "PUBLIC_FIX_ADDED"
+            }
           ]
         }
       ]
@@ -835,10 +959,16 @@
               "target": "CHANGELOG.md",
               "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
             },
-            { "kind": "report.decision", "expected": "RELEASE_FINALIZED" },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_FINALIZED"
+            },
             {
               "kind": "report.verification",
-              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+              "expected": {
+                "code": "RELEASE_NOTES_SYNC",
+                "status": "passed"
+              }
             }
           ]
         }
@@ -875,7 +1005,10 @@
             },
             {
               "kind": "report.verification",
-              "expected": { "code": "RELEASE_NOTES_SYNC", "status": "passed" }
+              "expected": {
+                "code": "RELEASE_NOTES_SYNC",
+                "status": "passed"
+              }
             }
           ]
         }
@@ -927,9 +1060,15 @@
             },
             {
               "kind": "report.verification",
-              "expected": { "code": "VERSION_CONSISTENCY", "status": "passed" }
+              "expected": {
+                "code": "VERSION_CONSISTENCY",
+                "status": "passed"
+              }
             },
-            { "kind": "report.decision", "expected": "VERSION_SYNCED" }
+            {
+              "kind": "report.decision",
+              "expected": "VERSION_SYNCED"
+            }
           ]
         }
       ]
@@ -977,10 +1116,16 @@
               "target": ".simple-changelogs.json#/guidance/backfillStatus",
               "expected": "completed"
             },
-            { "kind": "report.decision", "expected": "BACKFILL_COMPLETED" },
+            {
+              "kind": "report.decision",
+              "expected": "BACKFILL_COMPLETED"
+            },
             {
               "kind": "report.verification",
-              "expected": { "code": "BACKFILL_AUDIT", "status": "passed" }
+              "expected": {
+                "code": "BACKFILL_AUDIT",
+                "status": "passed"
+              }
             }
           ]
         }
@@ -1147,7 +1292,10 @@
             },
             {
               "kind": "report.verification",
-              "expected": { "code": "BACKFILL_AUDIT", "status": "passed" }
+              "expected": {
+                "code": "BACKFILL_AUDIT",
+                "status": "passed"
+              }
             }
           ]
         }
@@ -1178,7 +1326,10 @@
               "target": "release-notes.json",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "UNRELEASED_RETAINED" }
+            {
+              "kind": "report.decision",
+              "expected": "UNRELEASED_RETAINED"
+            }
           ]
         }
       ]
@@ -1243,7 +1394,10 @@
               "target": "src/routes/whats-new.tsx",
               "expected": "[Cc]hangelog|[Rr]elease-note|What's New guidance|what's new guidance"
             },
-            { "kind": "report.decision", "expected": "SURFACE_CREATED" }
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_CREATED"
+            }
           ]
         }
       ]
@@ -1313,7 +1467,10 @@
               "target": "src/routes/whats-new.tsx",
               "expected": "[Cc]hangelog|[Rr]elease-note|What's New guidance|what's new guidance"
             },
-            { "kind": "report.decision", "expected": "SURFACE_CREATED" }
+            {
+              "kind": "report.decision",
+              "expected": "SURFACE_CREATED"
+            }
           ]
         }
       ]
@@ -1758,7 +1915,10 @@
               "target": "apps/web/src/whats-new.tsx",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "MOBILE_SURFACE_CREATED" }
+            {
+              "kind": "report.decision",
+              "expected": "MOBILE_SURFACE_CREATED"
+            }
           ]
         }
       ]
@@ -1807,7 +1967,10 @@
                 "role": "store"
               }
             },
-            { "kind": "report.decision", "expected": "STORE_NOTES_UPDATED" }
+            {
+              "kind": "report.decision",
+              "expected": "STORE_NOTES_UPDATED"
+            }
           ]
         }
       ]
@@ -2040,7 +2203,10 @@
         {
           "prompt": "The What's New modal currently renders six release sections, two of which are\nmajor feature launches. Decide what should stay in the modal and what should\nmove behind a full release-notes link.",
           "assertions": [
-            { "kind": "report.decision", "expected": "MODAL_DEPTH_REDUCED" },
+            {
+              "kind": "report.decision",
+              "expected": "MODAL_DEPTH_REDUCED"
+            },
             {
               "kind": "file.changed",
               "target": "src/components/whats-new-prototype.tsx",
@@ -2118,7 +2284,11 @@
         {
           "prompt": "Refine this changelog skill after an audit found duplicate SKILL.md and\nreference-file rules, an overlong description, and checklist drift.",
           "assertions": [
-            { "kind": "file.changed", "target": "SKILL.md", "expected": true },
+            {
+              "kind": "file.changed",
+              "target": "SKILL.md",
+              "expected": true
+            },
             {
               "kind": "file.changed",
               "target": "references/entry-classification.md",
@@ -2129,7 +2299,11 @@
               "target": "references/automation-verification.md",
               "expected": true
             },
-            { "kind": "file.changed", "target": "EVAL.md", "expected": true },
+            {
+              "kind": "file.changed",
+              "target": "EVAL.md",
+              "expected": true
+            },
             {
               "kind": "text.notMatch",
               "target": "SKILL.md",
@@ -2195,7 +2369,10 @@
               "target": "EVAL.md",
               "expected": "evals/cases\\.json|contract|adapter"
             },
-            { "kind": "report.decision", "expected": "SKILL_REFACTORED" }
+            {
+              "kind": "report.decision",
+              "expected": "SKILL_REFACTORED"
+            }
           ]
         }
       ]
@@ -2250,7 +2427,10 @@
               "target": "skills/project-changelog-maintainer/EVAL.md",
               "expected": "New release-note surfaces require authorization"
             },
-            { "kind": "report.decision", "expected": "FORK_SYNCED" }
+            {
+              "kind": "report.decision",
+              "expected": "FORK_SYNCED"
+            }
           ]
         }
       ]
@@ -2283,7 +2463,10 @@
               "target": "global/simple-changelogs/SKILL.md",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "LOCAL_FORK_SELECTED" }
+            {
+              "kind": "report.decision",
+              "expected": "LOCAL_FORK_SELECTED"
+            }
           ]
         }
       ]
@@ -2553,8 +2736,411 @@
               "target": ".simple-changelogs.json",
               "expected": true
             },
-            { "kind": "report.decision", "expected": "CUSTOMER_ENTRY_ADDED" }
+            {
+              "kind": "report.decision",
+              "expected": "CUSTOMER_ENTRY_ADDED"
+            }
           ]
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-independent",
+      "id": "behavior-independent-mobile-release",
+      "suite": "behavior",
+      "tags": ["versions", "mobile", "surfaces", "wording"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.changed",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/CHANGELOG.md"
+            },
+            {
+              "expected": "3.2.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/ios/buildNumber"
+            },
+            {
+              "expected": {
+                "field": "expo.version",
+                "identifierRole": "public-version",
+                "path": "apps/mobile/app.json",
+                "releaseTrain": "mobile"
+              },
+              "kind": "report.versionMap"
+            },
+            {
+              "expected": {
+                "identifierRole": "build-number",
+                "path": "apps/mobile/app.json"
+              },
+              "kind": "report.versionMap"
+            },
+            {
+              "expected": "1842|versionCode|rc\\.4|abc123",
+              "kind": "text.notMatch",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt"
+            },
+            {
+              "expected": "1842|versionCode|rc\\.4|abc123",
+              "kind": "text.notMatch",
+              "target": "apps/mobile/play/release-notes/en-US/default.txt"
+            },
+            {
+              "expected": "INDEPENDENT_TRAIN_PRESERVED",
+              "kind": "report.decision"
+            },
+            {
+              "expected": "BUILD_IDENTIFIER_REPORTED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Ship mobile 3.3.0 with the offline-map reliability work. Update the mobile\npublic notes and metadata plus the store copy, and report every version\nidentifier you touched."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-independent",
+      "id": "behavior-independent-web-release",
+      "suite": "behavior",
+      "tags": ["versions", "surfaces", "wording"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.changed",
+              "target": "apps/web/CHANGELOG.md"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/play/release-notes/en-US/default.txt"
+            },
+            {
+              "expected": {
+                "identifierRole": "public-version",
+                "path": "apps/web/package.json",
+                "releaseTrain": "web"
+              },
+              "kind": "report.versionMap"
+            },
+            {
+              "expected": "INDEPENDENT_TRAIN_PRESERVED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Ship web 6.8.0 for the multi-select planning board. Update only what that\nrelease owns and report the version map."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-shared",
+      "id": "behavior-shared-train-release",
+      "suite": "behavior",
+      "tags": ["versions", "surfaces", "wording"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": "3.3.0",
+              "kind": "json.path",
+              "target": "release/canonical-version.json#/canonicalVersion"
+            },
+            {
+              "expected": "3.3.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/version"
+            },
+            {
+              "expected": "3.3.0",
+              "kind": "json.path",
+              "target": "apps/web/package.json#/version"
+            },
+            {
+              "expected": "1842",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/ios/buildNumber"
+            },
+            {
+              "expected": {
+                "identifierRole": "canonical-release",
+                "path": "release/canonical-version.json"
+              },
+              "kind": "report.versionMap"
+            },
+            {
+              "expected": {
+                "code": "VERSION_CONSISTENCY",
+                "status": "passed"
+              },
+              "kind": "report.verification"
+            },
+            {
+              "expected": "VERSION_SYNCED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Cut release 3.3.0 across the shared train and reconcile every public version\nmirror. Report which identifiers you changed and which you deliberately left\nalone."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-mixed",
+      "id": "behavior-mixed-train-release",
+      "suite": "behavior",
+      "tags": ["versions", "mobile", "surfaces"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": "3.3.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/version"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/CHANGELOG.md"
+            },
+            {
+              "expected": {
+                "identifierRole": "public-version",
+                "path": "apps/mobile/app.json",
+                "releaseTrain": "mobile"
+              },
+              "kind": "report.versionMap"
+            },
+            {
+              "expected": "INDEPENDENT_TRAIN_PRESERVED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Release mobile 3.3.0 for iOS and Android together. Leave anything that is not\npart of that group untouched and say why."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-ambiguous",
+      "id": "behavior-ambiguous-version-relationship",
+      "suite": "behavior",
+      "tags": ["versions", "setup", "authorization"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs.json"
+            },
+            {
+              "expected": "VERSION_RELATIONSHIP_REQUIRED",
+              "kind": "report.decision"
+            },
+            {
+              "expected": {
+                "code": "VERSION_CONSISTENCY",
+                "status": "not-run"
+              },
+              "kind": "report.verification"
+            }
+          ],
+          "prompt": "Cut the next release for this repository and get the versions right."
+        },
+        {
+          "assertions": [
+            {
+              "expected": "independent",
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/crossSurfaceVersioning"
+            },
+            {
+              "expected": "mobile-only",
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/mobileReleaseNotePlacement"
+            },
+            {
+              "expected": "completed",
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/backfillStatus"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": "VERSION_RELATIONSHIP_RECORDED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Mobile and Web version independently. Record that, then release mobile 3.3.0\nonly."
+        },
+        {
+          "assertions": [
+            {
+              "expected": "independent",
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/crossSurfaceVersioning"
+            },
+            {
+              "expected": "3.4.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/version"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs.json"
+            },
+            {
+              "expected": "INDEPENDENT_TRAIN_PRESERVED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Now release mobile 3.4.0."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-independent",
+      "id": "behavior-release-name-presentation",
+      "suite": "behavior",
+      "tags": ["versions", "surfaces", "design", "wording"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": "3.2.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/version"
+            },
+            {
+              "expected": "Summer Update",
+              "kind": "text.match",
+              "target": "apps/mobile/src/whats-new.tsx"
+            },
+            {
+              "expected": "3\\.2\\.0",
+              "kind": "text.match",
+              "target": "apps/mobile/src/whats-new.tsx"
+            },
+            {
+              "expected": "Summer Update",
+              "kind": "text.notMatch",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt"
+            },
+            {
+              "expected": "1842|versionCode|rc\\.4|abc123",
+              "kind": "text.notMatch",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt"
+            },
+            {
+              "expected": "RELEASE_NAME_PRESENTED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "We call 3.2.0 the Summer Update. Add an in-app what's-new screen at\napps/mobile/src/whats-new.tsx that shows that name beside the version, and\nrefresh the store copy. Keep native and store metadata canonical."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-trains-mixed",
+      "id": "behavior-store-copy-public-version",
+      "suite": "behavior",
+      "tags": ["versions", "mobile", "wording"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.changed",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": "1842|versionCode|rc\\.4|abc123",
+              "kind": "text.notMatch",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt"
+            },
+            {
+              "expected": {
+                "identifierRole": "public-version",
+                "path": "apps/mobile/app.json",
+                "releaseTrain": "mobile",
+                "version": "3.2.0"
+              },
+              "kind": "report.versionMap"
+            },
+            {
+              "expected": "STORE_NOTES_UPDATED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Rewrite the iOS store notes for the current mobile release. Do not change any\nversion field."
         }
       ]
     }

@@ -164,6 +164,25 @@ destination's audience, release identity, source, access state, and
 updated/aligned/skipped/blocked disposition. This distribution does not own
 mobile or store metadata.
 
+Give every reported record its identifier role — canonical release, public
+version, build number, or development version — and name its release train
+whenever more than one train is involved. A shared repository proves shared
+source ownership, not a shared release train, and two separately owned fields
+that currently hold the same string remain separately owned. Operator history
+does not become a product version without local evidence that it owns one.
+Distinguish records that already agree with their canonical value from records
+that are related but intentionally different. Never derive a public web version
+from a CI build identifier.
+
+An optional release name such as `Summer Update` is presentation only. It may
+accompany a public version on an established surface, but it never overwrites a
+package version field, a changelog heading, or a consistency check, and it never
+appears in the version map. Read a recorded version display preference as
+`exact` for the stored canonical value, `friendly` for an established treatment
+that still preserves that value and never substitutes a build or development
+identifier, and `hidden` for surfaces that render no version while the canonical
+value stays in source data and release reports.
+
 Verify representative positive and negative examples for both selectors:
 web-relevant outcomes appear only in public destinations unless they also
 affect operators, and CMS-only outcomes never appear in the public archive. For

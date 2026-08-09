@@ -113,8 +113,10 @@ encode an uncertain or independently versioned relationship.
 - Store copy respects local submission and localization workflows.
 - Remote metadata is reported honestly when credentials or release authority
   were unavailable.
-- Auto-shown summaries wait for higher-priority gates and retain suitable manual
-  access.
+- Auto-shown summaries wait for higher-priority gates. The recorded Web
+  environment scope also gates the route or page, navigation and manual links,
+  compact summaries, and modals; hidden routes return not found or are omitted
+  from static builds, and scoped unknown environments expose nothing.
 - Long-form expert archives keep feature narratives, product-area improvements,
   and comprehensive public fixes proportional to the release; referenced media
   exists, has useful alt text, and was not invented or generated without

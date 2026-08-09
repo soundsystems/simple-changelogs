@@ -61,6 +61,10 @@ const FIXTURE_IDS = new Set([
   "surface-mobile-store",
   "surface-radix-app",
   "surface-react-tailwind",
+  "version-trains-ambiguous",
+  "version-trains-independent",
+  "version-trains-mixed",
+  "version-trains-shared",
 ]);
 
 const REQUIRED_COVERAGE_TAGS = new Set([
@@ -159,6 +163,13 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-surface-components-recommended",
   "behavior-surface-history-seed-declined",
   "behavior-terse-policy-terms-update",
+  "behavior-ambiguous-version-relationship",
+  "behavior-independent-mobile-release",
+  "behavior-independent-web-release",
+  "behavior-mixed-train-release",
+  "behavior-release-name-presentation",
+  "behavior-shared-train-release",
+  "behavior-store-copy-public-version",
 ]);
 
 const loadManifest = async (): Promise<EvalManifest> => {
@@ -219,8 +230,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(61);
-    expect(new Set(ids).size).toBe(61);
+    expect(ids).toHaveLength(68);
+    expect(new Set(ids).size).toBe(68);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

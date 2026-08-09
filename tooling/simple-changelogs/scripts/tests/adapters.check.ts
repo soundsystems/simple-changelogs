@@ -62,7 +62,7 @@ const request: RunnerRequest = {
     ],
   },
   prompt: "Update the pending changelog.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   responseSchema: "/portable-skill/evals/schemas/runner-response.schema.json",
   skillDirectory: "/portable-skill",
   timeoutMs: 30_000,
@@ -83,7 +83,7 @@ const response: RunnerResponse = {
     versionMap: [],
   },
   finalResponse: "Updated the pending changelog.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   status: "completed",
 };
 
@@ -387,7 +387,7 @@ describe("vendor response extraction", () => {
   test("validates extracted output against the neutral response contract", () => {
     expect(() =>
       extractCodexFinalResponse(
-        JSON.stringify({ ...response, protocolVersion: 2 })
+        JSON.stringify({ ...response, protocolVersion: 3 })
       )
     ).toThrow("neutral protocol");
   });

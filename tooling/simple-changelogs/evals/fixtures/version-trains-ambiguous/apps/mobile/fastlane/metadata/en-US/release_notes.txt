@@ -1,0 +1,2 @@
+Offline maps stay available for saved trips.
+Background photo uploads retry on a weak connection.

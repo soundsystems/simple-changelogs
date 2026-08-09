@@ -50,7 +50,7 @@ if (log) {
 }
 
 const base = {
-  protocolVersion: 1,
+  protocolVersion: 2,
   status: "completed",
   finalResponse: "completed",
   evaluationReport: ${emptyReport},

@@ -6,6 +6,7 @@ import {
   AUTHORIZATION_SOURCES,
   AUTHORIZATION_STATUSES,
   BACKFILL_STATUSES,
+  CROSS_SURFACE_VERSIONING_POLICIES,
   CURATION_MANIFEST_VERSION,
   CURATION_OPERATION_DIRECTIONS,
   CURATION_OPERATION_OVERLAPS,
@@ -48,6 +49,7 @@ import {
   SURFACE_VISUAL_DIRECTIONS,
   type ValidationResult,
   VERIFICATION_STATUSES,
+  VERSION_IDENTIFIER_ROLES,
   VERSION_ROLES,
 } from "./types.ts";
 
@@ -318,7 +320,10 @@ const versionMapExpectation = oneOf(
   "a version-map path or expectation",
   nonEmptyString,
   objectOf({
+    field: optional(nonEmptyString),
+    identifierRole: optional(enumOf(VERSION_IDENTIFIER_ROLES)),
     path: nonEmptyString,
+    releaseTrain: optional(nonEmptyString),
     role: optional(enumOf(VERSION_ROLES)),
     version: optional(nonEmptyString),
   })
@@ -405,6 +410,7 @@ const evalCase = objectOf({
 });
 
 const repoPolicyBase = objectOf({
+  crossSurfaceVersioning: optional(enumOf(CROSS_SURFACE_VERSIONING_POLICIES)),
   developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
   distribution: optional(enumOf(DISTRIBUTIONS)),
   guidance: objectOf({
@@ -481,7 +487,10 @@ const authorizationRecord = objectOf({
 });
 
 const versionMapRecord = objectOf({
+  field: optional(nonEmptyString),
+  identifierRole: enumOf(VERSION_IDENTIFIER_ROLES),
   path: nonEmptyString,
+  releaseTrain: optional(nonEmptyString),
   role: enumOf(VERSION_ROLES),
   version: nonEmptyString,
 });
@@ -497,7 +506,7 @@ const nativeActivationEvidence = objectOf({
   trace: arrayOf(nonEmptyString, { minItems: 1 }),
 });
 
-const evaluationReport = objectOf({
+const evaluationReportBase = objectOf({
   authorizationRecords: arrayOf(authorizationRecord),
   decisionCodes: codeArray,
   nativeActivationEvidence: optional(nativeActivationEvidence),
@@ -505,6 +514,38 @@ const evaluationReport = objectOf({
   verificationResults: arrayOf(verificationResult),
   versionMap: arrayOf(versionMapRecord),
 });
+
+const UNNAMED_RELEASE_TRAIN = "\\0unnamed";
+
+/**
+ * One release train has exactly one chronology owner, so two
+ * `canonical-release` records sharing a `releaseTrain` are contradictory. JSON
+ * Schema cannot express this, so it is enforced here.
+ */
+const evaluationReport: Validator = (value, path, errors) => {
+  evaluationReportBase(value, path, errors);
+  if (!(isPlainObject(value) && Array.isArray(value.versionMap))) {
+    return;
+  }
+  const canonicalTrains = new Set<string>();
+  for (const [index, record] of value.versionMap.entries()) {
+    if (
+      !(isPlainObject(record) && record.identifierRole === "canonical-release")
+    ) {
+      continue;
+    }
+    const train =
+      typeof record.releaseTrain === "string"
+        ? record.releaseTrain
+        : UNNAMED_RELEASE_TRAIN;
+    if (canonicalTrains.has(train)) {
+      errors.push(
+        `${indexPath(childPath(path, "versionMap"), index)}.identifierRole duplicates canonical-release for release train ${train === UNNAMED_RELEASE_TRAIN ? "(unnamed)" : train}`
+      );
+    }
+    canonicalTrains.add(train);
+  }
+};
 
 const diagnostic = objectOf({
   code: uppercaseCode,

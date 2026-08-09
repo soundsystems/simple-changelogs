@@ -1,0 +1,9 @@
+name: release-mobile
+on:
+  push:
+    tags: ["mobile-v*"]
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - run: eas submit --platform all

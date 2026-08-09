@@ -6,6 +6,7 @@ import {
   AUTHORIZATION_SOURCES,
   AUTHORIZATION_STATUSES,
   BACKFILL_STATUSES,
+  CROSS_SURFACE_VERSIONING_POLICIES,
   CURATION_MANIFEST_VERSION,
   CURATION_OPERATION_DIRECTIONS,
   CURATION_OPERATION_OVERLAPS,
@@ -24,6 +25,7 @@ import {
   MANIFEST_VERSION,
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
+  RELEASE_NOTE_ENVIRONMENT_SCOPES,
   RUNNER_MESSAGE_ROLES,
   RUNNER_STATUSES,
   SETUP_COMMANDS,
@@ -44,6 +46,7 @@ import {
   SURFACE_VERSION_DISPLAYS,
   SURFACE_VISUAL_DIRECTIONS,
   VERIFICATION_STATUSES,
+  VERSION_IDENTIFIER_ROLES,
   VERSION_ROLES,
 } from "../lib/types.ts";
 import {
@@ -197,7 +200,7 @@ const request = (activationMode: string, role = "user") => ({
   activationMode,
   case: evalCase("explicit", "behavior"),
   prompt: "Check the portable contract.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   responseSchema: "/tmp/runner-response.schema.json",
   skillDirectory: "/tmp/skill",
   timeoutMs: 30_000,
@@ -227,11 +230,16 @@ const response = (
       { code: "CHANGELOG_FORMAT", status: verificationStatus },
     ],
     versionMap: [
-      { path: "CHANGELOG.md", role: versionRole, version: "Unreleased" },
+      {
+        identifierRole: "canonical-release",
+        path: "CHANGELOG.md",
+        role: versionRole,
+        version: "Unreleased",
+      },
     ],
   },
   finalResponse: "Checked the portable contract.",
-  protocolVersion: 1,
+  protocolVersion: 2,
   status,
 });
 
@@ -359,6 +367,31 @@ describe("schema parity", () => {
         setupResultSchema,
         "$defs.mobileReleaseNotePlacement.enum",
         MOBILE_RELEASE_NOTE_PLACEMENTS,
+      ],
+      [
+        policySchema,
+        "properties.crossSurfaceVersioning.enum",
+        CROSS_SURFACE_VERSIONING_POLICIES,
+      ],
+      [
+        setupResultSchema,
+        "$defs.crossSurfaceVersioning.enum",
+        CROSS_SURFACE_VERSIONING_POLICIES,
+      ],
+      [
+        policySchema,
+        "properties.releaseNoteEnvironmentScope.enum",
+        RELEASE_NOTE_ENVIRONMENT_SCOPES,
+      ],
+      [
+        setupResultSchema,
+        "$defs.releaseNoteEnvironmentScope.enum",
+        RELEASE_NOTE_ENVIRONMENT_SCOPES,
+      ],
+      [
+        responseSchema,
+        "$defs.versionMapRecord.properties.identifierRole.enum",
+        VERSION_IDENTIFIER_ROLES,
       ],
       [policySchema, "properties.distribution.enum", DISTRIBUTIONS],
       [policySchema, "properties.signatures.enum", SIGNATURE_POLICIES],
@@ -566,12 +599,12 @@ describe("schema parity", () => {
       }).ok
     ).toBe(false);
     expect(
-      validateRunnerRequest({ ...request("explicit"), protocolVersion: 2 }).ok
+      validateRunnerRequest({ ...request("explicit"), protocolVersion: 3 }).ok
     ).toBe(false);
     expect(
       validateRunnerResponse({
         ...response("completed"),
-        protocolVersion: 2,
+        protocolVersion: 3,
       }).ok
     ).toBe(false);
     expect(

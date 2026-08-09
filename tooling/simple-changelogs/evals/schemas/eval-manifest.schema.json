@@ -103,7 +103,17 @@
             "version": { "type": "string", "minLength": 1 },
             "role": {
               "enum": ["source", "mirror", "package", "application", "store"]
-            }
+            },
+            "identifierRole": {
+              "enum": [
+                "canonical-release",
+                "public-version",
+                "build-number",
+                "development-version"
+              ]
+            },
+            "field": { "type": "string", "minLength": 1 },
+            "releaseTrain": { "type": "string", "minLength": 1 }
           }
         }
       ]

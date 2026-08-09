@@ -88,6 +88,9 @@
     "mobileReleaseNotePlacement": {
       "enum": ["web-tabs", "web-page", "mobile-only"]
     },
+    "crossSurfaceVersioning": {
+      "enum": ["shared", "independent", "mixed"]
+    },
     "releaseNoteEnvironmentScope": {
       "enum": [
         "all-environments",
@@ -128,6 +131,9 @@
         },
         "mobileReleaseNotePlacement": {
           "$ref": "#/$defs/mobileReleaseNotePlacement"
+        },
+        "crossSurfaceVersioning": {
+          "$ref": "#/$defs/crossSurfaceVersioning"
         },
         "releaseNoteEnvironmentScope": {
           "$ref": "#/$defs/releaseNoteEnvironmentScope"
@@ -391,6 +397,9 @@
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
         "newReleaseNoteSurfaceComponents": {
           "$ref": "#/$defs/surfaceComponentSource"
+        },
+        "crossSurfaceVersioning": {
+          "$ref": "#/$defs/crossSurfaceVersioning"
         },
         "releaseNoteEnvironmentScope": {
           "$ref": "#/$defs/releaseNoteEnvironmentScope"
