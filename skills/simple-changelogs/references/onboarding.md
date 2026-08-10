@@ -131,6 +131,26 @@ not have yet, what should happen? Choose one:**
 destination. It never grants deployment, publication, store submission, hosted
 release, new-audience, or internal-information authority.
 
+## Public-version choice
+
+For every distribution that owns a public version, ask: **How should new
+public release versions be chosen?** Offer recommended ask/ask/ask, automatic
+patch and minor with major ask, all automatic, or granular customization.
+Persist only the resolved `patch`, `minor`, `major`, and
+`suggestWhenAsking` object. When any level asks, offer exact suggestions
+(recommended) or no suggestion; suppress this question when all are automatic.
+
+Recommended setup resolves ask/ask/ask with suggestions on without extra
+questions. The receipt says ordinary work stays under `Unreleased`, the choice
+changes version selection only, and deployment, publication, store, migration,
+secret, environment, and DNS authority remain separate. Global automatic
+preferences require repository or current-run confirmation before activation.
+
+For coordinated Simple Changes onboarding, return only these applicable
+questions, the resolved summary, owner `simple-changelogs`, and exact policy
+destination. Each owner writes its own policy. Preserve a successful owner
+write on partial failure and resume from inspection and write receipts.
+
 ## Contextual product-surface choice
 
 For the `full`, `web`, `mobile`, `web-cms`, and CMS-only distributions,
@@ -388,6 +408,10 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --developer-history required \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
+  --version-patch ask \
+  --version-minor ask \
+  --version-major ask \
+  --version-suggestions on \
   --surface-components recommended-web-components \
   --release-note-environments non-production \
   --release-note-links when-useful \

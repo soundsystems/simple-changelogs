@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 13
+Current guidance version: 15
 Current CMS guidance version: 1
 
 ## Distribution checkpoint
@@ -37,6 +37,10 @@ Before write-capable work, run the bundled `scripts/setup.ts` inspection helper:
 
 - Pass `--task-mode write` for changelog mutations and `--task-mode read` for
   explanations or previews that must stay read-only.
+- When inspection returns `guidanceUpdate`, explain the material change and
+  offer its detailed skill release notes. Ask about a backfill only when
+  `userPrompt` is non-null; never run one automatically. Record the one-time
+  disposition with `apply --guidance-backfill <status> --confirm`.
 - Inspect and validate both policy files when present.
 - For public/developer setup, follow `references/setup.md`.
 - For operator-history setup, follow `references/cms-setup.md`.
@@ -59,6 +63,7 @@ access, release, source-of-truth, or surface rules.
 | Public history reconstruction | `references/backfill.md` |
 | Release boundaries and reconciliation | `references/release-lifecycle.md` |
 | Versions and metadata | `references/version-decisions.md` |
+| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prereleases | `references/major-releases.md` |
 | Public web/CMS destination scoping and long-form web notes | `references/release-note-surfaces.md` |
 | Presentation and defect checks after an exact public or operator surface is authorized | `references/surface-design.md` |

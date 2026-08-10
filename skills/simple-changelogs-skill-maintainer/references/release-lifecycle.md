@@ -10,6 +10,10 @@ packaged notes, push tags, or create hosted releases from an ordinary
 changelog-edit request. Establish the intended release boundary and version
 from the current request or repository-native release process.
 
+Release intent proves a boundary, not permission to choose its public version.
+Classify aggregate target-contained impact and apply `publicVersioning`; leave
+released headings and version fields unchanged while `ask` is unresolved.
+
 Before finalization:
 
 1. Inspect both changelogs and the complete target-contained diff.

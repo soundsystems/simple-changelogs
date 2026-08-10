@@ -12,7 +12,7 @@ developer changelog ownership, and no public release-note mirrors.
 Maintain one repository-owned `CMS_CHANGELOG.json` document for people who
 operate the product through its authenticated content-management surface.
 
-Current guidance version: 1
+Current guidance version: 2
 
 ## Distribution checkpoint
 
@@ -34,6 +34,10 @@ root.
 
 - Pass `--task-mode write` for CMS history mutations and `--task-mode read` for
   explanations or previews that must stay read-only.
+- When inspection returns `guidanceUpdate`, explain the material change and
+  offer its detailed skill release notes. Ask about a backfill only when
+  `userPrompt` is non-null; never run one automatically. Record the one-time
+  disposition with `apply --guidance-backfill <status> --confirm`.
 - Validate existing policy and changelog data with `scripts/validate.ts` before
   relying on them.
 - When policy is absent and the request authorizes CMS changelog work, read
@@ -53,6 +57,7 @@ release process, content source, or validation command.
 | Concern | Read |
 | --- | --- |
 | First use, policy, or JSON source structure | `references/setup.md` |
+| Guidance-version changes | `references/guidance-updates.md` |
 | Operator relevance, wording, grouping, or sensitive detail | `references/entry-classification.md` |
 | Historical reconstruction or audits | `references/backfill.md` |
 | Adding or synchronizing the authenticated route | `references/cms-surface.md` |

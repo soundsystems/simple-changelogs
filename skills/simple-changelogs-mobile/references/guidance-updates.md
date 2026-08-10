@@ -234,3 +234,25 @@ the established link contract, sign-in, role, subscription, feature-flag, and
 platform rules. Authorized historical audits should test installed-app,
 unavailable-feature, and fallback states, then record the disposition of any
 broken or internal-only destination.
+
+## Guidance 13
+
+Added `publicVersioning` policy and digest-bound classify, prepare, and verify
+handoffs for public app and store release trains. Missing policy asks for every
+public bump with an exact suggestion. Version approval never grants store
+submission, build-counter, signing, or deployment authority, and published
+history remains unchanged.
+
+<!-- simple-changelogs-guidance-update version="14" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Update checks now explain new capabilities, assess backfill relevance, and offer detailed skill release notes." -->
+## Guidance 14
+
+Added structured update notices to setup inspection. When installed guidance is
+newer than repository state, inspection reports the material changes, their
+category, whether released history could benefit from a backfill, and where to
+find detailed skill release notes.
+
+Agents surface that notice before continuing write-capable work. They ask about
+a backfill only when update metadata says history may benefit, never run one
+automatically, and record the one-time disposition with
+`apply --guidance-backfill <status> --confirm`. Completed audits also require
+`--audit-verified`.

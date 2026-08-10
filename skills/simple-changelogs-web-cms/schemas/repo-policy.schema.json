@@ -17,7 +17,7 @@
       "additionalProperties": false,
       "required": ["version", "backfillStatus"],
       "properties": {
-        "version": { "const": 1 },
+        "version": { "type": "integer", "minimum": 1 },
         "backfillStatus": {
           "enum": [
             "not-applicable",

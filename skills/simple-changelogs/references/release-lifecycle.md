@@ -24,6 +24,10 @@ internal preview, staging deploy, code review, or non-release commit, keep
 pending work under `Unreleased`. Do not sync versions or release-note surfaces
 unless the task explicitly asks for release prep.
 
+Release intent proves a boundary, not permission to choose its public version.
+After aggregating target-contained work, apply `publicVersioning`; keep released
+headings and version fields unchanged while an `ask` decision is pending.
+
 ## Before Non-Release Handoff
 
 Before opening a pull or merge request, pushing non-release work, or handing off

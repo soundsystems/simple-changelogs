@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { YAML } from "bun";
@@ -9,7 +9,7 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-const MAX_DISTRIBUTION_BYTES = 256 * 1024;
+const MAX_DISTRIBUTION_BYTES = 264 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -35,6 +35,30 @@ const failures: string[] = [];
 const canonicalSetupHelper = await readFile(
   join(toolingRoot, "simple-changelogs", "scripts", "setup.ts"),
   "utf8"
+);
+const canonicalProtocolFiles = new Map(
+  await Promise.all(
+    [
+      "changelog-request.schema.json",
+      "changelog-receipt.schema.json",
+      "protocol-provenance.json",
+    ].map(
+      async (filename) =>
+        [
+          filename,
+          await readFile(
+            join(
+              toolingRoot,
+              "simple-changelogs",
+              "evals",
+              "schemas",
+              filename
+            ),
+            "utf8"
+          ),
+        ] as const
+    )
+  )
 );
 
 interface WalkedEntry {
@@ -91,13 +115,17 @@ const distributionSnapshots = await Promise.all(
     const directory = join(skillsRoot, directoryName);
     const setupPath = join(directory, "scripts", "setup.ts");
     const backfillPath = join(directory, "references", "backfill.md");
+    const guidancePath = join(directory, "references", "guidance-updates.md");
     const onboardingPath = join(directory, "references", "onboarding.md");
-    const [backfillSource, entries, onboardingSource, source] =
+    const [backfillSource, entries, guidanceSource, onboardingSource, source] =
       await Promise.all([
         changelogDistributions.has(directoryName) && existsSync(backfillPath)
           ? readFile(backfillPath, "utf8")
           : Promise.resolve(null),
         walk(directory),
+        changelogDistributions.has(directoryName) && existsSync(guidancePath)
+          ? readFile(guidancePath, "utf8")
+          : Promise.resolve(null),
         changelogDistributions.has(directoryName) && existsSync(onboardingPath)
           ? readFile(onboardingPath, "utf8")
           : Promise.resolve(null),
@@ -112,6 +140,7 @@ const distributionSnapshots = await Promise.all(
       directory,
       directoryName,
       entries,
+      guidanceSource,
       onboardingSource,
       setupSource,
       source,
@@ -125,6 +154,7 @@ for (const {
   directory,
   directoryName,
   entries,
+  guidanceSource,
   onboardingSource,
   setupSource,
   source,
@@ -221,6 +251,26 @@ for (const {
       );
     }
 
+    if (portableContractDistributions.has(directoryName)) {
+      for (const [filename, canonical] of canonicalProtocolFiles) {
+        const protocolPath = join(directory, "schemas", filename);
+        if (!existsSync(protocolPath)) {
+          failures.push(
+            `skills/${directoryName} is missing pinned protocol schema ${filename}`
+          );
+        } else if (readFileSync(protocolPath, "utf8") !== canonical) {
+          failures.push(
+            `skills/${directoryName}/schemas/${filename} diverges from the pinned producer fixture`
+          );
+        }
+      }
+      if (!source.includes("references/release-handoff.md")) {
+        failures.push(
+          `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
+        );
+      }
+    }
+
     if (backfillSource === null) {
       failures.push(
         `skills/${directoryName} is missing references/backfill.md`
@@ -238,6 +288,23 @@ for (const {
           );
         }
       }
+    }
+
+    const currentGuidance = /Current guidance version: (\d+)/u.exec(
+      source
+    )?.[1];
+    if (!currentGuidance || guidanceSource === null) {
+      failures.push(
+        `skills/${directoryName} is missing current guidance release notes`
+      );
+    } else if (
+      !guidanceSource.includes(
+        `simple-changelogs-guidance-update version="${currentGuidance}"`
+      )
+    ) {
+      failures.push(
+        `skills/${directoryName} guidance ${currentGuidance} lacks update-notice metadata`
+      );
     }
 
     if (onboardingSource === null) {

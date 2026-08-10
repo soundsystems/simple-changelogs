@@ -27,6 +27,7 @@ import {
   MANIFEST_VERSION,
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
+  PUBLIC_VERSION_ACTIONS,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
   RELEASE_NOTE_LINK_POLICIES,
   type RepoPolicy,
@@ -421,6 +422,14 @@ const repoPolicyBase = objectOf({
   mobileReleaseNotePlacement: optional(enumOf(MOBILE_RELEASE_NOTE_PLACEMENTS)),
   newReleaseNoteSurfaceComponents: optional(enumOf(SURFACE_COMPONENT_SOURCES)),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
+  publicVersioning: optional(
+    objectOf({
+      major: enumOf(PUBLIC_VERSION_ACTIONS),
+      minor: enumOf(PUBLIC_VERSION_ACTIONS),
+      patch: enumOf(PUBLIC_VERSION_ACTIONS),
+      suggestWhenAsking: booleanValue,
+    })
+  ),
   releaseNoteEnvironmentScope: optional(
     enumOf(RELEASE_NOTE_ENVIRONMENT_SCOPES)
   ),
@@ -433,6 +442,14 @@ const globalPreferences = objectOf({
   developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
   profile: literal("solo-developer"),
+  publicVersioning: optional(
+    objectOf({
+      major: enumOf(PUBLIC_VERSION_ACTIONS),
+      minor: enumOf(PUBLIC_VERSION_ACTIONS),
+      patch: enumOf(PUBLIC_VERSION_ACTIONS),
+      suggestWhenAsking: booleanValue,
+    })
+  ),
   schemaVersion: literal(1),
   setupStyle: enumOf(SETUP_STYLES),
   signatures: enumOf(SIGNATURE_POLICIES),

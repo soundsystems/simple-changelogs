@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { createHash } from "node:crypto";
 import { type Dirent, existsSync } from "node:fs";
 import {
   chmod,
@@ -42,6 +43,8 @@ const DISTRIBUTIONS = [
 ] as const;
 const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+const PUBLIC_VERSION_ACTIONS = ["ask", "automatic"] as const;
+const VERSION_SUGGESTION_OPTIONS = ["on", "off"] as const;
 const SURFACE_COMPONENT_SOURCES = [
   "project-components",
   "recommended-web-components",
@@ -69,6 +72,17 @@ const MOBILE_RELEASE_NOTE_PLACEMENTS = [
 const SETUP_STYLES = ["recommended", "customized"] as const;
 const SCOPES = ["repository", "all-projects", "run-only"] as const;
 const TASK_MODES = ["write", "read"] as const;
+const GUIDANCE_UPDATE_KINDS = [
+  "behavior",
+  "capability",
+  "onboarding",
+  "maintenance",
+] as const;
+const GUIDANCE_BACKFILL_RECOMMENDATIONS = [
+  "recommended",
+  "optional",
+  "not-needed",
+] as const;
 const POLICY_FILENAME = ".simple-changelogs.json";
 const CMS_POLICY_FILENAME = ".simple-changelogs-cms.json";
 const DEFAULT_CMS_CHANGELOG = "CMS_CHANGELOG.json";
@@ -194,6 +208,7 @@ type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 type Distribution = (typeof DISTRIBUTIONS)[number];
 type SignaturePolicy = (typeof SIGNATURE_POLICIES)[number];
 type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+export type PublicVersionAction = (typeof PUBLIC_VERSION_ACTIONS)[number];
 type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 type CrossSurfaceVersioning =
   (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
@@ -205,6 +220,9 @@ type MobileReleaseNotePlacement =
 type SetupStyle = (typeof SETUP_STYLES)[number];
 type PreferenceScope = (typeof SCOPES)[number];
 type TaskMode = (typeof TASK_MODES)[number];
+type GuidanceUpdateKind = (typeof GUIDANCE_UPDATE_KINDS)[number];
+type GuidanceBackfillRecommendation =
+  (typeof GUIDANCE_BACKFILL_RECOMMENDATIONS)[number];
 type PolicyState = "absent" | "valid" | "malformed";
 type SetupStatus =
   | "already-configured"
@@ -215,12 +233,22 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 14,
-  mobile: 12,
-  "skill-repository": 6,
-  web: 13,
-  "web-cms": 13,
+  full: 16,
+  mobile: 14,
+  "skill-repository": 8,
+  web: 15,
+  "web-cms": 15,
 } as const satisfies Record<Distribution, number>;
+const CMS_GUIDANCE_VERSION = 2;
+
+const DISTRIBUTION_DIRECTORIES = {
+  cms: "simple-changelogs-cms",
+  full: "simple-changelogs",
+  mobile: "simple-changelogs-mobile",
+  "skill-repository": "simple-changelogs-skill-maintainer",
+  web: "simple-changelogs-web",
+  "web-cms": "simple-changelogs-web-cms",
+} as const satisfies Record<Distribution | "cms", string>;
 
 // Pinned to the guidance version that introduced the requirement. Comparing
 // against the current version would silently retire the invariant on the next
@@ -238,6 +266,7 @@ interface RepoPolicy {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
+  publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
@@ -252,7 +281,7 @@ interface CmsPolicy {
   };
   guidance: {
     backfillStatus: BackfillStatus;
-    version: 1;
+    version: number;
   };
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
@@ -263,6 +292,7 @@ export interface GlobalPreferences {
   developerChangelog: DeveloperChangelogPolicy;
   newReleaseNoteSurfaces: SurfacePolicy;
   profile: "solo-developer";
+  publicVersioning?: PublicVersioningPolicy;
   schemaVersion: 1;
   setupStyle: SetupStyle;
   signatures: SignaturePolicy;
@@ -308,6 +338,7 @@ interface Selection {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
@@ -319,6 +350,7 @@ type OptionalSelectionKeys =
   | "crossSurfaceVersioning"
   | "mobileReleaseNotePlacement"
   | "newReleaseNoteSurfaceComponents"
+  | "publicVersioning"
   | "releaseNoteEnvironmentScope"
   | "releaseNoteLinks";
 
@@ -338,14 +370,19 @@ interface WriteRecord {
 }
 
 export interface SetupResult {
+  capabilities: IntegrationCapabilities | null;
   cmsPolicy: StateRecord<CmsPolicy> | null;
   command: "apply" | "inspect";
   detection: Detection;
   errors: string[];
   globalPreferences: StateRecord<GlobalPreferences>;
+  guidanceUpdate: GuidanceUpdateNotice | null;
   inventory: Inventory;
+  onboardingContribution: OnboardingContribution | null;
   onboardingRequired: boolean;
+  ownerWriteReceipt: OwnerWriteReceipt | null;
   policy: StateRecord<RepoPolicy> | null;
+  publicVersioning: PublicVersioningResolution | null;
   recommendation: Recommendation;
   repository: string;
   schemaVersion: 1;
@@ -355,6 +392,60 @@ export interface SetupResult {
   unresolvedQuestions: string[];
   writeCapable: boolean;
   writes: WriteRecord[];
+}
+
+export interface GuidanceUpdateNotice {
+  backfillRecommendation: GuidanceBackfillRecommendation;
+  changes: {
+    backfillRecommendation: GuidanceBackfillRecommendation;
+    kinds: GuidanceUpdateKind[];
+    summary: string;
+    version: number;
+  }[];
+  currentVersion: number;
+  recordedVersion: number;
+  releaseNotesOffer: string;
+  releaseNotesPath: string;
+  summary: string;
+  userPrompt: string | null;
+}
+
+export interface OnboardingContribution {
+  destination: ".simple-changelogs.json";
+  owner: "simple-changelogs";
+  questions: {
+    id: "public-version-actions" | "public-version-suggestions";
+    required: boolean;
+  }[];
+  resolvedPolicy: PublicVersioningPolicy;
+  summary: string;
+}
+
+export interface OwnerWriteReceipt {
+  destination: ".simple-changelogs.json";
+  owner: "simple-changelogs";
+  policyDigest: string | null;
+  status: "completed" | "not-requested";
+  written: boolean;
+}
+
+export interface IntegrationCapabilities {
+  distribution: Distribution;
+  features: [
+    "public-version-policy",
+    "classify-prepare-verify",
+    "multi-train-receipts",
+    "guidance-update-notices",
+  ];
+  guidanceVersion: number;
+  provider: "simple-changelogs";
+  receiptVersions: [1, 2];
+  requestVersions: [1];
+  schemaDigests: {
+    changelogReceipt: string;
+    changelogRequest: string;
+  };
+  schemaVersion: 1;
 }
 
 export interface InspectOptions {
@@ -374,15 +465,42 @@ export interface ApplyOptions extends InspectOptions {
   confirm?: boolean;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
+  guidanceBackfill?: BackfillStatus;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  publicVersionMajor?: PublicVersionAction;
+  publicVersionMinor?: PublicVersionAction;
+  publicVersionPatch?: PublicVersionAction;
+  publicVersionSuggestions?: "on" | "off";
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   signatures?: SignaturePolicy;
 }
+
+export interface PublicVersioningPolicy {
+  major: PublicVersionAction;
+  minor: PublicVersionAction;
+  patch: PublicVersionAction;
+  suggestWhenAsking: boolean;
+}
+
+export interface PublicVersioningResolution {
+  effective: PublicVersioningPolicy;
+  recommended: PublicVersioningPolicy;
+  selected: PublicVersioningPolicy | null;
+  source: "missing-field-default" | "repository-policy" | "run-only";
+  stored: PublicVersioningPolicy | null;
+}
+
+const SAFE_PUBLIC_VERSIONING: PublicVersioningPolicy = {
+  major: "ask",
+  minor: "ask",
+  patch: "ask",
+  suggestWhenAsking: true,
+};
 
 interface CandidateWrite {
   content: string;
@@ -422,10 +540,203 @@ const reportUnsupportedOptionalEnum = <T extends string>(
   }
 };
 
+const validatePublicVersioning = (
+  value: unknown,
+  field = "publicVersioning"
+): { errors: string[]; value?: PublicVersioningPolicy } => {
+  if (
+    !(
+      isRecord(value) &&
+      hasExactKeys(value, ["patch", "minor", "major", "suggestWhenAsking"])
+    )
+  ) {
+    return { errors: [`${field} has missing or unknown fields`] };
+  }
+  const errors: string[] = [];
+  for (const level of ["patch", "minor", "major"] as const) {
+    if (!oneOf(value[level], PUBLIC_VERSION_ACTIONS)) {
+      errors.push(`${field}.${level} is unsupported`);
+    }
+  }
+  if (typeof value.suggestWhenAsking !== "boolean") {
+    errors.push(`${field}.suggestWhenAsking must be boolean`);
+  }
+  return errors.length === 0
+    ? { errors, value: value as unknown as PublicVersioningPolicy }
+    : { errors };
+};
+
 const stringifyError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+
+const sha256 = (value: string): string =>
+  createHash("sha256").update(value).digest("hex");
+
+const capabilitySchemaPath = (filename: string): string => {
+  const packageRoot = resolve(import.meta.dir, "..");
+  const packaged = join(packageRoot, "schemas", filename);
+  return existsSync(packaged)
+    ? packaged
+    : join(packageRoot, "evals", "schemas", filename);
+};
+
+const capabilitiesFor = async (
+  installed: Distribution | "cms"
+): Promise<IntegrationCapabilities | null> => {
+  if (installed === "cms") {
+    return null;
+  }
+  const [requestSchema, receiptSchema] = await Promise.all([
+    readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
+    readFile(capabilitySchemaPath("changelog-receipt.schema.json"), "utf8"),
+  ]);
+  return {
+    distribution: installed,
+    features: [
+      "public-version-policy",
+      "classify-prepare-verify",
+      "multi-train-receipts",
+      "guidance-update-notices",
+    ],
+    guidanceVersion: GUIDANCE_VERSIONS[installed],
+    provider: "simple-changelogs",
+    receiptVersions: [1, 2],
+    requestVersions: [1],
+    schemaDigests: {
+      changelogReceipt: sha256(receiptSchema),
+      changelogRequest: sha256(requestSchema),
+    },
+    schemaVersion: 1,
+  };
+};
+
+const currentGuidanceVersionFor = (installed: Distribution | "cms"): number =>
+  installed === "cms" ? CMS_GUIDANCE_VERSION : GUIDANCE_VERSIONS[installed];
+
+const guidanceReleaseNotesPath = (installed: Distribution | "cms"): string => {
+  const packageRoot = resolve(import.meta.dir, "..");
+  const packaged = join(packageRoot, "references", "guidance-updates.md");
+  if (existsSync(packaged)) {
+    return packaged;
+  }
+  return join(
+    packageRoot,
+    "..",
+    "..",
+    "skills",
+    DISTRIBUTION_DIRECTORIES[installed],
+    "references",
+    "guidance-updates.md"
+  );
+};
+
+const GUIDANCE_UPDATE_MARKER =
+  /<!-- simple-changelogs-guidance-update version="(\d+)" kinds="([^"]+)" backfill="(recommended|optional|not-needed)" summary="([^"]+)" -->/gu;
+
+export const parseGuidanceUpdateChanges = (
+  markdown: string,
+  recordedVersion: number,
+  currentVersion: number
+): GuidanceUpdateNotice["changes"] => {
+  const changes: GuidanceUpdateNotice["changes"] = [];
+  for (const match of markdown.matchAll(GUIDANCE_UPDATE_MARKER)) {
+    const [, versionValue, kindValues, backfillRecommendation, summary] = match;
+    const version = Number(versionValue);
+    const kinds = (kindValues ?? "")
+      .split(",")
+      .filter((kind): kind is GuidanceUpdateKind =>
+        oneOf(kind, GUIDANCE_UPDATE_KINDS)
+      );
+    if (
+      version <= recordedVersion ||
+      version > currentVersion ||
+      kinds.length === 0 ||
+      !oneOf(backfillRecommendation, GUIDANCE_BACKFILL_RECOMMENDATIONS) ||
+      !summary
+    ) {
+      continue;
+    }
+    changes.push({ backfillRecommendation, kinds, summary, version });
+  }
+  return changes.sort((left, right) => left.version - right.version);
+};
+
+export const guidanceBackfillRecommendationFor = (
+  changes: GuidanceUpdateNotice["changes"]
+): GuidanceBackfillRecommendation => {
+  if (
+    changes.some((change) => change.backfillRecommendation === "recommended")
+  ) {
+    return "recommended";
+  }
+  if (changes.some((change) => change.backfillRecommendation === "optional")) {
+    return "optional";
+  }
+  return "not-needed";
+};
+
+const guidanceUpdateNoticeFor = async (
+  installed: Distribution | "cms",
+  policy: RepoPolicy | CmsPolicy | undefined
+): Promise<GuidanceUpdateNotice | null> => {
+  if (!policy) {
+    return null;
+  }
+  const recordedVersion = policy.guidance.version;
+  const currentVersion = currentGuidanceVersionFor(installed);
+  if (recordedVersion >= currentVersion) {
+    return null;
+  }
+  const releaseNotesPath = guidanceReleaseNotesPath(installed);
+  let changes: GuidanceUpdateNotice["changes"] = [];
+  try {
+    changes = parseGuidanceUpdateChanges(
+      await readFile(releaseNotesPath, "utf8"),
+      recordedVersion,
+      currentVersion
+    );
+  } catch {
+    // A source checkout can be mid-update. Still surface the version change;
+    // verification will report a missing routed reference separately.
+  }
+  if (changes.length === 0) {
+    changes = [
+      {
+        backfillRecommendation: "optional",
+        kinds: ["behavior"],
+        summary: `Guidance changed from version ${recordedVersion} to ${currentVersion}.`,
+        version: currentVersion,
+      },
+    ];
+  }
+  const backfillRecommendation = guidanceBackfillRecommendationFor(changes);
+  const releaseNotesOffer =
+    "Detailed skill release notes are available if you would like to review them.";
+  const changeSummary = changes.map((change) => change.summary).join(" ");
+  let backfillSummary =
+    "A historical backfill is optional because some released history may benefit from the new guidance.";
+  if (backfillRecommendation === "not-needed") {
+    backfillSummary = "This update does not call for a historical backfill.";
+  } else if (backfillRecommendation === "recommended") {
+    backfillSummary =
+      "A historical backfill is recommended because released history may benefit from the new guidance.";
+  }
+  return {
+    backfillRecommendation,
+    changes,
+    currentVersion,
+    recordedVersion,
+    releaseNotesOffer,
+    releaseNotesPath: "references/guidance-updates.md",
+    summary: `${changeSummary} ${backfillSummary}`,
+    userPrompt:
+      backfillRecommendation === "not-needed"
+        ? null
+        : "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
+  };
+};
 
 const validateRepoPolicy = (
   value: unknown
@@ -447,6 +758,7 @@ const validateRepoPolicy = (
           "distribution",
           "mobileReleaseNotePlacement",
           "newReleaseNoteSurfaceComponents",
+          "publicVersioning",
           "releaseNoteEnvironmentScope",
           "releaseNoteLinks",
         ]
@@ -473,6 +785,9 @@ const validateRepoPolicy = (
   }
   if (!oneOf(value.newReleaseNoteSurfaces, SURFACE_POLICIES)) {
     errors.push("newReleaseNoteSurfaces is unsupported");
+  }
+  if (value.publicVersioning !== undefined) {
+    errors.push(...validatePublicVersioning(value.publicVersioning).errors);
   }
   if (
     value.newReleaseNoteSurfaceComponents !== undefined &&
@@ -587,12 +902,13 @@ const validateCmsPolicy = (
     !(
       isRecord(value.guidance) &&
       hasExactKeys(value.guidance, ["version", "backfillStatus"]) &&
-      value.guidance.version === 1 &&
+      Number.isInteger(value.guidance.version) &&
+      (value.guidance.version as number) >= 1 &&
       oneOf(value.guidance.backfillStatus, BACKFILL_STATUSES)
     )
   ) {
     errors.push(
-      "CMS guidance must contain version 1 and a supported backfillStatus"
+      "CMS guidance must contain a positive version and a supported backfillStatus"
     );
   }
   if (!oneOf(value.newReleaseNoteSurfaces, SURFACE_POLICIES)) {
@@ -615,14 +931,18 @@ export const validateGlobalPreferences = (
   if (
     !(
       isRecord(value) &&
-      hasExactKeys(value, [
-        "schemaVersion",
-        "profile",
-        "developerChangelog",
-        "signatures",
-        "newReleaseNoteSurfaces",
-        "setupStyle",
-      ])
+      hasExactKeys(
+        value,
+        [
+          "schemaVersion",
+          "profile",
+          "developerChangelog",
+          "signatures",
+          "newReleaseNoteSurfaces",
+          "setupStyle",
+        ],
+        ["publicVersioning"]
+      )
     )
   ) {
     return {
@@ -647,6 +967,14 @@ export const validateGlobalPreferences = (
   }
   if (!oneOf(value.setupStyle, SETUP_STYLES)) {
     errors.push("global setupStyle is unsupported");
+  }
+  if (value.publicVersioning !== undefined) {
+    errors.push(
+      ...validatePublicVersioning(
+        value.publicVersioning,
+        "global publicVersioning"
+      ).errors
+    );
   }
   return errors.length === 0
     ? { errors, value: value as unknown as GlobalPreferences }
@@ -1089,6 +1417,7 @@ const safeGlobalDefaults = (): GlobalPreferences => ({
   developerChangelog: "required",
   newReleaseNoteSurfaces: "ask",
   profile: "solo-developer",
+  publicVersioning: SAFE_PUBLIC_VERSIONING,
   schemaVersion: 1,
   setupStyle: "recommended",
   signatures: "agent-and-timestamp",
@@ -1115,6 +1444,8 @@ const recommendationFor = (
             version: GUIDANCE_VERSIONS[installed],
           },
           newReleaseNoteSurfaces: reusableDefaults.newReleaseNoteSurfaces,
+          publicVersioning:
+            reusableDefaults.publicVersioning ?? SAFE_PUBLIC_VERSIONING,
           schemaVersion: 1 as const,
           signatures: reusableDefaults.signatures,
         });
@@ -1128,6 +1459,94 @@ const recommendationFor = (
     reusableDefaults,
   };
 };
+
+const publicVersioningResolutionFor = (
+  installed: Distribution | "cms",
+  policy: StateRecord<RepoPolicy>,
+  selected: PublicVersioningPolicy | null = null,
+  runOnly = false
+): PublicVersioningResolution | null => {
+  if (installed === "cms") {
+    return null;
+  }
+  const stored = policy.value?.publicVersioning ?? null;
+  let source: PublicVersioningResolution["source"] = "missing-field-default";
+  if (runOnly) {
+    source = "run-only";
+  } else if (stored) {
+    source = "repository-policy";
+  }
+  return {
+    effective: selected ?? stored ?? SAFE_PUBLIC_VERSIONING,
+    recommended: SAFE_PUBLIC_VERSIONING,
+    selected,
+    source,
+    stored,
+  };
+};
+
+const publicVersioningSelectionFrom = (
+  options: ApplyOptions,
+  fallback?: PublicVersioningPolicy
+): PublicVersioningPolicy | undefined => {
+  if (
+    options.publicVersionPatch === undefined ||
+    options.publicVersionMinor === undefined ||
+    options.publicVersionMajor === undefined
+  ) {
+    return fallback;
+  }
+  return {
+    major: options.publicVersionMajor,
+    minor: options.publicVersionMinor,
+    patch: options.publicVersionPatch,
+    suggestWhenAsking:
+      options.publicVersionSuggestions === undefined
+        ? true
+        : options.publicVersionSuggestions === "on",
+  };
+};
+
+const onboardingContributionFor = (
+  installed: Distribution | "cms",
+  policy: StateRecord<RepoPolicy>,
+  recommendation: Recommendation
+): OnboardingContribution | null => {
+  if (installed === "cms" || policy.state !== "absent") {
+    return null;
+  }
+  const resolvedPolicy =
+    recommendation.policy?.publicVersioning ?? SAFE_PUBLIC_VERSIONING;
+  const questions: OnboardingContribution["questions"] = [
+    { id: "public-version-actions", required: true },
+  ];
+  if (
+    resolvedPolicy.patch === "ask" ||
+    resolvedPolicy.minor === "ask" ||
+    resolvedPolicy.major === "ask"
+  ) {
+    questions.push({ id: "public-version-suggestions", required: true });
+  }
+  return {
+    destination: POLICY_FILENAME,
+    owner: "simple-changelogs",
+    questions,
+    resolvedPolicy,
+    summary:
+      "Simple Changelogs owns public-version selection; deployment and publication remain separate.",
+  };
+};
+
+const ownerWriteReceiptFor = (
+  policy: RepoPolicy | undefined,
+  written: boolean
+): OwnerWriteReceipt => ({
+  destination: POLICY_FILENAME,
+  owner: "simple-changelogs",
+  policyDigest: policy ? sha256(json(policy)) : null,
+  status: written ? "completed" : "not-requested",
+  written,
+});
 
 const unresolvedFor = (
   installed: Distribution | "cms",
@@ -1248,15 +1667,17 @@ export const inspectRepository = async (
   const installed = options.distribution ?? distributionFromInstall();
   const taskMode = options.taskMode ?? "write";
   const dependencies = await readPackageDependencies(root);
-  const [policy, cmsPolicy, globalPreferences, inventory] = await Promise.all([
-    readState(join(root, POLICY_FILENAME), validateRepoPolicy),
-    readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
-    readState(
-      resolveGlobalPreferencesPath(options.configDirectory),
-      validateGlobalPreferences
-    ),
-    inspectInventory(root, dependencies),
-  ]);
+  const [policy, cmsPolicy, globalPreferences, inventory, capabilities] =
+    await Promise.all([
+      readState(join(root, POLICY_FILENAME), validateRepoPolicy),
+      readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
+      readState(
+        resolveGlobalPreferencesPath(options.configDirectory),
+        validateGlobalPreferences
+      ),
+      inspectInventory(root, dependencies),
+      capabilitiesFor(installed),
+    ]);
   const projectEvidence = inspectProjectEvidence(root, inventory, dependencies);
   const detection = detectDistribution(
     installed,
@@ -1276,6 +1697,10 @@ export const inspectRepository = async (
     policy,
     cmsPolicy
   );
+  const guidanceUpdate = await guidanceUpdateNoticeFor(
+    installed,
+    installed === "cms" ? cmsPolicy.value : policy.value
+  );
   const unresolvedQuestions = configured
     ? []
     : unresolvedFor(installed, inventory, policy, cmsPolicy, detection);
@@ -1292,6 +1717,7 @@ export const inspectRepository = async (
     unresolvedQuestions
   );
   return {
+    capabilities,
     cmsPolicy:
       installed === "cms" || installed === "web-cms" ? cmsPolicy : null,
     command: "inspect",
@@ -1301,9 +1727,18 @@ export const inspectRepository = async (
       ...(installed === "web-cms" ? cmsPolicy.errors : []),
     ],
     globalPreferences,
+    guidanceUpdate,
     inventory,
+    onboardingContribution: onboardingContributionFor(
+      installed,
+      policy,
+      recommendation
+    ),
     onboardingRequired,
+    ownerWriteReceipt:
+      installed === "cms" ? null : ownerWriteReceiptFor(policy.value, false),
     policy: installed === "cms" ? null : policy,
+    publicVersioning: publicVersioningResolutionFor(installed, policy),
     recommendation,
     repository: root,
     schemaVersion: 1,
@@ -1546,6 +1981,13 @@ const selectionFrom = (
   installed: Distribution | "cms"
 ): CompleteSelection => {
   const defaults = inspect.recommendation.reusableDefaults;
+  const publicVersioning =
+    installed === "cms"
+      ? undefined
+      : publicVersioningSelectionFrom(
+          options,
+          defaults.publicVersioning ?? SAFE_PUBLIC_VERSIONING
+        );
   return {
     backfillStatus:
       options.backfillStatus ??
@@ -1564,6 +2006,7 @@ const selectionFrom = (
     newReleaseNoteSurfaces:
       options.newReleaseNoteSurfaces ??
       (installed === "cms" ? "existing-only" : defaults.newReleaseNoteSurfaces),
+    publicVersioning,
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
     releaseNoteLinks: options.releaseNoteLinks,
     scope: options.scope ?? "repository",
@@ -1588,7 +2031,8 @@ const blockResult = (
 
 const cmsPolicyFor = (
   selection: CompleteSelection,
-  options: ApplyOptions
+  options: ApplyOptions,
+  installed: Distribution | "cms"
 ): CmsPolicy => {
   const policy: CmsPolicy = {
     changelogPath: options.cmsChangelog ?? DEFAULT_CMS_CHANGELOG,
@@ -1598,7 +2042,7 @@ const cmsPolicyFor = (
     },
     guidance: {
       backfillStatus: selection.backfillStatus,
-      version: 1,
+      version: installed === "cms" ? CMS_GUIDANCE_VERSION : 1,
     },
     newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "existing-only",
     schemaVersion: 1,
@@ -1617,6 +2061,7 @@ const globalFor = (
   developerChangelog: selection.developerChangelog,
   newReleaseNoteSurfaces,
   profile: "solo-developer",
+  publicVersioning: selection.publicVersioning,
   schemaVersion: 1,
   setupStyle: selection.setupStyle,
   signatures: selection.signatures,
@@ -1634,6 +2079,7 @@ const repoPolicyFor = (
       version: GUIDANCE_VERSIONS[installed],
     },
     newReleaseNoteSurfaces: selection.newReleaseNoteSurfaces,
+    publicVersioning: selection.publicVersioning,
     schemaVersion: 1,
     signatures: selection.signatures,
   };
@@ -1751,6 +2197,15 @@ const completePartialAudit = async (
         ...inspect,
         command: "apply",
         errors: [],
+        ownerWriteReceipt: standard
+          ? ownerWriteReceiptFor(
+              {
+                ...standard,
+                guidance: { ...standard.guidance, backfillStatus: "completed" },
+              },
+              true
+            )
+          : inspect.ownerWriteReceipt,
         selection: { backfillStatus: "completed" },
         status: "configured",
         summary:
@@ -1760,6 +2215,102 @@ const completePartialAudit = async (
           path: candidate.path,
           written: true,
         })),
+      };
+};
+
+/**
+ * Records the user's one-time disposition for newly installed guidance. This
+ * path is intentionally separate from onboarding and from completing an
+ * already-started historical audit.
+ */
+const updateGuidanceDisposition = async (
+  options: ApplyOptions,
+  inspect: SetupResult,
+  installed: Distribution | "cms"
+): Promise<SetupResult | null> => {
+  const disposition = options.guidanceBackfill;
+  if (disposition === undefined) {
+    return null;
+  }
+  const notice = inspect.guidanceUpdate;
+  if (!notice) {
+    return blockResult(inspect, [
+      "No unacknowledged guidance update is available for this repository.",
+    ]);
+  }
+  if (!options.confirm) {
+    return blockResult(inspect, [
+      "Confirmation is required before recording a guidance-update disposition.",
+    ]);
+  }
+  if (disposition === "completed" && !options.auditVerified) {
+    return blockResult(inspect, [
+      "A guidance-update backfill can be recorded as completed only with --audit-verified.",
+    ]);
+  }
+  if (
+    notice.backfillRecommendation === "not-needed" &&
+    disposition !== "not-applicable"
+  ) {
+    return blockResult(inspect, [
+      "This guidance update has no historical backfill; record --guidance-backfill not-applicable.",
+    ]);
+  }
+  if (
+    notice.backfillRecommendation !== "not-needed" &&
+    disposition === "not-applicable" &&
+    inspect.inventory.releasedHistoryCount > 0
+  ) {
+    return blockResult(inspect, [
+      "Released history exists; choose partial, deferred, declined, failed, or verified completed for this update.",
+    ]);
+  }
+  const record = installed === "cms" ? inspect.cmsPolicy : inspect.policy;
+  if (record?.state !== "valid" || record.value === undefined) {
+    return blockResult(inspect, [
+      "A valid repository policy is required before recording a guidance update.",
+    ]);
+  }
+  const updatedPolicy = {
+    ...record.value,
+    guidance: {
+      backfillStatus: disposition,
+      version: notice.currentVersion,
+    },
+  };
+  const candidate: CandidateWrite = {
+    content: json(updatedPolicy),
+    kind: installed === "cms" ? "cms-policy" : "repository-policy",
+    mode: 0o644,
+    path: record.path,
+  };
+  const staged = await stageCandidates([candidate]);
+  await Promise.all(
+    staged.map(async ({ candidate: pending, temporaryPath }) => {
+      await ensureNoSymlink(pending.path);
+      await rename(temporaryPath, pending.path);
+      await chmod(pending.path, pending.mode);
+    })
+  );
+  const errors = await validateStoredPolicies(installed, inspect.repository);
+  return errors.length > 0
+    ? blockResult(inspect, errors)
+    : {
+        ...inspect,
+        command: "apply",
+        errors: [],
+        guidanceUpdate: null,
+        ownerWriteReceipt:
+          installed === "cms"
+            ? null
+            : ownerWriteReceiptFor(updatedPolicy as RepoPolicy, true),
+        selection: { backfillStatus: disposition },
+        status: "configured",
+        summary:
+          disposition === "partial"
+            ? "The guidance update is acknowledged and its historical backfill is recorded as in progress."
+            : "The guidance update and its historical-backfill disposition are recorded.",
+        writes: [{ kind: candidate.kind, path: candidate.path, written: true }],
       };
 };
 
@@ -1794,6 +2345,11 @@ const updateContextualPreferences = async (
   }
   const selection: Selection = {};
   const updates: Partial<RepoPolicy> = {};
+  const publicVersioning = publicVersioningSelectionFrom(options);
+  if (publicVersioning) {
+    selection.publicVersioning = publicVersioning;
+    updates.publicVersioning = publicVersioning;
+  }
   if (options.crossSurfaceVersioning !== undefined) {
     selection.crossSurfaceVersioning = options.crossSurfaceVersioning;
     updates.crossSurfaceVersioning = options.crossSurfaceVersioning;
@@ -1824,6 +2380,15 @@ const updateContextualPreferences = async (
     return {
       ...inspect,
       command: "apply",
+      publicVersioning: selection.publicVersioning
+        ? {
+            effective: selection.publicVersioning,
+            recommended: SAFE_PUBLIC_VERSIONING,
+            selected: selection.publicVersioning,
+            source: "repository-policy",
+            stored: selection.publicVersioning,
+          }
+        : inspect.publicVersioning,
       selection,
       status: "already-configured",
       summary:
@@ -1859,6 +2424,19 @@ const updateContextualPreferences = async (
         ...inspect,
         command: "apply",
         errors: [],
+        ownerWriteReceipt: ownerWriteReceiptFor(
+          { ...current, ...updates },
+          true
+        ),
+        publicVersioning: selection.publicVersioning
+          ? {
+              effective: selection.publicVersioning,
+              recommended: SAFE_PUBLIC_VERSIONING,
+              selected: selection.publicVersioning,
+              source: "repository-policy",
+              stored: selection.publicVersioning,
+            }
+          : inspect.publicVersioning,
         selection,
         status: "configured",
         summary:
@@ -1964,6 +2542,15 @@ const runOnlyResult = (
   command: "apply",
   errors: [],
   onboardingRequired: true,
+  publicVersioning: selection.publicVersioning
+    ? {
+        effective: selection.publicVersioning,
+        recommended: SAFE_PUBLIC_VERSIONING,
+        selected: selection.publicVersioning,
+        source: "run-only",
+        stored: inspect.publicVersioning?.stored ?? null,
+      }
+    : inspect.publicVersioning,
   selection,
   status: "run-only",
   summary:
@@ -2016,7 +2603,7 @@ const buildSetupCandidates = async (
     candidates.push(...markdownCandidates(root, selection.developerChangelog));
   }
   if (installed === "cms" || installed === "web-cms") {
-    const cmsPolicy = cmsPolicyFor(selection, options);
+    const cmsPolicy = cmsPolicyFor(selection, options, installed);
     const cmsValidation = validateCmsPolicy(cmsPolicy);
     if (!cmsValidation.value) {
       return { candidates: [], errors: cmsValidation.errors };
@@ -2153,7 +2740,21 @@ const persistSetup = async (
       ...inspect,
       command: "apply",
       errors: [],
+      onboardingContribution: null,
       onboardingRequired: false,
+      ownerWriteReceipt:
+        installed === "cms"
+          ? null
+          : ownerWriteReceiptFor(repoPolicyFor(installed, selection), true),
+      publicVersioning: selection.publicVersioning
+        ? {
+            effective: selection.publicVersioning,
+            recommended: SAFE_PUBLIC_VERSIONING,
+            selected: selection.publicVersioning,
+            source: "repository-policy",
+            stored: selection.publicVersioning,
+          }
+        : inspect.publicVersioning,
       selection,
       status: "configured",
       summary: `Simple Changelogs ${selectedLabel} is configured. Repository-specific audiences, destinations, history, and authority remain repository-owned.`,
@@ -2187,6 +2788,37 @@ export const applySetup = async (
     repo: options.repo,
     taskMode: options.taskMode ?? "write",
   });
+  const suppliedVersionActions = [
+    options.publicVersionPatch,
+    options.publicVersionMinor,
+    options.publicVersionMajor,
+  ].filter((value) => value !== undefined).length;
+  if (suppliedVersionActions > 0 && suppliedVersionActions < 3) {
+    return blockResult(inspect, [
+      "Supplying any public-version bump action requires --version-patch, --version-minor, and --version-major together.",
+    ]);
+  }
+  if (
+    options.publicVersionSuggestions !== undefined &&
+    suppliedVersionActions === 0
+  ) {
+    return blockResult(inspect, [
+      "--version-suggestions requires the complete public-version bump selection.",
+    ]);
+  }
+  if (
+    suppliedVersionActions === 3 &&
+    options.publicVersionSuggestions === undefined &&
+    !(
+      options.publicVersionPatch === "ask" &&
+      options.publicVersionMinor === "ask" &&
+      options.publicVersionMajor === "ask"
+    )
+  ) {
+    return blockResult(inspect, [
+      "--version-suggestions may be omitted only for the complete ask/ask/ask default.",
+    ]);
+  }
   const auditCompletion = await completePartialAudit(
     options,
     inspect,
@@ -2194,6 +2826,14 @@ export const applySetup = async (
   );
   if (auditCompletion) {
     return auditCompletion;
+  }
+  const guidanceDisposition = await updateGuidanceDisposition(
+    options,
+    inspect,
+    installed
+  );
+  if (guidanceDisposition) {
+    return guidanceDisposition;
   }
   const contextualUpdate = await updateContextualPreferences(options, inspect);
   if (contextualUpdate) {
@@ -2234,6 +2874,7 @@ const valueOptionNames = new Set([
   "--cms-route",
   "--cross-surface-versioning",
   "--developer-history",
+  "--guidance-backfill",
   "--mobile-placement",
   "--new-surfaces",
   "--release-note-environments",
@@ -2244,6 +2885,10 @@ const valueOptionNames = new Set([
   "--signatures",
   "--surface-components",
   "--task-mode",
+  "--version-major",
+  "--version-minor",
+  "--version-patch",
+  "--version-suggestions",
 ]);
 const booleanOptionNames = new Set([
   "--audit-verified",
@@ -2310,6 +2955,7 @@ const parseCli = (argv: string[]): ParsedCli => {
         "--developer-history",
         DEVELOPER_CHANGELOG_POLICIES
       ),
+      guidanceBackfill: enumValue("--guidance-backfill", BACKFILL_STATUSES),
       mobileReleaseNotePlacement: enumValue(
         "--mobile-placement",
         MOBILE_RELEASE_NOTE_PLACEMENTS
@@ -2319,6 +2965,13 @@ const parseCli = (argv: string[]): ParsedCli => {
         SURFACE_COMPONENT_SOURCES
       ),
       newReleaseNoteSurfaces: enumValue("--new-surfaces", SURFACE_POLICIES),
+      publicVersionMajor: enumValue("--version-major", PUBLIC_VERSION_ACTIONS),
+      publicVersionMinor: enumValue("--version-minor", PUBLIC_VERSION_ACTIONS),
+      publicVersionPatch: enumValue("--version-patch", PUBLIC_VERSION_ACTIONS),
+      publicVersionSuggestions: enumValue(
+        "--version-suggestions",
+        VERSION_SUGGESTION_OPTIONS
+      ),
       releaseNoteEnvironmentScope: enumValue(
         "--release-note-environments",
         RELEASE_NOTE_ENVIRONMENT_SCOPES

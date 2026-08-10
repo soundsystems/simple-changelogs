@@ -13,7 +13,7 @@ CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established mobile and store destinations mirror release-scoped highlights.
 
-Current guidance version: 12
+Current guidance version: 14
 
 ## Distribution checkpoint
 
@@ -33,6 +33,10 @@ and inspect `.simple-changelogs.json`.
 
 - Pass `--task-mode write` for changelog mutations and `--task-mode read` for
   explanations or previews that must stay read-only.
+- When inspection returns `guidanceUpdate`, explain the material change and
+  offer its detailed skill release notes. Ask about a backfill only when
+  `userPrompt` is non-null; never run one automatically. Record the one-time
+  disposition with `apply --guidance-backfill <status> --confirm`.
 - Validate existing state before relying on it.
 - When state is absent and the request authorizes changelog work, follow
   `references/setup.md`, confirm and apply the selected setup, then continue the
@@ -54,6 +58,7 @@ release flow, source of truth, or store boundary.
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
 | Version choice and metadata alignment | `references/version-decisions.md` |
+| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
 | Mobile/store destination scoping and long-form release notes | `references/release-note-surfaces.md` |
 | Presentation and defect checks after an exact in-app surface is authorized | `references/surface-design.md` |

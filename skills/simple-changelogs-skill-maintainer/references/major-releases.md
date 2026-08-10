@@ -1,5 +1,9 @@
 # Skill-Repository Major Releases
 
+`major: automatic` removes only the version prompt at a proven package
+boundary. It does not waive stable-major evidence, synthesis, migration
+disclosure, prerelease handling, or publication authority.
+
 For `1.0.0`, curate the durable skill product established during public `0.x`
 development: supported workflows, stable boundaries, installation contract,
 runtime requirements, and compatibility promise. Do not paste every earlier

@@ -18,6 +18,13 @@ encode an uncertain or independently versioned relationship.
 
 ## Policy and Setup
 
+- Report the public Web train's effective `publicVersioning` source and values;
+  keep CMS-only policy unchanged.
+- Validate delegated capability/schema digests, phase scope, revision lineage,
+  approval binding, closed reason/action codes, and one receipt per train.
+- Only read-only `verify` on the refreshed target proves integration; deployment
+  and CMS authority remain separate.
+
 - `.simple-changelogs.json` validates against the bundled schema.
 - Its recorded values match an actual user disposition or documented policy.
 - The repository maintains both customer and developer histories after

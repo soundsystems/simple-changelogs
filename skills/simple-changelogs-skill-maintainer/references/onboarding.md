@@ -131,6 +131,17 @@ not have yet, what should happen? Choose one:**
 destination. It never grants deployment, publication, store submission, hosted
 release, new-audience, or internal-information authority.
 
+## Public-version choice
+
+Ask how patch, minor, and major public package versions should be chosen. Offer
+safe ask/ask/ask with exact suggestions (recommended), automatic patch and
+minor, all automatic, or granular customization. Persist the resolved object
+only. Suppress the suggestion question when every level is automatic. Global
+values prefill but require repository or current-run confirmation. The receipt
+states that work remains under `Unreleased` until a public boundary and that
+version selection grants no publication, tagging, or hosted-release authority.
+Coordinated setup keeps separate owners and resumable write receipts.
+
 ## Contextual product-surface choice
 
 For the `full`, `web`, `mobile`, `web-cms`, and CMS-only distributions,
@@ -362,10 +373,14 @@ unrelated released-history authority. Require confirmation.
 Then pass explicit choices to the helper:
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts apply \
+bun skills/simple-changelogs-skill-maintainer/scripts/setup.ts apply \
   --developer-history required \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
+  --version-patch ask \
+  --version-minor ask \
+  --version-major ask \
+  --version-suggestions on \
   --backfill deferred \
   --scope repository \
   --setup-style recommended \

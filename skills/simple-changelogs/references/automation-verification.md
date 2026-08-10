@@ -18,6 +18,16 @@ encode an uncertain or independently versioned relationship.
 
 ## Policy and Setup
 
+- Report the effective `publicVersioning` object and source. Missing fields
+  resolve to safe ask/ask/ask with suggestions on; global automatic values are
+  inactive until repository or run-only confirmation.
+- For delegated releases, validate capability and schema digests, phase/scope,
+  exact revisions, transaction/train/boundary, prior receipt, policy and
+  decision digests, closed reason/action codes, and per-train receipts.
+- `prepare` alone records pending reconciliation. Only read-only `verify` on
+  the refreshed target may report integrated release state. Exact retries keep
+  identity; moved target or policy returns to classification.
+
 - `.simple-changelogs.json` validates against the bundled schema.
 - Its recorded values match an actual user disposition or documented policy.
 - Full or combined web/mobile setup records the user's

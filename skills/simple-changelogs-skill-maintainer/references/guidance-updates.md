@@ -111,3 +111,25 @@ diagrams where useful. Skill repositories record no product archive, compact
 summary, component source, or `releaseNoteEnvironmentScope` value. This clarity
 update rewrites no released notes and grants no product-surface, deployment, or
 publication authority.
+
+## Guidance 7
+
+Added `publicVersioning` policy and digest-bound classify, prepare, and verify
+handoffs for public skill-package releases. Missing policy asks for every
+public bump with an exact suggestion. Version approval never grants package
+publication, tagging, or hosted-release authority, and published history
+remains unchanged.
+
+<!-- simple-changelogs-guidance-update version="8" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Update checks now explain new capabilities, assess backfill relevance, and offer detailed skill release notes." -->
+## Guidance 8
+
+Added structured update notices to setup inspection. When installed guidance is
+newer than repository state, inspection reports the material changes, their
+category, whether released history could benefit from a backfill, and where to
+find detailed skill release notes.
+
+Agents surface that notice before continuing write-capable work. They ask about
+a backfill only when update metadata says history may benefit, never run one
+automatically, and record the one-time disposition with
+`apply --guidance-backfill <status> --confirm`. Completed audits also require
+`--audit-verified`.
