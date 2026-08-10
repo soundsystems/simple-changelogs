@@ -17,12 +17,15 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "bun";
 import {
   applySetup,
+  guidanceBackfillRecommendationFor,
   inspectRepository,
+  parseGuidanceUpdateChanges,
   resolveGlobalPreferencesPath,
   validateGlobalPreferences,
 } from "../setup.ts";
 
 const temporaryPaths: string[] = [];
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
@@ -60,6 +63,139 @@ afterEach(async () => {
 });
 
 describe("setup inspection", () => {
+  test("classifies intervening guidance metadata and keeps the strongest backfill recommendation", () => {
+    const changes = parseGuidanceUpdateChanges(
+      [
+        '<!-- simple-changelogs-guidance-update version="2" kinds="maintenance" backfill="not-needed" summary="Quiet maintenance." -->',
+        '<!-- simple-changelogs-guidance-update version="3" kinds="capability,onboarding" backfill="optional" summary="New setup choice." -->',
+        '<!-- simple-changelogs-guidance-update version="4" kinds="behavior" backfill="recommended" summary="Historical wording can improve." -->',
+      ].join("\n"),
+      1,
+      4
+    );
+
+    expect(changes.map((change) => change.version)).toEqual([2, 3, 4]);
+    expect(changes[1]?.kinds).toEqual(["capability", "onboarding"]);
+    expect(guidanceBackfillRecommendationFor(changes)).toBe("recommended");
+  });
+
+  test("surfaces a material installed update and records its no-backfill disposition once", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      developerChangelog: "required",
+      distribution: "web",
+      guidance: { backfillStatus: "completed", version: 14 },
+      newReleaseNoteSurfaces: "ask",
+      publicVersioning: {
+        major: "ask",
+        minor: "ask",
+        patch: "ask",
+        suggestWhenAsking: true,
+      },
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+
+    const inspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "write",
+    });
+
+    expect(inspection.guidanceUpdate).toMatchObject({
+      backfillRecommendation: "not-needed",
+      currentVersion: 15,
+      recordedVersion: 14,
+      releaseNotesPath: "references/guidance-updates.md",
+      userPrompt: null,
+    });
+    expect(inspection.guidanceUpdate?.changes[0]).toMatchObject({
+      kinds: ["capability", "behavior", "onboarding"],
+      version: 15,
+    });
+
+    const rejected = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      guidanceBackfill: "partial",
+      repo,
+    });
+    expect(rejected.status).toBe("blocked");
+
+    const recorded = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      guidanceBackfill: "not-applicable",
+      repo,
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+    const after = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "write",
+    });
+
+    expect(recorded.status).toBe("configured");
+    expect(recorded.guidanceUpdate).toBeNull();
+    expect(policy.guidance).toEqual({
+      backfillStatus: "not-applicable",
+      version: 15,
+    });
+    expect(after.guidanceUpdate).toBeNull();
+  });
+
+  test("reports closed read-only capabilities and the safe missing-field version policy", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs.json"), {
+      developerChangelog: "required",
+      distribution: "web",
+      guidance: { backfillStatus: "completed", version: 13 },
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "read",
+    });
+
+    expect(result.publicVersioning).toEqual({
+      effective: {
+        major: "ask",
+        minor: "ask",
+        patch: "ask",
+        suggestWhenAsking: true,
+      },
+      recommended: {
+        major: "ask",
+        minor: "ask",
+        patch: "ask",
+        suggestWhenAsking: true,
+      },
+      selected: null,
+      source: "missing-field-default",
+      stored: null,
+    });
+    expect(result.capabilities?.features).toEqual([
+      "public-version-policy",
+      "classify-prepare-verify",
+      "multi-train-receipts",
+      "guidance-update-notices",
+    ]);
+    expect(result.capabilities?.schemaDigests.changelogRequest).toMatch(
+      SHA256_PATTERN
+    );
+    expect(result.onboardingContribution).toBeNull();
+    expect(result.writes).toEqual([]);
+  });
+
   test("enters onboarding only for a write-capable task with missing policy", async () => {
     const { config, repo } = await fixture();
 
@@ -331,6 +467,81 @@ describe("setup inspection", () => {
 });
 
 describe("setup application", () => {
+  test("requires complete granular version flags and stores the resolved policy", async () => {
+    const partial = await fixture();
+    const blocked = await applySetup({
+      ...recommendedOptions(partial.repo, partial.config),
+      publicVersionPatch: "automatic",
+    });
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain("requires --version-patch");
+
+    const custom = await fixture();
+    const configured = await applySetup({
+      ...recommendedOptions(custom.repo, custom.config),
+      publicVersionMajor: "ask",
+      publicVersionMinor: "automatic",
+      publicVersionPatch: "automatic",
+      publicVersionSuggestions: "off",
+    });
+    const policy = await readJson(join(custom.repo, ".simple-changelogs.json"));
+    expect(configured.status).toBe("configured");
+    expect(policy.publicVersioning).toEqual({
+      major: "ask",
+      minor: "automatic",
+      patch: "automatic",
+      suggestWhenAsking: false,
+    });
+    expect(configured.publicVersioning?.source).toBe("repository-policy");
+    expect(configured.ownerWriteReceipt).toMatchObject({
+      destination: ".simple-changelogs.json",
+      owner: "simple-changelogs",
+      status: "completed",
+      written: true,
+    });
+  });
+
+  test("does not activate automatic global preferences before confirmation", async () => {
+    const { config, repo } = await fixture();
+    await mkdir(config, { recursive: true });
+    await writeJson(join(config, "preferences.json"), {
+      developerChangelog: "required",
+      newReleaseNoteSurfaces: "ask",
+      profile: "solo-developer",
+      publicVersioning: {
+        major: "automatic",
+        minor: "automatic",
+        patch: "automatic",
+        suggestWhenAsking: true,
+      },
+      schemaVersion: 1,
+      setupStyle: "recommended",
+      signatures: "agent-and-timestamp",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "write",
+    });
+    expect(result.recommendation.policy?.publicVersioning?.patch).toBe(
+      "automatic"
+    );
+    expect(result.onboardingContribution).toMatchObject({
+      destination: ".simple-changelogs.json",
+      owner: "simple-changelogs",
+      questions: [{ id: "public-version-actions", required: true }],
+      resolvedPolicy: {
+        major: "automatic",
+        minor: "automatic",
+        patch: "automatic",
+      },
+    });
+    expect(result.publicVersioning?.effective.patch).toBe("ask");
+    expect(result.publicVersioning?.source).toBe("missing-field-default");
+  });
+
   test("requires mobile placement and records each distribution's current guidance", async () => {
     const full = await fixture();
     const fullOptions = {
@@ -355,13 +566,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(14);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(16);
 
     const distributionVersions = [
-      ["web", 13],
-      ["mobile", 12],
-      ["web-cms", 13],
-      ["skill-repository", 6],
+      ["web", 15],
+      ["mobile", 14],
+      ["web-cms", 15],
+      ["skill-repository", 8],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -412,10 +623,16 @@ describe("setup application", () => {
     const second = await applySetup(options);
 
     expect(first.status).toBe("configured");
-    expect(first.selection).toEqual({
+    expect(first.selection).toMatchObject({
       backfillStatus: "not-applicable",
       developerChangelog: "optional",
       newReleaseNoteSurfaces: "existing-only",
+      publicVersioning: {
+        major: "ask",
+        minor: "ask",
+        patch: "ask",
+        suggestWhenAsking: true,
+      },
       scope: "repository",
       setupStyle: "customized",
       signatures: "none",
@@ -502,6 +719,7 @@ describe("setup application", () => {
       "developerChangelog",
       "newReleaseNoteSurfaces",
       "profile",
+      "publicVersioning",
       "schemaVersion",
       "setupStyle",
       "signatures",
@@ -848,6 +1066,46 @@ describe("setup application", () => {
 });
 
 describe("distribution and CMS boundaries", () => {
+  test("surfaces and acknowledges CMS-only guidance updates", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, ".simple-changelogs-cms.json"), {
+      changelogPath: "CMS_CHANGELOG.json",
+      cmsSurface: {
+        access: "authenticated-operators",
+        route: "/admin/changelog",
+      },
+      guidance: { backfillStatus: "completed", version: 1 },
+      newReleaseNoteSurfaces: "existing-only",
+      schemaVersion: 1,
+    });
+
+    const inspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "cms",
+      repo,
+      taskMode: "write",
+    });
+    const recorded = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "cms",
+      guidanceBackfill: "not-applicable",
+      repo,
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
+
+    expect(inspection.guidanceUpdate).toMatchObject({
+      currentVersion: 2,
+      recordedVersion: 1,
+      userPrompt: null,
+    });
+    expect(recorded.status).toBe("configured");
+    expect(policy.guidance).toEqual({
+      backfillStatus: "not-applicable",
+      version: 2,
+    });
+  });
+
   test("distribution conflicts stop before writing", async () => {
     const { config, repo } = await fixture();
     await writeJson(join(repo, ".simple-changelogs.json"), {
@@ -1049,8 +1307,14 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 13 },
+      guidance: { backfillStatus: "not-applicable", version: 15 },
       newReleaseNoteSurfaces: "ask",
+      publicVersioning: {
+        major: "ask",
+        minor: "ask",
+        patch: "ask",
+        suggestWhenAsking: true,
+      },
       schemaVersion: 1,
       signatures: "agent-and-timestamp",
     });

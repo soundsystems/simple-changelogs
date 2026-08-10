@@ -131,6 +131,16 @@ not have yet, what should happen? Choose one:**
 destination. It never grants deployment, publication, store submission, hosted
 release, new-audience, or internal-information authority.
 
+## Public-version choice
+
+Ask how patch, minor, and major versions should be chosen for the public Web
+train. Offer safe ask/ask/ask with exact suggestions (recommended), automatic
+patch and minor, all automatic, or granular customization. Persist the resolved
+object only in `.simple-changelogs.json`; never add it to CMS-only policy.
+Global values require repository or run-only confirmation. Version selection
+grants no deployment or operator authority. Coordinated setup keeps each owner,
+destination, write receipt, and partial-failure resume separate.
+
 ## Contextual product-surface choice
 
 For the `full`, `web`, `mobile`, `web-cms`, and CMS-only distributions,
@@ -388,6 +398,10 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --developer-history required \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
+  --version-patch ask \
+  --version-minor ask \
+  --version-major ask \
+  --version-suggestions on \
   --surface-components recommended-web-components \
   --release-note-environments non-production \
   --release-note-links when-useful \

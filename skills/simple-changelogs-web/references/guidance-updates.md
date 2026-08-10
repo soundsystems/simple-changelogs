@@ -253,3 +253,26 @@ During an authorized audit, exercise existing feature actions and document any
 that lead to unstable, unauthorized, flagged-off, preview-only, or
 environment-hidden routes. Preserve released copy unless correction authority
 also covers the destination.
+
+## Guidance 14
+
+Added `publicVersioning` policy and digest-bound classify, prepare, and verify
+handoffs. Missing policy asks for every public bump with an exact suggestion;
+Web production still forms a patch when the target changed without a customer
+bullet, but the patch now follows the recorded authority. Version approval does
+not grant deployment or other remote authority, and published history remains
+unchanged.
+
+<!-- simple-changelogs-guidance-update version="15" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Update checks now explain new capabilities, assess backfill relevance, and offer detailed skill release notes." -->
+## Guidance 15
+
+Added structured update notices to setup inspection. When installed guidance is
+newer than repository state, inspection reports the material changes, their
+category, whether released history could benefit from a backfill, and where to
+find detailed skill release notes.
+
+Agents surface that notice before continuing write-capable work. They ask about
+a backfill only when update metadata says history may benefit, never run one
+automatically, and record the one-time disposition with
+`apply --guidance-backfill <status> --confirm`. Completed audits also require
+`--audit-verified`.

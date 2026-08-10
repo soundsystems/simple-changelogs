@@ -1,5 +1,12 @@
 # Skill-Package Verification
 
+Report the effective `publicVersioning` source and values. Missing fields are
+safe ask/ask/ask with suggestions on. For delegated releases validate
+capability and schema digests, phase/scope, exact revision lineage, approval
+binding, closed reason/action codes, and one receipt per train. Only read-only
+`verify` on the refreshed target proves integration; publication remains
+separate.
+
 Run repository-native checks and inspect the final diff. At minimum verify:
 
 - each installable skill directory has one root `SKILL.md` and no nested copy;

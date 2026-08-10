@@ -13,7 +13,7 @@ confirmation receipt, and helper commands, follow
 {
   "schemaVersion": 1,
   "guidance": {
-    "version": 1,
+    "version": 2,
     "backfillStatus": "completed"
   },
   "changelogPath": "CMS_CHANGELOG.json",
@@ -88,3 +88,18 @@ When the request authorizes CMS changelog adoption:
 Do not require a separate “Review it now” approval. Confirmation of the setup
 receipt accepts the displayed backfill default; without confirmation, write
 nothing.
+
+## One Prompt per Guidance Version
+
+When policy records older guidance, inspection exposes a `guidanceUpdate`.
+Tell the user what materially changed and offer `releaseNotesPath`; do not make
+them open the detailed notes. When `userPrompt` is non-null, pause write-capable
+work for one backfill choice: preview/start (`partial`), defer (`deferred`), or
+skip (`declined`). Never run a backfill automatically. When `userPrompt` is
+null, explain that no backfill is needed, record `not-applicable`, and continue.
+
+Record the disposition with
+`apply --guidance-backfill <status> --confirm`. A verified completed audit adds
+`--audit-verified`. No answer means no new disposition. This acknowledgement
+changes only guidance state and grants no history-rewrite, route, access,
+deployment, or publication authority.

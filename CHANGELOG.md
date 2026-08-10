@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Setup inspection now explains when installed guidance is newer than a
+  repository's recorded guidance, summarizes material changes and backfill
+  relevance, and offers detailed skill release notes. Agents surface the notice
+  before write work, never run a backfill automatically, and ask only when
+  released history may benefit.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-10T18:07:47-05:00" -->
+- Added public release version controls for skill repositories and product
+  distributions:
+  - Repositories can independently require approval or allow automatic selection
+    for patch, minor, and major public versions. Policies without the field
+    safely ask for every bump and suggest the exact next version.
+  - Ordinary work stays under `Unreleased` until a proven public release
+    boundary. Exact current direction takes precedence, and version approval
+    never grants merge, deployment, publication, store, migration, secret,
+    environment, or DNS authority.
+  - Release orchestrators can now negotiate a closed classify, prepare, and
+    read-only verify handoff. Per-train receipts bind decisions to the exact
+    policy and target, distinguish normal approval from operational failures,
+    and keep a prepared release pending until verification proves integration.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-10T17:41:26-05:00" -->
 - Release notes can now include contextual links to the exact product route or
   screen for a released feature. During setup, owners choose **Link when useful**
   (recommended), **Ask before linking**, or **No feature links**, with a compact

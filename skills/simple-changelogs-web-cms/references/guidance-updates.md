@@ -257,3 +257,25 @@ An authorized review should verify that customer actions ship with the release
 and match audience, tenant, permission, flag, and environment eligibility.
 Record broken or over-broad links and their disposition. This setting never
 grants operator access or permission to expose administrator destinations.
+
+## Guidance 14
+
+Added `publicVersioning` policy and digest-bound classify, prepare, and verify
+handoffs for the public Web train only. The CMS-only policy remains unchanged.
+Missing public policy asks with an exact suggestion, while version approval
+never grants deployment, operator access, or other remote authority. Published
+history remains unchanged.
+
+<!-- simple-changelogs-guidance-update version="15" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Update checks now explain new capabilities, assess backfill relevance, and offer detailed skill release notes." -->
+## Guidance 15
+
+Added structured update notices to setup inspection. When installed guidance is
+newer than repository state, inspection reports the material changes, their
+category, whether released history could benefit from a backfill, and where to
+find detailed skill release notes.
+
+Agents surface that notice before continuing write-capable work. They ask about
+a backfill only when update metadata says history may benefit, never run one
+automatically, and record the one-time disposition with
+`apply --guidance-backfill <status> --confirm`. Completed audits also require
+`--audit-verified`.

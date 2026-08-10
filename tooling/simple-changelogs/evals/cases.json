@@ -2912,6 +2912,75 @@
     },
     {
       "activationMode": "explicit",
+      "fixture": "release-repo",
+      "id": "behavior-public-version-safe-default",
+      "suite": "behavior",
+      "tags": ["versions", "policy", "handoff"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "package.json"
+            },
+            {
+              "expected": "PUBLIC_VERSION_DIRECTION_REQUIRED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Classify the aggregate Unreleased work for a public package release. The repository policy has no publicVersioning field. Return the release decision, but do not mutate release files before any required direction."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "release-repo",
+      "id": "behavior-public-version-exact-direction",
+      "suite": "behavior",
+      "tags": ["versions", "policy", "handoff"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": "EXPLICIT_VERSION_DIRECTION_ACCEPTED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "The current exact direction is to prepare public version 0.4.0 for the package release. Validate that version against repository evidence and report explicit-direction resolution. Do not publish, tag, merge, or deploy."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "minimal-git",
+      "id": "behavior-public-version-no-boundary",
+      "suite": "behavior",
+      "tags": ["versions", "policy", "handoff"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "package.json"
+            },
+            {
+              "expected": "PUBLIC_VERSION_NOT_REQUIRED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Classify this internal dependency test for the public release handoff. There is no public release boundary."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
       "fixture": "version-trains-mixed",
       "id": "behavior-mixed-train-release",
       "suite": "behavior",

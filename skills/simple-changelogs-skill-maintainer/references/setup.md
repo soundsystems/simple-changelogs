@@ -80,6 +80,14 @@ Skill-repository onboarding does not offer product surfaces; this optional field
 is preserved only for schema portability and never grants product UI,
 dependency, deployment, or publication authority.
 
+`publicVersioning` optionally records independent `ask` or `automatic` actions
+for `patch`, `minor`, and `major`, plus boolean `suggestWhenAsking`. Absence is
+safe ask/ask/ask with suggestions on. Exact current direction wins, followed by
+confirmed run-only selection, repository policy, and that default. Global
+preferences only prefill onboarding. This authority applies only at a proven
+public package boundary and never grants publication, tagging, or hosted
+release authority.
+
 The `guidance.version` is the newest guidance version for which the repository
 recorded a disposition. It is not proof that released history conforms. Current
 guidance applies prospectively regardless of the recorded backfill status.
@@ -143,11 +151,11 @@ changelog work after that decision is recorded.
 
 ## One Prompt per Guidance Version
 
-When policy records an older guidance version, read every intervening entry in
-`references/guidance-updates.md`, summarize its practical effect, and ask once
-whether to audit released history. Record the newest prompted version and the
-answer immediately so another invocation does not repeat the same unsolicited
-question.
+When policy records an older guidance version, inspect every intervening entry
+through `guidanceUpdate` and explain its practical effect. Ask once about
+released history only when the aggregated backfill recommendation is optional
+or recommended. Record the newest prompted version and answer immediately so
+another invocation does not repeat the same unsolicited question.
 
 If an approved audit starts, first record `partial`. Change it to `completed`
 only after verification, or `failed` after a handled failure. `deferred`,
@@ -156,6 +164,19 @@ guidance version may generate one new prompt.
 
 No answer means no new disposition. Do not advance `guidance.version` merely
 because the question was prepared or displayed.
+
+Inspection exposes this as `guidanceUpdate`. Tell the user what materially
+changed and offer `releaseNotesPath`; do not make them open the detailed notes.
+When `userPrompt` is non-null, pause write-capable work for one backfill choice:
+preview/start (`partial`), defer (`deferred`), or skip (`declined`). Never run a
+backfill automatically. When `userPrompt` is null, explain that no backfill is
+needed, record `not-applicable`, and continue.
+
+Record the disposition with
+`apply --guidance-backfill <status> --confirm`. A verified completed audit adds
+`--audit-verified`. This acknowledgement changes only guidance state and does
+not grant history-rewrite, release, deployment, or publication authority.
+
 
 ## Surface Authorization State
 

@@ -25,6 +25,7 @@ import {
   MANIFEST_VERSION,
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
+  PUBLIC_VERSION_ACTIONS,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
   RELEASE_NOTE_LINK_POLICIES,
   RUNNER_MESSAGE_ROLES,
@@ -308,6 +309,8 @@ const [
   requestSchema,
   responseSchema,
   curationManifestSchema,
+  changelogRequestSchema,
+  changelogReceiptSchema,
 ] = await Promise.all([
   loadSchema("repo-policy"),
   loadSchema("global-preferences"),
@@ -316,6 +319,8 @@ const [
   loadSchema("runner-request"),
   loadSchema("runner-response"),
   loadSchema("curation-manifest"),
+  loadSchema("changelog-request"),
+  loadSchema("changelog-receipt"),
 ]);
 
 describe("schema parity", () => {
@@ -324,6 +329,8 @@ describe("schema parity", () => {
       [policySchema, "properties.schemaVersion.const", 1],
       [preferencesSchema, "properties.schemaVersion.const", 1],
       [setupResultSchema, "properties.schemaVersion.const", 1],
+      [changelogRequestSchema, "properties.schemaVersion.const", 1],
+      [changelogReceiptSchema, "properties.schemaVersion.const", 2],
       [manifestSchema, "properties.manifestVersion.const", MANIFEST_VERSION],
       [requestSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
       [responseSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
@@ -405,6 +412,32 @@ describe("schema parity", () => {
         VERSION_IDENTIFIER_ROLES,
       ],
       [policySchema, "properties.distribution.enum", DISTRIBUTIONS],
+      [
+        changelogReceiptSchema,
+        "properties.status.enum",
+        [
+          "decision-required",
+          "prepared",
+          "verified",
+          "not-applicable",
+          "blocked",
+        ],
+      ],
+      [
+        policySchema,
+        "$defs.publicVersioning.properties.patch.enum",
+        PUBLIC_VERSION_ACTIONS,
+      ],
+      [
+        preferencesSchema,
+        "properties.publicVersioning.properties.major.enum",
+        PUBLIC_VERSION_ACTIONS,
+      ],
+      [
+        setupResultSchema,
+        "$defs.publicVersioning.properties.minor.enum",
+        PUBLIC_VERSION_ACTIONS,
+      ],
       [policySchema, "properties.signatures.enum", SIGNATURE_POLICIES],
       [preferencesSchema, "properties.setupStyle.enum", SETUP_STYLES],
       [setupResultSchema, "properties.command.enum", SETUP_COMMANDS],
@@ -635,6 +668,8 @@ describe("schema parity", () => {
       requestSchema,
       responseSchema,
       curationManifestSchema,
+      changelogRequestSchema,
+      changelogReceiptSchema,
     ]) {
       expect(findOpenFixedObjects(schema)).toEqual([]);
     }

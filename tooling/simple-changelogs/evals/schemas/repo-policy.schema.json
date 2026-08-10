@@ -71,6 +71,9 @@
     "developerChangelog": {
       "enum": ["required", "optional"]
     },
+    "publicVersioning": {
+      "$ref": "#/$defs/publicVersioning"
+    },
     "mobileReleaseNotePlacement": {
       "enum": ["web-tabs", "web-page", "mobile-only"]
     },
@@ -102,6 +105,19 @@
     },
     "crossSurfaceVersioning": {
       "enum": ["shared", "independent", "mixed"]
+    }
+  },
+  "$defs": {
+    "publicVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patch", "minor", "major", "suggestWhenAsking"],
+      "properties": {
+        "patch": { "enum": ["ask", "automatic"] },
+        "minor": { "enum": ["ask", "automatic"] },
+        "major": { "enum": ["ask", "automatic"] },
+        "suggestWhenAsking": { "type": "boolean" }
+      }
     }
   }
 }

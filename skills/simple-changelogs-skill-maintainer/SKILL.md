@@ -16,7 +16,7 @@ and maintenance, not an application changelog distribution.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
 
-Current guidance version: 6
+Current guidance version: 8
 
 ## Distribution checkpoint
 
@@ -38,6 +38,10 @@ and inspect `.simple-changelogs.json`.
 
 - Pass `--task-mode write` for release-history mutations and `--task-mode read`
   for explanations or previews that must stay read-only.
+- When inspection returns `guidanceUpdate`, explain the material change and
+  offer its detailed skill release notes. Ask about a backfill only when
+  `userPrompt` is non-null; never run one automatically. Record the one-time
+  disposition with `apply --guidance-backfill <status> --confirm`.
 - Validate existing state before relying on it.
 - When state is absent and the request authorizes release-history work, follow
   `references/setup.md`, confirm and apply the selected setup with
@@ -59,6 +63,7 @@ versioning, eval requirements, publication flow, and generated mirrors.
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
 | Version choice and metadata alignment | `references/version-decisions.md` |
+| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
 | Packaged notes and skill-repository releases | `references/release-note-surfaces.md` |
 | Package shape and distribution verification | `references/automation-verification.md` |

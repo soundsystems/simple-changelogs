@@ -18,6 +18,13 @@ encode an uncertain or independently versioned relationship.
 
 ## Policy and Setup
 
+- Report the effective `publicVersioning` source and values; missing fields are
+  safe ask/ask/ask with suggestions on.
+- Validate delegated capability/schema digests, phase scope, revision lineage,
+  approval binding, closed reason/action codes, and one receipt per train.
+- Only read-only `verify` on the refreshed target proves integration; store and
+  build authority remain separately verified.
+
 - `.simple-changelogs.json` validates against the bundled schema.
 - Its recorded values match an actual user disposition or documented policy.
 - The repository maintains both customer and developer histories after

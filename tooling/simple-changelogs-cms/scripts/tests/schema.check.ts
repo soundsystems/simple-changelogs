@@ -14,7 +14,7 @@ const policy = () => ({
     access: "authenticated-operators",
     route: "/admin/changelog",
   },
-  guidance: { backfillStatus: "completed", version: 1 },
+  guidance: { backfillStatus: "completed", version: 2 },
   newReleaseNoteSurfaces: "existing-only",
   schemaVersion: 1,
 });

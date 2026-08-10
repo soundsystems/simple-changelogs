@@ -2,10 +2,16 @@
   "schemaVersion": 1,
   "distribution": "skill-repository",
   "guidance": {
-    "version": 5,
-    "backfillStatus": "completed"
+    "backfillStatus": "not-applicable",
+    "version": 8
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
-  "newReleaseNoteSurfaces": "ask"
+  "newReleaseNoteSurfaces": "ask",
+  "publicVersioning": {
+    "major": "ask",
+    "minor": "ask",
+    "patch": "ask",
+    "suggestWhenAsking": true
+  }
 }

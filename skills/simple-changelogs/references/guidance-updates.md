@@ -283,3 +283,28 @@ platform, flag, release-train, and environment checks. Historical review should
 find broken, internal, admin, preview-only, or production-hidden actions and
 record whether each was repaired, removed, or intentionally retained under
 separate evidence.
+
+## Guidance 15
+
+Added an explicit `publicVersioning` policy with independent patch, minor, and
+major authority. Missing fields now safely ask and suggest an exact version;
+ordinary work remains under `Unreleased` until a proven public boundary.
+
+Added digest-bound classify, prepare, and read-only verify receipts for Simple
+Changes. Version approval remains separate from merge, deployment,
+publication, store, migration, secret, environment, and DNS authority. This
+prospective change does not rewrite published releases.
+
+<!-- simple-changelogs-guidance-update version="16" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Update checks now explain new capabilities, assess backfill relevance, and offer detailed skill release notes." -->
+## Guidance 16
+
+Added structured update notices to setup inspection. When installed guidance is
+newer than repository state, inspection reports the material changes, their
+category, whether released history could benefit from a backfill, and where to
+find detailed skill release notes.
+
+Agents surface that notice before continuing write-capable work. They ask about
+a backfill only when update metadata says history may benefit, never run one
+automatically, and record the one-time disposition with
+`apply --guidance-backfill <status> --confirm`. Completed audits also require
+`--audit-verified`.

@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 14
+Current guidance version: 16
 
 ## Distribution Checkpoint
 
@@ -36,6 +36,10 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
 
 - Classify the current request as `write` or `read` and pass that task mode to
   the helper. Read-only requests never enter or persist onboarding.
+- When inspection returns `guidanceUpdate`, explain the material change and
+  offer its detailed skill release notes. Ask about a backfill only when
+  `userPrompt` is non-null; never run one automatically. Record the one-time
+  disposition with `apply --guidance-backfill <status> --confirm`.
 - When it exists, validate it before relying on its decisions. Report malformed
   or unsupported state; do not silently replace it.
 - When it is absent and the request authorizes changelog work, follow
@@ -64,6 +68,7 @@ Read only the references needed for the current branch of work:
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
+| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |
 | Presentation and defect checks after an exact product surface is authorized | `references/surface-design.md` |

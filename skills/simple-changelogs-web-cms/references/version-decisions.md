@@ -38,6 +38,16 @@ Do not bump versions for DX-only work, tests, linting, formatting, refactors,
 dependency bumps, migrations, or internal plumbing unless the shipped behavior
 or published package contract changes.
 
+## Public-version authority
+
+Classify the aggregate release train first, then apply `publicVersioning` for
+the actual patch, minor, or major delta. `ask` waits before release-file or
+version mutation; suggest the exact version only when enabled. `automatic`
+selects and explains the exact version without another version prompt but
+grants no remote authority. `unknown` always blocks. Exact valid current
+direction overrides saved policy. A public prerelease crosses the same gate;
+internal build counters do not.
+
 ## Web Production Release Identity
 
 Every production Web deployment must resolve to one product release version.
@@ -48,8 +58,9 @@ production.
 
 Target-contained `Unreleased` work must enter that version even when some items
 belong only in developer history. A production target change with no
-customer-facing note still receives the next patch release identity unless
-repository policy documents another product-version convention. Do not create
+customer-facing note still classifies as patch unless repository policy
+documents another product-version convention, then follows `publicVersioning`.
+Do not create
 an empty customer bullet to justify the version.
 
 This release identity does not make every package manifest share the product

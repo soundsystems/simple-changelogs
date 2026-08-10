@@ -10,6 +10,7 @@ export const BACKFILL_STATUSES = [
   "failed",
 ] as const;
 export const SURFACE_POLICIES = ["ask", "allow", "existing-only"] as const;
+export const PUBLIC_VERSION_ACTIONS = ["ask", "automatic"] as const;
 export const SURFACE_COMPONENT_SOURCES = [
   "project-components",
   "recommended-web-components",
@@ -109,6 +110,7 @@ export const ASSERTION_KINDS = [
 
 export type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 export type SurfacePolicy = (typeof SURFACE_POLICIES)[number];
+export type PublicVersionAction = (typeof PUBLIC_VERSION_ACTIONS)[number];
 export type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 export type CrossSurfaceVersioning =
   (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
@@ -150,6 +152,7 @@ export interface RepoPolicy {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
+  publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
@@ -160,9 +163,17 @@ export interface GlobalPreferences {
   developerChangelog: DeveloperChangelogPolicy;
   newReleaseNoteSurfaces: SurfacePolicy;
   profile: "solo-developer";
+  publicVersioning?: PublicVersioningPolicy;
   schemaVersion: 1;
   setupStyle: SetupStyle;
   signatures: SignaturePolicy;
+}
+
+export interface PublicVersioningPolicy {
+  major: PublicVersionAction;
+  minor: PublicVersionAction;
+  patch: PublicVersionAction;
+  suggestWhenAsking: boolean;
 }
 
 export interface SetupWriteRecord {
@@ -184,6 +195,7 @@ export interface SetupSelection {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: SetupScope;
@@ -199,7 +211,7 @@ export interface CmsSetupPolicy {
   };
   guidance: {
     backfillStatus: BackfillStatus;
-    version: 1;
+    version: number;
   };
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
@@ -240,14 +252,71 @@ export interface SetupRecommendation {
 }
 
 export interface SetupResult {
+  capabilities: {
+    distribution: Distribution;
+    features: [
+      "public-version-policy",
+      "classify-prepare-verify",
+      "multi-train-receipts",
+      "guidance-update-notices",
+    ];
+    guidanceVersion: number;
+    provider: "simple-changelogs";
+    receiptVersions: [1, 2];
+    requestVersions: [1];
+    schemaDigests: {
+      changelogReceipt: string;
+      changelogRequest: string;
+    };
+    schemaVersion: 1;
+  } | null;
   cmsPolicy: SetupStateRecord<CmsSetupPolicy> | null;
   command: SetupCommand;
   detection: SetupDetection;
   errors: string[];
   globalPreferences: SetupStateRecord<GlobalPreferences>;
+  guidanceUpdate: {
+    backfillRecommendation: "not-needed" | "optional" | "recommended";
+    changes: {
+      backfillRecommendation: "not-needed" | "optional" | "recommended";
+      kinds: ("behavior" | "capability" | "maintenance" | "onboarding")[];
+      summary: string;
+      version: number;
+    }[];
+    currentVersion: number;
+    recordedVersion: number;
+    releaseNotesOffer: string;
+    releaseNotesPath: string;
+    summary: string;
+    userPrompt: string | null;
+  } | null;
   inventory: SetupInventory;
+  onboardingContribution: {
+    destination: ".simple-changelogs.json";
+    owner: "simple-changelogs";
+    questions: {
+      id: "public-version-actions" | "public-version-suggestions";
+      required: boolean;
+    }[];
+    resolvedPolicy: PublicVersioningPolicy;
+    summary: string;
+  } | null;
   onboardingRequired: boolean;
+  ownerWriteReceipt: {
+    destination: ".simple-changelogs.json";
+    owner: "simple-changelogs";
+    policyDigest: string | null;
+    status: "completed" | "not-requested";
+    written: boolean;
+  } | null;
   policy: SetupStateRecord<RepoPolicy> | null;
+  publicVersioning: {
+    effective: PublicVersioningPolicy;
+    recommended: PublicVersioningPolicy;
+    selected: PublicVersioningPolicy | null;
+    source: "missing-field-default" | "repository-policy" | "run-only";
+    stored: PublicVersioningPolicy | null;
+  } | null;
   recommendation: SetupRecommendation;
   repository: string;
   schemaVersion: 1;

@@ -148,6 +148,9 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-non-release-pr-prep",
   "behavior-one-time-guidance-backfill-notice",
   "behavior-post-1-0-public-fix",
+  "behavior-public-version-exact-direction",
+  "behavior-public-version-no-boundary",
+  "behavior-public-version-safe-default",
   "behavior-pep440-major-prerelease",
   "behavior-pre-1-0-hot-fix",
   "behavior-raw-changelog-signature",
@@ -230,8 +233,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(68);
-    expect(new Set(ids).size).toBe(68);
+    expect(ids).toHaveLength(71);
+    expect(new Set(ids).size).toBe(71);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

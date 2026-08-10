@@ -205,13 +205,14 @@ export const validateCmsPolicy = (
     !(
       isRecord(value.guidance) &&
       hasExactKeys(value.guidance, ["version", "backfillStatus"]) &&
-      value.guidance.version === 1 &&
+      Number.isInteger(value.guidance.version) &&
+      (value.guidance.version as number) >= 1 &&
       typeof value.guidance.backfillStatus === "string" &&
       BACKFILL_STATUSES.has(value.guidance.backfillStatus)
     )
   ) {
     errors.push(
-      "guidance must contain version 1 and a supported backfillStatus"
+      "guidance must contain a positive version and a supported backfillStatus"
     );
   }
   if (

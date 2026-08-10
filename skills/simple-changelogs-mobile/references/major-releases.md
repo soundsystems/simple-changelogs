@@ -1,5 +1,9 @@
 # Major Releases
 
+`major: automatic` removes only the version prompt at a proven boundary. It
+does not waive stable-major evidence, synthesis, migration disclosure,
+prerelease handling, or store authority.
+
 Use this reference for `1.0.0`, later stable major releases, next-major
 development lines, and alpha, beta, or release-candidate trains.
 

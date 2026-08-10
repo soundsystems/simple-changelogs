@@ -19,6 +19,17 @@
     "newReleaseNoteSurfaces": {
       "enum": ["ask", "allow", "existing-only"]
     },
-    "setupStyle": { "enum": ["recommended", "customized"] }
+    "setupStyle": { "enum": ["recommended", "customized"] },
+    "publicVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patch", "minor", "major", "suggestWhenAsking"],
+      "properties": {
+        "patch": { "enum": ["ask", "automatic"] },
+        "minor": { "enum": ["ask", "automatic"] },
+        "major": { "enum": ["ask", "automatic"] },
+        "suggestWhenAsking": { "type": "boolean" }
+      }
+    }
   }
 }

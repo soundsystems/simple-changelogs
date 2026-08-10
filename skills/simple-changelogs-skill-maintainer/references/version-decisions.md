@@ -16,6 +16,15 @@ and release automation.
 `-alpha.1`, `-beta.1`, or `-rc.1` identifies a SemVer prerelease. Follow another
 published convention when repository evidence establishes it.
 
+## Public-version authority
+
+Classify all target-contained package outcomes together, then apply
+`publicVersioning` to the actual delta. `ask` waits before release files or
+manifest versions change; `automatic` selects and explains the exact version
+but grants no publication, tag, or hosted-release authority. `unknown` always
+blocks. Exact valid current direction wins. Public prereleases use the same
+gate; unpublished development identifiers do not.
+
 ## Version map
 
 For release-bearing work, report each relevant source:

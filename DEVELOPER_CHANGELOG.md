@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- Added machine-readable guidance-update markers and structured
+  `guidanceUpdate` results with material-change categories, aggregated backfill
+  recommendations, concise summaries, conditional prompts, and detailed
+  release-note paths across all six distributions, including CMS-only.
+  Capabilities now advertise `guidance-update-notices`, and guidance versions
+  advanced.
+- Added confirmed one-time disposition persistence through
+  `apply --guidance-backfill <status> --confirm`, requiring
+  `--audit-verified` for completed audits, with setup-result types, schemas,
+  tests, and distribution byte budgets updated for the new contract.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-10T18:07:47-05:00" -->
+- Added explicit public-version authority and a structured release handoff
+  protocol:
+  - Added optional `publicVersioning` policy for independent patch, minor, and
+    major `ask` or `automatic` behavior plus optional exact-version suggestions.
+    Repository, global-preference, and run-only resolution preserves the safe
+    ask/ask/ask default and prevents global preferences from silently
+    authorizing a release.
+  - Extended setup with deterministic version flags, closed policy validation,
+    effective-policy resolution, capability discovery, coordinated-onboarding
+    contributions, and owner-specific write receipts. CMS-only policy remains
+    excluded.
+  - Added pinned request v1 and receipt v2 schemas, protocol provenance,
+    RFC 8785-style canonical JSON and SHA-256 decision binding, phase-specific
+    request and receipt validation, closed reason/action codes, revision
+    lineage, and per-release-train classify, prepare, and read-only verify
+    semantics.
+  - Propagated the policy and handoff guidance across full, Web, Mobile,
+    Web+CMS, and skill-maintainer distributions, advancing guidance to 15, 14,
+    13, 14, and 7 respectively while keeping CMS-only guidance independent.
+  - Expanded setup coverage for safe missing-field resolution, custom granular
+    storage, global-prefill non-activation, capability digests, and owner
+    receipts; added handoff unit coverage for canonical digests, closed
+    phase-specific requests, `decision-required` versus `blocked`, and prepared
+    and verified invariants; added safe-default, exact-direction, and no-boundary
+    behavioral cases; and updated parity and release-boundary tests.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-10T17:41:26-05:00" -->
 - Added repository-local contextual release-note link policy:
   - `releaseNoteLinks` accepts `when-useful` (recommended), `ask`, or `disabled`
     across full, Web, Mobile, and Web+CMS distributions. CMS-only and

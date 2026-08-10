@@ -5,6 +5,7 @@
   "additionalProperties": false,
   "required": [
     "schemaVersion",
+    "capabilities",
     "command",
     "status",
     "repository",
@@ -12,10 +13,14 @@
     "onboardingRequired",
     "detection",
     "policy",
+    "publicVersioning",
     "cmsPolicy",
     "globalPreferences",
+    "guidanceUpdate",
     "inventory",
+    "onboardingContribution",
     "recommendation",
+    "ownerWriteReceipt",
     "selection",
     "unresolvedQuestions",
     "writes",
@@ -24,6 +29,9 @@
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
+    "capabilities": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/capabilities" }]
+    },
     "command": { "enum": ["inspect", "apply"] },
     "status": {
       "enum": [
@@ -42,12 +50,30 @@
     "policy": {
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/repoPolicyState" }]
     },
+    "publicVersioning": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/publicVersioningResolution" }
+      ]
+    },
     "cmsPolicy": {
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/cmsPolicyState" }]
     },
     "globalPreferences": { "$ref": "#/$defs/globalPreferencesState" },
+    "guidanceUpdate": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/guidanceUpdate" }]
+    },
     "inventory": { "$ref": "#/$defs/inventory" },
+    "onboardingContribution": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/onboardingContribution" }
+      ]
+    },
     "recommendation": { "$ref": "#/$defs/recommendation" },
+    "ownerWriteReceipt": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/ownerWriteReceipt" }]
+    },
     "selection": { "$ref": "#/$defs/selection" },
     "unresolvedQuestions": {
       "type": "array",
@@ -65,6 +91,114 @@
     }
   },
   "$defs": {
+    "guidanceUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordedVersion",
+        "currentVersion",
+        "changes",
+        "backfillRecommendation",
+        "summary",
+        "userPrompt",
+        "releaseNotesPath",
+        "releaseNotesOffer"
+      ],
+      "properties": {
+        "recordedVersion": { "type": "integer", "minimum": 1 },
+        "currentVersion": { "type": "integer", "minimum": 1 },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "kinds",
+              "backfillRecommendation",
+              "summary"
+            ],
+            "properties": {
+              "version": { "type": "integer", "minimum": 1 },
+              "kinds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "behavior",
+                    "capability",
+                    "onboarding",
+                    "maintenance"
+                  ]
+                }
+              },
+              "backfillRecommendation": {
+                "enum": ["recommended", "optional", "not-needed"]
+              },
+              "summary": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "backfillRecommendation": {
+          "enum": ["recommended", "optional", "not-needed"]
+        },
+        "summary": { "type": "string", "minLength": 1 },
+        "userPrompt": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+        },
+        "releaseNotesPath": { "type": "string", "minLength": 1 },
+        "releaseNotesOffer": { "type": "string", "minLength": 1 }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "provider",
+        "distribution",
+        "guidanceVersion",
+        "requestVersions",
+        "receiptVersions",
+        "features",
+        "schemaDigests"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "provider": { "const": "simple-changelogs" },
+        "distribution": {
+          "enum": ["full", "web", "mobile", "web-cms", "skill-repository"]
+        },
+        "guidanceVersion": { "type": "integer", "minimum": 1 },
+        "requestVersions": { "const": [1] },
+        "receiptVersions": { "const": [1, 2] },
+        "features": {
+          "const": [
+            "public-version-policy",
+            "classify-prepare-verify",
+            "multi-train-receipts",
+            "guidance-update-notices"
+          ]
+        },
+        "schemaDigests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["changelogRequest", "changelogReceipt"],
+          "properties": {
+            "changelogRequest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "changelogReceipt": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      }
+    },
     "backfillStatus": {
       "enum": [
         "not-applicable",
@@ -102,6 +236,35 @@
     "releaseNoteLinks": {
       "enum": ["when-useful", "ask", "disabled"]
     },
+    "publicVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patch", "minor", "major", "suggestWhenAsking"],
+      "properties": {
+        "patch": { "enum": ["ask", "automatic"] },
+        "minor": { "enum": ["ask", "automatic"] },
+        "major": { "enum": ["ask", "automatic"] },
+        "suggestWhenAsking": { "type": "boolean" }
+      }
+    },
+    "publicVersioningResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effective", "recommended", "selected", "source", "stored"],
+      "properties": {
+        "effective": { "$ref": "#/$defs/publicVersioning" },
+        "recommended": { "$ref": "#/$defs/publicVersioning" },
+        "selected": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/publicVersioning" }]
+        },
+        "source": {
+          "enum": ["missing-field-default", "repository-policy", "run-only"]
+        },
+        "stored": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/publicVersioning" }]
+        }
+      }
+    },
     "repoPolicy": {
       "type": "object",
       "additionalProperties": false,
@@ -129,6 +292,7 @@
         "developerChangelog": { "enum": ["required", "optional"] },
         "signatures": { "enum": ["agent-and-timestamp", "none"] },
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
         "newReleaseNoteSurfaceComponents": {
           "$ref": "#/$defs/surfaceComponentSource"
         },
@@ -178,6 +342,7 @@
           }
         },
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
         "newReleaseNoteSurfaceComponents": {
           "$ref": "#/$defs/surfaceComponentSource"
         }
@@ -391,6 +556,53 @@
         "reusableDefaults": { "$ref": "#/$defs/globalPreferences" }
       }
     },
+    "onboardingContribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "destination",
+        "questions",
+        "resolvedPolicy",
+        "summary"
+      ],
+      "properties": {
+        "owner": { "const": "simple-changelogs" },
+        "destination": { "const": ".simple-changelogs.json" },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "required"],
+            "properties": {
+              "id": {
+                "enum": ["public-version-actions", "public-version-suggestions"]
+              },
+              "required": { "type": "boolean" }
+            }
+          }
+        },
+        "resolvedPolicy": { "$ref": "#/$defs/publicVersioning" },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ownerWriteReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "destination", "status", "written", "policyDigest"],
+      "properties": {
+        "owner": { "const": "simple-changelogs" },
+        "destination": { "const": ".simple-changelogs.json" },
+        "status": { "enum": ["completed", "not-requested"] },
+        "written": { "type": "boolean" },
+        "policyDigest": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
     "selection": {
       "type": "object",
       "additionalProperties": false,
@@ -413,6 +625,7 @@
         "releaseNoteLinks": {
           "$ref": "#/$defs/releaseNoteLinks"
         },
+        "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },
         "signatures": { "enum": ["agent-and-timestamp", "none"] }
