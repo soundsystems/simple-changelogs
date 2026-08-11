@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Simple Changes release handoffs can once again verify Simple Changelogs
+  compatibility reliably: producer capability schema digests now use canonical
+  JSON, and negotiation advertises only shared protocol features.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-11T16:59:16-05:00" -->
 - Setup inspection now explains when installed guidance is newer than a
   repository's recorded guidance, summarizes material changes and backfill
   relevance, and offers detailed skill release notes. Agents surface the notice

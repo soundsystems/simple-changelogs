@@ -3,7 +3,8 @@
   "concurrentWork": "allow-claimed",
   "defaultFinish": "ship",
   "guidance": {
-    "version": 1
+    "disposition": "accepted",
+    "version": 3
   },
   "handoffTiming": "confirm-ready",
   "productionDeploy": "ask",

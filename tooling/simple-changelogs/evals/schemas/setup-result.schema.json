@@ -178,8 +178,7 @@
           "const": [
             "public-version-policy",
             "classify-prepare-verify",
-            "multi-train-receipts",
-            "guidance-update-notices"
+            "multi-train-receipts"
           ]
         },
         "schemaDigests": {
