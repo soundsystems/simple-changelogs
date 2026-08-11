@@ -188,6 +188,21 @@ describe("setup inspection", () => {
       "classify-prepare-verify",
       "multi-train-receipts",
     ]);
+    const setupResultSchema = JSON.parse(
+      await readFile(
+        join(import.meta.dir, "../../evals/schemas/setup-result.schema.json"),
+        "utf8"
+      )
+    ) as {
+      $defs: {
+        capabilities: {
+          properties: { features: { const: string[] } };
+        };
+      };
+    };
+    expect(
+      setupResultSchema.$defs.capabilities.properties.features.const
+    ).toEqual(result.capabilities?.features ?? []);
     const requestSchema = JSON.parse(
       await readFile(
         join(
