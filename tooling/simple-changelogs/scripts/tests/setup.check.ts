@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "bun";
+import { digestCanonicalJson } from "../lib/release-handoff.ts";
 import {
   applySetup,
   guidanceBackfillRecommendationFor,
@@ -25,7 +26,6 @@ import {
 } from "../setup.ts";
 
 const temporaryPaths: string[] = [];
-const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
@@ -187,11 +187,29 @@ describe("setup inspection", () => {
       "public-version-policy",
       "classify-prepare-verify",
       "multi-train-receipts",
-      "guidance-update-notices",
     ]);
-    expect(result.capabilities?.schemaDigests.changelogRequest).toMatch(
-      SHA256_PATTERN
-    );
+    const requestSchema = JSON.parse(
+      await readFile(
+        join(
+          import.meta.dir,
+          "../../evals/schemas/changelog-request.schema.json"
+        ),
+        "utf8"
+      )
+    ) as unknown;
+    const receiptSchema = JSON.parse(
+      await readFile(
+        join(
+          import.meta.dir,
+          "../../evals/schemas/changelog-receipt.schema.json"
+        ),
+        "utf8"
+      )
+    ) as unknown;
+    expect(result.capabilities?.schemaDigests).toEqual({
+      changelogReceipt: digestCanonicalJson(receiptSchema),
+      changelogRequest: digestCanonicalJson(requestSchema),
+    });
     expect(result.onboardingContribution).toBeNull();
     expect(result.writes).toEqual([]);
   });

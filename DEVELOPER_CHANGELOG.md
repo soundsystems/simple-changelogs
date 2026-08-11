@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Corrected producer capability negotiation across every packaged distribution
+  and the maintainer runtime: request and receipt schema digests now hash parsed,
+  RFC 8785-style canonical JSON instead of formatting-sensitive source bytes,
+  and feature advertisement no longer includes the non-protocol setup notice
+  feature `guidance-update-notices`. Setup notice behavior remains available,
+  while coverage now verifies the canonical digests against the shared handoff
+  implementation and the exact shared protocol feature set.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-11T16:59:16-05:00" -->
 - Added machine-readable guidance-update markers and structured
   `guidanceUpdate` results with material-change categories, aggregated backfill
   recommendations, concise summaries, conditional prompts, and detailed
