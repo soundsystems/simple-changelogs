@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Tightened producer receipt invariants so `releaseImpact: "none"` must return
+  `not-applicable`; `decision-required` additionally requires a proven public
+  boundary and non-`none` bump. Regression coverage rejects internal-only work
+  that incorrectly requests public-version approval.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-12T10:57:32-05:00" -->
 - Corrected producer capability negotiation across every packaged distribution
   and the maintainer runtime: request and receipt schema digests now hash parsed,
   RFC 8785-style canonical JSON instead of formatting-sensitive source bytes,

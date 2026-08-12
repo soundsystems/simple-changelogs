@@ -133,6 +133,26 @@ describe("release handoff protocol", () => {
     ).not.toEqual([]);
   });
 
+  test("rejects version approval for internal-only work", () => {
+    const decision = decisionRequired();
+    const internalOnly = {
+      ...decision,
+      releaseImpact: "none" as const,
+      versionDecision: {
+        ...decision.versionDecision,
+        boundary: "none" as const,
+        bumpLevel: "none" as const,
+        suggestedVersion: null,
+      },
+    };
+    expect(validateChangelogReceipt(internalOnly, request()).errors).toContain(
+      "internal-only or non-public work must be not-applicable"
+    );
+    expect(validateChangelogReceipt(internalOnly, request()).errors).toContain(
+      "decision-required receipt invariants failed"
+    );
+  });
+
   test("enforces prepare and final read-only verification invariants", () => {
     const prepared = {
       ...decisionRequired(),

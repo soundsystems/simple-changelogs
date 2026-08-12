@@ -57,6 +57,10 @@ Return one closed receipt for the train:
 
 Normal version approval is `decision-required`, never `blocked`. Branch only
 on `reasonCode` and `requiredAction`, not human-readable `reason`.
+An internal-only, developer-only, preview, staging, or DX patch has aggregate
+impact `none` even when repository package metadata happens to have a next
+patch number. It must return `not-applicable` and must never ask the user to
+approve that unused public version.
 
 ## Digests and approval
 
