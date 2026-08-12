@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Internal-only, developer-only, preview, staging, and developer-experience
+  changes no longer prompt for an unused public version.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-12T10:57:32-05:00" -->
 - Simple Changes release handoffs can once again verify Simple Changelogs
   compatibility reliably: producer capability schema digests now use canonical
   JSON, and negotiation advertises only shared protocol features.

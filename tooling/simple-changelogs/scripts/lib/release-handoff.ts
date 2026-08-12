@@ -360,9 +360,17 @@ const receiptStatusErrors = (receipt: ChangelogReceiptV2): string[] => {
   const decision = receipt.versionDecision;
   requireCondition(
     errors,
+    receipt.releaseImpact !== "none" || receipt.status === "not-applicable",
+    "internal-only or non-public work must be not-applicable"
+  );
+  requireCondition(
+    errors,
     receipt.status !== "decision-required" ||
       (decision?.resolution === "approval-required" &&
         decision.policyAction === "ask" &&
+        decision.boundary !== "none" &&
+        decision.bumpLevel !== "none" &&
+        receipt.releaseImpact !== "none" &&
         decision.selectedVersion === null &&
         receipt.reasonCode === "version-direction-required"),
     "decision-required receipt invariants failed"
