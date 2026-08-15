@@ -24,9 +24,10 @@ reported and preserved.
 
 The inspection result provides policy state, detected distribution and
 evidence, history counts, release-note-named destination candidates, adjacent
-Updates, News, Blog, or Announcements candidates, developer-history and CMS
-evidence, component-library evidence, global defaults, a recommendation, and
-unresolved questions. A path name or dependency is discovery evidence, not
+Updates, News, Blog, or Announcements candidates, developer-history evidence,
+separate Web, Mobile, store, CMS, and workspace structure evidence,
+component-library evidence, global defaults, a recommendation, and unresolved
+questions. A path name or dependency is discovery evidence, not
 proof that a route is reachable, contains release history, or uses that
 component stack for product UI. Do not ask for a choice already established by
 current instructions, repository policy, or trustworthy evidence.
@@ -52,16 +53,53 @@ flow, or write scope. Keep the diagram beside the options it explains and
 label both the shown and suppressed path. Skip diagrams for choices whose
 effect is already obvious from one sentence.
 
+## Explain before asking
+
+Do not make the owner reverse-engineer the workflow from setup fields. Before
+the first choice, explain in plain language:
+
+- Simple Changelogs keeps durable audience-facing outcomes separate from
+  technical maintainer history when the selected distribution owns both;
+- it can start or adopt changelogs, classify current work, prepare and verify a
+  release, synchronize established destinations, review older history when
+  authorized, and explain what changed after a skill update;
+- one canonical item may feed several independently filtered destinations
+  without making their audiences interchangeable;
+- setup records preferences and evidence but does not itself publish, deploy,
+  submit a store release, create a hosted release, expose protected content, or
+  rewrite history; and
+- the current request continues after setup, so the user never has to repeat it.
+
+Then summarize the concrete evidence: selected distribution and why, existing
+histories, released-history count, proven and candidate destinations, version
+owners when applicable, component-system evidence, and the exact files setup
+could write. State which choices the current request or repository already
+decided, show the recommended defaults, and say that nothing has been written,
+backfilled, published, deployed, submitted, or exposed yet.
+
 ## First screen
 
-Summarize concrete findings in one short paragraph, then ask **Choose one:**
+Summarize concrete findings and the recommended path, then ask **How would you
+like to set up Simple Changelogs? Choose one:**
 
 1. **Use recommended setup — Recommended** — Apply evidence-backed safe defaults. When
   released history exists, include the full backfill and ask last only whether
   the user wants to defer or decline it.
-2. **Customize** — Explain and ask only the unresolved questions below.
-3. **Use preferences for this run only** — Apply the choices to the current task
+2. **Walk me through it** — Explain every main workflow, every relevant
+  destination, and each preference in plain language, one at a time, before
+  saving anything.
+3. **Customize** — Explain and ask only the unresolved questions below.
+4. **Use recommended setup for this run only** — Apply the choices to the current task
   without writing policy; onboarding appears again next time.
+
+The walkthrough first shows how ordinary edits, release preparation,
+destination synchronization, historical review, version decisions where
+applicable, delegated Simple Changes handoffs, and later skill updates flow
+from inspection through verification. For each topic, explain what the skill
+does automatically, what still requires a decision, and what authority the
+choice does not grant. Then ask the same unresolved owner choices below one at
+a time. The walkthrough is a conversation path, not a new stored policy value;
+a confirmed walkthrough uses the customized setup style in the receipt.
 
 The recommended path uses a developer history, hidden agent-and-time audit
 comments, `ask` for future missing destinations, and an archive plus compact
@@ -148,6 +186,23 @@ For the `full`, `web`, `mobile`, `web-cms`, and CMS-only distributions,
 always offer this choice before the final history question. Skip it only for
 skill-repository onboarding. An explicit decline keeps product UI unchanged
 and does not block ordinary changelog work.
+
+Start with the inspection result. Report Web, Mobile, store-metadata, CMS, and
+workspace structure evidence separately from release-note destination
+candidates. Reuse every established eligible destination. When none is
+established, say so and ask whether to create the evidence-backed recommended
+destination, let the user choose destination types, or keep changelog files
+only. A confirmed receipt, not the recommendation itself, authorizes the exact
+current surface.
+
+After the user selects one or several destination types, rescan and compare
+each choice with `surfaceStructureEvidence`. For every Web app, mobile app,
+store integration, or authenticated CMS that is not detected, explain the
+missing evidence and ask **Yes, keep it as a planned surface** or **No, let me
+choose again**. A planned choice does not invent or create the underlying
+product, monorepo layout, route, authentication boundary, or credentials. CMS
+policy remains pending until an exact authenticated route and contained source
+can be proven.
 
 Inspect each candidate's route wiring, navigation, content model, source,
 audience, and release coverage. Classify it as:

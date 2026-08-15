@@ -68,13 +68,24 @@ or `mixed`; when several public version owners exist and the relationship stays
 ambiguous, the skill asks once, records the answer, and leaves version fields
 untouched until then.
 
-For the full distribution, setup also records where mobile-specific history
-belongs: labeled Web/Mobile tabs at one web changelog, a separate linked Mobile
-history page on the web, or only established in-app and app-store destinations.
-The feeds still come from one canonical item set with explicit surface
-selectors, and shared outcomes remain visible to every product they affect.
+For the full distribution, setup asks where people should read mobile-specific
+history. The owner chooses **App stores only**, **Mobile app and app stores —
+no Web**, **Web and mobile — one tabbed Release Notes page**, or **Web and
+mobile — separate Release Notes pages**. Store-only prepares concise storefront
+copy without adding an in-app history; the other choices retain established
+in-app and store destinations. The feeds still come from one canonical item set
+with explicit surface selectors, and shared outcomes remain visible to every
+product they affect.
 The repository policy stores that choice as `mobileReleaseNotePlacement` with
-value `web-tabs`, `web-page`, or `mobile-only`.
+value `store-only`, `mobile-only`, `web-tabs`, or `web-page`.
+
+Surface onboarding scans before it proposes. It reports existing release-note
+destinations separately from Web, Mobile, store-metadata, CMS, and workspace
+structure evidence; reuses established eligible destinations; and recommends a
+specific new destination only when none exists. If the requested product shape
+is not present, setup asks whether it is a planned surface or whether the owner
+wants to choose again. A planned choice never invents an app root, CMS route,
+authentication boundary, store credential, or monorepo layout.
 
 ## Install
 

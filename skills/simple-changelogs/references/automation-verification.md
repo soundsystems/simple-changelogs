@@ -126,8 +126,9 @@ encode an uncertain or independently versioned relationship.
   architecture supports it; explicit item selectors, nested overrides, empty
   group removal, independent latest-rendered versions, and product-scoped seen
   state are verified.
-- Web exposure of the Mobile feed matches `mobileReleaseNotePlacement`:
-  labeled tabs, a separate linked page, or mobile-only destinations.
+- Mobile-feed destinations match `mobileReleaseNotePlacement`: store-only
+  metadata, mobile app and stores without Web exposure, labeled Web tabs, or a
+  separate linked Web page.
 - Renderers ignore raw HTML attribution comments.
 - Supported strong emphasis renders semantically with the established product
   emphasis treatment, and raw `**` or `****` delimiters never reach visible

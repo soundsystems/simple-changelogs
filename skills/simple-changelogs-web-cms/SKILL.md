@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 15
+Current guidance version: 16
 Current CMS guidance version: 1
 
 ## Distribution checkpoint
@@ -37,8 +37,13 @@ Before write-capable work, run the bundled `scripts/setup.ts` inspection helper:
 
 - Pass `--task-mode write` for changelog mutations and `--task-mode read` for
   explanations or previews that must stay read-only.
-- When inspection returns `guidanceUpdate`, explain the material change and
-  offer its detailed skill release notes. Ask about a backfill only when
+- When inspection returns `guidanceUpdate`, say that Simple Changelogs was
+  updated, show up to three practical changes, and explain that saved settings
+  and released history are unchanged. Offer three actions: a recommended guided
+  review, continuing with the current settings, or opening the detailed release
+  notes. A walkthrough explains every new ability, affected setting,
+  proposed default, example, consequence, and safety boundary before any
+  decision. Ask about a historical backfill only afterward and only when
   `userPrompt` is non-null; never run one automatically. Record the one-time
   disposition with `apply --guidance-backfill <status> --confirm`.
 - Inspect and validate both policy files when present.

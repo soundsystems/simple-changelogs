@@ -92,11 +92,20 @@ nothing.
 ## One Prompt per Guidance Version
 
 When policy records older guidance, inspection exposes a `guidanceUpdate`.
-Tell the user what materially changed and offer `releaseNotesPath`; do not make
-them open the detailed notes. When `userPrompt` is non-null, pause write-capable
-work for one backfill choice: preview/start (`partial`), defer (`deferred`), or
-skip (`declined`). Never run a backfill automatically. When `userPrompt` is
-null, explain that no backfill is needed, record `not-applicable`, and continue.
+Present **Simple Changelogs has recently been updated**, show up to three short
+practical effects, and state that saved settings and released operator history
+have not changed. Offer **Walk me through what changed — Recommended**, **Keep
+my current settings and continue**, and **View detailed release notes**. The
+walkthrough explains every new ability, affected setting, proposed default,
+example, consequence, and access or safety boundary before any decision.
+
+After that review choice, when `userPrompt` is non-null, pause write-capable
+work for one separate history choice: preview/start (`partial`), defer
+(`deferred`), or skip (`declined`). Never run a backfill automatically. When
+`userPrompt` is null, explain that the update is prospective and no historical
+backfill is needed, record `not-applicable`, and continue. Keep
+`releaseNotesPath` available for complete version-by-version detail without
+requiring the user to open it to understand the choice.
 
 Record the disposition with
 `apply --guidance-backfill <status> --confirm`. A verified completed audit adds

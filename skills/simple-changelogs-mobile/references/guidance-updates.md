@@ -256,3 +256,26 @@ a backfill only when update metadata says history may benefit, never run one
 automatically, and record the one-time disposition with
 `apply --guidance-backfill <status> --confirm`. Completed audits also require
 `--audit-verified`.
+
+<!-- simple-changelogs-guidance-update version="15" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Mobile setup now verifies real app and store destinations before reusing, proposing, or recording them as planned." -->
+## Guidance 15
+
+First-use setup now begins with a plain-language overview and offers **Walk me
+through it**. The walkthrough explains customer and developer histories,
+mobile, in-app, and store destinations, unresolved preferences, consequences,
+recommended defaults, and authority boundaries one question at a time.
+
+Installed-guidance notices now lead with a clear headline and up to three
+practical effects, confirm that saved settings and released history are
+unchanged, and offer **Walk me through what changed — Recommended**, **Keep my
+current settings and continue**, or **View detailed release notes**. Historical
+review remains separate and conditional, and no setup choice grants build,
+signing, submission, or publication authority.
+
+Mobile onboarding now reports discovered Web, Mobile, store, CMS, workspace,
+and release-note evidence before asking where notes belong. It reuses proven
+in-app and store destinations; if a selected destination is absent, setup
+proposes it and asks before the exact current surface, then rescans and requires
+confirmation or a revised choice. The selection cannot establish that an app,
+store listing, deep link, credential, or release train exists and grants no
+build, signing, submission, or publication authority.

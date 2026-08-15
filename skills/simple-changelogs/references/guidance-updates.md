@@ -308,3 +308,22 @@ a backfill only when update metadata says history may benefit, never run one
 automatically, and record the one-time disposition with
 `apply --guidance-backfill <status> --confirm`. Completed audits also require
 `--audit-verified`.
+
+<!-- simple-changelogs-guidance-update version="17" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Setup now inventories and verifies real product surfaces before saving destination choices, and full repositories can keep mobile history in app stores only." -->
+## Guidance 17
+
+First-use setup retains its plain-language primer, complete **Walk me through
+it** path, and clear installed-guidance update choices, but now begins by
+reporting the repository evidence it found for Web, Mobile, app-store, CMS,
+workspace, and existing release-note destinations. It reuses established
+surfaces; when none exists, it may recommend creating one but must ask before
+the exact current surface. After destination types are selected, setup scans
+again and explicitly confirms every existing, absent, or planned surface or
+lets the owner choose again. A selection is never evidence that an underlying
+product, route, authentication flow, credential, workspace, or monorepo exists.
+Mobile placement now adds `store-only` as **App stores only**, distinct from
+`mobile-only` as **Mobile app and stores — no Web history**; `web-tabs` and
+`web-page` remain the tabbed and separate-page Web-and-Mobile choices. None of
+these preferences authorizes creation of product UI or release-note surfaces,
+and installed-guidance updates still leave saved settings and released history
+unchanged while keeping historical review separate and conditional.

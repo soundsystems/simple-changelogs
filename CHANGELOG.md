@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Setup now starts by showing what the repository actually contains—Web,
+  Mobile, app-store, CMS, workspace, and existing release-note candidates—then
+  offers a complete guided walkthrough of the applicable workflows and choices.
+  Established destinations are reused; missing destinations are proposed, never
+  assumed, and require confirmation before creation.
+  - After owners choose destination types, setup checks again and explicitly
+    confirms every existing, missing, or planned surface. Owners can approve the
+    plan or revise their choices, and a preference never substitutes for evidence
+    that a product, route, authentication flow, credential, or monorepo exists.
+  - Full repositories can now keep mobile-specific history in app stores only,
+    in the Mobile app and stores without Web presentation, or also publish it on
+    one tabbed or two separate Web Release Notes pages.
+  - Installed-guidance notices retain the plain-language walkthrough, unchanged
+    settings and history assurance, detailed release-note option, and separate
+    conditional historical-review decision.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-14T18:32:57-05:00" -->
 - Internal-only, developer-only, preview, staging, and developer-experience
   changes no longer prompt for an unused public version.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-12T10:57:32-05:00" -->

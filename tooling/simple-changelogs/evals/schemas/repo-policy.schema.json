@@ -75,7 +75,7 @@
       "$ref": "#/$defs/publicVersioning"
     },
     "mobileReleaseNotePlacement": {
-      "enum": ["web-tabs", "web-page", "mobile-only"]
+      "enum": ["store-only", "web-tabs", "web-page", "mobile-only"]
     },
     "signatures": {
       "enum": ["agent-and-timestamp", "none"]

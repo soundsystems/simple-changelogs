@@ -202,6 +202,7 @@ describe("repo policy", () => {
 
   test("accepts supported mobile release-note placement and rejects unknown placement", () => {
     for (const mobileReleaseNotePlacement of [
+      "store-only",
       "web-tabs",
       "web-page",
       "mobile-only",

@@ -65,6 +65,7 @@ const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
 ] as const;
 const RELEASE_NOTE_LINK_POLICIES = ["when-useful", "ask", "disabled"] as const;
 const MOBILE_RELEASE_NOTE_PLACEMENTS = [
+  "store-only",
   "web-tabs",
   "web-page",
   "mobile-only",
@@ -160,6 +161,12 @@ const PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS = new Set<Distribution>([
 ]);
 const DESIGN_SYSTEM_PATH =
   /(?:^|\/)(\.storybook|design-system|ui-kit|packages\/ui)(?:\/|$)/u;
+const WEB_APP_PATH =
+  /^(?:(?:apps?\/web)(?:\/|$)|(?:src\/)?(?:pages|routes)\/)/u;
+const MOBILE_APP_PATH = /^(?:apps?\/mobile|ios|android)(?:\/|$)/u;
+const STORE_METADATA_PATH =
+  /(?:^|\/)(?:fastlane\/metadata|metadata\/.+(?:changelogs?|release.?notes?)|eas\.json$|app\.json$|app\.config\.(?:cjs|js|mjs|ts)$)/u;
+const WORKSPACE_APP_PATH = /(?:^|\/)apps\/([^/]+)(?:\/|$)/u;
 const COMPONENT_CONFIG_FILE = "components.json";
 const SWIFT_SOURCE_PATH = /\.swift$/u;
 const SWIFT_UI_CONTENT = /\bSwiftUI\b/u;
@@ -186,6 +193,7 @@ const TEXT_EXTENSIONS = new Set([
   ".toml",
   ".ts",
   ".tsx",
+  ".txt",
   ".vue",
   ".yaml",
   ".yml",
@@ -233,13 +241,13 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 16,
-  mobile: 14,
-  "skill-repository": 8,
-  web: 15,
-  "web-cms": 15,
+  full: 17,
+  mobile: 15,
+  "skill-repository": 9,
+  web: 16,
+  "web-cms": 16,
 } as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 2;
+const CMS_GUIDANCE_VERSION = 3;
 
 const DISTRIBUTION_DIRECTORIES = {
   cms: "simple-changelogs-cms",
@@ -323,6 +331,13 @@ interface Inventory {
   destinations: string[];
   developerHistoryEvidence: string[];
   releasedHistoryCount: number;
+  surfaceStructureEvidence: {
+    cms: string[];
+    mobile: string[];
+    store: string[];
+    web: string[];
+    workspace: string[];
+  };
 }
 
 interface Recommendation {
@@ -395,6 +410,7 @@ export interface SetupResult {
 }
 
 export interface GuidanceUpdateNotice {
+  actions: ("walkthrough" | "continue" | "view-release-notes")[];
   backfillRecommendation: GuidanceBackfillRecommendation;
   changes: {
     backfillRecommendation: GuidanceBackfillRecommendation;
@@ -403,11 +419,14 @@ export interface GuidanceUpdateNotice {
     version: number;
   }[];
   currentVersion: number;
+  headline: "Simple Changelogs has recently been updated.";
   recordedVersion: number;
   releaseNotesOffer: string;
   releaseNotesPath: string;
   summary: string;
+  summaryBullets: string[];
   userPrompt: string | null;
+  walkthroughQuestion: string;
 }
 
 export interface OnboardingContribution {
@@ -750,17 +769,22 @@ const guidanceUpdateNoticeFor = async (
       "A historical backfill is recommended because released history may benefit from the new guidance.";
   }
   return {
+    actions: ["walkthrough", "continue", "view-release-notes"],
     backfillRecommendation,
     changes,
     currentVersion,
+    headline: "Simple Changelogs has recently been updated.",
     recordedVersion,
     releaseNotesOffer,
     releaseNotesPath: "references/guidance-updates.md",
     summary: `${changeSummary} ${backfillSummary}`,
+    summaryBullets: changes.slice(-3).map((change) => change.summary),
     userPrompt:
       backfillRecommendation === "not-needed"
         ? null
         : "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
+    walkthroughQuestion:
+      "Would you like me to walk you through what changed before I continue?",
   };
 };
 
@@ -1202,7 +1226,11 @@ interface FileEvidence {
   designSystemPath: string | undefined;
   destination: boolean;
   localPath: string;
+  mobileAppPath: boolean;
   nativeToolkit: string | undefined;
+  storeMetadataPath: boolean;
+  webAppPath: boolean;
+  workspaceAppPath: string | undefined;
 }
 
 interface EvidenceSets {
@@ -1210,7 +1238,34 @@ interface EvidenceSets {
   cmsEvidence: Set<string>;
   designSystemEvidence: Set<string>;
   destinations: Set<string>;
+  mobileStructureEvidence: Set<string>;
+  storeStructureEvidence: Set<string>;
+  webStructureEvidence: Set<string>;
+  workspaceStructureEvidence: Set<string>;
 }
+
+const collectSurfaceStructureEvidence = (
+  evidence: FileEvidence,
+  sets: EvidenceSets
+): void => {
+  const { localPath } = evidence;
+  if (evidence.mobileAppPath) {
+    sets.mobileStructureEvidence.add(`Mobile application path: ${localPath}`);
+  }
+  if (evidence.storeMetadataPath) {
+    sets.storeStructureEvidence.add(
+      `Store-release metadata path: ${localPath}`
+    );
+  }
+  if (evidence.webAppPath) {
+    sets.webStructureEvidence.add(`Web application path: ${localPath}`);
+  }
+  if (evidence.workspaceAppPath) {
+    sets.workspaceStructureEvidence.add(
+      `Workspace application path: apps/${evidence.workspaceAppPath}`
+    );
+  }
+};
 
 const collectFileEvidence = (
   fileEvidence: FileEvidence[],
@@ -1245,6 +1300,7 @@ const collectFileEvidence = (
     if (evidence.authenticationRelated) {
       sets.cmsEvidence.add(`Authentication-related code: ${localPath}`);
     }
+    collectSurfaceStructureEvidence(evidence, sets);
   }
 };
 
@@ -1269,6 +1325,41 @@ const inspectInventory = async (
   const designSystemEvidence = new Set(
     designSystemDependencyEvidence(dependencies)
   );
+  const mobileStructureEvidence = new Set<string>();
+  const storeStructureEvidence = new Set<string>();
+  const webStructureEvidence = new Set<string>();
+  const workspaceStructureEvidence = new Set<string>();
+  for (const workspaceConfig of [
+    "pnpm-workspace.yaml",
+    "turbo.json",
+    "nx.json",
+  ]) {
+    if (existsSync(join(root, workspaceConfig))) {
+      workspaceStructureEvidence.add(
+        `Workspace configuration: ${workspaceConfig}`
+      );
+    }
+  }
+  try {
+    const packageJson = JSON.parse(
+      await readFile(join(root, "package.json"), "utf8")
+    ) as unknown;
+    if (isRecord(packageJson) && Object.hasOwn(packageJson, "workspaces")) {
+      workspaceStructureEvidence.add("Workspace configuration: package.json");
+    }
+  } catch {
+    // package.json workspace evidence is optional.
+  }
+  for (const dependency of dependencies) {
+    if (MOBILE_DEPENDENCIES.has(dependency)) {
+      mobileStructureEvidence.add(
+        `Mobile application dependency: ${dependency}`
+      );
+    }
+    if (WEB_DEPENDENCIES.has(dependency)) {
+      webStructureEvidence.add(`Web application dependency: ${dependency}`);
+    }
+  }
   const fileEvidence = await Promise.all(
     files.map(async (path) => {
       const localPath = relative(root, path).split(sep).join("/");
@@ -1276,6 +1367,7 @@ const inspectInventory = async (
       const content = await readSmallText(path);
       const authenticationRelated =
         AUTH_RELATED_PATH.test(lowerPath) && AUTH_RELATED_CONTENT.test(content);
+      const workspaceAppPath = WORKSPACE_APP_PATH.exec(lowerPath)?.[1];
       return {
         adjacentDestination:
           path !== publicPath &&
@@ -1292,7 +1384,11 @@ const inspectInventory = async (
           !NON_DESTINATION_FILES.has(localPath) &&
           RELEASE_DESTINATION_PATH.test(lowerPath),
         localPath,
+        mobileAppPath: MOBILE_APP_PATH.test(lowerPath),
         nativeToolkit: nativeToolkitFor(lowerPath, content),
+        storeMetadataPath: STORE_METADATA_PATH.test(lowerPath),
+        webAppPath: WEB_APP_PATH.test(lowerPath),
+        workspaceAppPath,
       };
     })
   );
@@ -1301,6 +1397,10 @@ const inspectInventory = async (
     cmsEvidence,
     designSystemEvidence,
     destinations,
+    mobileStructureEvidence,
+    storeStructureEvidence,
+    webStructureEvidence,
+    workspaceStructureEvidence,
   });
   const cmsChangelogPath = join(root, DEFAULT_CMS_CHANGELOG);
   let cmsReleased = 0;
@@ -1311,6 +1411,7 @@ const inspectInventory = async (
       ) as unknown;
       if (isRecord(value) && Array.isArray(value.entries)) {
         cmsReleased = value.entries.length;
+        cmsEvidence.add(`CMS changelog source: ${DEFAULT_CMS_CHANGELOG}`);
       }
     } catch {
       cmsEvidence.add(`${DEFAULT_CMS_CHANGELOG} exists but is malformed`);
@@ -1344,6 +1445,13 @@ const inspectInventory = async (
       developerReleases,
       cmsReleased
     ),
+    surfaceStructureEvidence: {
+      cms: [...cmsEvidence].sort(),
+      mobile: [...mobileStructureEvidence].sort(),
+      store: [...storeStructureEvidence].sort(),
+      web: [...webStructureEvidence].sort(),
+      workspace: [...workspaceStructureEvidence].sort(),
+    },
   };
 };
 
@@ -2503,7 +2611,7 @@ const selectionErrors = (
     selection.mobileReleaseNotePlacement === undefined
   ) {
     errors.push(
-      "Full web/mobile setup requires --mobile-placement with web-tabs, web-page, or mobile-only."
+      "Full web/mobile setup requires --mobile-placement with store-only, mobile-only, web-tabs, or web-page."
     );
   }
   if (

@@ -133,3 +133,20 @@ a backfill only when update metadata says history may benefit, never run one
 automatically, and record the one-time disposition with
 `apply --guidance-backfill <status> --confirm`. Completed audits also require
 `--audit-verified`.
+
+<!-- simple-changelogs-guidance-update version="9" kinds="behavior,onboarding" backfill="not-needed" summary="First-use setup and guidance notices now fully explain skill-package histories, release decisions, defaults, and publication boundaries." -->
+## Guidance 9
+
+First-use setup now begins with a plain-language overview and offers **Walk me
+through it**. The walkthrough explains customer and developer histories for
+skill packages, applicable release workflows, unresolved preferences,
+consequences, recommended defaults, and authority boundaries one question at a
+time.
+
+When newer guidance is detected, its notice now leads with a clear headline and
+up to three practical effects, confirms that saved settings and released
+history are unchanged, and offers **Walk me through what changed —
+Recommended**, **Keep my current settings and continue**, or **View detailed
+release notes**. Historical
+review remains separate and conditional, and no setup choice grants tagging,
+package publication, hosted-release, or downstream-distribution authority.

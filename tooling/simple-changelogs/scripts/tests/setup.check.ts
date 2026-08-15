@@ -26,7 +26,6 @@ import {
 } from "../setup.ts";
 
 const temporaryPaths: string[] = [];
-
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
   temporaryPaths.push(path);
@@ -84,7 +83,7 @@ describe("setup inspection", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web",
-      guidance: { backfillStatus: "completed", version: 14 },
+      guidance: { backfillStatus: "completed", version: 15 },
       newReleaseNoteSurfaces: "ask",
       publicVersioning: {
         major: "ask",
@@ -104,15 +103,22 @@ describe("setup inspection", () => {
     });
 
     expect(inspection.guidanceUpdate).toMatchObject({
+      actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "not-needed",
-      currentVersion: 15,
-      recordedVersion: 14,
+      currentVersion: 16,
+      headline: "Simple Changelogs has recently been updated.",
+      recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
+      summaryBullets: [
+        "Web setup now verifies real destinations and product structure before reusing, proposing, or recording a surface as planned.",
+      ],
       userPrompt: null,
+      walkthroughQuestion:
+        "Would you like me to walk you through what changed before I continue?",
     });
     expect(inspection.guidanceUpdate?.changes[0]).toMatchObject({
       kinds: ["capability", "behavior", "onboarding"],
-      version: 15,
+      version: 16,
     });
 
     const rejected = await applySetup({
@@ -143,7 +149,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 15,
+      version: 16,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -437,6 +443,111 @@ describe("setup inspection", () => {
     );
   });
 
+  test("reports product topology separately from release-note destination candidates", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { expo: "55.0.0", react: "19.0.0" },
+    });
+    await mkdir(join(repo, "apps", "web", "src"), { recursive: true });
+    await mkdir(join(repo, "apps", "mobile", "src"), { recursive: true });
+    await mkdir(join(repo, "apps", "cms", "src"), { recursive: true });
+    await mkdir(join(repo, "fastlane", "metadata", "en-US"), {
+      recursive: true,
+    });
+    await Promise.all([
+      writeFile(
+        join(repo, "apps", "web", "src", "release-notes.tsx"),
+        "export const ReleaseNotes = () => 'Web history';\n",
+        "utf8"
+      ),
+      writeFile(
+        join(repo, "apps", "mobile", "src", "home.tsx"),
+        "export const Home = () => 'Mobile app';\n",
+        "utf8"
+      ),
+      writeFile(
+        join(repo, "apps", "cms", "src", "route.ts"),
+        "export const access = 'authenticated operator';\n",
+        "utf8"
+      ),
+      writeFile(
+        join(repo, "fastlane", "metadata", "en-US", "release-notes.json"),
+        "{}\n",
+        "utf8"
+      ),
+    ]);
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.destinations).toContain(
+      "apps/web/src/release-notes.tsx"
+    );
+    expect(result.inventory.surfaceStructureEvidence.web).toContain(
+      "Web application dependency: react"
+    );
+    expect(result.inventory.surfaceStructureEvidence.mobile).toContain(
+      "Mobile application dependency: expo"
+    );
+    expect(result.inventory.surfaceStructureEvidence.cms).toContain(
+      "CMS path: apps/cms/src/route.ts"
+    );
+    expect(result.inventory.surfaceStructureEvidence.store).toContain(
+      "Store-release metadata path: fastlane/metadata/en-US/release-notes.json"
+    );
+    expect(result.inventory.surfaceStructureEvidence.workspace).toEqual([
+      "Workspace application path: apps/cms",
+      "Workspace application path: apps/mobile",
+      "Workspace application path: apps/web",
+    ]);
+  });
+
+  test("recognizes conventional web routes without treating store metadata as a mobile app", async () => {
+    const { config, repo } = await fixture();
+    await mkdir(join(repo, "src", "routes"), { recursive: true });
+    await mkdir(
+      join(repo, "fastlane", "metadata", "android", "en-US", "changelogs"),
+      { recursive: true }
+    );
+    await Promise.all([
+      writeFile(
+        join(repo, "src", "routes", "release-notes.tsx"),
+        "export const ReleaseNotes = () => 'Web history';\n",
+        "utf8"
+      ),
+      writeFile(
+        join(
+          repo,
+          "fastlane",
+          "metadata",
+          "android",
+          "en-US",
+          "changelogs",
+          "120.txt"
+        ),
+        "Store update notes.\n",
+        "utf8"
+      ),
+    ]);
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.surfaceStructureEvidence.web).toContain(
+      "Web application path: src/routes/release-notes.tsx"
+    );
+    expect(result.inventory.surfaceStructureEvidence.store).toContain(
+      "Store-release metadata path: fastlane/metadata/android/en-US/changelogs/120.txt"
+    );
+    expect(result.inventory.surfaceStructureEvidence.mobile).toEqual([]);
+  });
+
   test("offers a surface only where a distribution can own one", async () => {
     const product = await fixture();
     const productResult = await inspectRepository({
@@ -589,7 +700,7 @@ describe("setup application", () => {
     const blocked = await applySetup(fullOptions);
     const configured = await applySetup({
       ...fullOptions,
-      mobileReleaseNotePlacement: "web-tabs",
+      mobileReleaseNotePlacement: "store-only",
     });
     const fullPolicy = await readJson(
       join(full.repo, ".simple-changelogs.json")
@@ -598,14 +709,14 @@ describe("setup application", () => {
     expect(blocked.status).toBe("blocked");
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
-    expect(fullPolicy.mobileReleaseNotePlacement).toBe("web-tabs");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(16);
+    expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(17);
 
     const distributionVersions = [
-      ["web", 15],
-      ["mobile", 14],
-      ["web-cms", 15],
-      ["skill-repository", 8],
+      ["web", 16],
+      ["mobile", 15],
+      ["web-cms", 16],
+      ["skill-repository", 9],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -1128,14 +1239,14 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 2,
+      currentVersion: 3,
       recordedVersion: 1,
       userPrompt: null,
     });
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 2,
+      version: 3,
     });
   });
 
@@ -1340,7 +1451,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 15 },
+      guidance: { backfillStatus: "not-applicable", version: 16 },
       newReleaseNoteSurfaces: "ask",
       publicVersioning: {
         major: "ask",

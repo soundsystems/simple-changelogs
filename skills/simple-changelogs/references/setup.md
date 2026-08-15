@@ -133,13 +133,20 @@ repository-specific and never joins the all-projects preferences.
 
 `mobileReleaseNotePlacement` accepts:
 
-- `web-tabs`: expose the independently scoped Web and Mobile histories at one
-  web changelog destination under clearly labeled tabs.
-- `web-page`: keep the normal Web history at its established destination and
-  expose the independently scoped Mobile history on a separate linked web page.
-- `mobile-only`: keep mobile-specific history off the web. Publish it only
-  through established in-app, App Store, Google Play, testing-track, or other
-  mobile destinations.
+- `store-only` (**App stores only**): prepare mobile-specific update notes only
+  for established App Store, Google Play, testing-track, or repository-owned
+  store metadata destinations; do not add an in-app or Web history surface.
+- `mobile-only` (**Mobile app and app stores — no Web**): keep mobile-specific
+  history off the Web while retaining it for established in-app, App Store,
+  Google Play, testing-track, or other mobile destinations.
+- `web-tabs` (**Web and mobile — one tabbed Release Notes page**): expose the
+  independently scoped Web and Mobile histories under clearly labeled tabs at
+  one Web destination while the same Mobile feed remains available to mobile
+  and store destinations.
+- `web-page` (**Web and mobile — separate Release Notes pages**): keep the
+  normal Web history at its established destination, expose the independently
+  scoped Mobile history on a separate linked Web page, and retain the same
+  Mobile feed for mobile and store destinations.
 
 The full distribution, and any explicitly combined web+mobile distribution
 derived from it, asks the user to choose one of these values during setup. Do
@@ -210,10 +217,15 @@ For authorized setup:
    default and ask, as the final onboarding question, only whether the user
    wants to defer or decline. Confirmation accepts `partial` and starts the
    audit without a separate “Review it now” approval.
-5. Ask how mobile-specific release history should be placed: `web-tabs`,
-   `web-page`, or `mobile-only`. Explain that shared cross-platform outcomes
-   remain eligible for Web history under every choice and that new UI still
-   requires its normal authorization.
+5. Ask where people should be able to read mobile-specific release notes.
+   Present **App stores only**, **Mobile app and app stores — no Web**, **Web
+   and mobile — one tabbed Release Notes page**, and **Web and mobile —
+   separate Release Notes pages**; show `store-only`, `mobile-only`,
+   `web-tabs`, and `web-page` only as stored receipt values. Explain that
+   `store-only` omits an in-app history while the other choices retain
+   established in-app and store destinations. Shared cross-platform outcomes
+   remain eligible for Web history, and missing product UI still requires its
+   normal authorization.
 6. Record the user's actual audit disposition and mobile placement, set
    `newReleaseNoteSurfaces` to `ask`, then continue the originally requested
    task. An authorized audit starts as `partial` and becomes `completed` only
@@ -243,12 +255,28 @@ guidance version may generate one new prompt.
 No answer means no new disposition. Do not advance `guidance.version` merely
 because the question was prepared or displayed.
 
-Inspection exposes this as `guidanceUpdate`. Tell the user what materially
-changed and offer `releaseNotesPath`; do not make them open the detailed notes.
-When `userPrompt` is non-null, pause write-capable work for one backfill choice:
-preview/start (`partial`), defer (`deferred`), or skip (`declined`). Never run a
-backfill automatically. When `userPrompt` is null, explain that no backfill is
-needed, record `not-applicable`, and continue.
+Inspection exposes this as `guidanceUpdate`. Present it as a user-facing update,
+not an internal guidance checkpoint:
+
+> **Simple Changelogs has recently been updated.**
+>
+> - Up to three short practical effects from the intervening changes.
+>
+> Your saved settings and released history have not been changed.
+
+Offer **Walk me through what changed — Recommended**, **Keep my current
+settings and continue**, and **View detailed release notes**. Never recommend
+skipping the explanation. A walkthrough explains every new ability first, then
+names affected settings, proposed defaults, concrete examples, consequences,
+and safety boundaries. `releaseNotesPath` remains available for the complete
+version-by-version detail; do not require the user to open it to understand the
+choice.
+
+After that review choice, when `userPrompt` is non-null, pause write-capable
+work for one separate history choice: preview/start (`partial`), defer
+(`deferred`), or skip (`declined`). Never run a backfill automatically. When
+`userPrompt` is null, explain that the update is prospective and no historical
+backfill is needed, record `not-applicable`, and continue.
 
 Record the disposition with
 `apply --guidance-backfill <status> --confirm`. A verified completed audit adds
