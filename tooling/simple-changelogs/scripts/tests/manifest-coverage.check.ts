@@ -628,7 +628,7 @@ describe("canonical evaluation manifest", () => {
     ).toBe(true);
 
     const scoped = caseById(manifest, "behavior-multi-surface-scope-isolation");
-    expect(scoped.turns).toHaveLength(3);
+    expect(scoped.turns).toHaveLength(4);
     for (const path of [
       "apps/web/src/release-notes.ts",
       "apps/mobile/src/release-notes.ts",
@@ -691,6 +691,27 @@ describe("canonical evaluation manifest", () => {
         true,
         "apps/web/src/mobile-release-notes.ts"
       )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        3,
+        "json.path",
+        "store-only",
+        ".simple-changelogs.json#/mobileReleaseNotePlacement"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(
+        scoped,
+        3,
+        "file.unchanged",
+        true,
+        "apps/mobile/src/release-notes.ts"
+      )
+    ).toBe(true);
+    expect(
+      hasAssertion(scoped, 3, "report.decision", "STORE_NOTES_UPDATED")
     ).toBe(true);
   });
 
@@ -1031,6 +1052,64 @@ describe("portable guidance consistency", () => {
 
     expect(backfill).toContain("copying the same unambiguous value");
     expect(backfill).toContain("established mirror");
+  });
+
+  test("explains setup and updates before asking and labels mobile placement by outcome", async () => {
+    const onboardingPaths = [
+      "simple-changelogs",
+      "simple-changelogs-cms",
+      "simple-changelogs-mobile",
+      "simple-changelogs-skill-maintainer",
+      "simple-changelogs-web",
+      "simple-changelogs-web-cms",
+    ].map((directory) =>
+      join(SKILL_ROOT, "..", directory, "references", "onboarding.md")
+    );
+    const onboardingCopies = await Promise.all(
+      onboardingPaths.map((path) => readFile(path, "utf8"))
+    );
+
+    for (const onboarding of onboardingCopies) {
+      expect(onboarding).toContain("## Explain before asking");
+      expect(onboarding).toContain("**Walk me through it**");
+      expect(onboarding).toContain("every main workflow");
+      expect(onboarding).toContain("nothing has been written");
+    }
+
+    const fullOnboarding = onboardingCopies[0] ?? "";
+    expect(fullOnboarding).toContain(
+      "Where should people be able to read mobile-specific release notes?"
+    );
+    expect(fullOnboarding).toContain("**App stores only**");
+    expect(fullOnboarding).toContain(
+      "**Mobile app and app stores — no Web — Recommended"
+    );
+    expect(fullOnboarding).toContain(
+      "**Web and mobile — one tabbed Release Notes page**"
+    );
+    expect(fullOnboarding).toContain(
+      "**Web and mobile — separate Release Notes pages**"
+    );
+    expect(collapseWhitespace(fullOnboarding)).toContain(
+      "The same Mobile feed remains available to the app and stores"
+    );
+    expect(fullOnboarding).toContain(
+      "Do not shorten these to bare `store-only`, `mobile-only`, `web-tabs`, or"
+    );
+    expect(fullOnboarding).toContain("Start with the inspection result");
+    expect(collapseWhitespace(fullOnboarding)).toContain(
+      "I scanned the repository and did not find an established release-notes destination"
+    );
+    expect(fullOnboarding).toContain("surfaceStructureEvidence");
+    expect(fullOnboarding).toContain("Yes, keep it as a planned surface");
+    expect(fullOnboarding).toContain("No, let me choose again");
+
+    const setup = collapseWhitespace(
+      await readFile(join(SKILL_ROOT, "references", "setup.md"), "utf8")
+    );
+    expect(setup).toContain("**Walk me through what changed —");
+    expect(setup).toContain("**Keep my current settings and continue**");
+    expect(setup).toContain("**View detailed release notes**");
   });
 
   test("routes fork drift through the location-independent bundled checker", async () => {

@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 16
+Current guidance version: 17
 
 ## Distribution Checkpoint
 
@@ -36,8 +36,13 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
 
 - Classify the current request as `write` or `read` and pass that task mode to
   the helper. Read-only requests never enter or persist onboarding.
-- When inspection returns `guidanceUpdate`, explain the material change and
-  offer its detailed skill release notes. Ask about a backfill only when
+- When inspection returns `guidanceUpdate`, say that Simple Changelogs was
+  updated, show up to three practical changes, and explain that saved settings
+  and released history are unchanged. Offer three actions: a recommended guided
+  review, continuing with the current settings, or opening the detailed release
+  notes. A walkthrough explains every new ability, affected setting,
+  proposed default, example, consequence, and safety boundary before any
+  decision. Ask about a historical backfill only afterward and only when
   `userPrompt` is non-null; never run one automatically. Record the one-time
   disposition with `apply --guidance-backfill <status> --confirm`.
 - When it exists, validate it before relying on its decisions. Report malformed

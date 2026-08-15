@@ -50,6 +50,15 @@ repository-hosted releases, email templates, and generated feeds. Treat a
 destination as established only when users can reach it and its audience and
 source are documented by code, tests, instructions, or release automation.
 
+Also inspect the product topology before accepting a requested destination.
+Use Web and Mobile dependencies, application roots, native projects,
+store-metadata integrations, CMS routes and authentication, workspace
+configuration, and release automation as evidence. Report missing evidence
+plainly. When the user confirms an absent Web, Mobile, store, or CMS target as a
+planned surface, preserve that intent in the setup receipt but do not invent or
+create the underlying product, monorepo layout, authentication boundary, or
+remote integration. Rescan after product structure changes.
+
 Prefer updating the established source over maintaining parallel copy. Hidden,
 disabled, prototype, preview-only, unreachable, or wrong-audience components do
 not prove that a usable equivalent exists.
@@ -218,22 +227,28 @@ map: classify each item once, record evidence for every eligible surface, and
 generate or synchronize each destination from that mapping.
 
 Read `.simple-changelogs.json` key `mobileReleaseNotePlacement` before deciding
-whether mobile-specific history is visible on the web:
+where mobile-specific history is rendered. The canonical Mobile feed remains
+the source, while the selected value controls its destinations:
 
-- `web-tabs` renders separate Web and Mobile feeds under labeled tabs at one web
-  destination. The Mobile tab consumes the Mobile feed; it does not make
-  mobile-only entries part of the Web feed.
-- `web-page` keeps the Web feed at the normal web changelog and exposes the
-  Mobile feed on a separate linked web page.
-- `mobile-only` keeps the Mobile feed in established in-app, App Store, Google
-  Play, testing-track, or other mobile destinations and omits mobile-specific
-  entries from web changelog destinations.
+- `store-only` means **App stores only**. Prepare concise storefront or
+  testing-track update copy without rendering mobile-specific history in an
+  in-app or Web release-notes surface.
+- `mobile-only` means **Mobile app and app stores — no Web**. It omits
+  mobile-specific entries from Web changelog destinations.
+- `web-tabs` means **Web and mobile — one tabbed Release Notes page**. Separate
+  Web and Mobile feeds render under labeled tabs at one Web destination. The
+  Mobile tab consumes the Mobile feed; it does not make mobile-only entries
+  part of the Web feed.
+- `web-page` means **Web and mobile — separate Release Notes pages**. The Web
+  feed stays at the normal Web changelog and the Mobile feed also appears on a
+  separate linked Web page.
 
 Shared outcomes still appear in every independently affected feed. Store copy
 remains a concise selection from the Mobile feed, never the entire mobile
-history. A placement preference does not authorize a missing tab set, route,
-page, navigation entry, or dismissal store; apply the product-implementation
-authorization rules above.
+history. Storefront copy preparation does not authorize a remote metadata
+write, submission, or release. A placement preference does not authorize a
+missing tab set, route, page, navigation entry, in-app screen, or dismissal
+store; apply the product-implementation authorization rules above.
 
 ## Audience and Platform Scope
 

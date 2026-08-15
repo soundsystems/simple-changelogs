@@ -24,9 +24,10 @@ reported and preserved.
 
 The inspection result provides policy state, detected distribution and
 evidence, history counts, release-note-named destination candidates, adjacent
-Updates, News, Blog, or Announcements candidates, developer-history and CMS
-evidence, component-library evidence, global defaults, a recommendation, and
-unresolved questions. A path name or dependency is discovery evidence, not
+Updates, News, Blog, or Announcements candidates, developer-history evidence,
+separate Web, Mobile, store, CMS, and workspace structure evidence,
+component-library evidence, global defaults, a recommendation, and unresolved
+questions. A path name or dependency is discovery evidence, not
 proof that a route is reachable, contains release history, or uses that
 component stack for product UI. Do not ask for a choice already established by
 current instructions, repository policy, or trustworthy evidence.
@@ -52,16 +53,53 @@ flow, or write scope. Keep the diagram beside the options it explains and
 label both the shown and suppressed path. Skip diagrams for choices whose
 effect is already obvious from one sentence.
 
+## Explain before asking
+
+Do not make the owner reverse-engineer the workflow from setup fields. Before
+the first choice, explain in plain language:
+
+- Simple Changelogs keeps durable customer outcomes separate from technical
+  maintainer history;
+- it can start or adopt changelogs, classify current work, prepare and verify a
+  release, synchronize established product surfaces, review older history when
+  authorized, and explain what changed after a skill update;
+- one canonical item may feed several independently filtered Web, Mobile,
+  store, CMS, package, or internal destinations without making their audiences
+  interchangeable;
+- setup records preferences and evidence but does not itself publish, deploy,
+  submit a store release, create a hosted release, or rewrite history; and
+- the current request continues after setup, so the user never has to repeat it.
+
+Then summarize the concrete evidence: selected distribution and why, existing
+customer and developer histories, released-history count, proven and candidate
+release-note destinations, version owners, component-system evidence, and the
+exact files setup could write. State which choices the current request or
+repository already decided, show the recommended defaults, and say that
+nothing has been written, backfilled, published, deployed, or submitted yet.
+
 ## First screen
 
-Summarize concrete findings in one short paragraph, then ask **Choose one:**
+Summarize concrete findings and the recommended path, then ask **How would you
+like to set up Simple Changelogs? Choose one:**
 
 1. **Use recommended setup — Recommended** — Apply evidence-backed safe defaults. When
   released history exists, include the full backfill and ask last only whether
   the user wants to defer or decline it.
-2. **Customize** — Explain and ask only the unresolved questions below.
-3. **Use preferences for this run only** — Apply the choices to the current task
+2. **Walk me through it** — Explain every main workflow, every destination the
+  repository may use, and each preference in plain language, one at a time,
+  before saving anything.
+3. **Customize** — Explain and ask only the unresolved questions below.
+4. **Use recommended setup for this run only** — Apply the choices to the current task
   without writing policy; onboarding appears again next time.
+
+The walkthrough first shows how ordinary edits, release preparation, product
+surface synchronization, historical review, version decisions, delegated
+Simple Changes handoffs, and later skill updates flow from inspection through
+verification. For each topic, explain what the skill does automatically, what
+still requires a decision, and what authority the choice does not grant. Then
+ask the same unresolved owner choices below one at a time. The walkthrough is a
+conversation path, not a new stored policy value; a confirmed walkthrough uses
+the customized setup style in the receipt.
 
 The recommended path uses a developer history, hidden agent-and-time audit
 comments, `ask` for future missing destinations, and an archive plus compact
@@ -131,6 +169,57 @@ not have yet, what should happen? Choose one:**
 destination. It never grants deployment, publication, store submission, hosted
 release, new-audience, or internal-information authority.
 
+## Mobile-history placement
+
+For the full distribution, explain that the canonical Mobile feed remains the
+source for every option, but the selected destinations differ. Store-only copy
+can be prepared for App Store, Google Play, testing-track, or repository-owned
+store metadata without adding an in-app history. The other three choices retain
+the Mobile feed for established in-app and store destinations. Shared
+cross-platform outcomes still appear in the Web history when Web users benefit
+from them.
+
+Ask **Where should people be able to read mobile-specific release notes?
+Choose one:**
+
+```text
+1. App stores only
+   Mobile feed -> App Store / Google Play metadata; no in-app or Web history
+
+2. Mobile app and app stores — no Web
+   Mobile feed -> app / stores; Web history excludes mobile-only items
+
+3. Web and mobile — one tabbed page
+   Canonical history -> Web tab + Mobile tab -> Mobile feed also serves app / stores
+
+4. Web and mobile — separate Web pages
+   Canonical history -> Web history + linked Mobile history -> Mobile feed also serves app / stores
+```
+
+1. **App stores only** — Prepare concise per-release storefront copy for
+   established App Store, Google Play, testing-track, or repository metadata
+   destinations. Do not add an in-app or Web release-history surface. Store
+   `store-only`. Store submission and remote metadata writes still require
+   separate authority and credentials.
+2. **Mobile app and app stores — no Web — Recommended when no new Web UI is
+   needed** —
+   Keep mobile-specific history in established mobile and store destinations
+   and out of Web changelog destinations. Store `mobile-only`.
+3. **Web and mobile — one tabbed Release Notes page** — Let Web visitors browse
+   independently filtered **Web** and **Mobile** histories under labeled tabs
+   at one Web destination. The same Mobile feed remains available to the app
+   and stores. Store `web-tabs`.
+4. **Web and mobile — separate Release Notes pages** — Keep the normal Web
+   history at its established destination and add a linked Web page for the
+   independently filtered Mobile history. The same Mobile feed remains
+   available to the app and stores. Store `web-page`.
+
+Do not shorten these to bare `store-only`, `mobile-only`, `web-tabs`, or
+`web-page` choices. Those are receipt values, not sufficient user-facing
+explanations. Choosing a presentation records the desired placement but does
+not authorize a missing tab set, page, route, navigation entry, in-app screen,
+store submission, deployment, or publication.
+
 ## Public-version choice
 
 For every distribution that owns a public version, ask: **How should new
@@ -157,6 +246,62 @@ For the `full`, `web`, `mobile`, `web-cms`, and CMS-only distributions,
 always offer this choice before the final history question. Skip it only for
 skill-repository onboarding. An explicit decline keeps product UI unchanged
 and does not block ordinary changelog work.
+
+Start with the inspection result, not a hypothetical menu. Report the detected
+repository shape, Web, Mobile, store-metadata, CMS, and workspace evidence,
+then list every release-note destination candidate and whether route
+reachability, audience, source, and release coverage actually prove it is
+established.
+
+When one or more suitable destinations are established, recommend reusing and
+synchronizing every eligible existing destination. Do not propose a duplicate
+surface merely because a generic default would have used a different route,
+label, component library, or content model.
+
+When no suitable destination is established, say **I scanned the repository
+and did not find an established release-notes destination. What would you like
+to do? Choose one:**
+
+1. **Create the recommended release-notes destination — Recommended** — First
+   show the detected product structure and the exact destination, route or
+   metadata files, audience, and dependencies the skill recommends. Create it
+   only after the final receipt is confirmed.
+2. **Let me choose which destinations to add** — Offer only the Web archive,
+   mobile in-app history, app-store update notes, authenticated CMS history,
+   or other destinations relevant to the user's request, while allowing the
+   user to name a planned surface that inspection did not detect.
+3. **Use changelog files only for now** — Add no product or store destination;
+   future surface work scans again and follows the saved ongoing policy.
+
+Treat the recommended creation as a proposal, not silent implementation. The
+default `newReleaseNoteSurfaces: "ask"` means setup proactively offers a useful
+surface when none exists while the confirmed receipt supplies authority only
+for the exact current destinations. It does not grant open-ended UI creation.
+
+After the user names one or several destination types, refresh the inspection
+and compare each request with `surfaceStructureEvidence`. A repository does
+not have to be a monorepo to contain several products, but folder names,
+dependencies, build configuration, route wiring, and authentication boundaries
+must support the requested topology. Never treat the user's choice itself as
+evidence that the code already exists.
+
+For every requested product type with no supporting structure, say **I scanned
+the repository, but I did not find a [Web app / mobile app / authenticated CMS
+/ store-release integration] here. Did you mean to configure this as a planned
+surface? Choose one:**
+
+1. **Yes, keep it as a planned surface** — Record the confirmed distribution
+   intent and the missing evidence in the receipt. Do not invent an app root,
+   CMS route, authentication boundary, store credential, or workspace layout,
+   and do not create the underlying product unless the current request
+   separately authorizes that work. CMS policy remains pending until an exact
+   authenticated route and contained source can be proven.
+2. **No, let me choose again** — Return to the destination choices without
+   writing setup state.
+
+Repeat this confirmation for each unsupported type rather than collapsing
+several mismatches into an ambiguous yes. If repository structure changes
+during the task, scan once more before preparing the final receipt.
 
 Inspect each candidate's route wiring, navigation, content model, source,
 audience, and release coverage. Classify it as:

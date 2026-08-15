@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Made product onboarding evidence-led across full, Web, Mobile, Web+CMS, and
+  CMS-only distributions:
+  - Setup inspection now inventories and reports Web, Mobile, store, CMS,
+    workspace, and established release-note candidates before asking destination
+    questions. Existing destinations are reused; absent destinations are
+    recommended only as proposals requiring authorization for the exact current
+    surface.
+  - Added a post-selection rescan and confirmation step that classifies every
+    selected surface as existing, absent, or planned and lets the owner confirm
+    the plan or choose again. Selected types are never treated as repository
+    evidence, and setup cannot invent products, routes, authentication,
+    credentials, workspace topology, or monorepo membership.
+  - Extended full-distribution `mobileReleaseNotePlacement` with `store-only`.
+    User-facing choices now distinguish **App stores only**, **Mobile app and
+    stores — no Web history**, **Web and mobile — one tabbed Release Notes
+    page**, and **Web and mobile — separate Release Notes pages**, while
+    preserving the existing `mobile-only`, `web-tabs`, and `web-page` values.
+  - Retained the first-use workflow primer, one-question-at-a-time walkthrough,
+    structured update notices, no-state-change assurance, detailed release-note
+    path, and separate conditional backfill disposition.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-14T18:32:57-05:00" -->
 - Tightened producer receipt invariants so `releaseImpact: "none"` must return
   `not-applicable`; `decision-required` additionally requires a proven public
   boundary and non-`none` bump. Regression coverage rejects internal-only work
@@ -19,13 +40,13 @@
   `guidanceUpdate` results with material-change categories, aggregated backfill
   recommendations, concise summaries, conditional prompts, and detailed
   release-note paths across all six distributions, including CMS-only.
-  Capabilities now advertise `guidance-update-notices`, and guidance versions
-  advanced.
+  Release-protocol capability advertisement remains limited to the three shared
+  features, and guidance versions advanced.
 - Added confirmed one-time disposition persistence through
   `apply --guidance-backfill <status> --confirm`, requiring
   `--audit-verified` for completed audits, with setup-result types, schemas,
   tests, and distribution byte budgets updated for the new contract.
-<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-10T18:07:47-05:00" -->
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-14T20:27:00-05:00" -->
 - Added explicit public-version authority and a structured release handoff
   protocol:
   - Added optional `publicVersioning` policy for independent patch, minor, and

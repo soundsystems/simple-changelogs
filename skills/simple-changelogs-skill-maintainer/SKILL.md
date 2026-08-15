@@ -16,7 +16,7 @@ and maintenance, not an application changelog distribution.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
 
-Current guidance version: 8
+Current guidance version: 9
 
 ## Distribution checkpoint
 
@@ -38,8 +38,13 @@ and inspect `.simple-changelogs.json`.
 
 - Pass `--task-mode write` for release-history mutations and `--task-mode read`
   for explanations or previews that must stay read-only.
-- When inspection returns `guidanceUpdate`, explain the material change and
-  offer its detailed skill release notes. Ask about a backfill only when
+- When inspection returns `guidanceUpdate`, say that Simple Changelogs was
+  updated, show up to three practical changes, and explain that saved settings
+  and released history are unchanged. Offer three actions: a recommended guided
+  review, continuing with the current settings, or opening the detailed release
+  notes. A walkthrough explains every new ability, affected setting,
+  proposed default, example, consequence, and safety boundary before any
+  decision. Ask about a historical backfill only afterward and only when
   `userPrompt` is non-null; never run one automatically. Record the one-time
   disposition with `apply --guidance-backfill <status> --confirm`.
 - Validate existing state before relying on it.

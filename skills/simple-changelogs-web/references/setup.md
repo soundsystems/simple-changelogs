@@ -190,12 +190,28 @@ guidance version may generate one new prompt.
 No answer means no new disposition. Do not advance `guidance.version` merely
 because the question was prepared or displayed.
 
-Inspection exposes this as `guidanceUpdate`. Tell the user what materially
-changed and offer `releaseNotesPath`; do not make them open the detailed notes.
-When `userPrompt` is non-null, pause write-capable work for one backfill choice:
-preview/start (`partial`), defer (`deferred`), or skip (`declined`). Never run a
-backfill automatically. When `userPrompt` is null, explain that no backfill is
-needed, record `not-applicable`, and continue.
+Inspection exposes this as `guidanceUpdate`. Present it as a user-facing update,
+not an internal guidance checkpoint:
+
+> **Simple Changelogs has recently been updated.**
+>
+> - Up to three short practical effects from the intervening changes.
+>
+> Your saved settings and released history have not been changed.
+
+Offer **Walk me through what changed — Recommended**, **Keep my current
+settings and continue**, and **View detailed release notes**. Never recommend
+skipping the explanation. A walkthrough explains every new ability first, then
+names affected settings, proposed defaults, concrete examples, consequences,
+and safety boundaries. `releaseNotesPath` remains available for the complete
+version-by-version detail; do not require the user to open it to understand the
+choice.
+
+After that review choice, when `userPrompt` is non-null, pause write-capable
+work for one separate history choice: preview/start (`partial`), defer
+(`deferred`), or skip (`declined`). Never run a backfill automatically. When
+`userPrompt` is null, explain that the update is prospective and no historical
+backfill is needed, record `not-applicable`, and continue.
 
 Record the disposition with
 `apply --guidance-backfill <status> --confirm`. A verified completed audit adds

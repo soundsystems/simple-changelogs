@@ -279,3 +279,26 @@ a backfill only when update metadata says history may benefit, never run one
 automatically, and record the one-time disposition with
 `apply --guidance-backfill <status> --confirm`. Completed audits also require
 `--audit-verified`.
+
+<!-- simple-changelogs-guidance-update version="16" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Web and CMS setup now verifies public and protected product structure before reusing, proposing, or recording destinations as planned." -->
+## Guidance 16
+
+First-use setup now begins with a plain-language overview and offers **Walk me
+through it**. The walkthrough explains public customer history, developer
+history, protected CMS history, each relevant destination, unresolved
+preference, consequence, recommended default, and authority boundary one
+question at a time.
+
+Installed-guidance notices now lead with a clear headline and up to three
+practical effects, confirm that saved settings and released history are
+unchanged, and offer **Walk me through what changed — Recommended**, **Keep my
+current settings and continue**, or **View detailed release notes**. Historical
+review remains separate and conditional; setup does not grant deployment,
+operator access, or permission to expose protected CMS content.
+
+Web+CMS onboarding now inventories public Web, protected CMS, Mobile, store,
+workspace, and release-note evidence before destination choices. It reuses
+established public and operator surfaces; absent surfaces remain proposals until
+the owner confirms the exact current destination after a rescan or chooses
+again. Preferences cannot prove routes, authentication, roles, credentials, or
+workspace topology and never authorize exposing protected CMS history.

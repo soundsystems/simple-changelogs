@@ -276,3 +276,26 @@ a backfill only when update metadata says history may benefit, never run one
 automatically, and record the one-time disposition with
 `apply --guidance-backfill <status> --confirm`. Completed audits also require
 `--audit-verified`.
+
+<!-- simple-changelogs-guidance-update version="16" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Web setup now verifies real destinations and product structure before reusing, proposing, or recording a surface as planned." -->
+## Guidance 16
+
+First-use setup now begins with a plain-language overview and offers **Walk me
+through it**. The walkthrough explains the customer and developer histories,
+Web release-note destinations, unresolved preferences, consequences,
+recommended defaults, and authority boundaries one question at a time.
+
+Installed-guidance notices now lead with a clear headline and up to three
+practical effects, confirm that saved settings and released history are
+unchanged, and offer **Walk me through what changed — Recommended**, **Keep my
+current settings and continue**, or **View detailed release notes**. Historical
+review remains a separate, conditional choice, and setup grants no deployment
+or new-surface authority.
+
+Web onboarding now reports discovered Web, Mobile, store, CMS, workspace, and
+release-note evidence before asking where notes belong. It reuses an established
+Web destination; if none exists, setup may recommend one but asks before the
+exact current surface, then rescans and requires confirmation or a revised
+choice. A selection cannot prove a product, route, authentication boundary,
+credential, environment, or monorepo and grants no creation or deployment
+authority.

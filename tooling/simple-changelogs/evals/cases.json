@@ -2149,6 +2149,62 @@
               }
             }
           ]
+        },
+        {
+          "prompt": "Change the mobile placement to App stores only. Prepare concise iOS and Android\nstore update notes from the Mobile feed, but do not add this release to the\nin-app or Web histories and do not delete those existing surfaces.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/mobileReleaseNotePlacement",
+              "expected": "store-only"
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/play/release-notes/en-US/default.txt",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+              "expected": "[Oo]ffline recovery|[Pp]ending edits|[Rr]econnect"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/fastlane/metadata/en-US/release_notes.txt",
+              "expected": "[Ww]eb reporting|[Dd]ashboard|[Bb]ulk publishing|database migration|build pipeline|bundle analyzer"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/web/src/release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/web/src/mobile-release-notes.ts",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "STORE_NOTES_UPDATED"
+            },
+            {
+              "kind": "report.verification",
+              "expected": {
+                "code": "SURFACE_SCOPE_FILTERING",
+                "status": "passed"
+              }
+            }
+          ]
         }
       ]
     },

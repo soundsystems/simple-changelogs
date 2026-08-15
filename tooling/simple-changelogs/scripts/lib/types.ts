@@ -19,6 +19,7 @@ export const SURFACE_COMPONENT_SOURCES = [
   "minimal-markup",
 ] as const;
 export const MOBILE_RELEASE_NOTE_PLACEMENTS = [
+  "store-only",
   "web-tabs",
   "web-page",
   "mobile-only",
@@ -243,6 +244,13 @@ export interface SetupInventory {
   destinations: string[];
   developerHistoryEvidence: string[];
   releasedHistoryCount: number;
+  surfaceStructureEvidence: {
+    cms: string[];
+    mobile: string[];
+    store: string[];
+    web: string[];
+    workspace: string[];
+  };
 }
 
 export interface SetupRecommendation {
@@ -275,6 +283,7 @@ export interface SetupResult {
   errors: string[];
   globalPreferences: SetupStateRecord<GlobalPreferences>;
   guidanceUpdate: {
+    actions: ("walkthrough" | "continue" | "view-release-notes")[];
     backfillRecommendation: "not-needed" | "optional" | "recommended";
     changes: {
       backfillRecommendation: "not-needed" | "optional" | "recommended";
@@ -283,11 +292,14 @@ export interface SetupResult {
       version: number;
     }[];
     currentVersion: number;
+    headline: "Simple Changelogs has recently been updated.";
     recordedVersion: number;
     releaseNotesOffer: string;
     releaseNotesPath: string;
     summary: string;
+    summaryBullets: string[];
     userPrompt: string | null;
+    walkthroughQuestion: string;
   } | null;
   inventory: SetupInventory;
   onboardingContribution: {
