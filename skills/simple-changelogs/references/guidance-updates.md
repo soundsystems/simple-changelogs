@@ -327,3 +327,40 @@ Mobile placement now adds `store-only` as **App stores only**, distinct from
 these preferences authorizes creation of product UI or release-note surfaces,
 and installed-guidance updates still leave saved settings and released history
 unchanged while keeping historical review separate and conditional.
+
+<!-- simple-changelogs-guidance-update version="18" kinds="behavior,onboarding" backfill="not-needed" summary="Recommended setup now uses progressive confirmation receipts, evidence-relevant questions, and separate source-revision and distribution-guidance identity." -->
+## Guidance 18
+
+Recommended setup now converts repository evidence into one plain-language
+receipt and asks only for confirmation or changes. The guided path defines
+technical terms when they first affect a decision and asks in dependency order,
+from product shape and audiences through destinations and their details to
+version behavior, storage, instruction pointers, and history handling.
+
+Install and update reporting now separates the Git source revision, when known,
+from the selected distribution's guidance checkpoint.
+
+Confirmation receipts now show a compact consequential summary first with
+**Confirm**, **Show details**, and **Change something**. The complete receipt
+remains available, and details hidden by default cannot expand setup authority.
+
+Inspection now reports scan completeness and marks each product surface as
+`detected`, `not-detected`, or `uncertain`. Detailed Mobile and store questions
+are suppressed only when a complete scan supports that conclusion. If topology
+is uncertain, setup asks one combined confirmation instead of expanding every
+possible product branch.
+
+Web archive setup now asks two plain-language questions. **Should I build a
+Release Notes page?** defines the page as the complete history of shipped
+updates, offers a dedicated page, an existing page, or no page, and explains
+that building it does not automatically show it live. **Who should see Release
+Notes?** then maps developers, preview reviewers, and live visitors to the
+environments where the page appears.
+
+Public-version choices now explicitly include automatic patch selection while
+minor and major releases still ask, with concrete SemVer examples for all three
+levels. First-time setup defaults missing future release-note surfaces to
+`ask` and waits for a real proposed surface before requesting authority;
+advanced `allow` and `existing-only` policies remain available explicitly.
+This prospective onboarding change rewrites no released history and grants no
+surface, dependency, deployment, publication, store, or version authority.

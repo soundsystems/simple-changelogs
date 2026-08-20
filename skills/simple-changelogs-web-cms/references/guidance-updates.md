@@ -302,3 +302,39 @@ established public and operator surfaces; absent surfaces remain proposals until
 the owner confirms the exact current destination after a rescan or chooses
 again. Preferences cannot prove routes, authentication, roles, credentials, or
 workspace topology and never authorize exposing protected CMS history.
+
+<!-- simple-changelogs-guidance-update version="17" kinds="behavior,onboarding" backfill="not-needed" summary="Web and CMS setup now offers progressive confirmation receipts, a two-step Web page and audience flow, and separate source-revision and distribution-guidance identity." -->
+## Guidance 17
+
+Recommended Web+CMS setup now turns public-Web and protected-operator evidence
+into one plain-language receipt and asks only for confirmation or changes.
+Guided setup defines unfamiliar terms when they matter and asks about each
+destination before its placement, environment, links, components, or access
+details.
+
+Install and update reporting now separates the Git source revision, when known,
+from the selected distribution's guidance checkpoint.
+
+Confirmation receipts now show a compact consequential summary first with
+**Confirm**, **Show details**, and **Change something**. The complete receipt
+remains available, and details hidden by default cannot expand setup authority.
+
+Inspection reports scan completeness and marks every surface as detected, not
+detected, or uncertain. Irrelevant Mobile and store questions are hidden only
+after a complete scan supports that result; uncertain topology produces one
+combined confirmation.
+
+Web archive setup now asks **Should I build a Release Notes page?**, defines it
+as the complete history of shipped updates, and offers a dedicated page, an
+existing page, or no page while explaining that building it does not expose it
+live or change the protected CMS destination. It then asks **Who should see
+Release Notes?** and maps developers, preview reviewers, and live visitors to
+the environments where the Web page appears.
+
+Public-Web version setup now explains patch, minor, and major changes with
+concrete SemVer examples and offers automatic patches while minor and major
+releases ask. Normal first-time setup records `ask` for future missing UI and
+waits for an exact proposal; advanced `allow` and `existing-only` policies
+remain supported. This prospective change rewrites no released history and
+grants no public surface, operator access, dependency, deployment, publication,
+or version authority.

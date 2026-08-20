@@ -150,3 +150,31 @@ Recommended**, **Keep my current settings and continue**, or **View detailed
 release notes**. Historical
 review remains separate and conditional, and no setup choice grants tagging,
 package publication, hosted-release, or downstream-distribution authority.
+
+<!-- simple-changelogs-guidance-update version="10" kinds="behavior,onboarding" backfill="not-needed" summary="Skill-package setup now offers progressive confirmation receipts, explicit version choices, and separate source-revision and distribution-guidance identity." -->
+## Guidance 10
+
+Recommended skill-package setup now turns repository evidence into one
+plain-language receipt and asks only for confirmation or changes. Guided setup
+defines unfamiliar terms when they matter and asks in dependency order, ending
+with instruction-pointer and released-history handling choices.
+
+Install and update reporting now separates the Git source revision, when known,
+from the selected distribution's guidance checkpoint.
+
+Confirmation receipts now show a compact consequential summary first with
+**Confirm**, **Show details**, and **Change something**. The complete receipt
+remains available, and details hidden by default cannot expand setup authority.
+
+Inspection reports scan completeness and detected, not-detected, or uncertain
+surface applicability so unrelated product questions are omitted only when the
+evidence supports that conclusion. Uncertain topology produces one combined
+confirmation instead of every possible branch.
+
+Version setup now distinguishes patch, minor, and major package releases with
+concrete SemVer examples and explicitly offers automatic patches while minor
+and major releases still ask. Ordinary first-time setup defaults future missing
+release-note UI to `ask`; advanced `allow` and `existing-only` policies remain
+supported when explicitly requested. This prospective change rewrites no
+released history and grants no tagging, package publication, hosted-release,
+downstream-distribution, UI, dependency, or version authority.

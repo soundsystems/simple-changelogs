@@ -32,6 +32,12 @@ const portableContractDistributions = new Set([
 ]);
 const forbiddenNames = new Set(["EVAL.md"]);
 const failures: string[] = [];
+const distributionManifest = JSON.parse(
+  await readFile(join(repositoryRoot, "distribution-manifest.json"), "utf8")
+) as {
+  distributions?: Array<{ guidanceVersion?: unknown; name?: unknown }>;
+  schemaVersion?: unknown;
+};
 const canonicalSetupHelper = await readFile(
   join(toolingRoot, "simple-changelogs", "scripts", "setup.ts"),
   "utf8"
@@ -149,6 +155,7 @@ const distributionSnapshots = await Promise.all(
 );
 
 const descriptions = new Map<string, string>();
+const discoveredGuidanceVersions = new Map<string, number>();
 for (const {
   backfillSource,
   directory,
@@ -306,6 +313,20 @@ for (const {
         `skills/${directoryName} guidance ${currentGuidance} lacks update-notice metadata`
       );
     }
+    if (currentGuidance) {
+      discoveredGuidanceVersions.set(directoryName, Number(currentGuidance));
+    }
+    for (const terminology of [
+      "distribution-specific behavior checkpoint",
+      "Changelogs family version or installed source revision",
+      "Git ref or commit when known",
+    ]) {
+      if (!source.includes(terminology)) {
+        failures.push(
+          `skills/${directoryName}/SKILL.md is missing guidance identity wording: ${terminology}`
+        );
+      }
+    }
 
     if (onboardingSource === null) {
       failures.push(
@@ -326,6 +347,46 @@ for (const {
         `skills/${directoryName}/references/onboarding.md must default the full backfill and offer opt-out last`
       );
     }
+  }
+}
+
+if (distributionManifest.schemaVersion !== 1) {
+  failures.push("distribution-manifest.json must use schemaVersion 1");
+}
+const manifestGuidanceVersions = new Map<string, number>();
+for (const entry of distributionManifest.distributions ?? []) {
+  if (
+    typeof entry.name !== "string" ||
+    typeof entry.guidanceVersion !== "number" ||
+    !Number.isInteger(entry.guidanceVersion) ||
+    entry.guidanceVersion < 1
+  ) {
+    failures.push(
+      "distribution-manifest.json contains an invalid distribution entry"
+    );
+    continue;
+  }
+  if (manifestGuidanceVersions.has(entry.name)) {
+    failures.push(
+      `distribution-manifest.json repeats distribution: ${entry.name}`
+    );
+  }
+  manifestGuidanceVersions.set(entry.name, entry.guidanceVersion);
+}
+for (const distributionName of changelogDistributions) {
+  const declared = manifestGuidanceVersions.get(distributionName);
+  const discovered = discoveredGuidanceVersions.get(distributionName);
+  if (declared !== discovered) {
+    failures.push(
+      `distribution-manifest.json records ${distributionName} guidance ${String(declared)}, but SKILL.md declares ${String(discovered)}`
+    );
+  }
+}
+for (const distributionName of manifestGuidanceVersions.keys()) {
+  if (!changelogDistributions.has(distributionName)) {
+    failures.push(
+      `distribution-manifest.json lists unknown distribution: ${distributionName}`
+    );
   }
 }
 
@@ -442,17 +503,37 @@ for (const { directoryName, source } of onboardingChecks) {
     "numbered, choose-one list",
     "## Contextual product-surface choice",
     "always offer this choice",
-    "Add a Release Notes tab or section there",
-    "Create a dedicated Release Notes page",
     "Automatic Release Notes modal",
-    "Local and preview only",
-    "Local       Preview       Production",
     "## Component-source choice",
     "developer, administrator, operator",
   ]) {
     if (!source.includes(requiredChoice)) {
       failures.push(
         `skills/${directoryName}/references/onboarding.md is missing contextual release-note onboarding choice: ${requiredChoice}`
+      );
+    }
+  }
+}
+
+const webOnboardingDistributions = new Set([
+  "simple-changelogs",
+  "simple-changelogs-web",
+  "simple-changelogs-web-cms",
+]);
+for (const { directoryName, source } of onboardingChecks.filter((candidate) =>
+  webOnboardingDistributions.has(candidate.directoryName)
+)) {
+  for (const requiredChoice of [
+    "Should I build a Release Notes page?",
+    "Add Release Notes to an existing page",
+    "Create a dedicated Release Notes page",
+    "Who should see Release",
+    "Developers and preview reviewers only",
+    "Local       Preview       Production",
+  ]) {
+    if (!source.includes(requiredChoice)) {
+      failures.push(
+        `skills/${directoryName}/references/onboarding.md is missing Web release-note onboarding choice: ${requiredChoice}`
       );
     }
   }
