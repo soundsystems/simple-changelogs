@@ -299,3 +299,36 @@ exact current surface, then rescans and requires confirmation or a revised
 choice. A selection cannot prove a product, route, authentication boundary,
 credential, environment, or monorepo and grants no creation or deployment
 authority.
+
+<!-- simple-changelogs-guidance-update version="17" kinds="behavior,onboarding" backfill="not-needed" summary="Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity." -->
+## Guidance 17
+
+Recommended Web setup now presents one plain-language, evidence-backed receipt
+and asks only for confirmation or changes. Guided setup defines unfamiliar
+terms when they matter and asks about the Web destination before its placement,
+environment, links, or component details.
+
+Install and update reporting now separates the Git source revision, when known,
+from the selected distribution's guidance checkpoint.
+
+Confirmation receipts now show a compact consequential summary first with
+**Confirm**, **Show details**, and **Change something**. The complete receipt
+remains available, and details hidden by default cannot expand setup authority.
+
+Inspection reports whether its scan was complete and whether each product
+surface was detected, not detected, or remains uncertain. It omits irrelevant
+Mobile and store questions only after a complete, recognizable scan; uncertain
+repositories get one product-shape confirmation instead.
+
+Web archive setup now asks **Should I build a Release Notes page?**, defines it
+as the complete history of shipped updates, and offers a dedicated page, an
+existing page, or no page while explaining that building it does not expose it
+live. It then asks **Who should see Release Notes?** and maps developers, preview
+reviewers, and live visitors to the environments where the page appears.
+
+Version setup now offers automatic patch selection while minor and major
+releases ask, and explains each SemVer level with concrete examples. Ordinary
+first-time setup records `ask` for future missing release-note UI and waits to
+request authority for an exact surface; advanced `allow` and `existing-only`
+policies remain supported. This prospective change rewrites no released history
+and grants no surface, dependency, deployment, publication, or version authority.

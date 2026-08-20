@@ -45,3 +45,29 @@ recommend one but must ask before the exact current surface, rescan, and obtain
 confirmation or a revised choice. The selection cannot establish a CMS product,
 route, authentication model, role, credential, or monorepo and grants neither
 operator access nor surface-creation authority.
+
+<!-- simple-changelogs-guidance-update version="4" kinds="behavior,onboarding" backfill="not-needed" summary="CMS setup now offers progressive confirmation receipts, evidence-gated operator questions, and separate source-revision and distribution-guidance identity." -->
+## Guidance 4
+
+Recommended CMS setup now turns protected-operator evidence into one
+plain-language receipt and asks only for confirmation or changes. Guided setup
+defines unfamiliar terms when they matter and asks about the operator
+destination before its placement, access, or component details.
+
+Install and update reporting now separates the Git source revision, when known,
+from the selected distribution's guidance checkpoint.
+
+Confirmation receipts now show a compact consequential summary first with
+**Confirm**, **Show details**, and **Change something**. The complete receipt
+remains available, and details hidden by default cannot expand setup authority.
+
+Inspection now reports scan completeness and marks CMS and adjacent product
+surfaces as detected, not detected, or uncertain. Detailed questions are
+suppressed only when a complete scan supports the exclusion; uncertain topology
+produces one combined confirmation.
+
+Ordinary first-time setup records `ask` for future missing release-note UI and
+waits until an exact protected surface is needed before requesting authority.
+Advanced `allow` and `existing-only` policies remain supported explicitly. This
+prospective change rewrites no released operator history and grants no surface,
+operator access, dependency, deployment, or publication authority.

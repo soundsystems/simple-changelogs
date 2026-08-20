@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "distributions": [
+    { "name": "simple-changelogs", "guidanceVersion": 18 },
+    { "name": "simple-changelogs-cms", "guidanceVersion": 4 },
+    { "name": "simple-changelogs-mobile", "guidanceVersion": 16 },
+    { "name": "simple-changelogs-skill-maintainer", "guidanceVersion": 10 },
+    { "name": "simple-changelogs-web", "guidanceVersion": 17 },
+    { "name": "simple-changelogs-web-cms", "guidanceVersion": 17 }
+  ]
+}

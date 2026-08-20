@@ -524,6 +524,8 @@
         "destinations",
         "developerHistoryEvidence",
         "releasedHistoryCount",
+        "scan",
+        "surfaceApplicability",
         "surfaceStructureEvidence"
       ],
       "properties": {
@@ -561,6 +563,37 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "releasedHistoryCount": { "type": "integer", "minimum": 0 },
+        "scan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filesInspected", "truncated"],
+          "properties": {
+            "filesInspected": { "type": "integer", "minimum": 0 },
+            "truncated": { "type": "boolean" }
+          }
+        },
+        "surfaceApplicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cms", "mobile", "store", "web", "workspace"],
+          "properties": {
+            "cms": {
+              "enum": ["detected", "not-detected", "uncertain"]
+            },
+            "mobile": {
+              "enum": ["detected", "not-detected", "uncertain"]
+            },
+            "store": {
+              "enum": ["detected", "not-detected", "uncertain"]
+            },
+            "web": {
+              "enum": ["detected", "not-detected", "uncertain"]
+            },
+            "workspace": {
+              "enum": ["detected", "not-detected", "uncertain"]
+            }
+          }
+        },
         "surfaceStructureEvidence": {
           "type": "object",
           "additionalProperties": false,

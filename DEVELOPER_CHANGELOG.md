@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+- Added `distribution-manifest.json` as the machine-readable map of all six
+  distributions and their current, independent guidance checkpoints. The README
+  now documents source identity separately from the selected distribution and
+  guidance, while `tooling/distributions.check.ts` enforces manifest parity and
+  the required identity wording across every packaged distribution.
+- Consumer discovery now returns `physicalInstallPaths`, `symlinkPaths`, and
+  deduplicated `resolvedInstallPaths`; the publish loop updates each resolved
+  target once, re-runs discovery, rejects dangling or out-of-scope targets, and
+  verifies the original link topology and `installationCount` before merge.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-20T16:27:21-05:00" -->
+- Reduced first-use onboarding decision load while tightening evidence gates
+  across all six distributions:
+  - Added a one-answer recommended flow that turns inspection evidence into one
+    plain-language receipt and one confirm-or-revise response. Customized setup
+    now defines technical terms at first use and orders questions by dependency:
+    topology, audiences, destinations, destination details, version behavior,
+    audit comments, storage, instruction pointer, then history handling.
+  - Added progressive-disclosure confirmation receipts across every
+    distribution: a compact consequential summary appears first with
+    **Confirm**, **Show details**, and **Change something** actions. The complete
+    receipt remains available, and undisplayed details cannot broaden authority.
+  - Setup inventory now returns scan completeness and per-surface
+    `detected`, `not-detected`, or `uncertain` applicability. Mobile placement is
+    suppressed only after a complete scan finds recognizable non-Mobile product
+    structure; incomplete or low-evidence scans emit one
+    `product-topology-confirmation` question instead.
+  - Replaced Web archive placement and discovery with a two-step flow. **Should
+    I build a Release Notes page?** defines the complete shipped-update history,
+    offers a dedicated page, an existing page, or none, and states that building
+    it does not expose it live. **Who should see Release Notes?** then maps
+    developer, preview-reviewer, and live-visitor labels to
+    `releaseNoteEnvironmentScope`.
+  - Expanded public-version onboarding with explicit automatic-patch/ask-minor-
+    and-major and automatic-patch-and-minor/ask-major choices, plus concrete
+    `1.5.0` to `1.5.1`, `1.6.0`, and `2.0.0` SemVer examples.
+  - Removed the hypothetical `newReleaseNoteSurfaces` authority question from
+    ordinary first-time setup. New policies default to `ask` and defer the
+    decision until an exact missing surface is needed; explicit advanced
+    `allow` and `existing-only` values remain valid with their existing authority
+    limits.
+  - Advanced guidance to full 18, Web and Web+CMS 17, Mobile 16,
+    skill-maintainer 10, and CMS-only 4. These changes are prospective and do
+    not require rewriting released history.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-20T14:41:13-05:00" -->
 - Made product onboarding evidence-led across full, Web, Mobile, Web+CMS, and
   CMS-only distributions:
   - Setup inspection now inventories and reports Web, Mobile, store, CMS,

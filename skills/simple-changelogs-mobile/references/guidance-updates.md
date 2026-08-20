@@ -279,3 +279,32 @@ proposes it and asks before the exact current surface, then rescans and requires
 confirmation or a revised choice. The selection cannot establish that an app,
 store listing, deep link, credential, or release train exists and grants no
 build, signing, submission, or publication authority.
+
+<!-- simple-changelogs-guidance-update version="16" kinds="behavior,onboarding" backfill="not-needed" summary="Mobile setup now offers progressive confirmation receipts, evidence-gated destination questions, and separate source-revision and distribution-guidance identity." -->
+## Guidance 16
+
+Recommended Mobile setup now presents one plain-language receipt covering only
+the app and store destinations supported by repository evidence, then asks for
+one confirmation or requested changes. Guided setup defines unfamiliar terms
+when they matter and asks about destinations before their placement, links, or
+component details.
+
+Install and update reporting now separates the Git source revision, when known,
+from the selected distribution's guidance checkpoint.
+
+Confirmation receipts now show a compact consequential summary first with
+**Confirm**, **Show details**, and **Change something**. The complete receipt
+remains available, and details hidden by default cannot expand setup authority.
+
+Inspection reports scan completeness and detected, not-detected, or uncertain
+app and store applicability. Detailed destination questions are omitted only
+after a complete scan supports the exclusion; uncertainty produces one combined
+product-shape confirmation.
+
+Version setup now distinguishes patch, minor, and major changes with concrete
+SemVer examples and explicitly offers automatic patches while minor and major
+releases still ask. First-time setup records `ask` for missing future UI and
+waits for an exact proposed surface; advanced `allow` and `existing-only`
+policies remain supported. This prospective change rewrites no released history
+and grants no UI, dependency, build, signing, submission, publication, or
+version authority.

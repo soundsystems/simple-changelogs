@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+- Install and update reports now identify the Simple Changelogs source by Git
+  ref or commit when known, then name the selected distribution and its
+  guidance checkpoint. Guidance numbers are distribution-specific behavior
+  checkpoints—not package versions, family-wide release numbers, or source
+  revisions.
+- Publishing now updates compatibility-symlink installations through their real
+  package target and preserves the links, so one physical installation is
+  refreshed once instead of being skipped or counted as a duplicate.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-20T16:27:21-05:00" -->
+- Recommended setup is now a true one-answer path: it explains the repository
+  in everyday language, shows one evidence-backed setup receipt, and asks only
+  for confirmation or requested changes. The guided path also defines unfamiliar
+  terms when they first matter and asks questions in dependency order, so
+  destination details appear only after the destination itself is chosen.
+  Confirmation receipts lead with consequential choices and offer **Confirm**,
+  **Show details**, or **Change something**; the full receipt remains available,
+  and hidden details never expand setup's authority.
+- Setup now reports whether each Web, Mobile, app-store, CMS, or workspace
+  surface was detected, not detected by a complete scan, or remains uncertain.
+  Irrelevant Mobile questions are hidden only when the scan can support that
+  conclusion; otherwise setup asks one combined product-shape question instead
+  of presenting every possible branch.
+- Web archive setup is now two plain-language questions. First, **Should I build
+  a Release Notes page?** defines it as the complete history of shipped updates,
+  offers a dedicated page, an existing page, or no page, and reassures owners
+  that building it does not automatically show it live. Then **Who should see
+  Release Notes?** maps developers, preview reviewers, and live visitors to the
+  environments where the page appears.
+- Public-version setup now explicitly offers automatic patch releases while
+  asking for minor and major releases, alongside the existing granular choices,
+  and illustrates patch, minor, and major changes with `1.5.0` examples. Normal
+  first-time setup no longer asks for standing authority to add hypothetical
+  future release-note UI; it asks about the exact surface when one is actually
+  needed, while advanced `allow` and `existing-only` policies remain supported.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol" at="2026-08-20T14:41:13-05:00" -->
 - Setup now starts by showing what the repository actually contains—Web,
   Mobile, app-store, CMS, workspace, and existing release-note candidates—then
   offers a complete guided walkthrough of the applicable workflows and choices.

@@ -30,6 +30,25 @@ self-contained skill directories. Separate repositories are unnecessary unless
 a distribution later needs independent ownership, versioning, or release
 cadence.
 
+### Guidance versions are distribution-specific
+
+The integer in each distribution's `SKILL.md` is a behavior checkpoint for that
+distribution. It is not a Simple Changelogs family release, package version, or
+claim that one distribution contains the others. Different numbers are
+expected because each distribution changes only when its own behavior changes.
+
+[`distribution-manifest.json`](distribution-manifest.json) lists the current
+guidance checkpoint for every sibling distribution and is verified against the
+installable `SKILL.md` files. The Git ref or commit identifies the shared source
+revision. Report an installation with both identities, for example:
+
+```text
+Installed Simple Changelogs from <git-ref-or-commit>.
+Selected simple-changelogs-skill-maintainer (guidance 10) for this repository.
+```
+
+Do not shorten that to “Simple Changelogs 10” or “Simple Changelogs 18.”
+
 ## Release-note depth and surface isolation
 
 Public notes adapt to their proven audience. General customer destinations keep

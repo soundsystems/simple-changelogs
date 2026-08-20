@@ -26,11 +26,19 @@ The inspection result provides policy state, detected distribution and
 evidence, history counts, release-note-named destination candidates, adjacent
 Updates, News, Blog, or Announcements candidates, developer-history evidence,
 separate Web, Mobile, store, CMS, and workspace structure evidence,
-component-library evidence, global defaults, a recommendation, and unresolved
-questions. A path name or dependency is discovery evidence, not
-proof that a route is reachable, contains release history, or uses that
-component stack for product UI. Do not ask for a choice already established by
-current instructions, repository policy, or trustworthy evidence.
+component-library evidence, scan completeness, per-surface applicability,
+global defaults, a recommendation, and unresolved questions. A path name or
+dependency is discovery evidence, not proof that a route is reachable,
+contains release history, or uses that component stack for product UI. Do not
+ask for a choice already established by current instructions, repository
+policy, or trustworthy evidence.
+
+Use applicability conservatively: `detected` is candidate evidence to verify;
+`not-detected` requires a complete scan with another recognizable product shape
+and suppresses detailed questions without claiming absence; `uncertain` means
+the scan is incomplete or inconclusive, so ask one plain-language topology
+confirmation instead of showing every possible branch. Never exclude a surface
+from one missing framework, path, or dependency. Explicit direction wins.
 
 ## Question presentation contract
 
@@ -47,6 +55,11 @@ Ask one question at a time unless two choices are inseparable. Accept either
 the number or the option label. Do not lead with policy field names, enum values,
 framework jargon, or an unexplained yes/no prompt; show the stored value only as
 secondary detail when it helps an expert verify the receipt.
+
+Assume the owner may be configuring changelogs for the first time. Define terms
+when they affect a choice: CMS means the protected staff admin area, archive
+means the complete-history page, and modal means an announcement window shown
+automatically. Distinguish current changes from preferences saved for later.
 
 Use a compact text diagram when a choice changes audience, environment, data
 flow, or write scope. Keep the diagram beside the options it explains and
@@ -84,7 +97,8 @@ like to set up Simple Changelogs? Choose one:**
 
 1. **Use recommended setup — Recommended** — Apply evidence-backed safe defaults. When
   released history exists, include the full backfill and ask last only whether
-  the user wants to defer or decline it.
+  the user wants to defer or decline it. This is the one-answer path described
+  below.
 2. **Walk me through it** — Explain every main workflow, every destination the
   repository may use, and each preference in plain language, one at a time,
   before saving anything.
@@ -102,11 +116,26 @@ conversation path, not a new stored policy value; a confirmed walkthrough uses
 the customized setup style in the receipt.
 
 The recommended path uses a developer history, hidden agent-and-time audit
-comments, `ask` for future missing destinations, and an archive plus compact
-release summary for product distributions. With no released history, record
-`not-applicable`. With released history, include a comprehensive initial
-backfill by default and offer deferral or refusal as the final onboarding
-choice. Record nothing until the user confirms the setup receipt.
+comments, and `ask` for future missing destinations. Reuse established
+release-note destinations. When none exists, recommend a new current surface
+only when repository evidence and the actual audience support it; otherwise
+recommend canonical changelog files without product UI. A compact summary is
+recommended only for an approved archive serving returning users. With no
+released history, record `not-applicable`. With released history, include a
+comprehensive initial backfill by default and offer deferral or refusal as the
+final onboarding choice. Record nothing until the user confirms the setup
+receipt.
+
+### One-answer recommended setup
+
+For a quick, one-answer, default, or recommended setup, inspect first and do not
+print the questionnaire or a code such as `1A, 2A`. Explain detected and
+uncertain product structure in everyday language, omit `not-detected` branches,
+and put one concise uncertainty assumption in the receipt. Show one recommended
+receipt covering applicable histories, destinations, versions, storage,
+instructions, and history handling. Ask for exactly one response: confirm or
+request changes. Confirmation remains required and does not weaken evidence,
+dependency, authentication, publication, or deployment boundaries.
 
 When that compact summary is an automatic Web modal, recommend **Local and
 preview only** for a marketing, portfolio, brochure, agency, or client-review
@@ -115,6 +144,12 @@ announcements, preserve **All environments** unless repository evidence or the
 owner selects another scope.
 
 ## Customized questions
+
+Ask applicable questions in this order: product shape, history audiences, exact
+current destinations, destination placement/visibility/discovery/links/
+components, versions, audit comments, storage, instruction pointer, then
+released history last. Do not ask downstream questions before their destination
+exists or show choices for a `not-detected` surface unless the user plans it.
 
 Ask project type only when selected distribution and repository evidence remain
 unresolved or conflicting. Ask **What kind of project is this? Choose one:**
@@ -155,19 +190,16 @@ agent-and-time audit comments? Choose one:**
 
 CMS-only has no raw-Markdown signature field.
 
-Ask **When a release needs a release-notes page or modal that this project does
-not have yet, what should happen? Choose one:**
+Do not ask a first-time user for standing authority over hypothetical future
+release-note UI. Initial setup saves `newReleaseNoteSurfaces: "ask"`. When a
+later task actually needs a missing page, modal, route, screen, or navigation
+entry, scan the then-current repository and ask about the exact proposed
+surface, audience, placement, dependencies, and environment exposure.
 
-1. **Ask me first — Recommended** — Pause before adding product UI. Save `ask`.
-2. **You may add it** — The skill may add a release-note destination when the
-   active release needs one. Save `allow`; deployment and publication still
-   require separate authority.
-3. **Use existing destinations only** — Update proven destinations but never
-   add another without a new explicit request. Save `existing-only`.
-
-`allow` covers only scoped product implementation for a missing release-note
-destination. It never grants deployment, publication, store submission, hosted
-release, new-audience, or internal-information authority.
+Keep `allow` and `existing-only` supported for an explicit advanced policy
+request. Explain that `allow` never grants deployment, publication, store
+submission, hosted release, a new audience, or unrelated dependencies. Do not
+offer either value during normal first-time onboarding.
 
 ## Mobile-history placement
 
@@ -222,9 +254,16 @@ store submission, deployment, or publication.
 
 ## Public-version choice
 
-For every distribution that owns a public version, ask: **How should new
-public release versions be chosen?** Offer recommended ask/ask/ask, automatic
-patch and minor with major ask, all automatic, or granular customization.
+For public versions, explain patch (`1.5.0` to `1.5.1`), backward-compatible
+minor (`1.5.0` to `1.6.0`), and potentially breaking major (`1.5.0` to
+`2.0.0`). Ask **How should new public release versions be chosen?** Offer:
+
+1. **Ask for patch, minor, and major — Recommended** — Suggest, then wait.
+2. **Automatic patch; ask for minor and major** — Automate routine fixes.
+3. **Automatic patch and minor; ask for major** — Pause for breaking releases.
+4. **All automatic** — Select every version without approval.
+5. **Customize each level** — Set each to `ask` or `automatic`.
+
 Persist only the resolved `patch`, `minor`, `major`, and
 `suggestWhenAsking` object. When any level asks, offer exact suggestions
 (recommended) or no suggestion; suppress this question when all are automatic.
@@ -316,31 +355,24 @@ audience, and release coverage. Classify it as:
 Do not treat a route called Updates or Release Notes as an established archive
 from its name alone. When a suitable archive already exists, propose
 synchronizing and seeding that archive instead of creating a duplicate. When
-no suitable archive exists, ask **Where should the complete release history
-live? Choose one:**
+no suitable archive exists, ask **Should I build a Release Notes page? This is
+the complete history of shipped updates. Choose where it should go. Don't
+worry: building it does not automatically show it to live visitors. If you
+choose a page or section, the very next question asks who should see it.**
 
-1. **Add a Release Notes tab or section there** — use when the existing
-  destination can keep editorial posts and chronological release history
-  clearly separated.
-2. **Create a dedicated Release Notes page — Recommended for editorial
-   sites** — use when the existing
-  destination is primarily a blog, newsroom, announcement feed, or marketing
-  channel.
-3. **Do not add a public archive now** — keep the candidate unchanged and limit
+1. **Add Release Notes to an existing page** — Name the route. Use this when
+  that page can keep its current content and chronological release history
+  clearly separated. Its visibility is chosen next.
+2. **Create a dedicated Release Notes page — Recommended for editorial sites**
+  — Normally use `/release-notes` when an existing blog, newsroom,
+  announcement feed, or marketing page would become cluttered. Its visibility
+  is chosen next.
+3. **Do not add a Web archive now** — keep the candidate unchanged and limit
   the task to canonical changelog work.
 
-If the product has returning users and the user selects a public archive, ask
-**How should people discover the latest release? Choose one:**
-
-1. **Automatic Release Notes modal — Recommended for product apps** — show only the latest
-  qualifying highlights to eligible returning users and link to the selected
-  full archive.
-2. **Manual Release Notes summary** — keep a compact summary reachable without
-  automatic display.
-3. **Archive only** — add no compact surface.
-
-For every approved public Web archive, immediately ask **In which environments
-should Release Notes be available? Choose one:**
+For every approved Web archive, immediately ask **Who should see Release
+Notes? Choose one:** Explain that this controls where the archive is shown, not
+account permissions or who is allowed to edit it.
 
 ```text
                          Local       Preview       Production
@@ -350,21 +382,20 @@ should Release Notes be available? Choose one:**
 4. Disabled             HIDDEN        HIDDEN           HIDDEN
 ```
 
-1. **All environments — Current behavior** — Local developers, preview
-   reviewers, and production visitors can open the Release Notes page; any
+1. **Developers, preview reviewers, and live visitors** — Show Release Notes in
+   all environments. Any
    selected navigation, manual summary, or automatic modal may also appear.
    Save `all-environments`.
-2. **Local and preview only — Recommended for marketing and client sites** —
-   Keep the page and any selected entry points or modal available throughout
-   local development and recognized previews. In production, do not serve the
-   route or expose navigation, manual links, summaries, or the modal. Save
-   `non-production`.
-3. **Production deployments only** — Hide the page and every entry point in
-   local development and previews; expose the selected Release Notes surfaces
-   only in production. Save `production-only`.
-4. **Disabled everywhere** — Do not serve or link the Release Notes page and do
-   not render a summary or modal in any environment. Save `disabled`; canonical
-   changelog generation and archive-data synchronization can still continue.
+2. **Developers and preview reviewers only — Recommended for marketing and
+   client sites** — Show the page and any selected entry points or modal during
+   local development and review previews. Live visitors do not see the route,
+   navigation, links, summaries, or modal. Save `non-production`.
+3. **Live visitors only** — Hide the page and every entry point during local
+   development and review previews; show the selected Release Notes surfaces
+   only on the live production site. Save `production-only`.
+4. **No one yet** — Do not show or link the Release Notes page anywhere. Save
+   `disabled`; canonical changelog generation and archive-data synchronization
+   can still continue.
 
 Use the repository's authoritative environment signal. Local development is
 non-production. Do not guess from hostnames or branch names. Enforce the choice
@@ -377,6 +408,18 @@ not changelog generation, archive-data synchronization, deployment, or
 publication.
 Record the selected value as repository policy
 `releaseNoteEnvironmentScope`.
+
+Only after visibility is understood, and only when the selected environments
+serve returning users, ask **How should people discover the latest release?
+Choose one:**
+
+1. **Automatic Release Notes modal — Recommended for product apps** — show only
+  the latest qualifying highlights to eligible returning users in the selected
+  environments and link to the full archive.
+2. **Manual Release Notes summary** — keep a compact summary reachable without
+  automatic display in the selected environments.
+3. **Archive only — Recommended for marketing and client-review sites** — add
+  no compact surface.
 
 When any product release-note destination is selected, ask **Should individual
 release items link directly to the feature they describe? Choose one:**
@@ -538,13 +581,13 @@ the receipt accepts the displayed default.
 
 ## Confirm, apply, and continue
 
-Before durable writes, show a receipt naming the selected distribution,
-audiences, signatures, missing-destination behavior, any contextual product
-surface choices, release-note environment scope, feature-link policy, component source, every dependency to
-add, archive-seeding
-disposition, history disposition, and every policy or preference path. State
-that setup grants no deployment, publication, store-submission, CMS-access, or
-unrelated released-history authority. Require confirmation.
+Prepare full details, but first show a compact **Here's what will happen**
+confirmation covering files, exact new surfaces, who sees them, version
+automation, dependencies, history handling, and excluded authority. End with
+**Confirm**, **Show details**, or **Change something**. Details include every
+resolved policy, package, path, label, environment, and authority boundary. A
+compact confirmation authorizes only named outcomes; hidden detail can never
+expand its scope. Show details first if compact authority would be ambiguous.
 
 Then pass explicit choices to the helper:
 

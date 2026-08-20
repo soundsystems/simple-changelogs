@@ -241,13 +241,13 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 17,
-  mobile: 15,
-  "skill-repository": 9,
-  web: 16,
-  "web-cms": 16,
+  full: 18,
+  mobile: 16,
+  "skill-repository": 10,
+  web: 17,
+  "web-cms": 17,
 } as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 3;
+const CMS_GUIDANCE_VERSION = 4;
 
 const DISTRIBUTION_DIRECTORIES = {
   cms: "simple-changelogs-cms",
@@ -331,6 +331,17 @@ interface Inventory {
   destinations: string[];
   developerHistoryEvidence: string[];
   releasedHistoryCount: number;
+  scan: {
+    filesInspected: number;
+    truncated: boolean;
+  };
+  surfaceApplicability: {
+    cms: SurfaceApplicability;
+    mobile: SurfaceApplicability;
+    store: SurfaceApplicability;
+    web: SurfaceApplicability;
+    workspace: SurfaceApplicability;
+  };
   surfaceStructureEvidence: {
     cms: string[];
     mobile: string[];
@@ -339,6 +350,8 @@ interface Inventory {
     workspace: string[];
   };
 }
+
+type SurfaceApplicability = "detected" | "not-detected" | "uncertain";
 
 interface Recommendation {
   cmsPolicy: CmsPolicy | null;
@@ -1133,7 +1146,15 @@ const countReleasedHeadings = async (path: string): Promise<number> => {
   }
 };
 
-const walkTextFiles = async (root: string, limit = 400): Promise<string[]> => {
+interface TextFileScan {
+  files: string[];
+  truncated: boolean;
+}
+
+const walkTextFiles = async (
+  root: string,
+  limit = 400
+): Promise<TextFileScan> => {
   const visit = async (directory: string): Promise<string[]> => {
     let entries: Dirent[];
     try {
@@ -1155,9 +1176,13 @@ const walkTextFiles = async (root: string, limit = 400): Promise<string[]> => {
         return textFile ? [path] : [];
       })
     );
-    return nested.flat().slice(0, limit);
+    return nested.flat().slice(0, limit + 1);
   };
-  return (await visit(root)).slice(0, limit);
+  const discovered = await visit(root);
+  return {
+    files: discovered.slice(0, limit),
+    truncated: discovered.length > limit,
+  };
 };
 
 const readSmallText = async (path: string): Promise<string> => {
@@ -1310,11 +1335,12 @@ const inspectInventory = async (
 ): Promise<Inventory> => {
   const publicPath = join(root, "CHANGELOG.md");
   const developerPath = join(root, "DEVELOPER_CHANGELOG.md");
-  const [publicReleases, developerReleases, files] = await Promise.all([
+  const [publicReleases, developerReleases, scan] = await Promise.all([
     countReleasedHeadings(publicPath),
     countReleasedHeadings(developerPath),
     walkTextFiles(root),
   ]);
+  const { files } = scan;
   const developerHistoryEvidence: string[] = [];
   if (existsSync(developerPath)) {
     developerHistoryEvidence.push("DEVELOPER_CHANGELOG.md exists");
@@ -1417,6 +1443,27 @@ const inspectInventory = async (
       cmsEvidence.add(`${DEFAULT_CMS_CHANGELOG} exists but is malformed`);
     }
   }
+  const surfaceStructureEvidence = {
+    cms: [...cmsEvidence].sort(),
+    mobile: [...mobileStructureEvidence].sort(),
+    store: [...storeStructureEvidence].sort(),
+    web: [...webStructureEvidence].sort(),
+    workspace: [...workspaceStructureEvidence].sort(),
+  };
+  const hasProjectTopologyEvidence =
+    surfaceStructureEvidence.cms.length > 0 ||
+    surfaceStructureEvidence.mobile.length > 0 ||
+    surfaceStructureEvidence.store.length > 0 ||
+    surfaceStructureEvidence.web.length > 0 ||
+    surfaceStructureEvidence.workspace.length > 0;
+  const applicabilityFor = (evidence: string[]): SurfaceApplicability => {
+    if (evidence.length > 0) {
+      return "detected";
+    }
+    return !scan.truncated && hasProjectTopologyEvidence
+      ? "not-detected"
+      : "uncertain";
+  };
   return {
     adjacentDestinations: [...adjacentDestinations].sort(),
     changelogs: [
@@ -1445,13 +1492,18 @@ const inspectInventory = async (
       developerReleases,
       cmsReleased
     ),
-    surfaceStructureEvidence: {
-      cms: [...cmsEvidence].sort(),
-      mobile: [...mobileStructureEvidence].sort(),
-      store: [...storeStructureEvidence].sort(),
-      web: [...webStructureEvidence].sort(),
-      workspace: [...workspaceStructureEvidence].sort(),
+    scan: {
+      filesInspected: files.length,
+      truncated: scan.truncated,
     },
+    surfaceApplicability: {
+      cms: applicabilityFor(surfaceStructureEvidence.cms),
+      mobile: applicabilityFor(surfaceStructureEvidence.mobile),
+      store: applicabilityFor(surfaceStructureEvidence.store),
+      web: applicabilityFor(surfaceStructureEvidence.web),
+      workspace: applicabilityFor(surfaceStructureEvidence.workspace),
+    },
+    surfaceStructureEvidence,
   };
 };
 
@@ -1577,7 +1629,7 @@ const recommendationFor = (
             backfillStatus: backfillStatus ?? ("partial" as const),
             version: GUIDANCE_VERSIONS[installed],
           },
-          newReleaseNoteSurfaces: reusableDefaults.newReleaseNoteSurfaces,
+          newReleaseNoteSurfaces: "ask",
           publicVersioning:
             reusableDefaults.publicVersioning ?? SAFE_PUBLIC_VERSIONING,
           schemaVersion: 1 as const,
@@ -1682,6 +1734,19 @@ const ownerWriteReceiptFor = (
   written,
 });
 
+const mobileTopologyQuestionFor = (
+  inventory: Inventory
+): "mobile-release-note-placement" | "product-topology-confirmation" | null => {
+  const { mobile, store } = inventory.surfaceApplicability;
+  if (mobile === "detected" || store === "detected") {
+    return "mobile-release-note-placement";
+  }
+  if (mobile === "uncertain" || store === "uncertain") {
+    return "product-topology-confirmation";
+  }
+  return null;
+};
+
 const unresolvedFor = (
   installed: Distribution | "cms",
   inventory: Inventory,
@@ -1698,7 +1763,10 @@ const unresolvedFor = (
     (policy.state === "absent" ||
       policy.value?.mobileReleaseNotePlacement === undefined)
   ) {
-    unresolved.push("mobile-release-note-placement");
+    const mobileQuestion = mobileTopologyQuestionFor(inventory);
+    if (mobileQuestion) {
+      unresolved.push(mobileQuestion);
+    }
   }
   if (
     (installed === "cms" || installed === "web-cms") &&
@@ -2122,6 +2190,12 @@ const selectionFrom = (
           options,
           defaults.publicVersioning ?? SAFE_PUBLIC_VERSIONING
         );
+  const inferredMobilePlacement =
+    installed === "full" &&
+    inspect.inventory.surfaceApplicability.mobile === "not-detected" &&
+    inspect.inventory.surfaceApplicability.store === "not-detected"
+      ? "mobile-only"
+      : undefined;
   return {
     backfillStatus:
       options.backfillStatus ??
@@ -2131,15 +2205,14 @@ const selectionFrom = (
     crossSurfaceVersioning: options.crossSurfaceVersioning,
     developerChangelog:
       options.developerChangelog ?? defaults.developerChangelog,
-    mobileReleaseNotePlacement: options.mobileReleaseNotePlacement,
+    mobileReleaseNotePlacement:
+      options.mobileReleaseNotePlacement ?? inferredMobilePlacement,
     newReleaseNoteSurfaceComponents:
       options.newReleaseNoteSurfaceComponents ??
       (inspect.inventory.designSystemEvidence.length > 0
         ? "project-components"
         : undefined),
-    newReleaseNoteSurfaces:
-      options.newReleaseNoteSurfaces ??
-      (installed === "cms" ? "existing-only" : defaults.newReleaseNoteSurfaces),
+    newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "ask",
     publicVersioning,
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
     releaseNoteLinks: options.releaseNoteLinks,

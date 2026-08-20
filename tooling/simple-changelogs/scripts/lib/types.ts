@@ -244,6 +244,17 @@ export interface SetupInventory {
   destinations: string[];
   developerHistoryEvidence: string[];
   releasedHistoryCount: number;
+  scan: {
+    filesInspected: number;
+    truncated: boolean;
+  };
+  surfaceApplicability: {
+    cms: "detected" | "not-detected" | "uncertain";
+    mobile: "detected" | "not-detected" | "uncertain";
+    store: "detected" | "not-detected" | "uncertain";
+    web: "detected" | "not-detected" | "uncertain";
+    workspace: "detected" | "not-detected" | "uncertain";
+  };
   surfaceStructureEvidence: {
     cms: string[];
     mobile: string[];

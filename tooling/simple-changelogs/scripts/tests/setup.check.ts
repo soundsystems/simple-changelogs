@@ -26,6 +26,14 @@ import {
 } from "../setup.ts";
 
 const temporaryPaths: string[] = [];
+const topologyConfirmationPattern = /confirmation\s+instead of showing every/u;
+const compactReceiptChoicesPattern =
+  /\*\*Confirm\*\*, \*\*Show details\*\*, or \*\*Change\s+something\*\*/u;
+const releaseNotesAudienceQuestionPattern = /Who should see Release\s+Notes\?/u;
+const accountPermissionsClarificationPattern = /not\s+account permissions/u;
+const hiddenAuthorityExpansionPattern =
+  /hidden detail can never\s+expand its scope/u;
+
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
   temporaryPaths.push(path);
@@ -105,12 +113,13 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "not-needed",
-      currentVersion: 16,
+      currentVersion: 17,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
         "Web setup now verifies real destinations and product structure before reusing, proposing, or recording a surface as planned.",
+        "Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity.",
       ],
       userPrompt: null,
       walkthroughQuestion:
@@ -119,6 +128,10 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate?.changes[0]).toMatchObject({
       kinds: ["capability", "behavior", "onboarding"],
       version: 16,
+    });
+    expect(inspection.guidanceUpdate?.changes[1]).toMatchObject({
+      kinds: ["behavior", "onboarding"],
+      version: 17,
     });
 
     const rejected = await applySetup({
@@ -149,7 +162,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 16,
+      version: 17,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -345,6 +358,101 @@ describe("setup inspection", () => {
     expect(result.detection.evidence).toContain(
       "Package metadata indicates a web application"
     );
+    expect(result.inventory.scan.truncated).toBe(false);
+    expect(result.inventory.surfaceApplicability).toEqual({
+      cms: "not-detected",
+      mobile: "not-detected",
+      store: "not-detected",
+      web: "detected",
+      workspace: "not-detected",
+    });
+  });
+
+  test("suppresses irrelevant mobile placement only after a complete, recognizable scan", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web-only-product",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+    const configured = await applySetup({
+      backfillStatus: "not-applicable",
+      configDirectory: config,
+      confirm: true,
+      distribution: "full",
+      repo,
+      scope: "repository",
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(result.inventory.surfaceApplicability.mobile).toBe("not-detected");
+    expect(result.inventory.surfaceApplicability.store).toBe("not-detected");
+    expect(result.unresolvedQuestions).not.toContain(
+      "mobile-release-note-placement"
+    );
+    expect(result.unresolvedQuestions).not.toContain(
+      "product-topology-confirmation"
+    );
+    expect(configured.status).toBe("configured");
+    expect(policy.mobileReleaseNotePlacement).toBe("mobile-only");
+  });
+
+  test("asks one topology confirmation when the scan cannot support exclusions", async () => {
+    const { config, repo } = await fixture();
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.surfaceApplicability.mobile).toBe("uncertain");
+    expect(result.inventory.surfaceApplicability.store).toBe("uncertain");
+    expect(result.unresolvedQuestions).toContain(
+      "product-topology-confirmation"
+    );
+    expect(result.unresolvedQuestions).not.toContain(
+      "mobile-release-note-placement"
+    );
+  });
+
+  test("does not infer absent surfaces from a truncated repository scan", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "large-web-product",
+    });
+    await mkdir(join(repo, "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 400 }, (_, index) =>
+        writeFile(
+          join(repo, "src", `module-${index.toString().padStart(3, "0")}.ts`),
+          `export const value${index} = ${index};\n`,
+          "utf8"
+        )
+      )
+    );
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.scan).toEqual({
+      filesInspected: 400,
+      truncated: true,
+    });
+    expect(result.inventory.surfaceApplicability.web).toBe("detected");
+    expect(result.inventory.surfaceApplicability.mobile).toBe("uncertain");
+    expect(result.unresolvedQuestions).toContain(
+      "product-topology-confirmation"
+    );
   });
 
   test("separates editorial update candidates from release-note-named candidates", async () => {
@@ -503,6 +611,16 @@ describe("setup inspection", () => {
       "Workspace application path: apps/mobile",
       "Workspace application path: apps/web",
     ]);
+    expect(result.inventory.surfaceApplicability).toEqual({
+      cms: "detected",
+      mobile: "detected",
+      store: "detected",
+      web: "detected",
+      workspace: "detected",
+    });
+    expect(result.unresolvedQuestions).toContain(
+      "mobile-release-note-placement"
+    );
   });
 
   test("recognizes conventional web routes without treating store metadata as a mobile app", async () => {
@@ -546,6 +664,8 @@ describe("setup inspection", () => {
       "Store-release metadata path: fastlane/metadata/android/en-US/changelogs/120.txt"
     );
     expect(result.inventory.surfaceStructureEvidence.mobile).toEqual([]);
+    expect(result.inventory.surfaceApplicability.mobile).toBe("not-detected");
+    expect(result.inventory.surfaceApplicability.store).toBe("detected");
   });
 
   test("offers a surface only where a distribution can own one", async () => {
@@ -592,7 +712,7 @@ describe("setup inspection", () => {
       developerChangelog: "required",
       distribution: "full",
       guidance: { backfillStatus: "not-applicable", version: 6 },
-      newReleaseNoteSurfaces: "ask",
+      newReleaseNoteSurfaces: "allow",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",
     });
@@ -672,6 +792,7 @@ describe("setup application", () => {
     expect(result.recommendation.policy?.publicVersioning?.patch).toBe(
       "automatic"
     );
+    expect(result.recommendation.policy?.newReleaseNoteSurfaces).toBe("ask");
     expect(result.onboardingContribution).toMatchObject({
       destination: ".simple-changelogs.json",
       owner: "simple-changelogs",
@@ -710,13 +831,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(17);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(18);
 
     const distributionVersions = [
-      ["web", 16],
-      ["mobile", 15],
-      ["web-cms", 16],
-      ["skill-repository", 9],
+      ["web", 17],
+      ["mobile", 16],
+      ["web-cms", 17],
+      ["skill-repository", 10],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -1239,14 +1360,14 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 3,
+      currentVersion: 4,
       recordedVersion: 1,
       userPrompt: null,
     });
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 3,
+      version: 4,
     });
   });
 
@@ -1451,7 +1572,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 16 },
+      guidance: { backfillStatus: "not-applicable", version: 17 },
       newReleaseNoteSurfaces: "ask",
       publicVersioning: {
         major: "ask",
@@ -1499,6 +1620,75 @@ test("global preference validation rejects unknown authority and repository fiel
       signatures: "agent-and-timestamp",
     }).errors
   ).not.toEqual([]);
+});
+
+test("every onboarding package preserves the one-answer, plain-language contract", async () => {
+  const sourceRoot = fileURLToPath(
+    new URL("../../../../skills", import.meta.url)
+  );
+  const distributions = [
+    "simple-changelogs",
+    "simple-changelogs-cms",
+    "simple-changelogs-mobile",
+    "simple-changelogs-skill-maintainer",
+    "simple-changelogs-web",
+    "simple-changelogs-web-cms",
+  ];
+
+  await Promise.all(
+    distributions.map(async (directory) => {
+      const onboarding = await readFile(
+        join(sourceRoot, directory, "references", "onboarding.md"),
+        "utf8"
+      );
+      expect(onboarding).toContain("### One-answer recommended setup");
+      expect(onboarding).toContain("Ask for exactly one response");
+      expect(onboarding).toContain("Assume the owner may be configuring");
+      expect(onboarding).toMatch(topologyConfirmationPattern);
+      expect(onboarding).toContain(
+        "Do not ask a first-time user for standing authority"
+      );
+      expect(onboarding).not.toContain(
+        "When a release needs a release-notes page or modal"
+      );
+      expect(onboarding).toContain("show a compact **Here's");
+      expect(onboarding).toMatch(compactReceiptChoicesPattern);
+      expect(onboarding).toMatch(hiddenAuthorityExpansionPattern);
+    })
+  );
+
+  const fullOnboarding = await readFile(
+    join(sourceRoot, "simple-changelogs", "references", "onboarding.md"),
+    "utf8"
+  );
+  expect(fullOnboarding).toContain("Automatic patch; ask for minor and major");
+  expect(fullOnboarding).toContain("`1.5.0` to `1.5.1`");
+  expect(fullOnboarding).toContain("authenticated CMS history");
+
+  const webOnboardings = await Promise.all(
+    [
+      "simple-changelogs",
+      "simple-changelogs-web",
+      "simple-changelogs-web-cms",
+    ].map((directory) =>
+      readFile(
+        join(sourceRoot, directory, "references", "onboarding.md"),
+        "utf8"
+      )
+    )
+  );
+
+  for (const onboarding of webOnboardings) {
+    expect(onboarding).toContain("Should I build a Release Notes page?");
+    expect(onboarding).toContain(
+      "building it does not automatically show it to live visitors"
+    );
+    expect(onboarding).toMatch(releaseNotesAudienceQuestionPattern);
+    expect(onboarding).toMatch(accountPermissionsClarificationPattern);
+    expect(onboarding.search(releaseNotesAudienceQuestionPattern)).toBeLessThan(
+      onboarding.indexOf("How should people discover")
+    );
+  }
 });
 
 test("every copied distribution runs its self-contained setup helper", async () => {

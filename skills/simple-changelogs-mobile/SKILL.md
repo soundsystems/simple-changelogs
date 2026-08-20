@@ -13,7 +13,11 @@ CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established mobile and store destinations mirror release-scoped highlights.
 
-Current guidance version: 15
+Current guidance version: 16
+
+Guidance is a distribution-specific behavior checkpoint, not the Simple
+Changelogs family version or installed source revision. Installation reports
+name this distribution, its guidance, and the Git ref or commit when known.
 
 ## Distribution checkpoint
 
