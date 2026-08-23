@@ -178,3 +178,14 @@ release-note UI to `ask`; advanced `allow` and `existing-only` policies remain
 supported when explicitly requested. This prospective change rewrites no
 released history and grants no tagging, package publication, hosted-release,
 downstream-distribution, UI, dependency, or version authority.
+
+<!-- simple-changelogs-guidance-update version="11" kinds="behavior,onboarding" backfill="not-needed" summary="Skill release notes now group related bullets by skill area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section." -->
+## Guidance 11
+
+Skill-package release notes now group related changes under user-recognizable
+skill areas by default, merge repeated areas, and keep sparse releases flat.
+Onboarding confirms whether stable major releases should receive a concise,
+evidence-based name beside the canonical version. Minor releases require no
+name, and patches always use one flat **Bug Fixes & Improvements** section.
+These preferences apply prospectively without rewriting released history or
+granting tagging, publication, or downstream-distribution authority.

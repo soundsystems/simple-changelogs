@@ -74,6 +74,25 @@ or transient control state.
 Keep emphasis accessible without relying on color alone, escape or render
 untrusted text safely, and cover plain text, repeated terms, malformed markers,
 and emphasized text containing reserved characters in renderer tests.
+## Group titles and categories
+
+When `releaseNoteGrouping` is `product-areas`, use short user-facing product
+areas rather than implementation, commit, or release-process labels. Structured
+entries should provide the group explicitly for new work; a renderer may map
+legacy singleton notes only when the category is stable and unambiguous.
+
+Render exactly one group for each title in a release. Merge matching groups
+across the whole release, order them by user importance, and keep a singleton
+flat when a category would add no scanning value. Use **Bug Fixes &
+Improvements** only as the final miscellaneous fallback; never use **Updates**
+as a category.
+
+Patch releases use **Bug Fixes & Improvements** as the release title and render
+a flat list with no group layer beneath it. When the preference is `flat`,
+render release-level bullets directly while preserving feature-led nested
+outcomes that belong to one named feature.
+
+
 ## Verification
 
 Verify every authorized surface:
@@ -91,8 +110,6 @@ Verify every authorized surface:
 11. Signature comments never become visible copy.
 12. Overlays respect sticky chrome, safe areas, and required notices.
 13. Cold start and post-update launch show no unstyled flash or stale copy.
-14. Named product terms use sparse semantic emphasis without turning whole
-    sentences into accent text.
 14. Named product terms use sparse semantic emphasis without turning whole
     sentences into accent text.
 

@@ -406,21 +406,30 @@ Before writing `now makes it easier to...`, ask whether users already had that
 action. If the answer is no, name the new capability instead of comparing it to
 a nonexistent prior flow.
 
-## Grouping and Wording Examples
++## Grouping and Wording Examples
 
-When a release introduces a feature or a feature area has multiple visible
-changes, group those changes under one casual top-level feature heading with
-nested bullets. The heading can feel like a small launch announcement, but keep
-it plain and useful.
+When `releaseNoteGrouping` is `product-areas`, group related bullets under
+short product areas users recognize, not implementation layers, commits, or
+release mechanics. Merge every matching area across the release, then order the
+groups by user importance. Use a flat bullet instead of creating a one-bullet
+category merely for symmetry.
 
 ```md
 ## 1.4.0 - YYYY-MM-DD
 
-- Added clearer product analytics:
+- **Product analytics**:
   - Charts now separate totals from measured rows.
   - Tooltips now explain where each number came from.
-- Fixed shared links so previews show the current product image and title.
+- **Sharing**:
+  - Shared links now show the current product image and title.
 ```
 
-Use flat bullets only when the changes are unrelated or too small to benefit
-from grouping.
+Use **Bug Fixes & Improvements** only as the final fallback for genuinely
+miscellaneous outcomes. A patch release uses that phrase as its sole release
+title and keeps all bullets flat; never repeat it as a category or add another
+category layer. If the contents require a feature or breaking-change story,
+correct the release level instead of forcing them into a patch.
+
+When the preference is `flat`, keep unrelated outcomes as release-level
+bullets. A named feature may still use nested bullets when several user actions
+or benefits belong to that one feature.

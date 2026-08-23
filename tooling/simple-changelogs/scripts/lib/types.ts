@@ -35,6 +35,11 @@ export const RELEASE_NOTE_LINK_POLICIES = [
   "ask",
   "disabled",
 ] as const;
+export const RELEASE_NOTE_GROUPING_POLICIES = [
+  "product-areas",
+  "flat",
+] as const;
+export const MAJOR_RELEASE_NAMING_POLICIES = ["named", "version-only"] as const;
 export const DEVELOPER_CHANGELOG_POLICIES = ["required", "optional"] as const;
 export const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 export const SETUP_STYLES = ["recommended", "customized"] as const;
@@ -118,6 +123,10 @@ export type CrossSurfaceVersioning =
 export type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 export type ReleaseNoteLinkPolicy = (typeof RELEASE_NOTE_LINK_POLICIES)[number];
+export type ReleaseNoteGroupingPolicy =
+  (typeof RELEASE_NOTE_GROUPING_POLICIES)[number];
+export type MajorReleaseNamingPolicy =
+  (typeof MAJOR_RELEASE_NAMING_POLICIES)[number];
 export type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 export type DeveloperChangelogPolicy =
@@ -150,11 +159,13 @@ export interface RepoPolicy {
     version: number;
     backfillStatus: BackfillStatus;
   };
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
@@ -162,9 +173,11 @@ export interface RepoPolicy {
 
 export interface GlobalPreferences {
   developerChangelog: DeveloperChangelogPolicy;
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   newReleaseNoteSurfaces: SurfacePolicy;
   profile: "solo-developer";
   publicVersioning?: PublicVersioningPolicy;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   schemaVersion: 1;
   setupStyle: SetupStyle;
   signatures: SignaturePolicy;
@@ -193,11 +206,13 @@ export interface SetupSelection {
   backfillStatus?: BackfillStatus;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: SetupScope;
   setupStyle?: SetupStyle;
@@ -317,10 +332,17 @@ export interface SetupResult {
     destination: ".simple-changelogs.json";
     owner: "simple-changelogs";
     questions: {
-      id: "public-version-actions" | "public-version-suggestions";
+      id:
+        | "major-release-naming"
+        | "public-version-actions"
+        | "public-version-suggestions";
       required: boolean;
     }[];
     resolvedPolicy: PublicVersioningPolicy;
+    resolvedPreferences: {
+      majorReleaseNaming: MajorReleaseNamingPolicy;
+      releaseNoteGrouping: ReleaseNoteGroupingPolicy;
+    };
     summary: string;
   } | null;
   onboardingRequired: boolean;

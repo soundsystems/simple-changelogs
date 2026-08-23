@@ -185,6 +185,8 @@ record one of:
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
+  "releaseNoteGrouping": "product-areas",
+  "majorReleaseNaming": "named",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
   "crossSurfaceVersioning": "independent",
@@ -217,6 +219,15 @@ individual release item to a verified app route or screen; it does not disable
 summary-to-archive navigation. The setting is repository-only, and every target
 must ship in the same release and match audience, permission, feature-flag,
 platform, and environment eligibility.
+
+Public-history distributions record `releaseNoteGrouping` as `product-areas`
+(the default) or `flat`, and `majorReleaseNaming` as `named` (the default) or
+`version-only`. Product-area grouping merges repeated user-recognizable areas
+and avoids one-bullet categories. Stable majors may receive a reviewed
+descriptive title beside the canonical version. Minor releases require no
+title; patches use **Bug Fixes & Improvements** with a flat bullet list and no
+second category layer. Both choices are portable onboarding preferences and
+grant no version, publication, deployment, or store authority.
 A sole repo-local distribution is selection evidence. A global installation is
 only availability; it does not override a repo-local distro or explicit
 repository instructions. When selection conflicts, agents stop before writing
@@ -256,6 +267,8 @@ default; confirming the receipt starts it without a separate approval.
 ```sh
 bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --developer-history required \
+  --release-note-grouping product-areas \
+  --major-release-naming named \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
   --backfill not-applicable \
@@ -266,7 +279,8 @@ bun skills/simple-changelogs-web/scripts/setup.ts apply \
 ```
 
 `--scope all-projects` saves a private solo-developer profile containing only
-developer-history, signature, missing-surface, and setup-style defaults.
+developer-history, release-note grouping, major-release naming, signature,
+missing-surface, version-selection, and setup-style defaults.
 Repository distribution, audiences, destinations, routes, authentication,
 released-history state, metadata, and publication authority are always
 rediscovered. Storage uses:

@@ -116,7 +116,8 @@ conversation path, not a new stored policy value; a confirmed walkthrough uses
 the customized setup style in the receipt.
 
 The recommended path uses a developer history, hidden agent-and-time audit
-comments, and `ask` for future missing destinations. Reuse established
+comments, product-area release-note grouping, named stable major releases, and
+`ask` for future missing destinations. Reuse established
 release-note destinations. When none exists, recommend a new current surface
 only when repository evidence and the actual audience support it; otherwise
 recommend canonical changelog files without product UI. A compact summary is
@@ -132,10 +133,11 @@ For a quick, one-answer, default, or recommended setup, inspect first and do not
 print the questionnaire or a code such as `1A, 2A`. Explain detected and
 uncertain product structure in everyday language, omit `not-detected` branches,
 and put one concise uncertainty assumption in the receipt. Show one recommended
-receipt covering applicable histories, destinations, versions, storage,
-instructions, and history handling. Ask for exactly one response: confirm or
-request changes. Confirmation remains required and does not weaken evidence,
-dependency, authentication, publication, or deployment boundaries.
+receipt covering applicable histories, destinations, release-note grouping,
+major-release naming, versions, storage, instructions, and history handling.
+Ask for exactly one response: confirm or request changes. Confirmation remains
+required and does not weaken evidence, dependency, authentication, publication,
+or deployment boundaries.
 
 When that compact summary is an automatic Web modal, recommend **Local and
 preview only** for a marketing, portfolio, brochure, agency, or client-review
@@ -147,9 +149,10 @@ owner selects another scope.
 
 Ask applicable questions in this order: product shape, history audiences, exact
 current destinations, destination placement/visibility/discovery/links/
-components, versions, audit comments, storage, instruction pointer, then
-released history last. Do not ask downstream questions before their destination
-exists or show choices for a `not-detected` surface unless the user plans it.
+components, versions, release-note organization and stable-major naming, audit
+comments, storage, instruction pointer, then released history last. Do not ask
+downstream questions before their destination exists or show choices for a
+`not-detected` surface unless the user plans it.
 
 Ask project type only when selected distribution and repository evidence remain
 unresolved or conflicting. Ask **What kind of project is this? Choose one:**
@@ -278,6 +281,33 @@ For coordinated Simple Changes onboarding, return only these applicable
 questions, the resolved summary, owner `simple-changelogs`, and exact policy
 destination. Each owner writes its own policy. Preserve a successful owner
 write on partial failure and resume from inspection and write receipts.
+
++## Release-note organization and major names
+
+Recommended setup records `releaseNoteGrouping: "product-areas"`. Related
+bullets are grouped under short product areas that users recognize, repeated
+areas are merged across the release, and important areas come first. Do not
+create one-bullet categories merely for symmetry. `flat` keeps release bullets
+flat but still allows nested outcomes beneath one named feature. Show this
+default in the receipt; ask the grouping choice only on **Customize**, **Change
+something**, or an explicit grouping request.
+
+During every public-history onboarding, ask **Should stable major releases have
+descriptive names? Choose one:**
+
+1. **Name major releases — Recommended** — Save `majorReleaseNaming: "named"`.
+   A reviewed title such as **A New Foundation** sits beside the real `2.0.0`
+   identity; the name never replaces the version.
+2. **Use version numbers only** — Save `majorReleaseNaming: "version-only"`.
+   Major releases keep their version and date without a generated title.
+
+Minor releases require no release name. Patch releases use **Bug Fixes &
+Improvements**, keep their bullets flat, and never add category groups beneath
+that title. If the proposed contents require a feature or breaking-change
+story, correct the release level instead of forcing them into the patch
+template. Existing released titles remain unchanged unless a separately
+authorized historical correction applies.
+
 
 ## Contextual product-surface choice
 
@@ -498,6 +528,8 @@ Repository scope writes visible policy beside the histories. All-projects scope
 also writes a private `preferences.json` containing only:
 
 - `developerChangelog`
+- `releaseNoteGrouping`
+- `majorReleaseNaming`
 - `signatures`
 - `newReleaseNoteSurfaces`
 - `setupStyle`
@@ -594,6 +626,8 @@ Then pass explicit choices to the helper:
 ```sh
 bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --developer-history required \
+  --release-note-grouping product-areas \
+  --major-release-naming named \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
   --version-patch ask \

@@ -16,7 +16,7 @@ and maintenance, not an application changelog distribution.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
 
-Current guidance version: 10
+Current guidance version: 11
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

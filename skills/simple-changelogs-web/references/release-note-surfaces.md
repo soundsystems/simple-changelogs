@@ -192,7 +192,8 @@ owned. Distinguish records that already agree with their canonical value from
 records that are related but intentionally different. Never derive a public web
 version from a CI build identifier.
 
-An optional release name such as `Summer Update` is presentation only. It may
+When `majorReleaseNaming` is `named`, a reviewed stable-major title such as
+`A New Foundation` is presentation only. It may
 accompany a public version on an established surface, but it never overwrites a
 package version field, a changelog heading, or a consistency check, and it never
 appears in the version map. Read a recorded version display preference as

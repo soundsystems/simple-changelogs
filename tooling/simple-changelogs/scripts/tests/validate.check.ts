@@ -200,6 +200,37 @@ describe("repo policy", () => {
     expect(result.ok).toBe(true);
   });
 
+  test("accepts release organization preferences and rejects unknown values", () => {
+    for (const releaseNoteGrouping of ["product-areas", "flat"]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          releaseNoteGrouping,
+        }).ok
+      ).toBe(true);
+    }
+    for (const majorReleaseNaming of ["named", "version-only"]) {
+      expect(
+        validateRepoPolicy({
+          ...portableRepoPolicy(),
+          majorReleaseNaming,
+        }).ok
+      ).toBe(true);
+    }
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        releaseNoteGrouping: "chronological",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateRepoPolicy({
+        ...portableRepoPolicy(),
+        majorReleaseNaming: "codename",
+      }).ok
+    ).toBe(false);
+  });
+
   test("accepts supported mobile release-note placement and rejects unknown placement", () => {
     for (const mobileReleaseNotePlacement of [
       "store-only",

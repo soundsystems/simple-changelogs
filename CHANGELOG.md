@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Release notes now group related changes under user-recognizable product or
+  skill areas by default, merging repeated areas while leaving single-item
+  categories flat. Patch releases always use **Bug Fixes & Improvements** as
+  the release title with one flat bullet list.
+- During onboarding, owners choose whether stable major releases receive a
+  concise descriptive name beside the canonical version. Names default on,
+  remain reviewable presentation, and never replace the version; minor releases
+  require no name.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-22T14:10:32-05:00" -->
 - Install and update reports now identify the Simple Changelogs source by Git
   ref or commit when known, then name the selected distribution and its
   guidance checkpoint. Guidance numbers are distribution-specific behavior

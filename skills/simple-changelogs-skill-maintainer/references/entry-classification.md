@@ -46,6 +46,19 @@ Group related files and commits into one outcome. Name the skill concept users
 recognize and say what they can now do. Reserve “improved” for an existing
 workflow; introduce new capabilities directly.
 
+When `releaseNoteGrouping` is `product-areas`, collect related bullets under
+short skill areas that adopters recognize, such as **Onboarding**, **Release
+handoffs**, or **Compatibility**. Merge repeated areas across the release,
+order them by adopter importance, and keep a singleton flat instead of creating
+a one-bullet category merely for symmetry. Use **Bug Fixes & Improvements** only
+as the final miscellaneous fallback.
+
+Patch releases use **Bug Fixes & Improvements** as their sole release title and
+keep all bullets flat; never repeat that title as a category. If the contents
+need a capability or breaking-change story, correct the release level instead
+of forcing them into a patch. When the preference is `flat`, feature-led nested
+bullets remain allowed for several outcomes belonging to one named capability.
+
 For fixes, state the repaired result without blame or incident detail. For a
 breaking change, name the affected contract and the required migration.
 

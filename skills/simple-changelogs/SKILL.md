@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 18
+Current guidance version: 19
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

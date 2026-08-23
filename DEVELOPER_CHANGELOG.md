@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Added portable release-organization preferences across the five
+  public-history distributions while keeping CMS-only excluded:
+  - `releaseNoteGrouping` accepts `product-areas` (default) or `flat`;
+    user-recognizable areas are merged across a release, ordered by importance,
+    and omitted when they would create a one-item category. Patch releases
+    always use one flat **Bug Fixes & Improvements** section.
+  - `majorReleaseNaming` accepts `named` (default) or `version-only`.
+    Onboarding explicitly confirms the choice, descriptive names remain
+    presentation beside canonical stable-major versions, and minor releases
+    require no name.
+  - Added repository-policy and global-preference persistence, setup CLI flags,
+    runtime types, schemas, validation, and regression coverage. Guidance
+    advanced to full 19, Mobile 17, skill-maintainer 11, Web 18, and Web+CMS 18;
+    CMS-only remains at 4.
+  - Removed duplicated final verification checklist items from the canonical
+    full, Mobile, Web, and Web+CMS surface guidance.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-08-22T14:10:32-05:00" -->
 - Added `distribution-manifest.json` as the machine-readable map of all six
   distributions and their current, independent guidance checkpoints. The README
   now documents source identity separately from the selected distribution and

@@ -24,11 +24,13 @@ import {
   EVAL_SUITES,
   type EvalManifest,
   type GlobalPreferences,
+  MAJOR_RELEASE_NAMING_POLICIES,
   MANIFEST_VERSION,
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
   PUBLIC_VERSION_ACTIONS,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
+  RELEASE_NOTE_GROUPING_POLICIES,
   RELEASE_NOTE_LINK_POLICIES,
   type RepoPolicy,
   RUNNER_MESSAGE_ROLES,
@@ -419,6 +421,7 @@ const repoPolicyBase = objectOf({
     backfillStatus: enumOf(BACKFILL_STATUSES),
     version: integer(1),
   }),
+  majorReleaseNaming: optional(enumOf(MAJOR_RELEASE_NAMING_POLICIES)),
   mobileReleaseNotePlacement: optional(enumOf(MOBILE_RELEASE_NOTE_PLACEMENTS)),
   newReleaseNoteSurfaceComponents: optional(enumOf(SURFACE_COMPONENT_SOURCES)),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
@@ -433,6 +436,7 @@ const repoPolicyBase = objectOf({
   releaseNoteEnvironmentScope: optional(
     enumOf(RELEASE_NOTE_ENVIRONMENT_SCOPES)
   ),
+  releaseNoteGrouping: optional(enumOf(RELEASE_NOTE_GROUPING_POLICIES)),
   releaseNoteLinks: optional(enumOf(RELEASE_NOTE_LINK_POLICIES)),
   schemaVersion: literal(1),
   signatures: enumOf(SIGNATURE_POLICIES),
@@ -440,6 +444,7 @@ const repoPolicyBase = objectOf({
 
 const globalPreferences = objectOf({
   developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
+  majorReleaseNaming: optional(enumOf(MAJOR_RELEASE_NAMING_POLICIES)),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
   profile: literal("solo-developer"),
   publicVersioning: optional(
@@ -450,6 +455,7 @@ const globalPreferences = objectOf({
       suggestWhenAsking: booleanValue,
     })
   ),
+  releaseNoteGrouping: optional(enumOf(RELEASE_NOTE_GROUPING_POLICIES)),
   schemaVersion: literal(1),
   setupStyle: enumOf(SETUP_STYLES),
   signatures: enumOf(SIGNATURE_POLICIES),

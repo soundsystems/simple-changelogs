@@ -4,12 +4,16 @@
   "defaultFinish": "ship",
   "guidance": {
     "disposition": "accepted",
-    "version": 3
+    "version": 12
   },
   "handoffTiming": "confirm-ready",
   "productionDeploy": "ask",
   "questions": "blocking-only",
   "review": "repository-policy",
   "schemaVersion": 1,
-  "uiArtifactVersioning": "repository-convention"
+  "uiArtifactVersioning": "repository-convention",
+  "gitPushAuthorization": "ask",
+  "migrationHandling": "ask-after-review",
+  "migrationTargets": [],
+  "shippingMode": "standard"
 }

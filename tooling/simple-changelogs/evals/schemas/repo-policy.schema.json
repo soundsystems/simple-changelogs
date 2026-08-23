@@ -71,6 +71,9 @@
     "developerChangelog": {
       "enum": ["required", "optional"]
     },
+    "majorReleaseNaming": {
+      "enum": ["named", "version-only"]
+    },
     "publicVersioning": {
       "$ref": "#/$defs/publicVersioning"
     },
@@ -90,6 +93,9 @@
         "production-only",
         "disabled"
       ]
+    },
+    "releaseNoteGrouping": {
+      "enum": ["product-areas", "flat"]
     },
     "releaseNoteLinks": {
       "enum": ["when-useful", "ask", "disabled"]

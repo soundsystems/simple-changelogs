@@ -229,6 +229,8 @@
         "failed"
       ]
     },
+    "majorReleaseNaming": { "enum": ["named", "version-only"] },
+    "releaseNoteGrouping": { "enum": ["product-areas", "flat"] },
     "surfacePolicy": { "enum": ["ask", "allow", "existing-only"] },
     "surfaceComponentSource": {
       "enum": [
@@ -310,6 +312,7 @@
           }
         },
         "developerChangelog": { "enum": ["required", "optional"] },
+        "majorReleaseNaming": { "$ref": "#/$defs/majorReleaseNaming" },
         "signatures": { "enum": ["agent-and-timestamp", "none"] },
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
         "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
@@ -325,6 +328,7 @@
         "releaseNoteEnvironmentScope": {
           "$ref": "#/$defs/releaseNoteEnvironmentScope"
         },
+        "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" },
         "releaseNoteLinks": {
           "$ref": "#/$defs/releaseNoteLinks"
         }
@@ -383,8 +387,10 @@
         "schemaVersion": { "const": 1 },
         "profile": { "const": "solo-developer" },
         "developerChangelog": { "enum": ["required", "optional"] },
+        "majorReleaseNaming": { "$ref": "#/$defs/majorReleaseNaming" },
         "signatures": { "enum": ["agent-and-timestamp", "none"] },
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" },
         "setupStyle": { "enum": ["recommended", "customized"] }
       }
     },
@@ -645,6 +651,7 @@
         "destination",
         "questions",
         "resolvedPolicy",
+        "resolvedPreferences",
         "summary"
       ],
       "properties": {
@@ -659,13 +666,26 @@
             "required": ["id", "required"],
             "properties": {
               "id": {
-                "enum": ["public-version-actions", "public-version-suggestions"]
+                "enum": [
+                  "major-release-naming",
+                  "public-version-actions",
+                  "public-version-suggestions"
+                ]
               },
               "required": { "type": "boolean" }
             }
           }
         },
         "resolvedPolicy": { "$ref": "#/$defs/publicVersioning" },
+        "resolvedPreferences": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["majorReleaseNaming", "releaseNoteGrouping"],
+          "properties": {
+            "majorReleaseNaming": { "$ref": "#/$defs/majorReleaseNaming" },
+            "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" }
+          }
+        },
         "summary": { "type": "string", "minLength": 1 }
       }
     },
@@ -690,6 +710,7 @@
       "properties": {
         "backfillStatus": { "$ref": "#/$defs/backfillStatus" },
         "developerChangelog": { "enum": ["required", "optional"] },
+        "majorReleaseNaming": { "$ref": "#/$defs/majorReleaseNaming" },
         "mobileReleaseNotePlacement": {
           "$ref": "#/$defs/mobileReleaseNotePlacement"
         },
@@ -703,6 +724,7 @@
         "releaseNoteEnvironmentScope": {
           "$ref": "#/$defs/releaseNoteEnvironmentScope"
         },
+        "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" },
         "releaseNoteLinks": {
           "$ref": "#/$defs/releaseNoteLinks"
         },
