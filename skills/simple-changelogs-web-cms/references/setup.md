@@ -22,6 +22,8 @@ file records decisions; it does not copy the skill's prose rules.
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
+  "releaseNoteGrouping": "product-areas",
+  "majorReleaseNaming": "named",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
   "newReleaseNoteSurfaceComponents": "project-components",
@@ -56,6 +58,20 @@ some history unchanged on purpose.
 - `optional`: the repository keeps only `CHANGELOG.md`. Preserve technical
   context in commit, pull, or merge request descriptions instead, and create
   `DEVELOPER_CHANGELOG.md` only when the user explicitly asks for one.
+
+The Markdown policy may record `releaseNoteGrouping` as `product-areas`
+(default) or `flat`. Product-area grouping uses short, user-recognizable areas
+only when grouping improves scanning; `flat` still permits nested outcomes
+under one named feature. It may also record `majorReleaseNaming` as `named`
+(default) or `version-only`. Onboarding always shows that major-release choice.
+Minor releases require no release name. Patch releases use **Bug Fixes &
+Improvements**, keep their bullets flat, and never add a second category layer
+beneath that title.
+
+Missing values use the defaults above, and both may join all-projects
+preferences. Never put either field in the CMS-only policy. These presentation
+choices do not replace a version or grant Web deployment, publication, CMS, or
+other remote authority.
 
 `signatures` accepts:
 

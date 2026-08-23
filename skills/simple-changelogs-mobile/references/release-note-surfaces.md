@@ -129,7 +129,8 @@ Store notes are short, plain, and mobile-scoped:
 - Respect repository or store length limits and locale ownership.
 - Do not turn baseline defect repair into promotional copy.
 
-An optional release name such as `Summer Update` is presentation only. It may
+When `majorReleaseNaming` is `named`, a reviewed stable-major title such as
+`A New Foundation` is presentation only. It may
 accompany a public version on an established in-app surface, but it never
 overwrites the native marketing version, `versionName`, a store version field,
 a changelog heading, or a consistency check, and it never appears in the version

@@ -21,6 +21,20 @@ A next-major branch name is supporting evidence, not release intent. Alpha,
 beta, and release-candidate versions remain prereleases under the repository's
 published convention and must not be mistaken for the stable major.
 
+Treat a major-release name as presentation beside the canonical package
+version, never as package identity. Resolve `majorReleaseNaming` from current
+direction, repository policy, or the default `named`. When it is `named`,
+propose a concise title grounded in the major's proven adopter outcome and
+established skill vocabulary. Put the reviewed title directly below the version
+heading, keep the real version and date visible, and include the proposal in the
+release receipt. Avoid internal codenames and vague hype. `version-only` adds no
+generated title. Preserve existing released names under either preference.
+
+Automatic major-version selection does not approve the exact name or waive
+release-note review. Minor releases require no name; patch releases use **Bug
+Fixes & Improvements** with flat bullets as defined in
+`references/entry-classification.md`.
+
 Compact packaged notes summarize the major and link to full history when such a
 link already exists. Release publication, tags, and fork propagation require
 separate authority.

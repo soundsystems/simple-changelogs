@@ -113,13 +113,14 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "not-needed",
-      currentVersion: 17,
+      currentVersion: 18,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
         "Web setup now verifies real destinations and product structure before reusing, proposing, or recording a surface as planned.",
         "Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity.",
+        "Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section.",
       ],
       userPrompt: null,
       walkthroughQuestion:
@@ -132,6 +133,10 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate?.changes[1]).toMatchObject({
       kinds: ["behavior", "onboarding"],
       version: 17,
+    });
+    expect(inspection.guidanceUpdate?.changes[2]).toMatchObject({
+      kinds: ["behavior", "onboarding"],
+      version: 18,
     });
 
     const rejected = await applySetup({
@@ -162,7 +167,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 17,
+      version: 18,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -296,6 +301,7 @@ describe("setup inspection", () => {
     expect(inspection.unresolvedQuestions).toEqual([
       "release-note-surface-offer",
       "release-note-surface-components",
+      "major-release-naming",
       "preference-scope",
       "released-history-audit",
     ]);
@@ -796,11 +802,18 @@ describe("setup application", () => {
     expect(result.onboardingContribution).toMatchObject({
       destination: ".simple-changelogs.json",
       owner: "simple-changelogs",
-      questions: [{ id: "public-version-actions", required: true }],
+      questions: [
+        { id: "major-release-naming", required: true },
+        { id: "public-version-actions", required: true },
+      ],
       resolvedPolicy: {
         major: "automatic",
         minor: "automatic",
         patch: "automatic",
+      },
+      resolvedPreferences: {
+        majorReleaseNaming: "named",
+        releaseNoteGrouping: "product-areas",
       },
     });
     expect(result.publicVersioning?.effective.patch).toBe("ask");
@@ -831,13 +844,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(18);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(19);
 
     const distributionVersions = [
-      ["web", 17],
-      ["mobile", 16],
-      ["web-cms", 17],
-      ["skill-repository", 10],
+      ["web", 18],
+      ["mobile", 17],
+      ["web-cms", 18],
+      ["skill-repository", 11],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -891,6 +904,7 @@ describe("setup application", () => {
     expect(first.selection).toMatchObject({
       backfillStatus: "not-applicable",
       developerChangelog: "optional",
+      majorReleaseNaming: "named",
       newReleaseNoteSurfaces: "existing-only",
       publicVersioning: {
         major: "ask",
@@ -898,6 +912,7 @@ describe("setup application", () => {
         patch: "ask",
         suggestWhenAsking: true,
       },
+      releaseNoteGrouping: "product-areas",
       scope: "repository",
       setupStyle: "customized",
       signatures: "none",
@@ -907,6 +922,70 @@ describe("setup application", () => {
     expect(await readFile(join(repo, "CHANGELOG.md"), "utf8")).toBe(
       firstChangelog
     );
+  });
+
+  test("stores release grouping and major naming defaults, custom choices, and global prefills", async () => {
+    const defaults = await fixture();
+    await applySetup(recommendedOptions(defaults.repo, defaults.config));
+    const defaultPolicy = await readJson(
+      join(defaults.repo, ".simple-changelogs.json")
+    );
+    expect(defaultPolicy.releaseNoteGrouping).toBe("product-areas");
+    expect(defaultPolicy.majorReleaseNaming).toBe("named");
+
+    const custom = await fixture();
+    const configured = await applySetup({
+      ...recommendedOptions(custom.repo, custom.config),
+      majorReleaseNaming: "version-only",
+      releaseNoteGrouping: "flat",
+      scope: "all-projects",
+    });
+    const customPolicy = await readJson(
+      join(custom.repo, ".simple-changelogs.json")
+    );
+    const preferences = await readJson(
+      resolveGlobalPreferencesPath(custom.config)
+    );
+
+    expect(configured.selection).toMatchObject({
+      majorReleaseNaming: "version-only",
+      releaseNoteGrouping: "flat",
+    });
+    expect(customPolicy.majorReleaseNaming).toBe("version-only");
+    expect(customPolicy.releaseNoteGrouping).toBe("flat");
+    expect(preferences.majorReleaseNaming).toBe("version-only");
+    expect(preferences.releaseNoteGrouping).toBe("flat");
+  });
+
+  test("updates release organization preferences without disturbing configured policy", async () => {
+    const { config, repo } = await fixture();
+    await applySetup(recommendedOptions(repo, config));
+    const before = await readJson(join(repo, ".simple-changelogs.json"));
+
+    const blocked = await applySetup({
+      configDirectory: config,
+      distribution: "web",
+      majorReleaseNaming: "version-only",
+      releaseNoteGrouping: "flat",
+      repo,
+    });
+    const updated = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      majorReleaseNaming: "version-only",
+      releaseNoteGrouping: "flat",
+      repo,
+    });
+    const after = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(blocked.status).toBe("blocked");
+    expect(updated.status).toBe("configured");
+    expect(after).toEqual({
+      ...before,
+      majorReleaseNaming: "version-only",
+      releaseNoteGrouping: "flat",
+    });
   });
 
   test("records an explicit component source and defaults detected systems to project components", async () => {
@@ -982,9 +1061,11 @@ describe("setup application", () => {
     expect(validateGlobalPreferences(preferences).errors).toEqual([]);
     expect(Object.keys(preferences).sort()).toEqual([
       "developerChangelog",
+      "majorReleaseNaming",
       "newReleaseNoteSurfaces",
       "profile",
       "publicVersioning",
+      "releaseNoteGrouping",
       "schemaVersion",
       "setupStyle",
       "signatures",
@@ -1572,7 +1653,8 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 17 },
+      guidance: { backfillStatus: "not-applicable", version: 18 },
+      majorReleaseNaming: "named",
       newReleaseNoteSurfaces: "ask",
       publicVersioning: {
         major: "ask",
@@ -1580,6 +1662,7 @@ describe("distribution and CMS boundaries", () => {
         patch: "ask",
         suggestWhenAsking: true,
       },
+      releaseNoteGrouping: "product-areas",
       schemaVersion: 1,
       signatures: "agent-and-timestamp",
     });

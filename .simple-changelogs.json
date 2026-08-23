@@ -3,7 +3,7 @@
   "distribution": "skill-repository",
   "guidance": {
     "backfillStatus": "not-applicable",
-    "version": 10
+    "version": 11
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
@@ -13,5 +13,7 @@
     "minor": "ask",
     "patch": "ask",
     "suggestWhenAsking": true
-  }
+  },
+  "majorReleaseNaming": "named",
+  "releaseNoteGrouping": "product-areas"
 }

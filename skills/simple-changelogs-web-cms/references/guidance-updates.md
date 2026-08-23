@@ -338,3 +338,14 @@ waits for an exact proposal; advanced `allow` and `existing-only` policies
 remain supported. This prospective change rewrites no released history and
 grants no public surface, operator access, dependency, deployment, publication,
 or version authority.
+
+<!-- simple-changelogs-guidance-update version="18" kinds="behavior,onboarding" backfill="not-needed" summary="Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section." -->
+## Guidance 18
+
+Release notes now group related changes under user-recognizable product areas by
+default, merging repeated categories and leaving sparse releases flat.
+Onboarding confirms whether stable major releases should receive a concise name
+beside the canonical version. Minor releases require no name, and patches always
+use one flat **Bug Fixes & Improvements** section. The preferences are
+prospective and grant no public surface, CMS access, deployment, publication,
+or version authority.

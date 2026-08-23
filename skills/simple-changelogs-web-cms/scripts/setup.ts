@@ -64,6 +64,8 @@ const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
   "disabled",
 ] as const;
 const RELEASE_NOTE_LINK_POLICIES = ["when-useful", "ask", "disabled"] as const;
+const RELEASE_NOTE_GROUPING_POLICIES = ["product-areas", "flat"] as const;
+const MAJOR_RELEASE_NAMING_POLICIES = ["named", "version-only"] as const;
 const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "store-only",
   "web-tabs",
@@ -223,6 +225,9 @@ type CrossSurfaceVersioning =
 type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 type ReleaseNoteLinkPolicy = (typeof RELEASE_NOTE_LINK_POLICIES)[number];
+type ReleaseNoteGroupingPolicy =
+  (typeof RELEASE_NOTE_GROUPING_POLICIES)[number];
+type MajorReleaseNamingPolicy = (typeof MAJOR_RELEASE_NAMING_POLICIES)[number];
 type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 type SetupStyle = (typeof SETUP_STYLES)[number];
@@ -241,11 +246,11 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 18,
-  mobile: 16,
-  "skill-repository": 10,
-  web: 17,
-  "web-cms": 17,
+  full: 19,
+  mobile: 17,
+  "skill-repository": 11,
+  web: 18,
+  "web-cms": 18,
 } as const satisfies Record<Distribution, number>;
 const CMS_GUIDANCE_VERSION = 4;
 
@@ -271,11 +276,13 @@ interface RepoPolicy {
     backfillStatus: BackfillStatus;
     version: number;
   };
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
   signatures: SignaturePolicy;
@@ -298,9 +305,11 @@ interface CmsPolicy {
 
 export interface GlobalPreferences {
   developerChangelog: DeveloperChangelogPolicy;
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   newReleaseNoteSurfaces: SurfacePolicy;
   profile: "solo-developer";
   publicVersioning?: PublicVersioningPolicy;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   schemaVersion: 1;
   setupStyle: SetupStyle;
   signatures: SignaturePolicy;
@@ -363,11 +372,13 @@ interface Selection {
   backfillStatus?: BackfillStatus;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
@@ -376,10 +387,12 @@ interface Selection {
 
 type OptionalSelectionKeys =
   | "crossSurfaceVersioning"
+  | "majorReleaseNaming"
   | "mobileReleaseNotePlacement"
   | "newReleaseNoteSurfaceComponents"
   | "publicVersioning"
   | "releaseNoteEnvironmentScope"
+  | "releaseNoteGrouping"
   | "releaseNoteLinks";
 
 type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
@@ -446,10 +459,17 @@ export interface OnboardingContribution {
   destination: ".simple-changelogs.json";
   owner: "simple-changelogs";
   questions: {
-    id: "public-version-actions" | "public-version-suggestions";
+    id:
+      | "major-release-naming"
+      | "public-version-actions"
+      | "public-version-suggestions";
     required: boolean;
   }[];
   resolvedPolicy: PublicVersioningPolicy;
+  resolvedPreferences: {
+    majorReleaseNaming: MajorReleaseNamingPolicy;
+    releaseNoteGrouping: ReleaseNoteGroupingPolicy;
+  };
   summary: string;
 }
 
@@ -497,6 +517,7 @@ export interface ApplyOptions extends InspectOptions {
   crossSurfaceVersioning?: CrossSurfaceVersioning;
   developerChangelog?: DeveloperChangelogPolicy;
   guidanceBackfill?: BackfillStatus;
+  majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
@@ -505,6 +526,7 @@ export interface ApplyOptions extends InspectOptions {
   publicVersionPatch?: PublicVersionAction;
   publicVersionSuggestions?: "on" | "off";
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
+  releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
@@ -532,6 +554,9 @@ const SAFE_PUBLIC_VERSIONING: PublicVersioningPolicy = {
   patch: "ask",
   suggestWhenAsking: true,
 };
+const DEFAULT_MAJOR_RELEASE_NAMING: MajorReleaseNamingPolicy = "named";
+const DEFAULT_RELEASE_NOTE_GROUPING: ReleaseNoteGroupingPolicy =
+  "product-areas";
 
 interface CandidateWrite {
   content: string;
@@ -819,10 +844,12 @@ const validateRepoPolicy = (
         [
           "crossSurfaceVersioning",
           "distribution",
+          "majorReleaseNaming",
           "mobileReleaseNotePlacement",
           "newReleaseNoteSurfaceComponents",
           "publicVersioning",
           "releaseNoteEnvironmentScope",
+          "releaseNoteGrouping",
           "releaseNoteLinks",
         ]
       )
@@ -860,6 +887,12 @@ const validateRepoPolicy = (
   }
   reportUnsupportedOptionalEnum(
     errors,
+    "majorReleaseNaming",
+    value.majorReleaseNaming,
+    MAJOR_RELEASE_NAMING_POLICIES
+  );
+  reportUnsupportedOptionalEnum(
+    errors,
     "crossSurfaceVersioning",
     value.crossSurfaceVersioning,
     CROSS_SURFACE_VERSIONING_POLICIES
@@ -869,6 +902,12 @@ const validateRepoPolicy = (
     "releaseNoteEnvironmentScope",
     value.releaseNoteEnvironmentScope,
     RELEASE_NOTE_ENVIRONMENT_SCOPES
+  );
+  reportUnsupportedOptionalEnum(
+    errors,
+    "releaseNoteGrouping",
+    value.releaseNoteGrouping,
+    RELEASE_NOTE_GROUPING_POLICIES
   );
   reportUnsupportedOptionalEnum(
     errors,
@@ -1004,7 +1043,7 @@ export const validateGlobalPreferences = (
           "newReleaseNoteSurfaces",
           "setupStyle",
         ],
-        ["publicVersioning"]
+        ["majorReleaseNaming", "publicVersioning", "releaseNoteGrouping"]
       )
     )
   ) {
@@ -1039,6 +1078,18 @@ export const validateGlobalPreferences = (
       ).errors
     );
   }
+  reportUnsupportedOptionalEnum(
+    errors,
+    "global majorReleaseNaming",
+    value.majorReleaseNaming,
+    MAJOR_RELEASE_NAMING_POLICIES
+  );
+  reportUnsupportedOptionalEnum(
+    errors,
+    "global releaseNoteGrouping",
+    value.releaseNoteGrouping,
+    RELEASE_NOTE_GROUPING_POLICIES
+  );
   return errors.length === 0
     ? { errors, value: value as unknown as GlobalPreferences }
     : { errors };
@@ -1601,9 +1652,11 @@ const detectDistribution = (
 
 const safeGlobalDefaults = (): GlobalPreferences => ({
   developerChangelog: "required",
+  majorReleaseNaming: DEFAULT_MAJOR_RELEASE_NAMING,
   newReleaseNoteSurfaces: "ask",
   profile: "solo-developer",
   publicVersioning: SAFE_PUBLIC_VERSIONING,
+  releaseNoteGrouping: DEFAULT_RELEASE_NOTE_GROUPING,
   schemaVersion: 1,
   setupStyle: "recommended",
   signatures: "agent-and-timestamp",
@@ -1629,9 +1682,14 @@ const recommendationFor = (
             backfillStatus: backfillStatus ?? ("partial" as const),
             version: GUIDANCE_VERSIONS[installed],
           },
+          majorReleaseNaming:
+            reusableDefaults.majorReleaseNaming ?? DEFAULT_MAJOR_RELEASE_NAMING,
           newReleaseNoteSurfaces: "ask",
           publicVersioning:
             reusableDefaults.publicVersioning ?? SAFE_PUBLIC_VERSIONING,
+          releaseNoteGrouping:
+            reusableDefaults.releaseNoteGrouping ??
+            DEFAULT_RELEASE_NOTE_GROUPING,
           schemaVersion: 1 as const,
           signatures: reusableDefaults.signatures,
         });
@@ -1704,6 +1762,7 @@ const onboardingContributionFor = (
   const resolvedPolicy =
     recommendation.policy?.publicVersioning ?? SAFE_PUBLIC_VERSIONING;
   const questions: OnboardingContribution["questions"] = [
+    { id: "major-release-naming", required: true },
     { id: "public-version-actions", required: true },
   ];
   if (
@@ -1718,8 +1777,16 @@ const onboardingContributionFor = (
     owner: "simple-changelogs",
     questions,
     resolvedPolicy,
+    resolvedPreferences: {
+      majorReleaseNaming:
+        recommendation.policy?.majorReleaseNaming ??
+        DEFAULT_MAJOR_RELEASE_NAMING,
+      releaseNoteGrouping:
+        recommendation.policy?.releaseNoteGrouping ??
+        DEFAULT_RELEASE_NOTE_GROUPING,
+    },
     summary:
-      "Simple Changelogs owns public-version selection; deployment and publication remain separate.",
+      "Simple Changelogs owns release-note grouping, major-release naming, and public-version selection; deployment and publication remain separate.",
   };
 };
 
@@ -1802,6 +1869,7 @@ const unresolvedFor = (
     unresolved.push("release-note-surface-components");
   }
   if (installed !== "cms" && policy.state === "absent") {
+    unresolved.push("major-release-naming");
     unresolved.push("preference-scope");
   }
   if (inventory.releasedHistoryCount > 0) {
@@ -2190,6 +2258,18 @@ const selectionFrom = (
           options,
           defaults.publicVersioning ?? SAFE_PUBLIC_VERSIONING
         );
+  const majorReleaseNaming =
+    installed === "cms"
+      ? undefined
+      : (options.majorReleaseNaming ??
+        defaults.majorReleaseNaming ??
+        DEFAULT_MAJOR_RELEASE_NAMING);
+  const releaseNoteGrouping =
+    installed === "cms"
+      ? undefined
+      : (options.releaseNoteGrouping ??
+        defaults.releaseNoteGrouping ??
+        DEFAULT_RELEASE_NOTE_GROUPING);
   const inferredMobilePlacement =
     installed === "full" &&
     inspect.inventory.surfaceApplicability.mobile === "not-detected" &&
@@ -2205,6 +2285,7 @@ const selectionFrom = (
     crossSurfaceVersioning: options.crossSurfaceVersioning,
     developerChangelog:
       options.developerChangelog ?? defaults.developerChangelog,
+    majorReleaseNaming,
     mobileReleaseNotePlacement:
       options.mobileReleaseNotePlacement ?? inferredMobilePlacement,
     newReleaseNoteSurfaceComponents:
@@ -2215,6 +2296,7 @@ const selectionFrom = (
     newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "ask",
     publicVersioning,
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
+    releaseNoteGrouping,
     releaseNoteLinks: options.releaseNoteLinks,
     scope: options.scope ?? "repository",
     setupStyle: options.setupStyle ?? defaults.setupStyle,
@@ -2266,9 +2348,11 @@ const globalFor = (
   newReleaseNoteSurfaces = selection.newReleaseNoteSurfaces
 ): GlobalPreferences => ({
   developerChangelog: selection.developerChangelog,
+  majorReleaseNaming: selection.majorReleaseNaming,
   newReleaseNoteSurfaces,
   profile: "solo-developer",
   publicVersioning: selection.publicVersioning,
+  releaseNoteGrouping: selection.releaseNoteGrouping,
   schemaVersion: 1,
   setupStyle: selection.setupStyle,
   signatures: selection.signatures,
@@ -2285,8 +2369,12 @@ const repoPolicyFor = (
       backfillStatus: selection.backfillStatus,
       version: GUIDANCE_VERSIONS[installed],
     },
+    majorReleaseNaming:
+      selection.majorReleaseNaming ?? DEFAULT_MAJOR_RELEASE_NAMING,
     newReleaseNoteSurfaces: selection.newReleaseNoteSurfaces,
     publicVersioning: selection.publicVersioning,
+    releaseNoteGrouping:
+      selection.releaseNoteGrouping ?? DEFAULT_RELEASE_NOTE_GROUPING,
     schemaVersion: 1,
     signatures: selection.signatures,
   };
@@ -2526,29 +2614,48 @@ const updateGuidanceDisposition = async (
  * policy. Ordinary apply refuses to touch configured repositories, so this
  * rewrites only the supplied fields and preserves everything else.
  */
+const contextualPreferenceErrors = (
+  options: ApplyOptions,
+  installed: Distribution | "cms" | null
+): string[] => {
+  const errors: string[] = [];
+  const publicHistoryPreferenceRequested =
+    options.majorReleaseNaming !== undefined ||
+    options.releaseNoteGrouping !== undefined;
+  if (publicHistoryPreferenceRequested && installed === "cms") {
+    errors.push(
+      "Release-note grouping and major-release naming apply only to distributions with public release history."
+    );
+  }
+  if (
+    options.releaseNoteEnvironmentScope !== undefined &&
+    !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(installed as Distribution)
+  ) {
+    errors.push(
+      "Release-note environment scope applies only to full, web, and web+CMS distributions."
+    );
+  }
+  if (
+    options.releaseNoteLinks !== undefined &&
+    !PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS.has(installed as Distribution)
+  ) {
+    errors.push(
+      "Release-note link policy applies only to full, web, mobile, and web+CMS distributions."
+    );
+  }
+  return errors;
+};
+
 const updateContextualPreferences = async (
   options: ApplyOptions,
   inspect: SetupResult
 ): Promise<SetupResult | null> => {
-  if (
-    options.releaseNoteEnvironmentScope !== undefined &&
-    !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(
-      inspect.detection.distribution as Distribution
-    )
-  ) {
-    return blockResult(inspect, [
-      "Release-note environment scope applies only to full, web, and web+CMS distributions.",
-    ]);
-  }
-  if (
-    options.releaseNoteLinks !== undefined &&
-    !PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS.has(
-      inspect.detection.distribution as Distribution
-    )
-  ) {
-    return blockResult(inspect, [
-      "Release-note link policy applies only to full, web, mobile, and web+CMS distributions.",
-    ]);
+  const applicabilityErrors = contextualPreferenceErrors(
+    options,
+    inspect.detection.distribution
+  );
+  if (applicabilityErrors.length > 0) {
+    return blockResult(inspect, applicabilityErrors);
   }
   const selection: Selection = {};
   const updates: Partial<RepoPolicy> = {};
@@ -2561,9 +2668,17 @@ const updateContextualPreferences = async (
     selection.crossSurfaceVersioning = options.crossSurfaceVersioning;
     updates.crossSurfaceVersioning = options.crossSurfaceVersioning;
   }
+  if (options.majorReleaseNaming !== undefined) {
+    selection.majorReleaseNaming = options.majorReleaseNaming;
+    updates.majorReleaseNaming = options.majorReleaseNaming;
+  }
   if (options.releaseNoteEnvironmentScope !== undefined) {
     selection.releaseNoteEnvironmentScope = options.releaseNoteEnvironmentScope;
     updates.releaseNoteEnvironmentScope = options.releaseNoteEnvironmentScope;
+  }
+  if (options.releaseNoteGrouping !== undefined) {
+    selection.releaseNoteGrouping = options.releaseNoteGrouping;
+    updates.releaseNoteGrouping = options.releaseNoteGrouping;
   }
   if (options.releaseNoteLinks !== undefined) {
     selection.releaseNoteLinks = options.releaseNoteLinks;
@@ -2678,29 +2793,13 @@ const selectionErrors = (
   selection: CompleteSelection,
   installed: Distribution | "cms"
 ): string[] => {
-  const errors: string[] = [];
+  const errors = contextualPreferenceErrors(options, installed);
   if (
     installed === "full" &&
     selection.mobileReleaseNotePlacement === undefined
   ) {
     errors.push(
       "Full web/mobile setup requires --mobile-placement with store-only, mobile-only, web-tabs, or web-page."
-    );
-  }
-  if (
-    selection.releaseNoteEnvironmentScope !== undefined &&
-    !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(installed as Distribution)
-  ) {
-    errors.push(
-      "Release-note environment scope applies only to full, web, and web+CMS distributions."
-    );
-  }
-  if (
-    selection.releaseNoteLinks !== undefined &&
-    !PRODUCT_RELEASE_NOTE_LINK_DISTRIBUTIONS.has(installed as Distribution)
-  ) {
-    errors.push(
-      "Release-note link policy applies only to full, web, mobile, and web+CMS distributions."
     );
   }
   if (selection.backfillStatus === "completed" && !options.auditVerified) {
@@ -3082,9 +3181,11 @@ const valueOptionNames = new Set([
   "--cross-surface-versioning",
   "--developer-history",
   "--guidance-backfill",
+  "--major-release-naming",
   "--mobile-placement",
   "--new-surfaces",
   "--release-note-environments",
+  "--release-note-grouping",
   "--release-note-links",
   "--repo",
   "--scope",
@@ -3163,6 +3264,10 @@ const parseCli = (argv: string[]): ParsedCli => {
         DEVELOPER_CHANGELOG_POLICIES
       ),
       guidanceBackfill: enumValue("--guidance-backfill", BACKFILL_STATUSES),
+      majorReleaseNaming: enumValue(
+        "--major-release-naming",
+        MAJOR_RELEASE_NAMING_POLICIES
+      ),
       mobileReleaseNotePlacement: enumValue(
         "--mobile-placement",
         MOBILE_RELEASE_NOTE_PLACEMENTS
@@ -3182,6 +3287,10 @@ const parseCli = (argv: string[]): ParsedCli => {
       releaseNoteEnvironmentScope: enumValue(
         "--release-note-environments",
         RELEASE_NOTE_ENVIRONMENT_SCOPES
+      ),
+      releaseNoteGrouping: enumValue(
+        "--release-note-grouping",
+        RELEASE_NOTE_GROUPING_POLICIES
       ),
       releaseNoteLinks: enumValue(
         "--release-note-links",

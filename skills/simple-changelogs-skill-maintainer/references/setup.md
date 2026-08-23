@@ -22,6 +22,8 @@ file records decisions; it does not copy the skill's prose rules.
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
+  "releaseNoteGrouping": "product-areas",
+  "majorReleaseNaming": "named",
   "signatures": "agent-and-timestamp",
   "newReleaseNoteSurfaces": "ask",
   "newReleaseNoteSurfaceComponents": "minimal-markup"
@@ -54,6 +56,28 @@ some history unchanged on purpose.
 - `optional`: the repository keeps only `CHANGELOG.md`. Preserve technical
   context in commit, pull, or merge request descriptions instead, and create
   `DEVELOPER_CHANGELOG.md` only when the user explicitly asks for one.
+
+`releaseNoteGrouping` accepts:
+
+- `product-areas`: the default. Group eligible release-note bullets under
+  short, user-recognizable skill areas when grouping improves scanning.
+- `flat`: keep release bullets flat while still allowing nested outcomes under
+  one named capability.
+
+`majorReleaseNaming` accepts:
+
+- `named`: the default. Stable major package releases receive a concise
+  descriptive name beside their real version after the proposed name is
+  reviewed.
+- `version-only`: stable major package releases use only their version and date.
+
+Missing values use the defaults above. Both values may join all-projects
+preferences, but onboarding still shows the major-release choice for the
+current repository. Minor releases require no release name. Patch releases use
+**Bug Fixes & Improvements**, keep their bullets flat, and never add a second
+category layer beneath that title. These presentation choices never replace a
+version or grant tagging, package publication, hosted-release, or downstream
+distribution authority.
 
 `signatures` accepts:
 

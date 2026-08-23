@@ -9,7 +9,7 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-const MAX_DISTRIBUTION_BYTES = 280 * 1024;
+const MAX_DISTRIBUTION_BYTES = 300 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -565,6 +565,73 @@ const surfaceDesignDistributions = [
   "simple-changelogs-web-cms",
 ];
 
+const publicHistoryDistributions = [
+  "simple-changelogs",
+  "simple-changelogs-mobile",
+  "simple-changelogs-skill-maintainer",
+  "simple-changelogs-web",
+  "simple-changelogs-web-cms",
+];
+const publicHistorySnapshots = await Promise.all(
+  publicHistoryDistributions.map(async (directoryName) => {
+    const referenceRoot = join(skillsRoot, directoryName, "references");
+    const [classification, majorReleases, onboarding, setup] =
+      await Promise.all([
+        readFile(join(referenceRoot, "entry-classification.md"), "utf8"),
+        readFile(join(referenceRoot, "major-releases.md"), "utf8"),
+        readFile(join(referenceRoot, "onboarding.md"), "utf8"),
+        readFile(join(referenceRoot, "setup.md"), "utf8"),
+      ]);
+    return { classification, directoryName, majorReleases, onboarding, setup };
+  })
+);
+for (const snapshot of publicHistorySnapshots) {
+  const normalizedClassification = snapshot.classification.replace(
+    /\s+/gu,
+    " "
+  );
+  const normalizedMajorReleases = snapshot.majorReleases.replace(/\s+/gu, " ");
+  for (const requiredRule of [
+    "releaseNoteGrouping",
+    "product-areas",
+    "majorReleaseNaming",
+    "version-only",
+  ]) {
+    if (
+      !(
+        snapshot.onboarding.includes(requiredRule) &&
+        snapshot.setup.includes(requiredRule)
+      )
+    ) {
+      failures.push(
+        `skills/${snapshot.directoryName} is missing release-organization preference: ${requiredRule}`
+      );
+    }
+  }
+  for (const requiredRule of [
+    "Bug Fixes & Improvements",
+    "bullets flat",
+    "one-bullet category",
+  ]) {
+    if (!normalizedClassification.includes(requiredRule)) {
+      failures.push(
+        `skills/${snapshot.directoryName} is missing patch/grouping rule: ${requiredRule}`
+      );
+    }
+  }
+  for (const requiredRule of [
+    "majorReleaseNaming",
+    "presentation beside the canonical",
+    "Minor releases require no name",
+  ]) {
+    if (!normalizedMajorReleases.includes(requiredRule)) {
+      failures.push(
+        `skills/${snapshot.directoryName} is missing stable-major naming rule: ${requiredRule}`
+      );
+    }
+  }
+}
+
 const webReleaseNoteScopeDistributions = [
   "simple-changelogs",
   "simple-changelogs-web",
@@ -844,7 +911,9 @@ for (const { directoryName, source } of cmsPolicySchemas) {
   if (
     source.includes("crossSurfaceVersioning") ||
     source.includes("releaseNoteEnvironmentScope") ||
-    source.includes("releaseNoteLinks")
+    source.includes("releaseNoteLinks") ||
+    source.includes("releaseNoteGrouping") ||
+    source.includes("majorReleaseNaming")
   ) {
     failures.push(
       `skills/${directoryName}/schemas/repo-policy.schema.json must not carry repository-only app policy`

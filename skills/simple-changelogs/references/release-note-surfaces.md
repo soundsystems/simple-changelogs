@@ -322,7 +322,8 @@ version, artifact role, identifier role, and release train.
 
 ## Release Names and Version Display
 
-An optional release name such as `Summer Update` is presentation only. It may
+When `majorReleaseNaming` is `named`, a reviewed stable-major title such as
+`A New Foundation` is presentation only. It may
 accompany a public version on an established surface, but it never overwrites
 native metadata, store version fields, changelog headings, or
 version-consistency checks, and it never appears in the version map.
@@ -419,8 +420,8 @@ normally use:
    a separate purpose.
 
 Major and feature-bearing minor releases may use several explanatory
-paragraphs. Patch releases should stay proportional: a short categorized
-ledger is enough when no feature needs a narrative.
+paragraphs. Patch releases use **Bug Fixes & Improvements** and a short flat
+ledger with no category layer beneath that title.
 
 Use public technical identifiers and precise repair conditions only under the
 expert-audience rules in `references/entry-classification.md`. Comprehensive

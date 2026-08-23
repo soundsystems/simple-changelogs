@@ -68,6 +68,26 @@ entire lifetime of the product.
 For independently versioned products or packages, synthesize only the surface
 whose canonical version crossed the stable major boundary.
 
++## Name the Stable Major
+
+Treat a release name as presentation beside the canonical version, never as
+release identity. Resolve `majorReleaseNaming` from current direction,
+repository policy, or the default `named`.
+
+When it is `named`, propose a concise title grounded in the release's proven
+customer outcome and established product vocabulary. Put the reviewed title on
+a `###` line directly below the version heading, keep the real version and date
+visible, and include the exact proposal in the release receipt. Do not use an
+internal project codename, vague hype, or **Production Release** unless that is
+the documented milestone.
+
+When it is `version-only`, add no generated title. Preserve existing released
+names under either preference. Automatic major-version selection does not
+approve the exact name or waive release-note review. Minor releases require no
+name; patch titles and flat-bullet handling follow
+`references/entry-classification.md`.
+
+
 ## Shape the Outputs
 
 Adapt to the repository's established format while covering the applicable

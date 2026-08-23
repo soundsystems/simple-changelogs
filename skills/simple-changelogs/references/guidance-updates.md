@@ -364,3 +364,16 @@ levels. First-time setup defaults missing future release-note surfaces to
 advanced `allow` and `existing-only` policies remain available explicitly.
 This prospective onboarding change rewrites no released history and grants no
 surface, dependency, deployment, publication, store, or version authority.
+
+<!-- simple-changelogs-guidance-update version="19" kinds="behavior,onboarding" backfill="not-needed" summary="Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section." -->
+## Guidance 19
+
+Release notes now group related changes under user-recognizable product areas by
+default. Repeated areas merge into one category, important areas come first,
+and sparse releases stay flat instead of creating one-bullet categories.
+
+Onboarding now confirms whether stable major releases should receive a concise,
+evidence-based name beside the canonical version. Minor releases require no
+name. Patch releases always use one flat **Bug Fixes & Improvements** section.
+Both preferences remain configurable and apply prospectively; released history
+is unchanged and no release or publication authority is granted.

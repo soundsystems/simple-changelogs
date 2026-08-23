@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 17
+Current guidance version: 18
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

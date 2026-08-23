@@ -127,7 +127,8 @@ a time. The walkthrough is a conversation path, not a new stored policy value;
 a confirmed walkthrough uses the customized setup style in the receipt.
 
 The recommended path uses a developer history, hidden agent-and-time audit
-comments, and `ask` for future missing destinations. Reuse established
+comments, product-area release-note grouping, named stable major releases, and
+`ask` for future missing destinations. Reuse established
 release-note destinations. When none exists, recommend a new current surface
 only when repository evidence and the actual audience support it; otherwise
 recommend canonical changelog files without product UI. A compact summary is
@@ -150,9 +151,10 @@ as `1A, 2A, 3A`. Instead:
    concise assumption in the receipt, such as “I found a Web app but could not
    confidently rule out a separate mobile app; revise this if needed.”
 4. Show one recommended receipt covering the applicable histories, current
-   destinations, version behavior, storage, instruction pointer, and history
-   handling. Define technical terms at first use and include a concrete example
-   when the distinction affects the choice.
+   destinations, release-note grouping, major-release naming, version behavior,
+   storage, instruction pointer, and history handling. Define technical terms at
+   first use and include a concrete example when the distinction affects the
+   choice.
 5. Ask for exactly one response: confirm the receipt or request changes.
 
 The final confirmation is still required before writes. “One answer” reduces
@@ -177,10 +179,11 @@ a reference layout, not permission to reorder the conversation:
 4. destination-specific placement, environment, discovery, links, and
    components;
 5. public version behavior;
-6. hidden audit comments;
-7. preference storage;
-8. the instruction pointer for that chosen scope; and
-9. released-history handling last.
+6. release-note organization and stable-major naming;
+7. hidden audit comments;
+8. preference storage;
+9. the instruction pointer for that chosen scope; and
+10. released-history handling last.
 
 Do not ask a downstream question before its destination exists. Do not show
 Mobile, store, CMS, Web, environment, link, or component choices for a surface
@@ -250,6 +253,33 @@ that work remains under `Unreleased` until a public boundary and that version
 selection grants no deployment or other remote authority. Coordinated Simple
 Changes setup keeps separate owners, destinations, write receipts, and
 idempotent partial-failure resume.
+
++## Release-note organization and major names
+
+Recommended setup records `releaseNoteGrouping: "product-areas"`. Related
+bullets are grouped under short product areas that users recognize, repeated
+areas are merged across the release, and important areas come first. Do not
+create one-bullet categories merely for symmetry. `flat` keeps release bullets
+flat but still allows nested outcomes beneath one named feature. Show this
+default in the receipt; ask the grouping choice only on **Customize**, **Change
+something**, or an explicit grouping request.
+
+During every public-history onboarding, ask **Should stable major releases have
+descriptive names? Choose one:**
+
+1. **Name major releases — Recommended** — Save `majorReleaseNaming: "named"`.
+   A reviewed title such as **A New Foundation** sits beside the real `2.0.0`
+   identity; the name never replaces the version.
+2. **Use version numbers only** — Save `majorReleaseNaming: "version-only"`.
+   Major releases keep their version and date without a generated title.
+
+Minor releases require no release name. Patch releases use **Bug Fixes &
+Improvements**, keep their bullets flat, and never add category groups beneath
+that title. If the proposed contents require a feature or breaking-change
+story, correct the release level instead of forcing them into the patch
+template. Existing released titles remain unchanged unless a separately
+authorized historical correction applies.
+
 
 ## Contextual product-surface choice
 
@@ -430,6 +460,8 @@ Repository scope writes visible policy beside the histories. All-projects scope
 also writes a private `preferences.json` containing only:
 
 - `developerChangelog`
+- `releaseNoteGrouping`
+- `majorReleaseNaming`
 - `signatures`
 - `newReleaseNoteSurfaces`
 - `setupStyle`
@@ -534,6 +566,8 @@ Then pass explicit choices to the helper:
 ```sh
 bun skills/simple-changelogs-web/scripts/setup.ts apply \
   --developer-history required \
+  --release-note-grouping product-areas \
+  --major-release-naming named \
   --signatures agent-and-timestamp \
   --new-surfaces ask \
   --version-patch ask \
