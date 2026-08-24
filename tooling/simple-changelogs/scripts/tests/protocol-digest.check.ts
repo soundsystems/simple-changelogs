@@ -10,6 +10,8 @@ import { file } from "bun";
 // fails, resync the vendored copies from simple-changes and update these
 // digests to the values reported in the failure message.
 const EXPECTED_DIGESTS: Record<string, string> = {
+  "changelog-capabilities.schema.json":
+    "9d6d92e61d90b67161fbabd05e0f17c8d78ffc08bbb6f5293b6464e849b5efe2",
   "changelog-receipt.schema.json":
     "dc981236280f3bfac348c1e0b0185cb6f353dc834d37ef1ff3b7b90b0358daee",
   "changelog-request.schema.json":

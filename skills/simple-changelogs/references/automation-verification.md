@@ -31,8 +31,10 @@ encode an uncertain or independently versioned relationship.
 - `.simple-changelogs.json` validates against the bundled schema.
 - Its recorded values match an actual user disposition or documented policy.
 - Full or combined web/mobile setup records the user's
-  `mobileReleaseNotePlacement`; a missing backward-compatible value is treated
-  as unresolved rather than assigned a default.
+  `mobileReleaseNotePlacement` whenever mobile applicability is detected or
+  uncertain; the value may be absent only for a backward-compatible policy or
+  when a complete scan reported the mobile surface `not-detected`, and either
+  absence is treated as unresolved rather than assigned a default.
 - The repository maintains both customer and developer histories after
   adoption, unless policy records `developerChangelog: "optional"`.
 - Guidance state lives in the repository and no packaged skill files were used

@@ -246,13 +246,17 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 19,
-  mobile: 17,
-  "skill-repository": 11,
-  web: 18,
-  "web-cms": 18,
+  full: 20,
+  mobile: 18,
+  "skill-repository": 12,
+  web: 19,
+  "web-cms": 19,
 } as const satisfies Record<Distribution, number>;
 const CMS_GUIDANCE_VERSION = 4;
+// The web-cms distribution records the CMS side of its policy on a separate
+// guidance track from the standalone CMS distribution; it has not moved past
+// its initial checkpoint.
+const WEB_CMS_CMS_GUIDANCE_VERSION = 1;
 
 const DISTRIBUTION_DIRECTORIES = {
   cms: "simple-changelogs-cms",
@@ -2331,7 +2335,10 @@ const cmsPolicyFor = (
     },
     guidance: {
       backfillStatus: selection.backfillStatus,
-      version: installed === "cms" ? CMS_GUIDANCE_VERSION : 1,
+      version:
+        installed === "cms"
+          ? CMS_GUIDANCE_VERSION
+          : WEB_CMS_CMS_GUIDANCE_VERSION,
     },
     newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "existing-only",
     schemaVersion: 1,
@@ -3094,6 +3101,14 @@ export const applySetup = async (
     repo: options.repo,
     taskMode: options.taskMode ?? "write",
   });
+  if (!inspect.writeCapable) {
+    // Read-only tasks must never rewrite durable setup state on any apply
+    // path, including audit completion, guidance dispositions, and
+    // contextual preference updates.
+    return blockResult(inspect, [
+      "Read-only tasks cannot apply onboarding state.",
+    ]);
+  }
   const suppliedVersionActions = [
     options.publicVersionPatch,
     options.publicVersionMinor,

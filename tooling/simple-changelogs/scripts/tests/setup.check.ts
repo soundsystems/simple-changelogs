@@ -52,6 +52,135 @@ const writeJson = async (path: string, value: unknown): Promise<void> => {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 };
 
+type JsonSchema = Record<string, unknown>;
+
+const isSchemaRecord = (value: unknown): value is JsonSchema =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+// Minimal structural evaluator for the vendored consumer capabilities
+// schema. It interprets exactly the constructs that schema uses: const,
+// enum, type, required, properties, additionalProperties, items, minItems,
+// uniqueItems, pattern, minLength, and minimum.
+const objectViolations = (
+  schema: JsonSchema,
+  value: unknown,
+  path: string
+): string[] => {
+  if (!isSchemaRecord(value)) {
+    return [`${path} must be an object`];
+  }
+  const violations: string[] = [];
+  const properties = isSchemaRecord(schema.properties) ? schema.properties : {};
+  const required = Array.isArray(schema.required) ? schema.required : [];
+  for (const key of required) {
+    if (typeof key === "string" && !Object.hasOwn(value, key)) {
+      violations.push(`${path}.${key} is required`);
+    }
+  }
+  for (const [key, item] of Object.entries(value)) {
+    const propertySchema = properties[key];
+    if (isSchemaRecord(propertySchema)) {
+      violations.push(
+        ...schemaViolations(propertySchema, item, `${path}.${key}`)
+      );
+    } else if (schema.additionalProperties === false) {
+      violations.push(`${path}.${key} is not allowed`);
+    }
+  }
+  return violations;
+};
+
+const arrayViolations = (
+  schema: JsonSchema,
+  value: unknown,
+  path: string
+): string[] => {
+  if (!Array.isArray(value)) {
+    return [`${path} must be an array`];
+  }
+  const violations: string[] = [];
+  if (typeof schema.minItems === "number" && value.length < schema.minItems) {
+    violations.push(`${path} needs at least ${schema.minItems} items`);
+  }
+  const fingerprints = new Set(value.map((item) => JSON.stringify(item)));
+  if (schema.uniqueItems === true && fingerprints.size !== value.length) {
+    violations.push(`${path} must contain unique items`);
+  }
+  if (isSchemaRecord(schema.items)) {
+    for (const [index, item] of value.entries()) {
+      violations.push(
+        ...schemaViolations(schema.items, item, `${path}[${index}]`)
+      );
+    }
+  }
+  return violations;
+};
+
+const stringViolations = (
+  schema: JsonSchema,
+  value: unknown,
+  path: string
+): string[] => {
+  if (typeof value !== "string") {
+    return [`${path} must be a string`];
+  }
+  const violations: string[] = [];
+  if (typeof schema.minLength === "number" && value.length < schema.minLength) {
+    violations.push(`${path} is shorter than ${schema.minLength}`);
+  }
+  if (
+    typeof schema.pattern === "string" &&
+    !new RegExp(schema.pattern, "u").test(value)
+  ) {
+    violations.push(`${path} does not match ${schema.pattern}`);
+  }
+  return violations;
+};
+
+const integerViolations = (
+  schema: JsonSchema,
+  value: unknown,
+  path: string
+): string[] => {
+  if (!(typeof value === "number" && Number.isInteger(value))) {
+    return [`${path} must be an integer`];
+  }
+  if (typeof schema.minimum === "number" && value < schema.minimum) {
+    return [`${path} is below ${schema.minimum}`];
+  }
+  return [];
+};
+
+const TYPE_VALIDATORS: Record<
+  string,
+  (schema: JsonSchema, value: unknown, path: string) => string[]
+> = {
+  array: arrayViolations,
+  integer: integerViolations,
+  object: objectViolations,
+  string: stringViolations,
+};
+
+const schemaViolations = (
+  schema: JsonSchema,
+  value: unknown,
+  path = "$"
+): string[] => {
+  const violations: string[] = [];
+  if ("const" in schema && value !== schema.const) {
+    violations.push(`${path} must equal ${JSON.stringify(schema.const)}`);
+  }
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
+    violations.push(`${path} must be one of ${JSON.stringify(schema.enum)}`);
+  }
+  const typeValidator =
+    typeof schema.type === "string" ? TYPE_VALIDATORS[schema.type] : undefined;
+  if (typeValidator) {
+    violations.push(...typeValidator(schema, value, path));
+  }
+  return violations;
+};
+
 const recommendedOptions = (repo: string, configDirectory: string) => ({
   backfillStatus: "not-applicable" as const,
   configDirectory,
@@ -113,14 +242,14 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "not-needed",
-      currentVersion: 18,
+      currentVersion: 19,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
-        "Web setup now verifies real destinations and product structure before reusing, proposing, or recording a surface as planned.",
         "Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity.",
         "Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section.",
+        "A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories.",
       ],
       userPrompt: null,
       walkthroughQuestion:
@@ -137,6 +266,10 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate?.changes[2]).toMatchObject({
       kinds: ["behavior", "onboarding"],
       version: 18,
+    });
+    expect(inspection.guidanceUpdate?.changes[3]).toMatchObject({
+      kinds: ["capability"],
+      version: 19,
     });
 
     const rejected = await applySetup({
@@ -167,7 +300,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 18,
+      version: 19,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -251,6 +384,118 @@ describe("setup inspection", () => {
     });
     expect(result.onboardingContribution).toBeNull();
     expect(result.writes).toEqual([]);
+  });
+
+  test("reports capabilities that satisfy the vendored consumer capabilities schema", async () => {
+    const { config, repo } = await fixture();
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "web",
+      repo,
+      taskMode: "read",
+    });
+    const capabilitiesSchema = JSON.parse(
+      await readFile(
+        join(
+          import.meta.dir,
+          "../../evals/schemas/changelog-capabilities.schema.json"
+        ),
+        "utf8"
+      )
+    ) as Record<string, unknown>;
+
+    expect(result.capabilities).not.toBeNull();
+    expect(schemaViolations(capabilitiesSchema, result.capabilities)).toEqual(
+      []
+    );
+    expect(
+      schemaViolations(capabilitiesSchema, {
+        ...result.capabilities,
+        unknownField: true,
+      }).length
+    ).toBeGreaterThan(0);
+  });
+
+  test("task-mode read never rewrites durable state on any apply path", async () => {
+    const readOnlyBlock = "Read-only tasks cannot apply onboarding state.";
+
+    const audit = await fixture();
+    await applySetup({
+      ...recommendedOptions(audit.repo, audit.config),
+      backfillStatus: "partial",
+    });
+    const auditBefore = await readFile(
+      join(audit.repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const auditResult = await applySetup({
+      auditVerified: true,
+      backfillStatus: "completed",
+      configDirectory: audit.config,
+      confirm: true,
+      distribution: "web",
+      repo: audit.repo,
+      taskMode: "read",
+    });
+    expect(auditResult.status).toBe("blocked");
+    expect(auditResult.errors).toContain(readOnlyBlock);
+    expect(
+      await readFile(join(audit.repo, ".simple-changelogs.json"), "utf8")
+    ).toBe(auditBefore);
+
+    const guidance = await fixture();
+    await writeJson(join(guidance.repo, ".simple-changelogs.json"), {
+      developerChangelog: "required",
+      distribution: "web",
+      guidance: { backfillStatus: "completed", version: 15 },
+      newReleaseNoteSurfaces: "ask",
+      publicVersioning: {
+        major: "ask",
+        minor: "ask",
+        patch: "ask",
+        suggestWhenAsking: true,
+      },
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+    const guidanceBefore = await readFile(
+      join(guidance.repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const guidanceResult = await applySetup({
+      configDirectory: guidance.config,
+      confirm: true,
+      distribution: "web",
+      guidanceBackfill: "not-applicable",
+      repo: guidance.repo,
+      taskMode: "read",
+    });
+    expect(guidanceResult.status).toBe("blocked");
+    expect(guidanceResult.errors).toContain(readOnlyBlock);
+    expect(
+      await readFile(join(guidance.repo, ".simple-changelogs.json"), "utf8")
+    ).toBe(guidanceBefore);
+
+    const contextual = await fixture();
+    await applySetup(recommendedOptions(contextual.repo, contextual.config));
+    const contextualBefore = await readFile(
+      join(contextual.repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const contextualResult = await applySetup({
+      configDirectory: contextual.config,
+      confirm: true,
+      distribution: "web",
+      majorReleaseNaming: "version-only",
+      releaseNoteGrouping: "flat",
+      repo: contextual.repo,
+      taskMode: "read",
+    });
+    expect(contextualResult.status).toBe("blocked");
+    expect(contextualResult.errors).toContain(readOnlyBlock);
+    expect(
+      await readFile(join(contextual.repo, ".simple-changelogs.json"), "utf8")
+    ).toBe(contextualBefore);
   });
 
   test("enters onboarding only for a write-capable task with missing policy", async () => {
@@ -844,13 +1089,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(19);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(20);
 
     const distributionVersions = [
-      ["web", 18],
-      ["mobile", 17],
-      ["web-cms", 18],
-      ["skill-repository", 11],
+      ["web", 19],
+      ["mobile", 18],
+      ["web-cms", 19],
+      ["skill-repository", 12],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -1653,7 +1898,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 18 },
+      guidance: { backfillStatus: "not-applicable", version: 19 },
       majorReleaseNaming: "named",
       newReleaseNoteSurfaces: "ask",
       publicVersioning: {

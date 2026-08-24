@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Shipped changelog history is now directly queryable. Every markdown
+  distribution bundles a read-only `scripts/query.ts` helper that lists
+  releases, shows one release, filters entries by date, product area, author,
+  or text, and lints changelog structure, for humans and agents alike. Both
+  the current and the original signature comment formats are recognized, and
+  markdown remains the only source of truth.
+- Read-only requests can no longer change saved settings: setup invoked in
+  read mode now declines audits, guidance decisions, and preference updates
+  instead of writing them.
+- CMS repositories configured with a release-notes component preference now
+  validate cleanly; the bundled validator previously rejected a setting that
+  setup itself had written.
+- Mobile-only onboarding no longer offers to build web release-note pages;
+  web destinations are routed to the distributions that own them.
+- The project is now formally open source under the Apache-2.0 license, with
+  contribution, security, and conduct guidelines included.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-24T12:30:43-05:00" -->
 - Delegated release handoffs from Simple Changes now negotiate successfully
   again: the bundled protocol schemas were refreshed to the current
   consumer-owned versions, so capability negotiation no longer fails with a

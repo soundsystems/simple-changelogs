@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- Added read-only history querying across the five markdown distributions:
+  - Promoted the deterministic parser core of `curation-source.ts` into a
+    shipped `scripts/lib/changelog-parse.ts` (fence/comment awareness,
+    optional version/date headings, occurrence disambiguation, never-guess
+    diagnostics) with support for the legacy
+    `<!-- Agent: NAME | MM/DD/YYYY ... -->` signature dialect.
+  - Added `scripts/query.ts` (`releases`, `show`, `entries`, `check`;
+    `--json`, `--log`, `--repo`) with JSON fields aligned to the CMS entry
+    vocabulary, byte-parity enforced by `tooling/distributions.check.ts`, a
+    340 KiB distribution size cap, `references/querying.md`, and 11 tests in
+    `query.check.ts`. Guidance advanced to full 20, Web 19, Mobile 18,
+    skill-maintainer 12, and Web+CMS 19; CMS-only remains at 4.
+- Fixed `--task-mode read` durable writes: `applySetup` now returns the
+  read-only block before `completePartialAudit`, `updateGuidanceDisposition`,
+  and `updateContextualPreferences`; regression tests cover all three paths.
+- Fixed the shipped CMS policy validator rejecting
+  `newReleaseNoteSurfaceComponents` (written by `cmsPolicyFor` and allowed by
+  `repo-policy.schema.json`), and aligned the divergent `changelogPath` rules
+  (lib validator and JSON schemas now enforce setup's repository-root JSON
+  filename rule).
+- Hardened the Simple Changes handshake: vendored the consumer-owned
+  `changelog-capabilities.schema.json` beside the request/receipt schemas,
+  pinned its digest in `protocol-digest.check.ts`, validated `capabilitiesFor`
+  output against it, and added `references/release-handoff.md` to the
+  byte-parity set. `protocol-provenance.json` now names the owner repository.
+- Documentation and onboarding cleanup: removed eleven stray `+##` diff
+  artifacts breaking guidance-19 headings; onboarding examples now invoke each
+  distribution's own `setup.ts` (including global installs) instead of the web
+  variant's path; removed the mobile-variant web-archive walkthrough that
+  contradicted its boundaries; reconciled the full distribution's
+  mobile-placement question with the guidance-18 evidence rule; replaced
+  workspace-specific "Biome/Ultracite" wording with repository-native checks;
+  added `references/onboarding.md` router rows and dropped the stale
+  "older than version 6" sentence.
+- Open-source readiness: added Apache-2.0 `LICENSE`, `CONTRIBUTING.md`,
+  `SECURITY.md`, `CODE_OF_CONDUCT.md`, a `license` field in `package.json`, a
+  distribution-value-to-skill-directory table and version-agnostic install
+  example in the README, and removed a stale `.gitignore` entry.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-24T12:30:43-05:00" -->
 - Resynced the vendored Simple Changes protocol schemas
   (`changelog-request.schema.json` / `changelog-receipt.schema.json` in
   `tooling/simple-changelogs/evals/schemas` and every `skills/*/schemas` copy)

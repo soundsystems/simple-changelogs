@@ -12,7 +12,7 @@ Maintain two complementary histories:
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
 
-Current guidance version: 19
+Current guidance version: 20
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -59,8 +59,6 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
   Nothing is written until the user confirms the displayed setup receipt.
 - When the request is read-only, answer without writing policy or changelog
   files. Offer setup as a possible next action.
-- When recorded guidance is older than version 6, read
-  `references/guidance-updates.md` and follow its one-time disposition flow.
 
 Repository instructions take precedence when they establish a stricter scope,
 audience, release process, or source of truth.
@@ -73,6 +71,8 @@ Read only the references needed for the current branch of work:
 | --- | --- |
 | First use, policy state, setup prompts, or raw-markdown signatures | `references/setup.md` |
 | Guidance-version changes and their user-readable effects | `references/guidance-updates.md` |
+| Guided first-use onboarding conversation | `references/onboarding.md` |
+| Read-only history queries and structure lint | `references/querying.md` |
 | Customer/developer classification, expert public detail, wording, grouping, or hot fixes | `references/entry-classification.md` |
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |

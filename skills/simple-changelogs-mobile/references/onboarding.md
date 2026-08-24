@@ -6,11 +6,13 @@ inside the original task, not a separate task.
 
 ## Inspect before asking
 
-Classify the current request and run the selected distribution's bundled
-helper. For a repository-local web distribution:
+Classify the current request and run this distribution's bundled
+`scripts/setup.ts` helper. The path below assumes a repository-local
+install; for a global install, run the installed skill directory's copy by
+absolute path (`bun /absolute/path/to/simple-changelogs-mobile/scripts/setup.ts`):
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts inspect \
+bun skills/simple-changelogs-mobile/scripts/setup.ts inspect \
   --json \
   --task-mode write \
   --repo .
@@ -253,7 +255,7 @@ that work remains under `Unreleased` until a public boundary and that version
 selection grants no store, build, signing, deployment, or publication
 authority. Coordinated setup keeps separate owners and resumable write receipts.
 
-+## Release-note organization and major names
+## Release-note organization and major names
 
 Recommended setup records `releaseNoteGrouping: "product-areas"`. Related
 bullets are grouped under short product areas that users recognize, repeated
@@ -315,72 +317,25 @@ audience, and release coverage. Classify it as:
 - unrelated when neither use applies.
 
 Do not treat a route called Updates or Release Notes as an established archive
-from its name alone. When a suitable archive already exists, propose
-synchronizing and seeding that archive instead of creating a duplicate. When
-no suitable archive exists, explain first: **Choosing a Web archive does not
-make it public. The next choice decides whether it appears only during local
-development and review previews, only on the live production site, or in both
-places.** Then ask **Where should the complete release history live? Choose
-one:**
+from its name alone. When a suitable in-app destination already exists, propose
+synchronizing and seeding that destination instead of creating a duplicate.
 
-1. **Add a Web Release Notes tab or section there** — use when the existing
-  destination can keep editorial posts and chronological release history
-  clearly separated. Its visibility is chosen next.
-2. **Create a dedicated Web Release Notes page — Recommended for editorial
-   sites** — use when the existing
-  destination is primarily a blog, newsroom, announcement feed, or marketing
-  channel. Its visibility is chosen next.
-3. **Do not add a Web archive now** — keep the candidate unchanged and limit
-  the task to canonical changelog work.
+This distribution owns mobile in-app release notes and existing store-note
+metadata only. Web Release Notes pages, tabs, environment-visibility scopes,
+and other public web destinations belong to the web, web+CMS, or full
+distributions. When the scan surfaces a Web archive candidate, record the
+evidence, state that boundary, and let the owner select the distribution that
+owns it instead of proposing a Web destination here.
 
-For every approved Web archive, immediately ask **In which environments
-should Release Notes be available? Choose one:**
-
-```text
-                         Local       Preview       Production
-1. All environments    AVAILABLE     AVAILABLE       AVAILABLE
-2. Local + preview     AVAILABLE     AVAILABLE         HIDDEN
-3. Production only      HIDDEN        HIDDEN         AVAILABLE
-4. Disabled             HIDDEN        HIDDEN           HIDDEN
-```
-
-1. **All environments — Current behavior** — Local developers, preview
-   reviewers, and production visitors can open the Release Notes page; any
-   selected navigation, manual summary, or automatic modal may also appear.
-   Save `all-environments`.
-2. **Local and preview only — Recommended for marketing and client sites** —
-   Keep the page and any selected entry points or modal available throughout
-   local development and recognized previews. In production, do not serve the
-   route or expose navigation, manual links, summaries, or the modal. Save
-   `non-production`.
-3. **Production deployments only** — Hide the page and every entry point in
-   local development and previews; expose the selected Release Notes surfaces
-   only in production. Save `production-only`.
-4. **Disabled everywhere** — Do not serve or link the Release Notes page and do
-   not render a summary or modal in any environment. Save `disabled`; canonical
-   changelog generation and archive-data synchronization can still continue.
-
-Use the repository's authoritative environment signal. Local development is
-non-production. Do not guess from hostnames or branch names. Enforce the choice
-at the route, server, or build boundary and at every navigation, manual-link,
-summary, and modal entry point. A hidden dynamic route returns the framework's
-standard not-found response; a static production build omits the route when the
-framework supports that. For a scoped choice, an unknown environment fails
-closed and exposes none of the surfaces. This preference controls Web exposure,
-not changelog generation, archive-data synchronization, deployment, or
-publication.
-
-Only after visibility is understood, and only when the selected environments
-serve returning users, ask **How should people discover the latest release?
-Choose one:**
+When an in-app release destination is established or approved, ask **How
+should people discover the latest release? Choose one:**
 
 1. **Automatic Release Notes modal — Recommended for product apps** — show only
-  the latest qualifying highlights to eligible returning users in the selected
-  environments and link to the full archive.
+  the latest qualifying highlights to eligible returning users and link to the
+  full in-app history.
 2. **Manual Release Notes summary** — keep a compact summary reachable without
-  automatic display in the selected environments.
-3. **Archive only — Recommended for marketing and client-review sites** — add
-  no compact surface.
+  automatic display.
+3. **In-app history only** — add no compact surface.
 
 When an in-app release destination is selected, ask **Should a release item
 open the feature it describes? Choose one:**
@@ -402,8 +357,8 @@ deep-link contract, sign-in, role, subscription, feature flag, and platform.
 The compact-summary link to an established archive is not controlled by this
 choice. Store `releaseNoteLinks` in repository policy only.
 
-The confirmed receipt must name the exact candidate classification, archive
-choice, environment scope, feature-link policy, compact-surface choice, route
+The confirmed receipt must name the exact candidate classification,
+destination choice, feature-link policy, compact-surface choice, route
 or placement, and visible labels. That
 confirmation authorizes only those named surfaces for the current task; it does
 not silently change the ongoing `newReleaseNoteSurfaces` policy.
@@ -563,7 +518,7 @@ in the compact form, show the detailed receipt before accepting confirmation.
 Then pass explicit choices to the helper:
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts apply \
+bun skills/simple-changelogs-mobile/scripts/setup.ts apply \
   --developer-history required \
   --release-note-grouping product-areas \
   --major-release-naming named \

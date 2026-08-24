@@ -6,11 +6,13 @@ inside the original task, not a separate task.
 
 ## Inspect before asking
 
-Classify the current request and run the selected distribution's bundled
-helper. For a repository-local web distribution:
+Classify the current request and run this distribution's bundled
+`scripts/setup.ts` helper. The path below assumes a repository-local
+install; for a global install, run the installed skill directory's copy by
+absolute path (`bun /absolute/path/to/simple-changelogs-cms/scripts/setup.ts`):
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts inspect \
+bun skills/simple-changelogs-cms/scripts/setup.ts inspect \
   --json \
   --task-mode write \
   --repo .
@@ -497,7 +499,7 @@ in the compact form, show the detailed receipt before accepting confirmation.
 Then pass explicit choices to the helper:
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts apply \
+bun skills/simple-changelogs-cms/scripts/setup.ts apply \
   --developer-history required \
   --signatures agent-and-timestamp \
   --new-surfaces ask \

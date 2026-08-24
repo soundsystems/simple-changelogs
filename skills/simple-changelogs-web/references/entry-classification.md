@@ -406,7 +406,7 @@ Before writing `now makes it easier to...`, ask whether users already had that
 action. If the answer is no, name the new capability instead of comparing it to
 a nonexistent prior flow.
 
-+## Grouping and Wording Examples
+## Grouping and Wording Examples
 
 When `releaseNoteGrouping` is `product-areas`, group related bullets under
 short product areas users recognize, not implementation layers, commits, or

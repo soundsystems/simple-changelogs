@@ -6,8 +6,10 @@ inside the original task, not a separate task.
 
 ## Inspect before asking
 
-Classify the current request and run the selected distribution's bundled
-helper. For a repository-local web distribution:
+Classify the current request and run this distribution's bundled
+`scripts/setup.ts` helper. The path below assumes a repository-local
+install; for a global install, run the installed skill directory's copy by
+absolute path (`bun /absolute/path/to/simple-changelogs-web/scripts/setup.ts`):
 
 ```sh
 bun skills/simple-changelogs-web/scripts/setup.ts inspect \
@@ -254,7 +256,7 @@ selection grants no deployment or other remote authority. Coordinated Simple
 Changes setup keeps separate owners, destinations, write receipts, and
 idempotent partial-failure resume.
 
-+## Release-note organization and major names
+## Release-note organization and major names
 
 Recommended setup records `releaseNoteGrouping: "product-areas"`. Related
 bullets are grouped under short product areas that users recognize, repeated

@@ -16,7 +16,7 @@ and maintenance, not an application changelog distribution.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
 
-Current guidance version: 11
+Current guidance version: 12
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -68,6 +68,8 @@ versioning, eval requirements, publication flow, and generated mirrors.
 | --- | --- |
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
+| Guided first-use onboarding conversation | `references/onboarding.md` |
+| Read-only history queries and structure lint | `references/querying.md` |
 | User/developer classification and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |

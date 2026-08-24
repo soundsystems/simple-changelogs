@@ -67,6 +67,7 @@ release process, content source, or validation command.
 | --- | --- |
 | First use, policy, or JSON source structure | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
+| Guided first-use onboarding conversation | `references/onboarding.md` |
 | Operator relevance, wording, grouping, or sensitive detail | `references/entry-classification.md` |
 | Historical reconstruction or audits | `references/backfill.md` |
 | Adding or synchronizing the authenticated route | `references/cms-surface.md` |
