@@ -504,6 +504,7 @@ export interface IntegrationCapabilities {
     "public-version-policy",
     "classify-prepare-verify",
     "multi-train-receipts",
+    "guidance-update-notices",
   ];
   guidanceVersion: number;
   provider: "simple-changelogs";
@@ -713,6 +714,7 @@ const capabilitiesFor = async (
       "public-version-policy",
       "classify-prepare-verify",
       "multi-train-receipts",
+      "guidance-update-notices",
     ],
     guidanceVersion: GUIDANCE_VERSIONS[installed],
     provider: "simple-changelogs",
