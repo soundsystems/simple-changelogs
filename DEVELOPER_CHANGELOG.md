@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Resynced the vendored Simple Changes protocol schemas
+  (`changelog-request.schema.json` / `changelog-receipt.schema.json` in
+  `tooling/simple-changelogs/evals/schemas` and every `skills/*/schemas` copy)
+  to byte-exact copies of the consumer-owned canonical schemas, fixing
+  `schema-digest-mismatch` failures during capability negotiation:
+  - Updated schema-parity checks for the versioned receipt shape (`anyOf` of
+    `$defs.v1`/`$defs.v2`) and skipped conditional refinement branches in the
+    closed-object walk.
+  - Added `protocol-digest.check.ts`, a drift guard that pins each vendored
+    schema's canonical-JSON SHA-256 digest and directs maintainers to resync
+    from the simple-changes repository when it fails.
+  - Raised the distribution size cap to 310 KiB for the dual-shape receipt
+    schema.
+- Accepted the Simple Changes guidance update in `.simple-changes.json`
+  (guidance version 12 to 18); workflow policy choices are unchanged.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-24T11:54:37-05:00" -->
 - Added portable release-organization preferences across the five
   public-history distributions while keeping CMS-only excluded:
   - `releaseNoteGrouping` accepts `product-areas` (default) or `flat`;

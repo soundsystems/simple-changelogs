@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Delegated release handoffs from Simple Changes now negotiate successfully
+  again: the bundled protocol schemas were refreshed to the current
+  consumer-owned versions, so capability negotiation no longer fails with a
+  schema-digest mismatch, and both current and previous receipt formats are
+  accepted.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-24T11:54:37-05:00" -->
 - Release notes now group related changes under user-recognizable product or
   skill areas by default, merging repeated areas while leaving single-item
   categories flat. Patch releases always use **Bug Fixes & Improvements** as
