@@ -150,6 +150,11 @@ const findOpenFixedObjects = (
     findings.push(path);
   }
   for (const [key, item] of Object.entries(value)) {
+    if (key === "if" || key === "then" || key === "else") {
+      // Conditional keywords refine base objects that are already closed;
+      // their partial property subsets are intentionally open.
+      continue;
+    }
     findOpenFixedObjects(item, `${path}.${key}`, findings);
   }
   return findings;
@@ -332,7 +337,8 @@ describe("schema parity", () => {
       [preferencesSchema, "properties.schemaVersion.const", 1],
       [setupResultSchema, "properties.schemaVersion.const", 1],
       [changelogRequestSchema, "properties.schemaVersion.const", 1],
-      [changelogReceiptSchema, "properties.schemaVersion.const", 2],
+      [changelogReceiptSchema, "$defs.v1.properties.schemaVersion.const", 1],
+      [changelogReceiptSchema, "$defs.v2.properties.schemaVersion.const", 2],
       [manifestSchema, "properties.manifestVersion.const", MANIFEST_VERSION],
       [requestSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
       [responseSchema, "properties.protocolVersion.const", PROTOCOL_VERSION],
@@ -446,7 +452,7 @@ describe("schema parity", () => {
       [policySchema, "properties.distribution.enum", DISTRIBUTIONS],
       [
         changelogReceiptSchema,
-        "properties.status.enum",
+        "$defs.v2.properties.status.enum",
         [
           "decision-required",
           "prepared",
