@@ -13,6 +13,7 @@ import {
   rm,
   stat,
   unlink,
+  writeFile,
 } from "node:fs/promises";
 import { homedir, platform } from "node:os";
 import {
@@ -659,6 +660,14 @@ const canonicalJson = (value: unknown): string => {
   throw new Error("Canonical JSON supports JSON values only");
 };
 
+// Structural equality via canonical JSON so re-supplying an identical object
+// preference (for example publicVersioning) registers as unchanged.
+const sameStoredValue = (left: unknown, right: unknown): boolean =>
+  left === right ||
+  (left !== undefined &&
+    right !== undefined &&
+    canonicalJson(left) === canonicalJson(right));
+
 const digestSchema = (source: string): string =>
   sha256(canonicalJson(JSON.parse(source) as unknown));
 
@@ -764,40 +773,78 @@ export const guidanceBackfillRecommendationFor = (
   return "not-needed";
 };
 
+// The web-cms CMS track has no marker file yet, so a pending CMS-side update
+// surfaces the same synthesized fallback entry used for unreadable notes.
+const webCmsCmsTrackChanges = (
+  cmsPolicy: CmsPolicy | undefined
+): GuidanceUpdateNotice["changes"] => {
+  if (!cmsPolicy) {
+    return [];
+  }
+  const recordedVersion = cmsPolicy.guidance.version;
+  if (recordedVersion >= WEB_CMS_CMS_GUIDANCE_VERSION) {
+    return [];
+  }
+  return [
+    {
+      backfillRecommendation: "optional",
+      kinds: ["behavior"],
+      summary: `CMS-track guidance changed from version ${recordedVersion} to ${WEB_CMS_CMS_GUIDANCE_VERSION}.`,
+      version: WEB_CMS_CMS_GUIDANCE_VERSION,
+    },
+  ];
+};
+
 const guidanceUpdateNoticeFor = async (
   installed: Distribution | "cms",
-  policy: RepoPolicy | CmsPolicy | undefined
+  policy: RepoPolicy | CmsPolicy | undefined,
+  webCmsCmsPolicy?: CmsPolicy
 ): Promise<GuidanceUpdateNotice | null> => {
   if (!policy) {
     return null;
   }
-  const recordedVersion = policy.guidance.version;
-  const currentVersion = currentGuidanceVersionFor(installed);
-  if (recordedVersion >= currentVersion) {
+  const mainRecordedVersion = policy.guidance.version;
+  const mainCurrentVersion = currentGuidanceVersionFor(installed);
+  const cmsTrackChanges =
+    installed === "web-cms" ? webCmsCmsTrackChanges(webCmsCmsPolicy) : [];
+  const mainOutdated = mainRecordedVersion < mainCurrentVersion;
+  if (!mainOutdated && cmsTrackChanges.length === 0) {
     return null;
   }
+  const cmsRecordedVersion = webCmsCmsPolicy
+    ? webCmsCmsPolicy.guidance.version
+    : mainRecordedVersion;
+  const recordedVersion = mainOutdated
+    ? mainRecordedVersion
+    : cmsRecordedVersion;
+  const currentVersion = mainOutdated
+    ? mainCurrentVersion
+    : WEB_CMS_CMS_GUIDANCE_VERSION;
   const releaseNotesPath = guidanceReleaseNotesPath(installed);
-  let changes: GuidanceUpdateNotice["changes"] = [];
-  try {
-    changes = parseGuidanceUpdateChanges(
-      await readFile(releaseNotesPath, "utf8"),
-      recordedVersion,
-      currentVersion
-    );
-  } catch {
-    // A source checkout can be mid-update. Still surface the version change;
-    // verification will report a missing routed reference separately.
+  let mainChanges: GuidanceUpdateNotice["changes"] = [];
+  if (mainOutdated) {
+    try {
+      mainChanges = parseGuidanceUpdateChanges(
+        await readFile(releaseNotesPath, "utf8"),
+        mainRecordedVersion,
+        mainCurrentVersion
+      );
+    } catch {
+      // A source checkout can be mid-update. Still surface the version change;
+      // verification will report a missing routed reference separately.
+    }
+    if (mainChanges.length === 0) {
+      mainChanges = [
+        {
+          backfillRecommendation: "optional",
+          kinds: ["behavior"],
+          summary: `Guidance changed from version ${mainRecordedVersion} to ${mainCurrentVersion}.`,
+          version: mainCurrentVersion,
+        },
+      ];
+    }
   }
-  if (changes.length === 0) {
-    changes = [
-      {
-        backfillRecommendation: "optional",
-        kinds: ["behavior"],
-        summary: `Guidance changed from version ${recordedVersion} to ${currentVersion}.`,
-        version: currentVersion,
-      },
-    ];
-  }
+  const changes = [...mainChanges, ...cmsTrackChanges];
   const backfillRecommendation = guidanceBackfillRecommendationFor(changes);
   const releaseNotesOffer =
     "Detailed skill release notes are available if you would like to review them.";
@@ -1009,12 +1056,14 @@ const validateCmsPolicy = (
       isRecord(value.guidance) &&
       hasExactKeys(value.guidance, ["version", "backfillStatus"]) &&
       Number.isInteger(value.guidance.version) &&
-      (value.guidance.version as number) >= 1 &&
+      // Version 0 marks CMS-side guidance recorded before the track's first
+      // checkpoint; it stays valid so a pending track update can surface.
+      (value.guidance.version as number) >= 0 &&
       oneOf(value.guidance.backfillStatus, BACKFILL_STATUSES)
     )
   ) {
     errors.push(
-      "CMS guidance must contain a positive version and a supported backfillStatus"
+      "CMS guidance must contain a non-negative version and a supported backfillStatus"
     );
   }
   if (!oneOf(value.newReleaseNoteSurfaces, SURFACE_POLICIES)) {
@@ -1973,7 +2022,8 @@ export const inspectRepository = async (
   );
   const guidanceUpdate = await guidanceUpdateNoticeFor(
     installed,
-    installed === "cms" ? cmsPolicy.value : policy.value
+    installed === "cms" ? cmsPolicy.value : policy.value,
+    installed === "web-cms" ? cmsPolicy.value : undefined
   );
   const unresolvedQuestions = configured
     ? []
@@ -2162,6 +2212,83 @@ const recoverSetupTransaction = async (
   await rm(markerPath, { force: true });
 };
 
+const createTransactionMarker = async (
+  root: string,
+  markerPath: string,
+  staged: { candidate: CandidateWrite }[]
+): Promise<void> => {
+  const marker = {
+    schemaVersion: 1,
+    targets: staged.map(({ candidate }) =>
+      relative(root, candidate.path).split(sep).join("/")
+    ),
+  };
+  const markerHandle = await open(markerPath, "wx", 0o600);
+  try {
+    await markerHandle.writeFile(json(marker), "utf8");
+    await markerHandle.sync();
+  } finally {
+    await markerHandle.close();
+  }
+};
+
+const commitStaged = async (
+  staged: { candidate: CandidateWrite; temporaryPath: string }[]
+): Promise<void> => {
+  await Promise.all(
+    staged.map(async ({ candidate, temporaryPath }) => {
+      await ensureNoSymlink(candidate.path);
+      await rename(temporaryPath, candidate.path);
+      await chmod(candidate.path, candidate.mode);
+    })
+  );
+};
+
+// Rewrites existing setup state with the same transaction marker, staging,
+// and rollback as onboarding; prior content is restored on failure.
+const atomicReplaceSet = async (
+  root: string,
+  candidates: CandidateWrite[]
+): Promise<WriteRecord[]> => {
+  await Promise.all(
+    candidates.map((candidate) => ensureNoSymlink(candidate.path))
+  );
+  const markerPath = join(root, SETUP_TRANSACTION_FILENAME);
+  await ensureAbsent(markerPath);
+  const originals = await Promise.all(
+    candidates.map(async (candidate) => ({
+      candidate,
+      content: existsSync(candidate.path)
+        ? await readFile(candidate.path, "utf8")
+        : null,
+    }))
+  );
+  const staged = await stageCandidates(candidates);
+  let markerCreated = false;
+  try {
+    await createTransactionMarker(root, markerPath, staged);
+    markerCreated = true;
+    await commitStaged(staged);
+    await unlink(markerPath);
+    return candidates.map((candidate) => ({
+      kind: candidate.kind,
+      path: candidate.path,
+      written: true,
+    }));
+  } catch (error) {
+    await Promise.all([
+      ...originals.map(({ candidate, content }) =>
+        content === null
+          ? rm(candidate.path, { force: true })
+          : writeFile(candidate.path, content, { mode: candidate.mode })
+      ),
+      ...staged.map(({ temporaryPath }) => rm(temporaryPath, { force: true })),
+      ...(markerCreated ? [rm(markerPath, { force: true })] : []),
+    ]);
+    throw error;
+  }
+};
+
 const atomicWriteSet = async (
   root: string,
   candidates: CandidateWrite[]
@@ -2186,20 +2313,8 @@ const atomicWriteSet = async (
   const staged = await stageCandidates(pending);
   let markerCreated = false;
   try {
-    const marker = {
-      schemaVersion: 1,
-      targets: staged.map(({ candidate }) =>
-        relative(root, candidate.path).split(sep).join("/")
-      ),
-    };
-    const markerHandle = await open(markerPath, "wx", 0o600);
-    try {
-      await markerHandle.writeFile(json(marker), "utf8");
-      await markerHandle.sync();
-      markerCreated = true;
-    } finally {
-      await markerHandle.close();
-    }
+    await createTransactionMarker(root, markerPath, staged);
+    markerCreated = true;
     await Promise.all(
       staged.map(async ({ candidate, temporaryPath }) => {
         await ensureAbsent(candidate.path);
@@ -2484,14 +2599,7 @@ const completePartialAudit = async (
       path: cmsPath,
     });
   }
-  const staged = await stageCandidates(candidates);
-  await Promise.all(
-    staged.map(async ({ candidate, temporaryPath }) => {
-      await ensureNoSymlink(candidate.path);
-      await rename(temporaryPath, candidate.path);
-      await chmod(candidate.path, candidate.mode);
-    })
-  );
+  const writes = await atomicReplaceSet(inspect.repository, candidates);
   const errors = await validateStoredPolicies(installed, inspect.repository);
   return errors.length > 0
     ? blockResult(inspect, errors)
@@ -2512,11 +2620,7 @@ const completePartialAudit = async (
         status: "configured",
         summary:
           "The verified released-history audit is now recorded as completed.",
-        writes: candidates.map((candidate) => ({
-          kind: candidate.kind,
-          path: candidate.path,
-          written: true,
-        })),
+        writes,
       };
 };
 
@@ -2525,6 +2629,37 @@ const completePartialAudit = async (
  * path is intentionally separate from onboarding and from completing an
  * already-started historical audit.
  */
+const guidanceDispositionError = (
+  options: ApplyOptions,
+  inspect: SetupResult,
+  disposition: BackfillStatus
+): string | null => {
+  const notice = inspect.guidanceUpdate;
+  if (!notice) {
+    return "No unacknowledged guidance update is available for this repository.";
+  }
+  if (!options.confirm) {
+    return "Confirmation is required before recording a guidance-update disposition.";
+  }
+  if (disposition === "completed" && !options.auditVerified) {
+    return "A guidance-update backfill can be recorded as completed only with --audit-verified.";
+  }
+  if (
+    notice.backfillRecommendation === "not-needed" &&
+    disposition !== "not-applicable"
+  ) {
+    return "This guidance update has no historical backfill; record --guidance-backfill not-applicable.";
+  }
+  if (
+    notice.backfillRecommendation !== "not-needed" &&
+    disposition === "not-applicable" &&
+    inspect.inventory.releasedHistoryCount > 0
+  ) {
+    return "Released history exists; choose partial, deferred, declined, failed, or verified completed for this update.";
+  }
+  return null;
+};
+
 const updateGuidanceDisposition = async (
   options: ApplyOptions,
   inspect: SetupResult,
@@ -2534,38 +2669,13 @@ const updateGuidanceDisposition = async (
   if (disposition === undefined) {
     return null;
   }
-  const notice = inspect.guidanceUpdate;
-  if (!notice) {
-    return blockResult(inspect, [
-      "No unacknowledged guidance update is available for this repository.",
-    ]);
-  }
-  if (!options.confirm) {
-    return blockResult(inspect, [
-      "Confirmation is required before recording a guidance-update disposition.",
-    ]);
-  }
-  if (disposition === "completed" && !options.auditVerified) {
-    return blockResult(inspect, [
-      "A guidance-update backfill can be recorded as completed only with --audit-verified.",
-    ]);
-  }
-  if (
-    notice.backfillRecommendation === "not-needed" &&
-    disposition !== "not-applicable"
-  ) {
-    return blockResult(inspect, [
-      "This guidance update has no historical backfill; record --guidance-backfill not-applicable.",
-    ]);
-  }
-  if (
-    notice.backfillRecommendation !== "not-needed" &&
-    disposition === "not-applicable" &&
-    inspect.inventory.releasedHistoryCount > 0
-  ) {
-    return blockResult(inspect, [
-      "Released history exists; choose partial, deferred, declined, failed, or verified completed for this update.",
-    ]);
+  const preconditionError = guidanceDispositionError(
+    options,
+    inspect,
+    disposition
+  );
+  if (preconditionError) {
+    return blockResult(inspect, [preconditionError]);
   }
   const record = installed === "cms" ? inspect.cmsPolicy : inspect.policy;
   if (record?.state !== "valid" || record.value === undefined) {
@@ -2577,23 +2687,41 @@ const updateGuidanceDisposition = async (
     ...record.value,
     guidance: {
       backfillStatus: disposition,
-      version: notice.currentVersion,
+      version: currentGuidanceVersionFor(installed),
     },
   };
-  const candidate: CandidateWrite = {
-    content: json(updatedPolicy),
-    kind: installed === "cms" ? "cms-policy" : "repository-policy",
-    mode: 0o644,
-    path: record.path,
-  };
-  const staged = await stageCandidates([candidate]);
-  await Promise.all(
-    staged.map(async ({ candidate: pending, temporaryPath }) => {
-      await ensureNoSymlink(pending.path);
-      await rename(temporaryPath, pending.path);
-      await chmod(pending.path, pending.mode);
-    })
-  );
+  const candidates: CandidateWrite[] = [
+    {
+      content: json(updatedPolicy),
+      kind: installed === "cms" ? "cms-policy" : "repository-policy",
+      mode: 0o644,
+      path: record.path,
+    },
+  ];
+  if (installed === "web-cms") {
+    // The web-cms distribution keeps a second guidance block on the CMS
+    // policy's own track; acknowledging an update must advance both files
+    // together or neither.
+    const cmsRecord = inspect.cmsPolicy;
+    if (cmsRecord?.state !== "valid" || cmsRecord.value === undefined) {
+      return blockResult(inspect, [
+        "A valid CMS policy is required before recording a guidance update for a web+CMS repository.",
+      ]);
+    }
+    candidates.push({
+      content: json({
+        ...cmsRecord.value,
+        guidance: {
+          backfillStatus: disposition,
+          version: WEB_CMS_CMS_GUIDANCE_VERSION,
+        },
+      }),
+      kind: "cms-policy",
+      mode: 0o644,
+      path: cmsRecord.path,
+    });
+  }
+  const writes = await atomicReplaceSet(inspect.repository, candidates);
   const errors = await validateStoredPolicies(installed, inspect.repository);
   return errors.length > 0
     ? blockResult(inspect, errors)
@@ -2612,7 +2740,7 @@ const updateGuidanceDisposition = async (
           disposition === "partial"
             ? "The guidance update is acknowledged and its historical backfill is recorded as in progress."
             : "The guidance update and its historical-backfill disposition are recorded.",
-        writes: [{ kind: candidate.kind, path: candidate.path, written: true }],
+        writes,
       };
 };
 
@@ -2702,8 +2830,8 @@ const updateContextualPreferences = async (
   const current = record.value;
   const { path } = record;
   if (
-    Object.entries(updates).every(
-      ([key, value]) => current[key as keyof RepoPolicy] === value
+    Object.entries(updates).every(([key, value]) =>
+      sameStoredValue(current[key as keyof RepoPolicy], value)
     )
   ) {
     return {
@@ -2735,14 +2863,7 @@ const updateContextualPreferences = async (
     mode: 0o644,
     path,
   };
-  const staged = await stageCandidates([candidate]);
-  await Promise.all(
-    staged.map(async ({ candidate: pending, temporaryPath }) => {
-      await ensureNoSymlink(pending.path);
-      await rename(temporaryPath, pending.path);
-      await chmod(pending.path, pending.mode);
-    })
-  );
+  const writes = await atomicReplaceSet(inspect.repository, [candidate]);
   const errors = await validateStoredPolicies(
     inspect.detection.distribution ?? "full",
     inspect.repository
@@ -2770,7 +2891,7 @@ const updateContextualPreferences = async (
         status: "configured",
         summary:
           "Repository policy now records the selected contextual preferences; no other setup value changed.",
-        writes: [{ kind: candidate.kind, path: candidate.path, written: true }],
+        writes,
       };
 };
 

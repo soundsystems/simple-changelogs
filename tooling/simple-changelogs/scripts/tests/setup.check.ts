@@ -2083,3 +2083,211 @@ test("every copied distribution runs its self-contained setup helper", async () 
     }))
   );
 });
+
+const webCmsRepoPolicy = (guidance: {
+  backfillStatus: string;
+  version: number;
+}) => ({
+  developerChangelog: "required",
+  distribution: "web-cms",
+  guidance,
+  newReleaseNoteSurfaces: "ask",
+  publicVersioning: {
+    major: "ask",
+    minor: "ask",
+    patch: "ask",
+    suggestWhenAsking: true,
+  },
+  schemaVersion: 1,
+  signatures: "agent-and-timestamp",
+});
+
+const webCmsCmsPolicy = (guidance: {
+  backfillStatus: string;
+  version: number;
+}) => ({
+  changelogPath: "CMS_CHANGELOG.json",
+  cmsSurface: { access: "authenticated-operators", route: "/admin/changelog" },
+  guidance,
+  newReleaseNoteSurfaces: "existing-only",
+  schemaVersion: 1,
+});
+
+const writeWebCmsFixture = async (
+  repo: string,
+  repoGuidance: { backfillStatus: string; version: number },
+  cmsGuidance: { backfillStatus: string; version: number }
+): Promise<void> => {
+  await writeJson(
+    join(repo, ".simple-changelogs.json"),
+    webCmsRepoPolicy(repoGuidance)
+  );
+  await writeJson(
+    join(repo, ".simple-changelogs-cms.json"),
+    webCmsCmsPolicy(cmsGuidance)
+  );
+};
+
+describe("post-onboarding update paths", () => {
+  test("surfaces a web-cms CMS-track guidance update and advances both policies on acknowledgment", async () => {
+    const { config, repo } = await fixture();
+    await writeWebCmsFixture(
+      repo,
+      { backfillStatus: "completed", version: 19 },
+      { backfillStatus: "completed", version: 0 }
+    );
+
+    const inspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "web-cms",
+      repo,
+      taskMode: "write",
+    });
+
+    expect(inspection.guidanceUpdate).toMatchObject({
+      currentVersion: 1,
+      recordedVersion: 0,
+    });
+    expect(inspection.guidanceUpdate?.changes).toEqual([
+      {
+        backfillRecommendation: "optional",
+        kinds: ["behavior"],
+        summary: "CMS-track guidance changed from version 0 to 1.",
+        version: 1,
+      },
+    ]);
+
+    const recorded = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web-cms",
+      guidanceBackfill: "not-applicable",
+      repo,
+    });
+    expect(recorded.status).toBe("configured");
+    expect(recorded.guidanceUpdate).toBeNull();
+    expect(recorded.writes.map(({ written }) => written).every(Boolean)).toBe(
+      true
+    );
+    expect(
+      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
+    ).toBe(false);
+
+    const repoPolicy = await readJson(join(repo, ".simple-changelogs.json"));
+    const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
+    expect(repoPolicy.guidance).toEqual({
+      backfillStatus: "not-applicable",
+      version: 19,
+    });
+    expect(cmsPolicy.guidance).toEqual({
+      backfillStatus: "not-applicable",
+      version: 1,
+    });
+
+    const after = await inspectRepository({
+      configDirectory: config,
+      distribution: "web-cms",
+      repo,
+      taskMode: "write",
+    });
+    expect(after.guidanceUpdate).toBeNull();
+  });
+
+  test("reports no guidance update for a web-cms repo current on both tracks", async () => {
+    const { config, repo } = await fixture();
+    await writeWebCmsFixture(
+      repo,
+      { backfillStatus: "completed", version: 19 },
+      { backfillStatus: "completed", version: 1 }
+    );
+
+    const inspection = await inspectRepository({
+      configDirectory: config,
+      distribution: "web-cms",
+      repo,
+      taskMode: "write",
+    });
+
+    expect(inspection.guidanceUpdate).toBeNull();
+    expect(inspection.status).toBe("already-configured");
+  });
+
+  test("identical contextual preferences re-run reports already-configured without confirmation or rewrite", async () => {
+    const { config, repo } = await fixture();
+    await applySetup(recommendedOptions(repo, config));
+    const policyPath = join(repo, ".simple-changelogs.json");
+    const before = await readFile(policyPath, "utf8");
+
+    const rerun = await applySetup({
+      configDirectory: config,
+      distribution: "web",
+      publicVersionMajor: "ask",
+      publicVersionMinor: "ask",
+      publicVersionPatch: "ask",
+      repo,
+    });
+
+    expect(rerun.status).toBe("already-configured");
+    expect(rerun.summary).toBe(
+      "Repository policy already records the selected contextual preferences."
+    );
+    expect(await readFile(policyPath, "utf8")).toBe(before);
+    expect(
+      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
+    ).toBe(false);
+  });
+
+  test("web-cms audit completion updates both policy files and cleans up the transaction marker", async () => {
+    const { config, repo } = await fixture();
+    await writeWebCmsFixture(
+      repo,
+      { backfillStatus: "partial", version: 19 },
+      { backfillStatus: "partial", version: 1 }
+    );
+
+    const completed = await applySetup({
+      auditVerified: true,
+      backfillStatus: "completed",
+      configDirectory: config,
+      confirm: true,
+      distribution: "web-cms",
+      repo,
+    });
+
+    expect(completed.status).toBe("configured");
+    expect(completed.writes).toHaveLength(2);
+    expect(
+      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
+    ).toBe(false);
+    const repoPolicy = await readJson(join(repo, ".simple-changelogs.json"));
+    const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
+    expect(repoPolicy.guidance).toEqual({
+      backfillStatus: "completed",
+      version: 19,
+    });
+    expect(cmsPolicy.guidance).toEqual({
+      backfillStatus: "completed",
+      version: 1,
+    });
+  });
+
+  test("contextual preference updates clean up the transaction marker", async () => {
+    const { config, repo } = await fixture();
+    await applySetup(recommendedOptions(repo, config));
+
+    const changed = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "web",
+      majorReleaseNaming: "version-only",
+      repo,
+    });
+
+    expect(changed.status).toBe("configured");
+    expect(
+      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
+    ).toBe(false);
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+    expect(policy.majorReleaseNaming).toBe("version-only");
+  });
+});

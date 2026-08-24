@@ -209,3 +209,9 @@ as errors, and `references/querying.md` documents every subcommand.
 This addition is read-only. It changes no saved settings, asks no new
 onboarding questions, writes no cache or index beside the Markdown source of
 truth, and gives released history no reason for a backfill.
+
+Setup state recorded after onboarding — completing a partial released-history
+audit, acknowledging a guidance update, or changing contextual preferences —
+now writes through the same transaction-marked atomic path as initial
+onboarding, and re-recording identical contextual preferences reports the
+repository as already configured without rewriting stored policy.

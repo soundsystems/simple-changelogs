@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Made the Web+CMS CMS guidance track functional: `guidanceUpdateNoticeFor`
+  now also compares the CMS policy's `guidance.version` against
+  `WEB_CMS_CMS_GUIDANCE_VERSION` (merging both tracks into one notice, with a
+  synthesized fallback change entry until CMS-track markers exist), and
+  `updateGuidanceDisposition` advances both policy files atomically for
+  web-cms. `validateCmsPolicy` accepts `guidance.version >= 0` so a
+  behind-track policy is inspectable rather than malformed; onboarding still
+  never writes 0.
+- Routed `completePartialAudit`, `updateGuidanceDisposition`, and
+  `updateContextualPreferences` through a new `atomicReplaceSet` helper
+  (shared transaction marker, staged writes, rollback on failure), covering
+  the previously unprotected web-cms two-file audit completion. No-op
+  detection in `updateContextualPreferences` uses canonical-JSON structural
+  equality, so identical re-runs report `already-configured` without
+  `--confirm` or a rewrite. Five regression tests added in `setup.check.ts`.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-24T15:21:17-05:00" -->
 - Added read-only history querying across the five markdown distributions:
   - Promoted the deterministic parser core of `curation-source.ts` into a
     shipped `scripts/lib/changelog-parse.ts` (fence/comment awareness,

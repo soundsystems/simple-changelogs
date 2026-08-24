@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Web+CMS repositories now receive CMS-side guidance-update notices, and
+  acknowledging an update advances both recorded guidance checkpoints together.
+- Settings updates after onboarding are now fully transactional: an interrupted
+  write restores the previous state, and re-applying an identical preference
+  reports it as already configured instead of asking for confirmation again.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-24T15:21:17-05:00" -->
 - Shipped changelog history is now directly queryable. Every markdown
   distribution bundles a read-only `scripts/query.ts` helper that lists
   releases, shows one release, filters entries by date, product area, author,
