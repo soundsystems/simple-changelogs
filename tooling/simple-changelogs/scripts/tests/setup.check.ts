@@ -241,7 +241,7 @@ describe("setup inspection", () => {
 
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
-      backfillRecommendation: "not-needed",
+      backfillRecommendation: "optional",
       currentVersion: 19,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
@@ -249,9 +249,10 @@ describe("setup inspection", () => {
       summaryBullets: [
         "Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity.",
         "Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section.",
-        "A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories.",
+        "A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories. Curated public release notes can now derive RELEASE_NOTES.md from the changelog.",
       ],
-      userPrompt: null,
+      userPrompt:
+        "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
       walkthroughQuestion:
         "Would you like me to walk you through what changed before I continue?",
     });
@@ -268,7 +269,7 @@ describe("setup inspection", () => {
       version: 18,
     });
     expect(inspection.guidanceUpdate?.changes[3]).toMatchObject({
-      kinds: ["capability"],
+      kinds: ["capability", "onboarding"],
       version: 19,
     });
 
@@ -276,7 +277,7 @@ describe("setup inspection", () => {
       configDirectory: config,
       confirm: true,
       distribution: "web",
-      guidanceBackfill: "partial",
+      guidanceBackfill: "completed",
       repo,
     });
     expect(rejected.status).toBe("blocked");
@@ -1686,14 +1687,13 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 4,
+      currentVersion: 5,
       recordedVersion: 1,
-      userPrompt: null,
     });
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 4,
+      version: 5,
     });
   });
 
@@ -2134,7 +2134,7 @@ describe("post-onboarding update paths", () => {
     await writeWebCmsFixture(
       repo,
       { backfillStatus: "completed", version: 19 },
-      { backfillStatus: "completed", version: 0 }
+      { backfillStatus: "completed", version: 1 }
     );
 
     const inspection = await inspectRepository({
@@ -2145,15 +2145,15 @@ describe("post-onboarding update paths", () => {
     });
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 1,
-      recordedVersion: 0,
+      currentVersion: 2,
+      recordedVersion: 1,
     });
     expect(inspection.guidanceUpdate?.changes).toEqual([
       {
         backfillRecommendation: "optional",
         kinds: ["behavior"],
-        summary: "CMS-track guidance changed from version 0 to 1.",
-        version: 1,
+        summary: "CMS-track guidance changed from version 1 to 2.",
+        version: 2,
       },
     ]);
 
@@ -2181,7 +2181,7 @@ describe("post-onboarding update paths", () => {
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 1,
+      version: 2,
     });
 
     const after = await inspectRepository({
@@ -2198,7 +2198,7 @@ describe("post-onboarding update paths", () => {
     await writeWebCmsFixture(
       repo,
       { backfillStatus: "completed", version: 19 },
-      { backfillStatus: "completed", version: 1 }
+      { backfillStatus: "completed", version: 2 }
     );
 
     const inspection = await inspectRepository({

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 
@@ -20,11 +21,26 @@ const SURFACE_COMPONENT_SOURCES = new Set([
 const ENTRY_KINDS = new Set(["release", "backfill"]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ENTRY_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CHANGE_ID_PATTERN = /^[0-9a-f]{12}$/;
+const NON_FILTERABLE_CHANGE = /^\*\*(?:Breaking|Security)\*\*/u;
 const PATH_SEPARATOR_PATTERN = /[\\/]/u;
+
+// The stable identity of one change string: the first 12 hex characters of its
+// SHA-256 digest, mirroring the Markdown distributions' per-entry identity.
+export const cmsChangeId = (change: string): string =>
+  createHash("sha256").update(change).digest("hex").slice(0, 12);
+
+export interface CmsCuration {
+  highlighted: string[];
+  omitted: string[];
+  rolledUp: string[];
+}
 
 export interface CmsChangelogEntry {
   changes: string[];
+  curation?: CmsCuration;
   date: string;
+  highlights?: string[];
   id: string;
   kind: "backfill" | "release";
   summary: string;
@@ -46,7 +62,7 @@ export interface CmsChangelogPolicy {
   };
   guidance: {
     backfillStatus: string;
-    version: 1;
+    version: number;
   };
   newReleaseNoteSurfaceComponents?:
     | "minimal-markup"
@@ -86,6 +102,105 @@ const isValidDate = (value: unknown): value is string => {
   );
 };
 
+// When curation is present, every change is accounted exactly once by its
+// stable id, unknown ids are rejected, and a change that begins with
+// **Breaking** or **Security** may never be omitted or rolled up.
+const CURATION_BUCKETS = ["highlighted", "rolledUp", "omitted"] as const;
+
+const isCurationShape = (curation: unknown): curation is CmsCuration =>
+  isRecord(curation) &&
+  hasExactKeys(curation, [...CURATION_BUCKETS]) &&
+  CURATION_BUCKETS.every((bucket) => {
+    const ids = curation[bucket];
+    return (
+      Array.isArray(ids) &&
+      ids.every((id) => typeof id === "string" && CHANGE_ID_PATTERN.test(id))
+    );
+  });
+
+const changeIdMap = (changes: string[]): Map<string, string> | null => {
+  const idsByChange = new Map<string, string>();
+  for (const change of changes) {
+    const id = cmsChangeId(change);
+    if (idsByChange.has(id)) {
+      return null;
+    }
+    idsByChange.set(id, change);
+  }
+  return idsByChange;
+};
+
+const accountCurationBucket = (
+  bucket: (typeof CURATION_BUCKETS)[number],
+  ids: string[],
+  idsByChange: Map<string, string>,
+  accounted: Set<string>,
+  prefix: string,
+  errors: string[]
+): void => {
+  for (const id of ids) {
+    const change = idsByChange.get(id);
+    if (change === undefined) {
+      errors.push(
+        `${prefix}.curation.${bucket} references unknown change id ${id}`
+      );
+      continue;
+    }
+    if (accounted.has(id)) {
+      errors.push(`${prefix}.curation accounts change id ${id} more than once`);
+      continue;
+    }
+    accounted.add(id);
+    if (bucket !== "highlighted" && NON_FILTERABLE_CHANGE.test(change)) {
+      errors.push(
+        `${prefix}.curation may not omit or roll up breaking or security change id ${id}`
+      );
+    }
+  }
+};
+
+const validateCuration = (
+  curation: unknown,
+  changes: unknown,
+  prefix: string,
+  errors: string[]
+): void => {
+  if (!isCurationShape(curation)) {
+    errors.push(
+      `${prefix}.curation must contain highlighted, rolledUp, and omitted arrays of 12-hex change ids`
+    );
+    return;
+  }
+  if (!(Array.isArray(changes) && changes.every(isNonEmptyString))) {
+    return;
+  }
+  const idsByChange = changeIdMap(changes);
+  if (idsByChange === null) {
+    errors.push(
+      `${prefix}.changes must be unique when curation accounts them by id`
+    );
+    return;
+  }
+  const accounted = new Set<string>();
+  for (const bucket of CURATION_BUCKETS) {
+    accountCurationBucket(
+      bucket,
+      curation[bucket],
+      idsByChange,
+      accounted,
+      prefix,
+      errors
+    );
+  }
+  for (const [id, change] of idsByChange) {
+    if (!accounted.has(id)) {
+      errors.push(
+        `${prefix}.curation leaves change id ${id} unaccounted: ${change}`
+      );
+    }
+  }
+};
+
 const validateEntry = (
   value: unknown,
   index: number
@@ -95,7 +210,7 @@ const validateEntry = (
     return { errors: [`${prefix} must be an object`] };
   }
   const required = ["id", "date", "kind", "title", "summary", "changes"];
-  if (!hasExactKeys(value, required, ["version"])) {
+  if (!hasExactKeys(value, required, ["version", "highlights", "curation"])) {
     return { errors: [`${prefix} has missing or unknown fields`] };
   }
 
@@ -126,6 +241,20 @@ const validateEntry = (
   }
   if (value.version !== undefined && !isNonEmptyString(value.version)) {
     errors.push(`${prefix}.version must be a non-empty string when present`);
+  }
+  if (
+    value.highlights !== undefined &&
+    !(
+      Array.isArray(value.highlights) &&
+      value.highlights.every(isNonEmptyString)
+    )
+  ) {
+    errors.push(
+      `${prefix}.highlights must contain non-empty strings when present`
+    );
+  }
+  if (value.curation !== undefined) {
+    validateCuration(value.curation, value.changes, prefix, errors);
   }
 
   return errors.length === 0

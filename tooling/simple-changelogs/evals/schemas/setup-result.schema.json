@@ -230,6 +230,16 @@
       ]
     },
     "majorReleaseNaming": { "enum": ["named", "version-only"] },
+    "publicReleaseNotes": { "enum": ["full", "curated"] },
+    "curationBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 }
+      }
+    },
     "releaseNoteGrouping": { "enum": ["product-areas", "flat"] },
     "surfacePolicy": { "enum": ["ask", "allow", "existing-only"] },
     "surfaceComponentSource": {
@@ -331,7 +341,9 @@
         "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" },
         "releaseNoteLinks": {
           "$ref": "#/$defs/releaseNoteLinks"
-        }
+        },
+        "publicReleaseNotes": { "$ref": "#/$defs/publicReleaseNotes" },
+        "curationBudget": { "$ref": "#/$defs/curationBudget" }
       }
     },
     "cmsPolicy": {
@@ -351,7 +363,7 @@
           "additionalProperties": false,
           "required": ["version", "backfillStatus"],
           "properties": {
-            "version": { "const": 1 },
+            "version": { "type": "integer", "minimum": 0 },
             "backfillStatus": { "$ref": "#/$defs/backfillStatus" }
           }
         },
@@ -728,6 +740,8 @@
         "releaseNoteLinks": {
           "$ref": "#/$defs/releaseNoteLinks"
         },
+        "publicReleaseNotes": { "$ref": "#/$defs/publicReleaseNotes" },
+        "curationBudget": { "$ref": "#/$defs/curationBudget" },
         "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },

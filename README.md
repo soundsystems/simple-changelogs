@@ -107,6 +107,18 @@ is not present, setup asks whether it is a planned surface or whether the owner
 wants to choose again. A planned choice never invents an app root, CMS route,
 authentication boundary, store credential, or monorepo layout.
 
+### Curated release notes
+
+Repositories that record `publicReleaseNotes: "curated"` add a derived public
+layer: `RELEASE_NOTES.md` at the repository root, generated from the customer
+changelog at each release boundary. It selects highlights, rewrites headlines,
+and rolls the remainder into one line; it is never authored directly and never
+introduces facts the changelog does not contain. Each curated section carries a
+provenance comment accounting every changelog entry as highlighted, rolled up,
+or omitted, and `query.ts check` verifies that coverage mechanically —
+Breaking and Security entries can never be filtered out. Each distribution's
+`references/curation.md` documents the conventions.
+
 ## Install
 
 List names and discovery descriptions without installing:
@@ -315,14 +327,18 @@ truth. It never writes, caches, or indexes anything:
 bun skills/simple-changelogs-web/scripts/query.ts releases --repo .
 bun skills/simple-changelogs-web/scripts/query.ts show unreleased --log customer --repo .
 bun skills/simple-changelogs-web/scripts/query.ts entries --since 2026-07-01 --grep "release" --repo . --json
+bun skills/simple-changelogs-web/scripts/query.ts show 2.1.0 --log customer --omitted --repo .
 ```
 
 `check` lints structure (unrecognized release headings, malformed signature
 comments, parser diagnostics) and exits nonzero on problems so it can join
 verification checklists. Both the canonical
 `<!-- simple-changelogs-signature ... -->` comment and the older
-`<!-- Agent: ... -->` dialect are recognized when attributing entries. Each
-distribution's `references/querying.md` documents the subcommands and filters.
+`<!-- Agent: ... -->` dialect are recognized when attributing entries. In
+curated repositories, `entries --ids` prints the entry identities that
+curation provenance comments reference, and `check` also verifies curation
+coverage whenever `RELEASE_NOTES.md` exists. Each distribution's
+`references/querying.md` documents the subcommands and filters.
 
 ## Manual install
 

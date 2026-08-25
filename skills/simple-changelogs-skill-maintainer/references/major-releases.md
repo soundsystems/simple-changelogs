@@ -38,3 +38,8 @@ Fixes & Improvements** with flat bullets as defined in
 Compact packaged notes summarize the major and link to full history when such a
 link already exists. Release publication, tags, and fork propagation require
 separate authority.
+
+When repository policy selects curated public release notes, the derived
+`RELEASE_NOTES.md` section for a stable major keeps the reviewed name beside
+the real version and follows `references/curation.md` for its highlights,
+rollup line, and coverage accounting.

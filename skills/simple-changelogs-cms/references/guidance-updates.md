@@ -71,3 +71,21 @@ waits until an exact protected surface is needed before requesting authority.
 Advanced `allow` and `existing-only` policies remain supported explicitly. This
 prospective change rewrites no released operator history and grants no surface,
 operator access, dependency, deployment, or publication authority.
+
+<!-- simple-changelogs-guidance-update version="5" kinds="capability,onboarding" backfill="optional" summary="CMS changelog entries may now carry curated highlights with a mechanical accounting of every underlying change." -->
+## Guidance 5
+
+A CMS changelog entry may now record curated highlights beside its complete
+change list. `highlights` holds short advertised sentences derived from the
+entry's changes, and an optional `curation` object accounts every change id as
+highlighted, rolled up, or omitted so nothing silently disappears.
+
+The bundled validator enforces the accounting when `curation` is present: every
+change is accounted exactly once by its stable 12-hex id, unknown ids are
+rejected, and a change beginning with `**Breaking**` or `**Security**` may
+never be omitted or rolled up. Entries without these fields are unchanged, and
+`highlights` may be used alone without the accounting object.
+
+Existing released entries never gain highlights automatically. Backfilling
+curation for already-released history is optional, offered once, and derives
+only from the recorded changes.

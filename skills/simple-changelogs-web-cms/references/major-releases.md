@@ -103,3 +103,8 @@ Keep technical implementation and maintainer migration context in
 `DEVELOPER_CHANGELOG.md`. Keep the customer summary scannable; comprehensive
 means complete coverage of durable outcomes and required action, not an
 exhaustive concatenation of prior bullets.
+
+When repository policy selects curated public release notes, the derived
+`RELEASE_NOTES.md` section for a stable major keeps the reviewed name beside
+the real version and follows `references/curation.md` for its highlights,
+rollup line, and coverage accounting.

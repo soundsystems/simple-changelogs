@@ -79,6 +79,7 @@ Read only the references needed for the current branch of work:
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
 | Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
+| Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |
 | Presentation and defect checks after an exact product surface is authorized | `references/surface-design.md` |
 | Final checks and repository-native automation | `references/automation-verification.md` |

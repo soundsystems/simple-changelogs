@@ -378,7 +378,7 @@ name. Patch releases always use one flat **Bug Fixes & Improvements** section.
 Both preferences remain configurable and apply prospectively; released history
 is unchanged and no release or publication authority is granted.
 
-<!-- simple-changelogs-guidance-update version="20" kinds="capability" backfill="not-needed" summary="A bundled read-only query CLI now lists releases, shows one release, filters entries, and lint-checks changelog structure." -->
+<!-- simple-changelogs-guidance-update version="20" kinds="capability,onboarding" backfill="optional" summary="A bundled read-only query CLI now lists releases, shows one release, filters entries, and lint-checks changelog structure. Curated public release notes can now derive RELEASE_NOTES.md from the changelog." -->
 ## Guidance 20
 
 Repositories using this distribution gain a queryable history: agents and maintainers can answer history questions
@@ -403,3 +403,17 @@ audit, acknowledging a guidance update, or changing contextual preferences —
 now writes through the same transaction-marked atomic path as initial
 onboarding, and re-recording identical contextual preferences reports the
 repository as already configured without rewriting stored policy.
+
+Repositories with a public marketing or web surface may now opt into curated
+public release notes. A new optional `publicReleaseNotes` repository policy
+(`full` by default, `curated` on request) derives a `RELEASE_NOTES.md` at each
+release boundary: a few one-sentence highlights within an optional
+`curationBudget` (default 3-8) plus one rollup line pointing at the complete
+changelog. The curated file is derived, never authored; every changelog entry
+is mechanically accounted as highlighted, rolled up, or omitted, and breaking
+changes and security notices are never omitted or rolled up. The proposed
+section rides the existing release receipt, onboarding asks one evidence-led
+question only when a public destination is detected, and repositories that
+keep the default `full` policy see no change. Backfilling curated sections for
+already-released history is a safe derived operation, offered once, never
+automatic.

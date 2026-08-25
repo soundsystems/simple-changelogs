@@ -76,6 +76,7 @@ versioning, eval requirements, publication flow, and generated mirrors.
 | Version choice and metadata alignment | `references/version-decisions.md` |
 | Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
+| Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Packaged notes and skill-repository releases | `references/release-note-surfaces.md` |
 | Package shape and distribution verification | `references/automation-verification.md` |
 | Fork provenance and upstream drift | `references/fork-maintenance.md` |

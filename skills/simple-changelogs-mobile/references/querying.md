@@ -28,6 +28,13 @@ Subcommands:
   repository verification checklists. Legacy `<!-- Agent: ... -->` signatures
   are reported as notes, not problems; they remain valid released history.
 
+For curated release notes (see `references/curation.md`): `entries --ids`
+prints each entry's 12-hex identity for use in curation provenance comments,
+`show <release> --omitted` lists what a curated `RELEASE_NOTES.md` section
+records as omitted or rolled up, and `check` verifies curation coverage
+(every entry accounted exactly once, Breaking/Security never filtered, the
+highlight budget respected) whenever `RELEASE_NOTES.md` exists.
+
 Every subcommand accepts `--log customer|developer|both` (default `both`) and
 `--json` for structured output whose fields (`date`, `version`, `title`,
 `text`, `log`, `group`, `signature`) match the CMS entry vocabulary. Reads

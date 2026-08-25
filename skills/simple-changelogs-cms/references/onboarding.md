@@ -462,6 +462,15 @@ skill; duplicating them creates a second copy that drifts independently and is
 read more often than the original. Detect an existing pointer and update it in
 place rather than appending a second one.
 
+## Optional curated highlights
+
+Entries may optionally carry `highlights` — short advertised sentences derived
+from an entry's complete change list — and a `curation` accounting object that
+the bundled validator checks so every change stays accounted for and breaking
+or security changes are never hidden. This needs no onboarding question and no
+policy field; mention it only when the owner asks how to feature selected
+operator changes. See `references/cms-surface.md`.
+
 ## Final history question
 
 After every other unresolved onboarding choice, ask about released history

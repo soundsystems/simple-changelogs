@@ -350,7 +350,7 @@ use one flat **Bug Fixes & Improvements** section. The preferences are
 prospective and grant no public surface, CMS access, deployment, publication,
 or version authority.
 
-<!-- simple-changelogs-guidance-update version="19" kinds="capability" backfill="not-needed" summary="A bundled read-only query CLI now reads releases and entries from the public Markdown histories and lint-checks their structure." -->
+<!-- simple-changelogs-guidance-update version="19" kinds="capability,onboarding" backfill="optional" summary="A bundled read-only query CLI now reads releases and entries from the public Markdown histories and lint-checks their structure. Curated public release notes can now derive RELEASE_NOTES.md from the changelog." -->
 ## Guidance 19
 
 Web+CMS repositories gain a queryable public history: agents and maintainers can answer history questions
@@ -377,3 +377,17 @@ onboarding, and re-recording identical contextual preferences reports the
 repository as already configured without rewriting stored policy. Guidance
 acknowledgments advance the repository and CMS policy guidance blocks
 together, and a pending CMS-track update now surfaces its own notice.
+
+Repositories with a public marketing or web surface may now opt into curated
+public release notes. A new optional `publicReleaseNotes` repository policy
+(`full` by default, `curated` on request) derives a `RELEASE_NOTES.md` at each
+release boundary: a few one-sentence highlights within an optional
+`curationBudget` (default 3-8) plus one rollup line pointing at the complete
+changelog. The curated file is derived, never authored; every changelog entry
+is mechanically accounted as highlighted, rolled up, or omitted, and breaking
+changes and security notices are never omitted or rolled up. The proposed
+section rides the existing release receipt, onboarding asks one evidence-led
+question only when a public destination is detected, and repositories that
+keep the default `full` policy see no change. Backfilling curated sections for
+already-released history is a safe derived operation, offered once, never
+automatic.

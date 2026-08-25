@@ -75,6 +75,15 @@ Before pushing, merging, publishing, or deploying with release intent:
   prerelease, apply `references/major-releases.md` before finalizing. A branch
   name or prerelease merge is not sufficient evidence of a stable major.
 
+## Curated Release Notes
+
+When repository policy records `publicReleaseNotes: "curated"`, release
+reconciliation also generates the proposed `RELEASE_NOTES.md` section derived
+from the release's changelog entries and includes it in the existing release
+receipt. One confirmation covers the release and its curated section; never
+add a separate curation prompt. `references/curation.md` owns the derivation,
+budget, coverage, and provenance rules.
+
 ## Pull or Merge Request Reconciliation
 
 When the user asks you to create pull or merge requests and merge them, treat the

@@ -71,6 +71,7 @@ release flow, source of truth, or store boundary.
 | Version choice and metadata alignment | `references/version-decisions.md` |
 | Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prerelease trains | `references/major-releases.md` |
+| Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Mobile/store destination scoping and long-form release notes | `references/release-note-surfaces.md` |
 | Presentation and defect checks after an exact in-app surface is authorized | `references/surface-design.md` |
 | Final repository-native checks | `references/automation-verification.md` |
