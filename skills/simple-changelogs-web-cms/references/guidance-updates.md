@@ -349,3 +349,31 @@ beside the canonical version. Minor releases require no name, and patches always
 use one flat **Bug Fixes & Improvements** section. The preferences are
 prospective and grant no public surface, CMS access, deployment, publication,
 or version authority.
+
+<!-- simple-changelogs-guidance-update version="19" kinds="capability" backfill="not-needed" summary="A bundled read-only query CLI now reads releases and entries from the public Markdown histories and lint-checks their structure." -->
+## Guidance 19
+
+Web+CMS repositories gain a queryable public history: agents and maintainers can answer history questions
+directly from `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` with the bundled
+`scripts/query.ts` helper. It lists release sections, shows one release by
+version, date, or `Unreleased`, filters entries by date, group, agent, or
+pattern, and lint-checks structure with a nonzero exit on problems. Bare
+versions resolve to full ones, duplicate headings are disambiguated by
+occurrence, and ambiguity produces a candidate list rather than a guess.
+
+The helper also understands the legacy `<!-- Agent: ... -->` signature dialect
+used before the canonical signature comment, so older attributed history stays
+queryable. Legacy signatures are reported as notes during lint, never treated
+as errors, and `references/querying.md` documents every subcommand.
+
+This addition is read-only. It changes no saved settings, asks no new
+onboarding questions, writes no cache or index beside the Markdown source of
+truth, and gives released history no reason for a backfill.
+
+Setup state recorded after onboarding — completing a partial released-history
+audit, acknowledging a guidance update, or changing contextual preferences —
+now writes through the same transaction-marked atomic path as initial
+onboarding, and re-recording identical contextual preferences reports the
+repository as already configured without rewriting stored policy. Guidance
+acknowledgments advance the repository and CMS policy guidance blocks
+together, and a pending CMS-track update now surfaces its own notice.

@@ -4,9 +4,9 @@
   "defaultFinish": "ship",
   "guidance": {
     "disposition": "accepted",
-    "version": 12
+    "version": 18
   },
-  "handoffTiming": "confirm-ready",
+  "handoffTiming": "automatic",
   "productionDeploy": "ask",
   "questions": "blocking-only",
   "review": "repository-policy",

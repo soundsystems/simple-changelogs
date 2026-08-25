@@ -6,11 +6,13 @@ inside the original task, not a separate task.
 
 ## Inspect before asking
 
-Classify the current request and run the selected distribution's bundled
-helper. For a repository-local web distribution:
+Classify the current request and run this distribution's bundled
+`scripts/setup.ts` helper. The path below assumes a repository-local
+install; for a global install, run the installed skill directory's copy by
+absolute path (`bun /absolute/path/to/simple-changelogs/scripts/setup.ts`):
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts inspect \
+bun skills/simple-changelogs/scripts/setup.ts inspect \
   --json \
   --task-mode write \
   --repo .
@@ -282,7 +284,7 @@ questions, the resolved summary, owner `simple-changelogs`, and exact policy
 destination. Each owner writes its own policy. Preserve a successful owner
 write on partial failure and resume from inspection and write receipts.
 
-+## Release-note organization and major names
+## Release-note organization and major names
 
 Recommended setup records `releaseNoteGrouping: "product-areas"`. Related
 bullets are grouped under short product areas that users recognize, repeated
@@ -624,7 +626,7 @@ expand its scope. Show details first if compact authority would be ambiguous.
 Then pass explicit choices to the helper:
 
 ```sh
-bun skills/simple-changelogs-web/scripts/setup.ts apply \
+bun skills/simple-changelogs/scripts/setup.ts apply \
   --developer-history required \
   --release-note-grouping product-areas \
   --major-release-naming named \

@@ -40,14 +40,15 @@ expected because each distribution changes only when its own behavior changes.
 [`distribution-manifest.json`](distribution-manifest.json) lists the current
 guidance checkpoint for every sibling distribution and is verified against the
 installable `SKILL.md` files. The Git ref or commit identifies the shared source
-revision. Report an installation with both identities, for example:
+revision. Report an installation with both identities, substituting the
+selected distribution's current checkpoint from the manifest for `<N>`:
 
 ```text
 Installed Simple Changelogs from <git-ref-or-commit>.
-Selected simple-changelogs-skill-maintainer (guidance 10) for this repository.
+Selected simple-changelogs-skill-maintainer (guidance <N>) for this repository.
 ```
 
-Do not shorten that to “Simple Changelogs 10” or “Simple Changelogs 18.”
+Do not shorten that to “Simple Changelogs `<N>`.”
 
 ## Release-note depth and surface isolation
 
@@ -196,7 +197,17 @@ record one of:
 ```
 
 Allowed `distribution` values are `full`, `web`, `mobile`, `web-cms`, and
-`skill-repository`. Existing policies without the field remain backward
+`skill-repository`. Each value selects one skill directory:
+
+| `distribution` value | Skill directory |
+| --- | --- |
+| `full` | `skills/simple-changelogs` |
+| `web` | `skills/simple-changelogs-web` |
+| `mobile` | `skills/simple-changelogs-mobile` |
+| `web-cms` | `skills/simple-changelogs-web-cms` |
+| `skill-repository` | `skills/simple-changelogs-skill-maintainer` |
+
+Existing policies without the field remain backward
 compatible with the full distribution unless the repository explicitly selects
 another one.
 
@@ -293,6 +304,25 @@ Set `SIMPLE_CHANGELOGS_CONFIG_DIR` to override the containing directory in
 tests or automation. CMS-only and web+CMS application additionally require
 `--cms-auth-proven`, `--cms-surface-proven`, and an exact `--cms-route`; the
 helper never derives CMS access authority from global preferences.
+
+### Query the history
+
+The Markdown changelog distributions bundle a read-only `scripts/query.ts`
+helper so agents and humans can treat the raw files as a queryable source of
+truth. It never writes, caches, or indexes anything:
+
+```sh
+bun skills/simple-changelogs-web/scripts/query.ts releases --repo .
+bun skills/simple-changelogs-web/scripts/query.ts show unreleased --log customer --repo .
+bun skills/simple-changelogs-web/scripts/query.ts entries --since 2026-07-01 --grep "release" --repo . --json
+```
+
+`check` lints structure (unrecognized release headings, malformed signature
+comments, parser diagnostics) and exits nonzero on problems so it can join
+verification checklists. Both the canonical
+`<!-- simple-changelogs-signature ... -->` comment and the older
+`<!-- Agent: ... -->` dialect are recognized when attributing entries. Each
+distribution's `references/querying.md` documents the subcommands and filters.
 
 ## Manual install
 

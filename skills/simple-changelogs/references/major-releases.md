@@ -68,7 +68,7 @@ entire lifetime of the product.
 For independently versioned products or packages, synthesize only the surface
 whose canonical version crossed the stable major boundary.
 
-+## Name the Stable Major
+## Name the Stable Major
 
 Treat a release name as presentation beside the canonical version, never as
 release identity. Resolve `majorReleaseNaming` from current direction,

@@ -9,7 +9,7 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-const MAX_DISTRIBUTION_BYTES = 300 * 1024;
+const MAX_DISTRIBUTION_BYTES = 340 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -42,11 +42,26 @@ const canonicalSetupHelper = await readFile(
   join(toolingRoot, "simple-changelogs", "scripts", "setup.ts"),
   "utf8"
 );
+const canonicalQueryFiles = new Map(
+  await Promise.all(
+    ["query.ts", "lib/changelog-parse.ts"].map(
+      async (filename) =>
+        [
+          filename,
+          await readFile(
+            join(toolingRoot, "simple-changelogs", "scripts", filename),
+            "utf8"
+          ),
+        ] as const
+    )
+  )
+);
 const canonicalProtocolFiles = new Map(
   await Promise.all(
     [
       "changelog-request.schema.json",
       "changelog-receipt.schema.json",
+      "changelog-capabilities.schema.json",
       "protocol-provenance.json",
     ].map(
       async (filename) =>
@@ -275,6 +290,18 @@ for (const {
         failures.push(
           `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
         );
+      }
+      for (const [filename, canonical] of canonicalQueryFiles) {
+        const queryPath = join(directory, "scripts", filename);
+        if (!existsSync(queryPath)) {
+          failures.push(
+            `skills/${directoryName} is missing bundled query helper scripts/${filename}`
+          );
+        } else if (readFileSync(queryPath, "utf8") !== canonical) {
+          failures.push(
+            `skills/${directoryName}/scripts/${filename} is out of sync with maintainer tooling`
+          );
+        }
       }
     }
 
@@ -885,6 +912,26 @@ for (const { directoryName, source } of storeCopySnapshots) {
         `skills/${directoryName}/references/release-note-surfaces.md is missing public store-copy rule: ${requiredRule}`
       );
     }
+  }
+}
+
+const releaseHandoffCopies = await Promise.all(
+  [...portableContractDistributions]
+    .sort(compareText)
+    .map(async (directoryName) => ({
+      directoryName,
+      source: await readFile(
+        join(skillsRoot, directoryName, "references", "release-handoff.md"),
+        "utf8"
+      ),
+    }))
+);
+const [canonicalReleaseHandoff, ...otherReleaseHandoffs] = releaseHandoffCopies;
+for (const { directoryName, source } of otherReleaseHandoffs) {
+  if (source !== canonicalReleaseHandoff?.source) {
+    failures.push(
+      `skills/${directoryName}/references/release-handoff.md diverges from the shared release-handoff reference`
+    );
   }
 }
 

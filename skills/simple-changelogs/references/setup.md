@@ -171,9 +171,14 @@ repository-specific and never joins the all-projects preferences.
   Mobile feed for mobile and store destinations.
 
 The full distribution, and any explicitly combined web+mobile distribution
-derived from it, asks the user to choose one of these values during setup. Do
-not infer a preference from repository layout, an existing shared version, or
-the presence of a mobile app. Shared outcomes that genuinely affect web users
+derived from it, asks the user to choose one of these values during setup
+whenever mobile applicability is `detected` or `uncertain`. The question may
+be suppressed only when a complete scan finds another recognizable product
+shape and reports the mobile surface `not-detected`; suppression describes the
+surface as not detected, never as proven absent, and leaves the value
+unresolved for a later planned surface. Do not otherwise infer a preference
+from repository layout, an existing shared version, or the presence of a
+mobile app. Shared outcomes that genuinely affect web users
 remain eligible for the Web history even when the preference is `mobile-only`;
 the preference controls mobile-specific history.
 

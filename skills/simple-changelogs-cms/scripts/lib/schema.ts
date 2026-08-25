@@ -10,6 +10,13 @@ const BACKFILL_STATUSES = new Set([
   "failed",
 ]);
 const SURFACE_POLICIES = new Set(["ask", "allow", "existing-only"]);
+const SURFACE_COMPONENT_SOURCES = new Set([
+  "project-components",
+  "recommended-web-components",
+  "recommended-web-radix",
+  "platform-native-components",
+  "minimal-markup",
+]);
 const ENTRY_KINDS = new Set(["release", "backfill"]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ENTRY_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -41,6 +48,12 @@ export interface CmsChangelogPolicy {
     backfillStatus: string;
     version: 1;
   };
+  newReleaseNoteSurfaceComponents?:
+    | "minimal-markup"
+    | "platform-native-components"
+    | "project-components"
+    | "recommended-web-components"
+    | "recommended-web-radix";
   newReleaseNoteSurfaces: "allow" | "ask" | "existing-only";
   schemaVersion: 1;
 }
@@ -186,13 +199,17 @@ export const validateCmsPolicy = (
     return { errors: ["CMS changelog policy must be an object"] };
   }
   if (
-    !hasExactKeys(value, [
-      "schemaVersion",
-      "guidance",
-      "changelogPath",
-      "cmsSurface",
-      "newReleaseNoteSurfaces",
-    ])
+    !hasExactKeys(
+      value,
+      [
+        "schemaVersion",
+        "guidance",
+        "changelogPath",
+        "cmsSurface",
+        "newReleaseNoteSurfaces",
+      ],
+      ["newReleaseNoteSurfaceComponents"]
+    )
   ) {
     return { errors: ["CMS changelog policy has missing or unknown fields"] };
   }
@@ -218,12 +235,12 @@ export const validateCmsPolicy = (
   if (
     !(
       isNonEmptyString(value.changelogPath) &&
+      value.changelogPath.length > 5 &&
       value.changelogPath.endsWith(".json") &&
-      !isAbsolute(value.changelogPath) &&
-      !value.changelogPath.split(PATH_SEPARATOR_PATTERN).includes("..")
+      !PATH_SEPARATOR_PATTERN.test(value.changelogPath)
     )
   ) {
-    errors.push("changelogPath must be a contained relative JSON path");
+    errors.push("changelogPath must be one repository-root JSON filename");
   }
   if (
     !(
@@ -246,6 +263,15 @@ export const validateCmsPolicy = (
     )
   ) {
     errors.push("newReleaseNoteSurfaces is unsupported");
+  }
+  if (
+    value.newReleaseNoteSurfaceComponents !== undefined &&
+    !(
+      typeof value.newReleaseNoteSurfaceComponents === "string" &&
+      SURFACE_COMPONENT_SOURCES.has(value.newReleaseNoteSurfaceComponents)
+    )
+  ) {
+    errors.push("newReleaseNoteSurfaceComponents is unsupported");
   }
 
   return errors.length === 0

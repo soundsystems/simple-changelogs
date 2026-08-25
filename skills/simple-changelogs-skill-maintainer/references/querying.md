@@ -1,0 +1,36 @@
+# Querying History
+
+The bundled `scripts/query.ts` CLI answers questions about the raw Markdown
+histories without writing anything. The Markdown files stay the source of
+truth: there is no cache, index, or generated database to refresh.
+
+Run it with Bun from the repository root (or pass `--repo PATH`):
+
+```bash
+bun scripts/query.ts releases --log customer
+bun scripts/query.ts show 1.4 --log customer --json
+bun scripts/query.ts entries --since 2026-07-01 --grep "release notes"
+bun scripts/query.ts check
+```
+
+Subcommands:
+
+- `releases` — one row per release section: heading, version, date, and entry
+  count.
+- `show <version|date|unreleased>` — every entry of one release. Bare versions
+  resolve (`1.4` matches `1.4.0`); ambiguous selectors fail with the candidate
+  list instead of guessing.
+- `entries` — a flat entry list filtered by `--since`/`--until` (release date,
+  falling back to the entry's signature timestamp for `Unreleased` work),
+  `--group` for `- **Group**:` bullets, `--agent`, and `--grep`.
+- `check` — structure lint: unrecognized release headings, malformed signature
+  comments, and parser diagnostics. Exits nonzero on problems, so it can join
+  repository verification checklists. Legacy `<!-- Agent: ... -->` signatures
+  are reported as notes, not problems; they remain valid released history.
+
+Every subcommand accepts `--log customer|developer|both` (default `both`) and
+`--json` for structured output whose fields (`date`, `version`, `title`,
+`text`, `log`, `group`, `signature`) match the CMS entry vocabulary. Reads
+target `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` at the repository root; a
+missing developer changelog is an error only when requested explicitly or
+required by recorded policy.

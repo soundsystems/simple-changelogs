@@ -14,7 +14,7 @@ Maintain two audience-separated release systems in one repository:
 - Established public web and protected CMS destinations render only their own
   authorized source.
 
-Current guidance version: 18
+Current guidance version: 19
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -68,6 +68,8 @@ access, release, source-of-truth, or surface rules.
 | --- | --- |
 | Public/developer setup, distribution, or signatures | `references/setup.md` |
 | Public guidance changes | `references/guidance-updates.md` |
+| Guided first-use onboarding conversation | `references/onboarding.md` |
+| Read-only history queries and structure lint | `references/querying.md` |
 | Customer/developer classification and expert public detail | `references/entry-classification.md` |
 | Public history reconstruction | `references/backfill.md` |
 | Release boundaries and reconciliation | `references/release-lifecycle.md` |

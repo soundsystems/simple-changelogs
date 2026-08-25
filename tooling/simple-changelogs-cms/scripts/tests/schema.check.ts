@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -7,6 +7,7 @@ import {
   validateCmsPolicy,
   validateRepository,
 } from "../../../../skills/simple-changelogs-cms/scripts/lib/schema.ts";
+import { applySetup } from "../../../simple-changelogs/scripts/setup.ts";
 
 const policy = () => ({
   changelogPath: "CMS_CHANGELOG.json",
@@ -54,6 +55,55 @@ const entryAt = (value: ReturnType<typeof changelog>, index: number) => {
 describe("CMS changelog policy", () => {
   test("accepts a contained source and authenticated operator route", () => {
     expect(validateCmsPolicy(policy()).errors).toEqual([]);
+  });
+
+  test("accepts the optional component-source preference setup records", () => {
+    expect(
+      validateCmsPolicy({
+        ...policy(),
+        newReleaseNoteSurfaceComponents: "recommended-web-components",
+      }).errors
+    ).toEqual([]);
+    expect(
+      validateCmsPolicy({
+        ...policy(),
+        newReleaseNoteSurfaceComponents: "hand-rolled",
+      }).errors.join("\n")
+    ).toContain("newReleaseNoteSurfaceComponents");
+  });
+
+  test("rejects nested changelog paths outside the repository root", () => {
+    expect(
+      validateCmsPolicy({
+        ...policy(),
+        changelogPath: "config/CMS_CHANGELOG.json",
+      }).errors.join("\n")
+    ).toContain("repository-root");
+  });
+
+  test("accepts the exact policy CMS setup writes", async () => {
+    const repo = await mkdtemp(join(tmpdir(), "simple-changelogs-cms-repo-"));
+    const config = await mkdtemp(
+      join(tmpdir(), "simple-changelogs-cms-config-")
+    );
+    const result = await applySetup({
+      backfillStatus: "not-applicable",
+      cmsAuthProven: true,
+      cmsRoute: "/admin/changelog",
+      cmsSurfaceProven: true,
+      configDirectory: config,
+      confirm: true,
+      distribution: "cms",
+      newReleaseNoteSurfaceComponents: "recommended-web-components",
+      repo,
+      scope: "repository",
+    });
+    const written = JSON.parse(
+      await readFile(join(repo, ".simple-changelogs-cms.json"), "utf8")
+    ) as unknown;
+
+    expect(result.status).toBe("configured");
+    expect(validateCmsPolicy(written).errors).toEqual([]);
   });
 
   test("rejects public roots, path traversal, and unknown policy fields", () => {

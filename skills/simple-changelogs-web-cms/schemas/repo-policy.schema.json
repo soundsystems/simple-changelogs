@@ -32,7 +32,8 @@
     },
     "changelogPath": {
       "type": "string",
-      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.json$"
+      "minLength": 6,
+      "pattern": "^[^/\\\\]+\\.json$"
     },
     "cmsSurface": {
       "type": "object",

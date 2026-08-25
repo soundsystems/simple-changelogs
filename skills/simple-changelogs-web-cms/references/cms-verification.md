@@ -23,7 +23,7 @@ Then verify:
 - no public route, API, sitemap, feed, or customer update surface exposes it;
 - `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` were not created or edited by
   this workflow;
-- repository tests, type checks, Biome/Ultracite checks, and builds required by
+- repository tests, type checks, lint and formatting checks, and builds required by
   local policy pass.
 
 Inspect the final diff after formatting. Report unavailable credentials or

@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "owner": "Simple Changes",
+  "ownerRepository": "https://gitlab.com/soundsystems/simple-changes",
   "sourcePlan": "docs/plans/2026-08-10-public-release-versioning-deploy-orchestration.md",
   "requestVersion": 1,
   "receiptVersions": [1, 2],
