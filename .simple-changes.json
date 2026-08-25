@@ -6,7 +6,7 @@
     "disposition": "accepted",
     "version": 18
   },
-  "handoffTiming": "confirm-ready",
+  "handoffTiming": "automatic",
   "productionDeploy": "ask",
   "questions": "blocking-only",
   "review": "repository-policy",
