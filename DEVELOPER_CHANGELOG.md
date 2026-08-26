@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Shipped a machine-readable `changelog-provider.json` marker beside each
+  advertised distribution, recording the distribution, guidance checkpoint,
+  advertised features, request/receipt versions, and canonical schema digests
+  that `setup.ts` computes at use time. `provider-marker.check.ts` keeps every
+  marker byte-identical to computed capabilities and aligned with
+  `distribution-manifest.json`; regenerated the pinned guidance versions
+  (full 20, Web 19, Mobile 18, skill-maintainer 12, Web+CMS 19) after this
+  branch's checkpoint bumps.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-26T09:20:17-05:00" -->
 - Added the curated release-notes layer (design:
   `docs/plans/2026-08-25-curated-release-notes.md`):
   - Policy: optional `publicReleaseNotes: "full" | "curated"` (default full)

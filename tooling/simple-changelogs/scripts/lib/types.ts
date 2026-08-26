@@ -304,6 +304,7 @@ export interface SetupResult {
       "public-version-policy",
       "classify-prepare-verify",
       "multi-train-receipts",
+      "guidance-update-notices",
     ];
     guidanceVersion: number;
     provider: "simple-changelogs";

@@ -1,0 +1,18 @@
+{
+  "distribution": "full",
+  "features": [
+    "public-version-policy",
+    "classify-prepare-verify",
+    "multi-train-receipts",
+    "guidance-update-notices"
+  ],
+  "guidanceVersion": 20,
+  "provider": "simple-changelogs",
+  "receiptVersions": [1, 2],
+  "requestVersions": [1],
+  "schemaDigests": {
+    "changelogReceipt": "dc981236280f3bfac348c1e0b0185cb6f353dc834d37ef1ff3b7b90b0358daee",
+    "changelogRequest": "4eca8faa52c10382567d14c19ab35235991325b6f14302e1478ef57131d1c4c8"
+  },
+  "schemaVersion": 1
+}

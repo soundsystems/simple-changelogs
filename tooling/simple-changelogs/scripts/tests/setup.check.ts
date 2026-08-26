@@ -345,6 +345,7 @@ describe("setup inspection", () => {
       "public-version-policy",
       "classify-prepare-verify",
       "multi-train-receipts",
+      "guidance-update-notices",
     ]);
     const setupResultSchema = JSON.parse(
       await readFile(

@@ -31,6 +31,17 @@ const portableContractDistributions = new Set([
   "simple-changelogs-skill-maintainer",
 ]);
 const forbiddenNames = new Set(["EVAL.md"]);
+const PROVIDER_MARKER_FILENAME = "changelog-provider.json";
+// Directory name -> the distribution identifier consumers match on. The marker
+// exists so a consumer never has to re-derive this from the directory name.
+const MARKER_DISTRIBUTIONS = new Map([
+  ["simple-changelogs", "full"],
+  ["simple-changelogs-mobile", "mobile"],
+  ["simple-changelogs-skill-maintainer", "skill-repository"],
+  ["simple-changelogs-web", "web"],
+  ["simple-changelogs-web-cms", "web-cms"],
+]);
+const markerGuidanceVersions = new Map<string, unknown>();
 const failures: string[] = [];
 const distributionManifest = JSON.parse(
   await readFile(join(repositoryRoot, "distribution-manifest.json"), "utf8")
@@ -286,6 +297,42 @@ for (const {
           );
         }
       }
+      // Consumers prefer this marker over directory-name and SKILL.md prose
+      // inference, so it has to ship inside the installed package.
+      const markerPath = join(directory, PROVIDER_MARKER_FILENAME);
+      const markerEntry = entries.find(
+        (entry) => entry.path === PROVIDER_MARKER_FILENAME
+      );
+      if (existsSync(markerPath) && markerEntry) {
+        const marker = JSON.parse(readFileSync(markerPath, "utf8")) as {
+          distribution?: unknown;
+          guidanceVersion?: unknown;
+          provider?: unknown;
+          schemaVersion?: unknown;
+        };
+        const expectedDistribution =
+          MARKER_DISTRIBUTIONS.get(directoryName) ?? null;
+        if (marker.schemaVersion !== 1) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must use schemaVersion 1`
+          );
+        }
+        if (marker.provider !== "simple-changelogs") {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must declare provider simple-changelogs`
+          );
+        }
+        if (marker.distribution !== expectedDistribution) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} declares distribution ${String(marker.distribution)}, but the directory ships ${String(expectedDistribution)}`
+          );
+        }
+        markerGuidanceVersions.set(directoryName, marker.guidanceVersion);
+      } else {
+        failures.push(
+          `skills/${directoryName} is missing ${PROVIDER_MARKER_FILENAME} beside SKILL.md`
+        );
+      }
       if (!source.includes("references/release-handoff.md")) {
         failures.push(
           `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
@@ -413,6 +460,14 @@ for (const distributionName of manifestGuidanceVersions.keys()) {
   if (!changelogDistributions.has(distributionName)) {
     failures.push(
       `distribution-manifest.json lists unknown distribution: ${distributionName}`
+    );
+  }
+}
+for (const [distributionName, guidanceVersion] of markerGuidanceVersions) {
+  const discovered = discoveredGuidanceVersions.get(distributionName);
+  if (guidanceVersion !== discovered) {
+    failures.push(
+      `skills/${distributionName}/${PROVIDER_MARKER_FILENAME} records guidance ${String(guidanceVersion)}, but SKILL.md declares ${String(discovered)}`
     );
   }
 }

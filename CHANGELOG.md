@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Release orchestrators can now identify an installed Simple Changelogs
+  distribution and its capabilities directly, without inferring them from a
+  directory name or documentation prose.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-26T09:20:17-05:00" -->
 - Public release notes can now be a curated highlights layer separate from
   the full changelog. Repositories that opt in keep `CHANGELOG.md` as the
   complete user-facing record while `RELEASE_NOTES.md` carries three to eight
