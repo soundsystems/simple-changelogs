@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Public release notes can now be a curated highlights layer separate from
+  the full changelog. Repositories that opt in keep `CHANGELOG.md` as the
+  complete user-facing record while `RELEASE_NOTES.md` carries three to eight
+  one-sentence highlights per release (patch releases may carry fewer, down to
+  none) plus one rollup line. Curated notes are always derived from the
+  changelog and confirmed inside the existing release receipt; every entry is
+  accounted as highlighted, rolled up, or omitted, breaking and security
+  changes can never be filtered out, and anything unadvertised stays
+  synthesizable from the full history. CMS repositories gain the same
+  capability through optional per-release highlights with identical coverage
+  rules.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-25T17:13:45-05:00" -->
 - Web+CMS repositories now receive CMS-side guidance-update notices, and
   acknowledging an update advances both recorded guidance checkpoints together.
 - Settings updates after onboarding are now fully transactional: an interrupted

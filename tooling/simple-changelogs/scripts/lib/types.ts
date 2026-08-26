@@ -40,6 +40,7 @@ export const RELEASE_NOTE_GROUPING_POLICIES = [
   "flat",
 ] as const;
 export const MAJOR_RELEASE_NAMING_POLICIES = ["named", "version-only"] as const;
+export const PUBLIC_RELEASE_NOTE_POLICIES = ["full", "curated"] as const;
 export const DEVELOPER_CHANGELOG_POLICIES = ["required", "optional"] as const;
 export const SIGNATURE_POLICIES = ["agent-and-timestamp", "none"] as const;
 export const SETUP_STYLES = ["recommended", "customized"] as const;
@@ -127,6 +128,8 @@ export type ReleaseNoteGroupingPolicy =
   (typeof RELEASE_NOTE_GROUPING_POLICIES)[number];
 export type MajorReleaseNamingPolicy =
   (typeof MAJOR_RELEASE_NAMING_POLICIES)[number];
+export type PublicReleaseNotePolicy =
+  (typeof PUBLIC_RELEASE_NOTE_POLICIES)[number];
 export type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 export type DeveloperChangelogPolicy =
@@ -151,8 +154,14 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+export interface CurationBudget {
+  max: number;
+  min: number;
+}
+
 export interface RepoPolicy {
   crossSurfaceVersioning?: CrossSurfaceVersioning;
+  curationBudget?: CurationBudget;
   developerChangelog: DeveloperChangelogPolicy;
   distribution?: Distribution;
   guidance: {
@@ -163,6 +172,7 @@ export interface RepoPolicy {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
+  publicReleaseNotes?: PublicReleaseNotePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
@@ -205,11 +215,13 @@ export interface SetupWriteRecord {
 export interface SetupSelection {
   backfillStatus?: BackfillStatus;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
+  curationBudget?: CurationBudget;
   developerChangelog?: DeveloperChangelogPolicy;
   majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  publicReleaseNotes?: PublicReleaseNotePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;

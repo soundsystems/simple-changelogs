@@ -79,6 +79,30 @@ category layer beneath that title. These presentation choices never replace a
 version or grant tagging, package publication, hosted-release, or downstream
 distribution authority.
 
+`publicReleaseNotes` is optional and accepts:
+
+- `full`: the default. Public release-note surfaces render the complete
+  customer changelog; no curated file is maintained.
+- `curated`: a derived `RELEASE_NOTES.md` at the repository root carries a
+  short curated section per release — one-sentence highlights within the
+  budget plus one rollup line — generated from `CHANGELOG.md` at each release
+  boundary. `references/curation.md` owns the derivation, coverage, and
+  provenance rules. Breaking changes and security notices are never omitted or
+  rolled up.
+
+`curationBudget` is optional, applies only with curated public release notes,
+and is a closed object:
+
+```json
+{ "min": 3, "max": 8 }
+```
+
+`min` and `max` are integers with `0 <= min <= max`; absence means 3 and 8.
+Patch releases may drop below `min` to zero highlights plus the rollup line.
+Record both bounds together with `--curation-min` and `--curation-max`.
+Neither field joins all-projects preferences, changes what the changelog
+records, or authorizes a new surface, deployment, or publication.
+
 `signatures` accepts:
 
 - `agent-and-timestamp`: the default. Attach the signature comment described

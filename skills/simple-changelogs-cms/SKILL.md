@@ -12,7 +12,7 @@ developer changelog ownership, and no public release-note mirrors.
 Maintain one repository-owned `CMS_CHANGELOG.json` document for people who
 operate the product through its authenticated content-management surface.
 
-Current guidance version: 4
+Current guidance version: 5
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

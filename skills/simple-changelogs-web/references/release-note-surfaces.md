@@ -16,6 +16,16 @@ is not the default visible title. Preserve existing labels and explicit naming
 preferences. The raw filenames remain unchanged: `CHANGELOG.md` is the
 customer source and `DEVELOPER_CHANGELOG.md` is the technical source.
 
+## Curated Layer Mapping
+
+When repository policy records `publicReleaseNotes: "curated"` and
+`RELEASE_NOTES.md` exists, apply this default layer mapping: public marketing
+pages and release-note modals render the curated layer, archive pages render
+the full changelog, and internal surfaces are unchanged. There is no
+per-destination layer policy field in this first cut; the mapping is
+documentation, not new configuration. `references/curation.md` owns the
+derived file itself.
+
 ## Discover before editing
 
 Inspect routes, navigation, data imports, build scripts, tests, and repository

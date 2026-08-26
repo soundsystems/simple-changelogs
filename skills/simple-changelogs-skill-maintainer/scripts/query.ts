@@ -10,7 +10,9 @@ import {
   type ChangelogEntry,
   type ChangelogRelease,
   type ParsedChangelog,
+  type ParsedReleaseNotes,
   parseChangelog,
+  parseReleaseNotes,
   signatureDate,
 } from "./lib/changelog-parse.ts";
 
@@ -22,6 +24,8 @@ Commands:
                                Show every entry of one release section.
   entries                      List entries, optionally filtered.
   check                        Lint changelog structure; nonzero on problems.
+                               When RELEASE_NOTES.md exists, also verifies
+                               curation coverage against the changelog.
 
 Options:
   --log customer|developer|both   Which changelog to read (default: both).
@@ -32,6 +36,10 @@ Options:
   --group NAME                    entries: keep "- **NAME**:" grouped bullets.
   --agent SUBSTRING               entries: filter by signature agent.
   --grep REGEX                    entries: filter by entry text.
+  --ids                           entries: include each entry's 12-hex id.
+  --omitted                       show: list the entries a curated
+                                  RELEASE_NOTES.md section records as
+                                  omitted or rolled up.
 
 Dates use the release date, falling back to the entry's signature timestamp
 for Unreleased entries. Reads CHANGELOG.md (customer) and
@@ -52,8 +60,10 @@ interface CliOptions {
   command: string;
   grep: string | null;
   group: string | null;
+  ids: boolean;
   json: boolean;
   log: LogChoice;
+  omitted: boolean;
   repo: string;
   selector: string | null;
   since: string | null;
@@ -82,8 +92,10 @@ const parseCli = (argv: string[]): CliOptions => {
     command,
     grep: null,
     group: null,
+    ids: false,
     json: false,
     log: "both",
+    omitted: false,
     repo: process.cwd(),
     selector: null,
     since: null,
@@ -93,6 +105,14 @@ const parseCli = (argv: string[]): CliOptions => {
     const name = argv[index] ?? "";
     if (name === "--json") {
       options.json = true;
+      continue;
+    }
+    if (name === "--ids") {
+      options.ids = true;
+      continue;
+    }
+    if (name === "--omitted") {
+      options.omitted = true;
       continue;
     }
     if (VALUE_FLAGS.has(name)) {
@@ -286,6 +306,7 @@ interface EntryRecord {
   date: string | null;
   group: string | null;
   heading: string;
+  id: string;
   log: LogName;
   section: string | null;
   signature: { agent: string; at: string } | null;
@@ -303,6 +324,7 @@ const entryRecord = (
     release.date ?? (entry.signature ? signatureDate(entry.signature) : null),
   group: entry.group,
   heading: release.heading,
+  id: entry.id,
   log,
   section: entry.section,
   signature: entry.signature
@@ -348,7 +370,73 @@ interface ShowMatch {
   release: ChangelogRelease;
 }
 
-const runShow = (options: CliOptions, logs: LoadedLog[]): string => {
+const runShowOmitted = (
+  options: CliOptions,
+  match: ShowMatch,
+  notes: ParsedReleaseNotes | null
+): string => {
+  if (notes === null) {
+    throw new CliError(
+      `--omitted requires ${RELEASE_NOTES_FILE} at the repository root; none was found.`
+    );
+  }
+  if (match.log !== "customer") {
+    throw new CliError(
+      "--omitted applies to the customer changelog; narrow with --log customer."
+    );
+  }
+  const section = notes.sections.find(
+    (candidate) => candidate.curation?.release === match.release.heading
+  );
+  if (!section?.curation) {
+    throw new CliError(
+      `${RELEASE_NOTES_FILE} has no curated section for release "${match.release.heading}".`
+    );
+  }
+  const byId = new Map(match.release.entries.map((entry) => [entry.id, entry]));
+  const resolveIds = (ids: string[]) => ({
+    entries: ids
+      .filter((id) => byId.has(id))
+      .map((id) =>
+        entryRecord(match.log, match.release, byId.get(id) as ChangelogEntry)
+      ),
+    unknownIds: ids.filter((id) => !byId.has(id)),
+  });
+  const omitted = resolveIds(section.curation.omitted);
+  const rolledUp = resolveIds(section.curation.rolledUp);
+  if (options.json) {
+    return JSON.stringify(
+      {
+        omitted: omitted.entries,
+        release: releaseRow(match.log, match.release),
+        rolledUp: rolledUp.entries,
+        unknownIds: [...omitted.unknownIds, ...rolledUp.unknownIds],
+      },
+      null,
+      2
+    );
+  }
+  const lines = [
+    `${match.log}: ${match.release.heading} (curated in ${RELEASE_NOTES_FILE})`,
+    "",
+    `omitted (${omitted.entries.length}):`,
+    ...omitted.entries.map((entry) => entry.text),
+    "",
+    `rolled-up (${rolledUp.entries.length}):`,
+    ...rolledUp.entries.map((entry) => entry.text),
+  ];
+  const unknown = [...omitted.unknownIds, ...rolledUp.unknownIds];
+  if (unknown.length > 0) {
+    lines.push("", `unknown ids: ${unknown.join(", ")}`);
+  }
+  return lines.join("\n");
+};
+
+const runShow = (
+  options: CliOptions,
+  logs: LoadedLog[],
+  notes: ParsedReleaseNotes | null
+): string => {
   const { selector } = options;
   if (!selector) {
     throw new CliError(
@@ -376,6 +464,9 @@ const runShow = (options: CliOptions, logs: LoadedLog[]): string => {
     );
   }
   const match = matches[0] as ShowMatch;
+  if (options.omitted) {
+    return runShowOmitted(options, match, notes);
+  }
   const entries = match.release.entries.map((entry) =>
     entryRecord(match.log, match.release, entry)
   );
@@ -390,6 +481,55 @@ const runShow = (options: CliOptions, logs: LoadedLog[]): string => {
   const body = entries.map((entry) => entry.text).join("\n");
   return `${header}\n\n${body}`;
 };
+
+const RELEASE_NOTES_FILE = "RELEASE_NOTES.md";
+
+const loadReleaseNotes = async (
+  repo: string
+): Promise<ParsedReleaseNotes | null> => {
+  const path = join(repo, RELEASE_NOTES_FILE);
+  if (!existsSync(path)) {
+    return null;
+  }
+  return parseReleaseNotes(await readFile(path, "utf8"), RELEASE_NOTES_FILE);
+};
+
+interface CurationBudgetValues {
+  max: number;
+  min: number;
+}
+
+const curationBudgetFromPolicy = (
+  policy: Record<string, unknown> | null
+): CurationBudgetValues => {
+  const budget = policy?.curationBudget as
+    | { max?: unknown; min?: unknown }
+    | undefined;
+  return {
+    max: typeof budget?.max === "number" ? budget.max : 8,
+    min: typeof budget?.min === "number" ? budget.min : 3,
+  };
+};
+
+// Patch releases (nonzero third version component) may curate any number of
+// highlights, down to zero; date-only headings are exempt from the minimum.
+const isPatchVersion = (version: string | null): boolean => {
+  if (version === null) {
+    return false;
+  }
+  const patch = Number.parseInt(version.split(".")[2] ?? "", 10);
+  return Number.isFinite(patch) && patch > 0;
+};
+
+const NON_FILTERABLE_NAMES = ["Breaking", "Security"];
+
+const isNonFilterable = (entry: ChangelogEntry): boolean =>
+  NON_FILTERABLE_NAMES.some(
+    (name) =>
+      entry.title.startsWith(`**${name}**`) ||
+      entry.group === name ||
+      entry.section === name
+  );
 
 const compileGrep = (pattern: string): RegExp => {
   try {
@@ -446,10 +586,14 @@ const runEntries = (options: CliOptions, logs: LoadedLog[]): string => {
   if (options.json) {
     return JSON.stringify({ entries }, null, 2);
   }
+  const headers = options.ids
+    ? ["LOG", "ID", "DATE", "RELEASE", "GROUP", "TITLE"]
+    : ["LOG", "DATE", "RELEASE", "GROUP", "TITLE"];
   const rows = table(
-    ["LOG", "DATE", "RELEASE", "GROUP", "TITLE"],
+    headers,
     entries.map((entry) => [
       entry.log,
+      ...(options.ids ? [entry.id] : []),
       entry.date ?? "-",
       entry.heading,
       entry.group ?? "-",
@@ -461,6 +605,114 @@ const runEntries = (options: CliOptions, logs: LoadedLog[]): string => {
       ? `\n(${undatedCount} entries had no resolvable date and were excluded by the date filter)`
       : "";
   return `${rows}${note}`;
+};
+
+const accountingProblems = (
+  release: ChangelogRelease,
+  curation: {
+    highlighted: string[];
+    omitted: string[];
+    rolledUp: string[];
+  }
+): string[] => {
+  const problems: string[] = [];
+  const required = new Map<string, number>();
+  for (const entry of release.entries) {
+    required.set(entry.id, (required.get(entry.id) ?? 0) + 1);
+  }
+  const recorded = new Map<string, number>();
+  const allRecorded = [
+    ...curation.highlighted,
+    ...curation.rolledUp,
+    ...curation.omitted,
+  ];
+  for (const id of allRecorded) {
+    recorded.set(id, (recorded.get(id) ?? 0) + 1);
+  }
+  for (const [id, count] of recorded) {
+    const expected = required.get(id) ?? 0;
+    if (expected === 0) {
+      problems.push(`id ${id} does not resolve to any entry of this release`);
+    } else if (count > expected) {
+      problems.push(
+        `id ${id} is accounted ${count} times (expected ${expected})`
+      );
+    }
+  }
+  for (const [id, expected] of required) {
+    const count = recorded.get(id) ?? 0;
+    if (count < expected) {
+      problems.push(
+        `entry ${id} is not accounted as highlighted, rolled-up, or omitted`
+      );
+    }
+  }
+  const filtered = new Set([...curation.rolledUp, ...curation.omitted]);
+  for (const entry of release.entries) {
+    if (isNonFilterable(entry) && filtered.has(entry.id)) {
+      problems.push(
+        `entry ${entry.id} ("${entry.title}") is Breaking/Security and may not be omitted or rolled up`
+      );
+    }
+  }
+  return problems;
+};
+
+const curationProblems = (
+  notes: ParsedReleaseNotes,
+  customer: ParsedChangelog,
+  budget: CurationBudgetValues
+): string[] => {
+  const problems: string[] = [...notes.diagnostics];
+  for (const section of notes.sections) {
+    const label = `curated section "${section.heading}"`;
+    if (section.unreleased) {
+      problems.push(`${label}: Unreleased is never curated`);
+      continue;
+    }
+    if (section.curation === null) {
+      problems.push(`${label}: missing curation provenance comment`);
+      continue;
+    }
+    const { curation } = section;
+    const releases = customer.releases.filter(
+      (candidate) => candidate.heading === curation.release
+    );
+    if (releases.length === 0) {
+      problems.push(
+        `${label}: release "${curation.release}" not found in ${customer.sourcePath}`
+      );
+      continue;
+    }
+    if (releases.length > 1) {
+      problems.push(
+        `${label}: release "${curation.release}" is ambiguous in ${customer.sourcePath}`
+      );
+      continue;
+    }
+    const release = releases[0] as ChangelogRelease;
+    if (release.unreleased) {
+      problems.push(`${label}: Unreleased is never curated`);
+      continue;
+    }
+    for (const problem of accountingProblems(release, curation)) {
+      problems.push(`${label}: ${problem}`);
+    }
+    const highlightCount = curation.highlighted.length;
+    if (highlightCount > budget.max) {
+      problems.push(
+        `${label}: ${highlightCount} highlights exceed the budget maximum of ${budget.max}`
+      );
+    }
+    const minExempt =
+      isPatchVersion(release.version) || release.version === null;
+    if (!minExempt && highlightCount < budget.min) {
+      problems.push(
+        `${label}: ${highlightCount} highlights fall below the budget minimum of ${budget.min}`
+      );
+    }
+  }
+  return problems;
 };
 
 interface CheckFileReport {
@@ -508,9 +760,25 @@ const describeCheckFile = (report: CheckFileReport): string => {
 
 const runCheck = (
   options: CliOptions,
-  logs: LoadedLog[]
+  logs: LoadedLog[],
+  notes: ParsedReleaseNotes | null,
+  policy: Record<string, unknown> | null
 ): { exitCode: number; output: string } => {
   const files = logs.map(checkFileReport);
+  const customer = logs.find((loaded) => loaded.log === "customer");
+  if (notes !== null && customer !== undefined) {
+    files.push({
+      diagnostics: curationProblems(
+        notes,
+        customer.parsed,
+        curationBudgetFromPolicy(policy)
+      ),
+      legacySignatures: 0,
+      malformedSignatures: [],
+      path: join(options.repo, RELEASE_NOTES_FILE),
+      unrecognizedHeadings: [],
+    });
+  }
   const problems = files.reduce(
     (sum, report) => sum + checkProblemCount(report),
     0
@@ -544,7 +812,10 @@ const run = async (argv: string[]): Promise<number> => {
       return 0;
     }
     case "show": {
-      process.stdout.write(`${runShow(options, logs)}\n`);
+      const notes = options.omitted
+        ? await loadReleaseNotes(options.repo)
+        : null;
+      process.stdout.write(`${runShow(options, logs, notes)}\n`);
       return 0;
     }
     case "entries": {
@@ -552,7 +823,11 @@ const run = async (argv: string[]): Promise<number> => {
       return 0;
     }
     case "check": {
-      const { exitCode, output } = runCheck(options, logs);
+      const [notes, policy] = await Promise.all([
+        loadReleaseNotes(options.repo),
+        readRepoPolicy(options.repo),
+      ]);
+      const { exitCode, output } = runCheck(options, logs, notes, policy);
       process.stdout.write(`${output}\n`);
       return exitCode;
     }

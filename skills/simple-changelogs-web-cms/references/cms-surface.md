@@ -24,6 +24,10 @@ application.
 
 Import and validate `CMS_CHANGELOG.json` through repository code. Render entries
 newest-first with their date, optional version, title, summary, and changes.
+When an entry carries optional `highlights`, a compact operator view may lead
+with them, but the complete `changes` list stays reachable; the optional
+`curation` accounting is validator metadata, never rendered copy. Changes
+beginning with `**Breaking**` or `**Security**` are always shown.
 Ignore unknown data only after the repository validator rejects it during CI;
 do not silently render malformed state.
 

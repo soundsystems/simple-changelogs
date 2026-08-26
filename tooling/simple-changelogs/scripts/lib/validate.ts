@@ -28,6 +28,7 @@ import {
   MANIFEST_VERSION,
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
+  PUBLIC_RELEASE_NOTE_POLICIES,
   PUBLIC_VERSION_ACTIONS,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
   RELEASE_NOTE_GROUPING_POLICIES,
@@ -413,8 +414,21 @@ const evalCase = objectOf({
   turns: arrayOf(turn, { minItems: 1 }),
 });
 
+const curationBudget: Validator = (value, path, errors) => {
+  objectOf({ max: integer(0), min: integer(0) })(value, path, errors);
+  if (
+    isPlainObject(value) &&
+    typeof value.min === "number" &&
+    typeof value.max === "number" &&
+    value.min > value.max
+  ) {
+    errors.push(`${childPath(path, "min")} must not exceed the maximum`);
+  }
+};
+
 const repoPolicyBase = objectOf({
   crossSurfaceVersioning: optional(enumOf(CROSS_SURFACE_VERSIONING_POLICIES)),
+  curationBudget: optional(curationBudget),
   developerChangelog: enumOf(DEVELOPER_CHANGELOG_POLICIES),
   distribution: optional(enumOf(DISTRIBUTIONS)),
   guidance: objectOf({
@@ -425,6 +439,7 @@ const repoPolicyBase = objectOf({
   mobileReleaseNotePlacement: optional(enumOf(MOBILE_RELEASE_NOTE_PLACEMENTS)),
   newReleaseNoteSurfaceComponents: optional(enumOf(SURFACE_COMPONENT_SOURCES)),
   newReleaseNoteSurfaces: enumOf(SURFACE_POLICIES),
+  publicReleaseNotes: optional(enumOf(PUBLIC_RELEASE_NOTE_POLICIES)),
   publicVersioning: optional(
     objectOf({
       major: enumOf(PUBLIC_VERSION_ACTIONS),

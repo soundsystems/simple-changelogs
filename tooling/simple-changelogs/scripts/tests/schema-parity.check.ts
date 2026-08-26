@@ -26,6 +26,7 @@ import {
   MANIFEST_VERSION,
   MOBILE_RELEASE_NOTE_PLACEMENTS,
   PROTOCOL_VERSION,
+  PUBLIC_RELEASE_NOTE_POLICIES,
   PUBLIC_VERSION_ACTIONS,
   RELEASE_NOTE_ENVIRONMENT_SCOPES,
   RELEASE_NOTE_GROUPING_POLICIES,
@@ -433,6 +434,16 @@ describe("schema parity", () => {
         policySchema,
         "properties.majorReleaseNaming.enum",
         MAJOR_RELEASE_NAMING_POLICIES,
+      ],
+      [
+        policySchema,
+        "properties.publicReleaseNotes.enum",
+        PUBLIC_RELEASE_NOTE_POLICIES,
+      ],
+      [
+        setupResultSchema,
+        "$defs.publicReleaseNotes.enum",
+        PUBLIC_RELEASE_NOTE_POLICIES,
       ],
       [
         preferencesSchema,

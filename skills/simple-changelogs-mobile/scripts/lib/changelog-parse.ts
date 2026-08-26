@@ -3,6 +3,8 @@
 // version/date, fence and HTML-comment awareness, occurrence disambiguation,
 // and diagnostics instead of guessed structure.
 
+import { createHash } from "node:crypto";
+
 export interface ChangelogSignature {
   agent: string;
   // ISO 8601 for canonical signatures; the raw legacy timestamp otherwise.
@@ -12,6 +14,10 @@ export interface ChangelogSignature {
 
 export interface ChangelogEntry {
   group: string | null;
+  // First 12 hex characters of sha256 over the entry's normalized text:
+  // signature comments stripped, per-line trailing whitespace removed,
+  // outer whitespace trimmed (the maintainer curation parser's normalization).
+  id: string;
   section: string | null;
   signature: ChangelogSignature | null;
   text: string;
@@ -216,6 +222,16 @@ interface ParserState {
 const entryTitle = (firstLine: string): string =>
   firstLine.replace(BULLET_MARKER_PATTERN, "").trim();
 
+/**
+ * Identity of one entry: the first 12 hex characters of sha256 over the
+ * entry's normalized text (signature comments already stripped, per-line
+ * trailing whitespace removed, outer whitespace trimmed). Curation
+ * provenance comments in RELEASE_NOTES.md reference entries by this id.
+ */
+export function entryIdentity(text: string): string {
+  return createHash("sha256").update(text.trim()).digest("hex").slice(0, 12);
+}
+
 const flushPendingItem = (state: ParserState): void => {
   const { pendingLines } = state;
   if (pendingLines === null || pendingLines.length === 0) {
@@ -233,6 +249,7 @@ const flushPendingItem = (state: ParserState): void => {
   const groupMatch = text.match(GROUP_BULLET_PATTERN);
   const entry: ChangelogEntry = {
     group: groupMatch ? (groupMatch[1] ?? "").trim() : null,
+    id: entryIdentity(text),
     section: state.currentSection,
     signature: state.pendingInteriorSignature,
     text,
@@ -444,6 +461,182 @@ export function parseChangelog(
     releases: state.releases,
     sourcePath,
     unrecognizedHeadings: state.unrecognizedHeadings,
+  };
+}
+
+// --- Curated release notes (RELEASE_NOTES.md) -------------------------------
+
+export interface CurationRecord {
+  highlighted: string[];
+  omitted: string[];
+  release: string;
+  rolledUp: string[];
+  source: string;
+}
+
+export interface ReleaseNotesSection {
+  curation: CurationRecord | null;
+  date: string | null;
+  heading: string;
+  highlights: string[];
+  occurrence: number;
+  unreleased: boolean;
+  version: string | null;
+}
+
+export interface ParsedReleaseNotes {
+  diagnostics: string[];
+  sections: ReleaseNotesSection[];
+  sourcePath: string;
+}
+
+const CURATION_COMMENT_PREFIX_PATTERN =
+  /^\s*<!--\s*simple-changelogs-curation\b/;
+const CURATION_COMMENT_PATTERN =
+  /^\s*<!--\s*simple-changelogs-curation\s+source="([^"]*)"\s+release="([^"]*)"\s+highlighted="([^"]*)"\s+rolled-up="([^"]*)"\s+omitted="([^"]*)"\s*-->\s*$/;
+const ENTRY_ID_PATTERN = /^[0-9a-f]{12}$/;
+
+const parseIdList = (
+  raw: string,
+  attribute: string,
+  diagnostics: string[]
+): string[] => {
+  const ids = raw
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+  for (const id of ids) {
+    if (!ENTRY_ID_PATTERN.test(id)) {
+      diagnostics.push(
+        `Curation comment ${attribute} id "${id}" is not a 12-hex entry identity.`
+      );
+    }
+  }
+  return ids;
+};
+
+const parseCurationComment = (
+  raw: string,
+  diagnostics: string[]
+): CurationRecord | null => {
+  const match = raw.match(CURATION_COMMENT_PATTERN);
+  if (!match) {
+    diagnostics.push(
+      `Malformed curation comment (expected source/release/highlighted/rolled-up/omitted attributes): ${raw.trim()}`
+    );
+    return null;
+  }
+  return {
+    highlighted: parseIdList(match[3] ?? "", "highlighted", diagnostics),
+    omitted: parseIdList(match[5] ?? "", "omitted", diagnostics),
+    release: match[2] ?? "",
+    rolledUp: parseIdList(match[4] ?? "", "rolled-up", diagnostics),
+    source: match[1] ?? "",
+  };
+};
+
+/**
+ * Parses RELEASE_NOTES.md: the changelog's release-heading grammar, highlight
+ * bullets (top-level only; the rollup line is ordinary prose and ignored),
+ * and one curation provenance comment per section. Malformed curation
+ * comments become diagnostics, never guessed structure.
+ */
+interface ReleaseNotesState {
+  current: ReleaseNotesSection | null;
+  diagnostics: string[];
+  occurrences: Map<string, number>;
+  sections: ReleaseNotesSection[];
+}
+
+const handleReleaseNotesCurationLine = (
+  state: ReleaseNotesState,
+  raw: string
+): void => {
+  const record = parseCurationComment(raw, state.diagnostics);
+  if (record === null) {
+    return;
+  }
+  if (state.current === null) {
+    state.diagnostics.push(
+      "Curation comment found before any release heading; skipped."
+    );
+  } else if (state.current.curation === null) {
+    state.current.curation = record;
+  } else {
+    state.diagnostics.push(
+      `Release section "${state.current.heading}" carries more than one curation comment.`
+    );
+  }
+};
+
+const handleReleaseNotesHeading = (
+  state: ReleaseNotesState,
+  heading: HeadingLine
+): void => {
+  if (heading.depth !== 2) {
+    return;
+  }
+  const parsed = parseVersionAndDate(heading.text);
+  const unreleased = UNRELEASED_PATTERN.test(heading.text.trim());
+  const occurrence = (state.occurrences.get(heading.text) ?? 0) + 1;
+  state.occurrences.set(heading.text, occurrence);
+  state.current = {
+    curation: null,
+    date: parsed.date,
+    heading: heading.text,
+    highlights: [],
+    occurrence,
+    unreleased,
+    version: unreleased ? null : parsed.version,
+  };
+  state.sections.push(state.current);
+};
+
+export function parseReleaseNotes(
+  markdown: string,
+  sourcePath: string
+): ParsedReleaseNotes {
+  const state: ReleaseNotesState = {
+    current: null,
+    diagnostics: [],
+    occurrences: new Map(),
+    sections: [],
+  };
+  let inFence = false;
+
+  for (const raw of markdown.split(LINE_SPLIT_PATTERN)) {
+    if (inFence) {
+      if (FENCE_LINE_PATTERN.test(raw)) {
+        inFence = false;
+      }
+      continue;
+    }
+    if (FENCE_LINE_PATTERN.test(raw)) {
+      inFence = true;
+      continue;
+    }
+
+    if (CURATION_COMMENT_PREFIX_PATTERN.test(raw)) {
+      handleReleaseNotesCurationLine(state, raw);
+      continue;
+    }
+
+    const heading = parseHeading(raw);
+    if (heading) {
+      handleReleaseNotesHeading(state, heading);
+      continue;
+    }
+
+    const bullet = raw.match(BULLET_PATTERN);
+    if (bullet && state.current !== null && (bullet[1] ?? "").length === 0) {
+      state.current.highlights.push(entryTitle(raw));
+    }
+  }
+
+  return {
+    diagnostics: state.diagnostics,
+    sections: state.sections,
+    sourcePath,
   };
 }
 

@@ -86,6 +86,12 @@
     "newReleaseNoteSurfaces": {
       "enum": ["ask", "allow", "existing-only"]
     },
+    "publicReleaseNotes": {
+      "enum": ["full", "curated"]
+    },
+    "curationBudget": {
+      "$ref": "#/$defs/curationBudget"
+    },
     "releaseNoteEnvironmentScope": {
       "enum": [
         "all-environments",
@@ -114,6 +120,15 @@
     }
   },
   "$defs": {
+    "curationBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 }
+      }
+    },
     "publicVersioning": {
       "type": "object",
       "additionalProperties": false,

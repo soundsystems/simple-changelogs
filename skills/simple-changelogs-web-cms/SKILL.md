@@ -76,6 +76,7 @@ access, release, source-of-truth, or surface rules.
 | Versions and metadata | `references/version-decisions.md` |
 | Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prereleases | `references/major-releases.md` |
+| Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Public web/CMS destination scoping and long-form web notes | `references/release-note-surfaces.md` |
 | Presentation and defect checks after an exact public or operator surface is authorized | `references/surface-design.md` |
 | CMS policy and structured source | `references/cms-setup.md` |

@@ -67,6 +67,7 @@ const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
 const RELEASE_NOTE_LINK_POLICIES = ["when-useful", "ask", "disabled"] as const;
 const RELEASE_NOTE_GROUPING_POLICIES = ["product-areas", "flat"] as const;
 const MAJOR_RELEASE_NAMING_POLICIES = ["named", "version-only"] as const;
+const PUBLIC_RELEASE_NOTE_POLICIES = ["full", "curated"] as const;
 const MOBILE_RELEASE_NOTE_PLACEMENTS = [
   "store-only",
   "web-tabs",
@@ -229,6 +230,7 @@ type ReleaseNoteLinkPolicy = (typeof RELEASE_NOTE_LINK_POLICIES)[number];
 type ReleaseNoteGroupingPolicy =
   (typeof RELEASE_NOTE_GROUPING_POLICIES)[number];
 type MajorReleaseNamingPolicy = (typeof MAJOR_RELEASE_NAMING_POLICIES)[number];
+type PublicReleaseNotePolicy = (typeof PUBLIC_RELEASE_NOTE_POLICIES)[number];
 type MobileReleaseNotePlacement =
   (typeof MOBILE_RELEASE_NOTE_PLACEMENTS)[number];
 type SetupStyle = (typeof SETUP_STYLES)[number];
@@ -253,11 +255,10 @@ const GUIDANCE_VERSIONS = {
   web: 19,
   "web-cms": 19,
 } as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 4;
+const CMS_GUIDANCE_VERSION = 5;
 // The web-cms distribution records the CMS side of its policy on a separate
-// guidance track from the standalone CMS distribution; it has not moved past
-// its initial checkpoint.
-const WEB_CMS_CMS_GUIDANCE_VERSION = 1;
+// guidance track from the standalone CMS distribution.
+const WEB_CMS_CMS_GUIDANCE_VERSION = 2;
 
 const DISTRIBUTION_DIRECTORIES = {
   cms: "simple-changelogs-cms",
@@ -273,8 +274,14 @@ const DISTRIBUTION_DIRECTORIES = {
 // guidance bump.
 const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
 
+export interface CurationBudget {
+  max: number;
+  min: number;
+}
+
 interface RepoPolicy {
   crossSurfaceVersioning?: CrossSurfaceVersioning;
+  curationBudget?: CurationBudget;
   developerChangelog: DeveloperChangelogPolicy;
   distribution?: Distribution;
   guidance: {
@@ -285,6 +292,7 @@ interface RepoPolicy {
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces: SurfacePolicy;
+  publicReleaseNotes?: PublicReleaseNotePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
@@ -376,11 +384,13 @@ interface Recommendation {
 interface Selection {
   backfillStatus?: BackfillStatus;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
+  curationBudget?: CurationBudget;
   developerChangelog?: DeveloperChangelogPolicy;
   majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  publicReleaseNotes?: PublicReleaseNotePolicy;
   publicVersioning?: PublicVersioningPolicy;
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
@@ -392,9 +402,11 @@ interface Selection {
 
 type OptionalSelectionKeys =
   | "crossSurfaceVersioning"
+  | "curationBudget"
   | "majorReleaseNaming"
   | "mobileReleaseNotePlacement"
   | "newReleaseNoteSurfaceComponents"
+  | "publicReleaseNotes"
   | "publicVersioning"
   | "releaseNoteEnvironmentScope"
   | "releaseNoteGrouping"
@@ -520,12 +532,15 @@ export interface ApplyOptions extends InspectOptions {
   cmsSurfaceProven?: boolean;
   confirm?: boolean;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
+  curationMax?: number;
+  curationMin?: number;
   developerChangelog?: DeveloperChangelogPolicy;
   guidanceBackfill?: BackfillStatus;
   majorReleaseNaming?: MajorReleaseNamingPolicy;
   mobileReleaseNotePlacement?: MobileReleaseNotePlacement;
   newReleaseNoteSurfaceComponents?: SurfaceComponentSource;
   newReleaseNoteSurfaces?: SurfacePolicy;
+  publicReleaseNotes?: PublicReleaseNotePolicy;
   publicVersionMajor?: PublicVersionAction;
   publicVersionMinor?: PublicVersionAction;
   publicVersionPatch?: PublicVersionAction;
@@ -560,6 +575,9 @@ const SAFE_PUBLIC_VERSIONING: PublicVersioningPolicy = {
   suggestWhenAsking: true,
 };
 const DEFAULT_MAJOR_RELEASE_NAMING: MajorReleaseNamingPolicy = "named";
+// Applied when publicReleaseNotes is "curated" and no curationBudget is
+// stored; the policy field stays absent unless the owner chose exact numbers.
+export const DEFAULT_CURATION_BUDGET: CurationBudget = { max: 8, min: 3 };
 const DEFAULT_RELEASE_NOTE_GROUPING: ReleaseNoteGroupingPolicy =
   "product-areas";
 
@@ -877,6 +895,22 @@ const guidanceUpdateNoticeFor = async (
   };
 };
 
+const validateCurationBudget = (value: unknown): string[] => {
+  if (!(isRecord(value) && hasExactKeys(value, ["min", "max"]))) {
+    return ["curationBudget must contain exactly min and max"];
+  }
+  const errors: string[] = [];
+  for (const bound of ["min", "max"] as const) {
+    if (!(Number.isInteger(value[bound]) && (value[bound] as number) >= 0)) {
+      errors.push(`curationBudget.${bound} must be a non-negative integer`);
+    }
+  }
+  if (errors.length === 0 && (value.min as number) > (value.max as number)) {
+    errors.push("curationBudget.min must not exceed curationBudget.max");
+  }
+  return errors;
+};
+
 const validateRepoPolicy = (
   value: unknown
 ): { errors: string[]; value?: RepoPolicy } => {
@@ -894,10 +928,12 @@ const validateRepoPolicy = (
         ],
         [
           "crossSurfaceVersioning",
+          "curationBudget",
           "distribution",
           "majorReleaseNaming",
           "mobileReleaseNotePlacement",
           "newReleaseNoteSurfaceComponents",
+          "publicReleaseNotes",
           "publicVersioning",
           "releaseNoteEnvironmentScope",
           "releaseNoteGrouping",
@@ -942,6 +978,15 @@ const validateRepoPolicy = (
     value.majorReleaseNaming,
     MAJOR_RELEASE_NAMING_POLICIES
   );
+  reportUnsupportedOptionalEnum(
+    errors,
+    "publicReleaseNotes",
+    value.publicReleaseNotes,
+    PUBLIC_RELEASE_NOTE_POLICIES
+  );
+  if (value.curationBudget !== undefined) {
+    errors.push(...validateCurationBudget(value.curationBudget));
+  }
   reportUnsupportedOptionalEnum(
     errors,
     "crossSurfaceVersioning",
@@ -2364,6 +2409,13 @@ const markdownCandidates = (
   return candidates;
 };
 
+const curationBudgetSelectionFrom = (
+  options: ApplyOptions
+): CurationBudget | undefined =>
+  options.curationMin === undefined || options.curationMax === undefined
+    ? undefined
+    : { max: options.curationMax, min: options.curationMin };
+
 const selectionFrom = (
   options: ApplyOptions,
   inspect: SetupResult,
@@ -2402,6 +2454,7 @@ const selectionFrom = (
         ? "not-applicable"
         : "partial"),
     crossSurfaceVersioning: options.crossSurfaceVersioning,
+    curationBudget: curationBudgetSelectionFrom(options),
     developerChangelog:
       options.developerChangelog ?? defaults.developerChangelog,
     majorReleaseNaming,
@@ -2413,6 +2466,8 @@ const selectionFrom = (
         ? "project-components"
         : undefined),
     newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "ask",
+    publicReleaseNotes:
+      installed === "cms" ? undefined : options.publicReleaseNotes,
     publicVersioning,
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
     releaseNoteGrouping,
@@ -2509,6 +2564,12 @@ const repoPolicyFor = (
   }
   if (selection.crossSurfaceVersioning !== undefined) {
     policy.crossSurfaceVersioning = selection.crossSurfaceVersioning;
+  }
+  if (selection.publicReleaseNotes !== undefined) {
+    policy.publicReleaseNotes = selection.publicReleaseNotes;
+  }
+  if (selection.curationBudget !== undefined) {
+    policy.curationBudget = selection.curationBudget;
   }
   if (selection.releaseNoteEnvironmentScope !== undefined) {
     policy.releaseNoteEnvironmentScope = selection.releaseNoteEnvironmentScope;
@@ -2763,6 +2824,16 @@ const contextualPreferenceErrors = (
     );
   }
   if (
+    (options.publicReleaseNotes !== undefined ||
+      options.curationMin !== undefined ||
+      options.curationMax !== undefined) &&
+    installed === "cms"
+  ) {
+    errors.push(
+      "Public release-note curation applies only to distributions with public release history."
+    );
+  }
+  if (
     options.releaseNoteEnvironmentScope !== undefined &&
     !WEB_RELEASE_NOTE_DISTRIBUTIONS.has(installed as Distribution)
   ) {
@@ -2802,6 +2873,15 @@ const updateContextualPreferences = async (
   if (options.crossSurfaceVersioning !== undefined) {
     selection.crossSurfaceVersioning = options.crossSurfaceVersioning;
     updates.crossSurfaceVersioning = options.crossSurfaceVersioning;
+  }
+  if (options.publicReleaseNotes !== undefined) {
+    selection.publicReleaseNotes = options.publicReleaseNotes;
+    updates.publicReleaseNotes = options.publicReleaseNotes;
+  }
+  const curationBudget = curationBudgetSelectionFrom(options);
+  if (curationBudget) {
+    selection.curationBudget = curationBudget;
+    updates.curationBudget = curationBudget;
   }
   if (options.majorReleaseNaming !== undefined) {
     selection.majorReleaseNaming = options.majorReleaseNaming;
@@ -3170,6 +3250,11 @@ const persistSetup = async (
       writes.push(await finalizeGlobalPreferences(preparedGlobal));
     }
     const selectedLabel = installed === "cms" ? "CMS-only" : installed;
+    const budget = selection.curationBudget ?? DEFAULT_CURATION_BUDGET;
+    const curatedNote =
+      selection.publicReleaseNotes === "curated"
+        ? ` Public release notes are curated: RELEASE_NOTES.md is derived from CHANGELOG.md at release boundaries with ${budget.min}-${budget.max} highlights per release.`
+        : "";
     return {
       ...inspect,
       command: "apply",
@@ -3191,7 +3276,7 @@ const persistSetup = async (
         : inspect.publicVersioning,
       selection,
       status: "configured",
-      summary: `Simple Changelogs ${selectedLabel} is configured. Repository-specific audiences, destinations, history, and authority remain repository-owned.`,
+      summary: `Simple Changelogs ${selectedLabel} is configured.${curatedNote} Repository-specific audiences, destinations, history, and authority remain repository-owned.`,
       unresolvedQuestions: [],
       writes,
     };
@@ -3210,6 +3295,41 @@ const persistSetup = async (
       selection
     );
   }
+};
+
+// The curation-budget flags interlock: both bounds arrive together, they must
+// form a valid budget, and they apply only to curated public release notes.
+const curationSelectionErrors = (
+  options: ApplyOptions,
+  inspect: SetupResult
+): string[] => {
+  const suppliedCurationBounds = [
+    options.curationMin,
+    options.curationMax,
+  ].filter((value) => value !== undefined).length;
+  if (suppliedCurationBounds === 0) {
+    return [];
+  }
+  if (suppliedCurationBounds === 1) {
+    return [
+      "Supplying a curation budget requires --curation-min and --curation-max together.",
+    ];
+  }
+  const budgetErrors = validateCurationBudget({
+    max: options.curationMax,
+    min: options.curationMin,
+  });
+  if (budgetErrors.length > 0) {
+    return budgetErrors;
+  }
+  const effectiveLayerPolicy =
+    options.publicReleaseNotes ?? inspect.policy?.value?.publicReleaseNotes;
+  if (effectiveLayerPolicy !== "curated") {
+    return [
+      "A curation budget requires curated public release notes; pass --public-release-notes curated or store it first.",
+    ];
+  }
+  return [];
 };
 
 export const applySetup = async (
@@ -3260,6 +3380,10 @@ export const applySetup = async (
     return blockResult(inspect, [
       "--version-suggestions may be omitted only for the complete ask/ask/ask default.",
     ]);
+  }
+  const curationErrors = curationSelectionErrors(options, inspect);
+  if (curationErrors.length > 0) {
+    return blockResult(inspect, curationErrors);
   }
   const auditCompletion = await completePartialAudit(
     options,
@@ -3315,11 +3439,14 @@ const valueOptionNames = new Set([
   "--cms-changelog",
   "--cms-route",
   "--cross-surface-versioning",
+  "--curation-max",
+  "--curation-min",
   "--developer-history",
   "--guidance-backfill",
   "--major-release-naming",
   "--mobile-placement",
   "--new-surfaces",
+  "--public-release-notes",
   "--release-note-environments",
   "--release-note-grouping",
   "--release-note-links",
@@ -3368,6 +3495,17 @@ const parseCli = (argv: string[]): ParsedCli => {
     values.set(name, value);
     index += 1;
   }
+  const integerValue = (name: string): number | undefined => {
+    const value = values.get(name);
+    if (value === undefined) {
+      return;
+    }
+    const parsed = Number(value);
+    if (!(Number.isInteger(parsed) && parsed >= 0)) {
+      throw new Error(`${name} must be a non-negative integer`);
+    }
+    return parsed;
+  };
   const enumValue = <T extends string>(
     name: string,
     allowed: readonly T[]
@@ -3395,6 +3533,8 @@ const parseCli = (argv: string[]): ParsedCli => {
         "--cross-surface-versioning",
         CROSS_SURFACE_VERSIONING_POLICIES
       ),
+      curationMax: integerValue("--curation-max"),
+      curationMin: integerValue("--curation-min"),
       developerChangelog: enumValue(
         "--developer-history",
         DEVELOPER_CHANGELOG_POLICIES
@@ -3413,6 +3553,10 @@ const parseCli = (argv: string[]): ParsedCli => {
         SURFACE_COMPONENT_SOURCES
       ),
       newReleaseNoteSurfaces: enumValue("--new-surfaces", SURFACE_POLICIES),
+      publicReleaseNotes: enumValue(
+        "--public-release-notes",
+        PUBLIC_RELEASE_NOTE_POLICIES
+      ),
       publicVersionMajor: enumValue("--version-major", PUBLIC_VERSION_ACTIONS),
       publicVersionMinor: enumValue("--version-minor", PUBLIC_VERSION_ACTIONS),
       publicVersionPatch: enumValue("--version-patch", PUBLIC_VERSION_ACTIONS),

@@ -43,6 +43,16 @@ The raw sources keep their established filenames: `CHANGELOG.md` remains the
 canonical customer source and `DEVELOPER_CHANGELOG.md` remains the canonical
 technical source. Visible labels do not change source ownership.
 
+## Curated Layer Mapping
+
+When repository policy records `publicReleaseNotes: "curated"` and
+`RELEASE_NOTES.md` exists, apply this default layer mapping: public marketing
+pages and release-note modals render the curated layer, archive pages render
+the full changelog, and internal surfaces are unchanged. There is no
+per-destination layer policy field in this first cut; the mapping is
+documentation, not new configuration. `references/curation.md` owns the
+derived file itself.
+
 ## Find Existing Destinations First
 
 Inspect release-note data, routes, screens, modals, store metadata, public docs,

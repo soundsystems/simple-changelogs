@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- Added the curated release-notes layer (design:
+  `docs/plans/2026-08-25-curated-release-notes.md`):
+  - Policy: optional `publicReleaseNotes: "full" | "curated"` (default full)
+    and `curationBudget {min,max}` (defaults 3/8) with CLI flags, interlocks,
+    contextual updates via `atomicReplaceSet`, schema and receipt coverage.
+  - Conventions in new `references/curation.md` (five markdown distributions):
+    derived-never-authored `RELEASE_NOTES.md`, provenance comments binding
+    12-hex entry identities, non-filterable Breaking/Security classes, patch
+    min-exemption, release-receipt integration; surface layer mapping
+    documented in `release-note-surfaces.md`.
+  - Parser: `entryIdentity()` and `parseReleaseNotes()` in
+    `changelog-parse.ts`; `query.ts` gains `entries --ids`,
+    `show <release> --omitted` (omitted + rolled-up lists), and curation
+    coverage in `check` (exact-once multiset accounting, budget enforcement,
+    diagnostics for malformed provenance).
+  - CMS first cut: optional `highlights` and `curation` accounting on release
+    objects with `cmsChangeId()` (sha-256 derived ids), enforced by both
+    shipped validators and JSON schemas. CMS-only guidance advanced 4 to 5;
+    the Web+CMS CMS track advanced 1 to 2 via the new dual-track notice
+    machinery; curated-notes guidance folded into this branch's unreleased
+    markdown-distribution checkpoints.
+  - 27 new tests across `curated-release-notes.check.ts`,
+    `curation.check.ts`, and `curation-query.check.ts`; distribution size cap
+    raised to 370 KiB.
+<!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-25T17:13:45-05:00" -->
 - Made the Web+CMS CMS guidance track functional: `guidanceUpdateNoticeFor`
   now also compares the CMS policy's `guidance.version` against
   `WEB_CMS_CMS_GUIDANCE_VERSION` (merging both tracks into one notice, with a
