@@ -11,7 +11,7 @@ import { file } from "bun";
 // digests to the values reported in the failure message.
 const EXPECTED_DIGESTS: Record<string, string> = {
   "changelog-capabilities.schema.json":
-    "9d6d92e61d90b67161fbabd05e0f17c8d78ffc08bbb6f5293b6464e849b5efe2",
+    "d010cbacfe451b1b2cc7651f3e87983d52778512925375c24b7154cf79f56757",
   "changelog-receipt.schema.json":
     "dc981236280f3bfac348c1e0b0185cb6f353dc834d37ef1ff3b7b90b0358daee",
   "changelog-request.schema.json":

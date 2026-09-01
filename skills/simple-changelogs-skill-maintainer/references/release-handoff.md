@@ -9,10 +9,16 @@ data, secret, environment, migration, and DNS authority do not.
 
 Run `scripts/setup.ts inspect --repo <path> --task-mode read --json` and read
 its `capabilities` object. Select the highest request and receipt versions
-supported by both parties and verify the advertised SHA-256 schema digests
+supported by both parties and compare the advertised SHA-256 schema digests
 against `schemas/changelog-request.schema.json` and
-`schemas/changelog-receipt.schema.json`. A missing overlap or digest mismatch
-blocks only release-boundary work. Skill-path presence is not compatibility.
+`schemas/changelog-receipt.schema.json`. A missing version overlap blocks only
+release-boundary work. A digest difference is advisory status, never a block;
+each request and receipt is validated against the packaged schema at use time.
+Skill-path presence is not compatibility.
+
+The `changelog-provider.json` marker beside `SKILL.md` declares provider
+identity, distribution, guidance version, and schema digests. Setup generates
+it; Simple Changes reads it for discovery.
 
 The schemas are pinned producer fixtures from the Simple Changes companion
 contract. Do not independently widen their enums or accept raw prompt prose as
