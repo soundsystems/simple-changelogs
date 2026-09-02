@@ -466,6 +466,7 @@ describe("schema parity", () => {
         "$defs.v2.properties.status.enum",
         [
           "decision-required",
+          "classified",
           "prepared",
           "verified",
           "not-applicable",

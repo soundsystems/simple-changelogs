@@ -418,7 +418,7 @@ describe("setup inspection", () => {
       distribution: "cms",
       features: ["classify-prepare-verify", "guidance-update-notices"],
       provider: "simple-changelogs",
-      receiptVersions: [1, 2],
+      receiptVersions: [2],
       requestVersions: [1],
       schemaVersion: 1,
     });

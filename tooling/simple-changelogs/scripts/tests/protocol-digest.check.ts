@@ -13,7 +13,7 @@ const EXPECTED_DIGESTS: Record<string, string> = {
   "changelog-capabilities.schema.json":
     "d010cbacfe451b1b2cc7651f3e87983d52778512925375c24b7154cf79f56757",
   "changelog-receipt.schema.json":
-    "65bc21e3b2c8628f025b5b9c09de06a845a7c71ab17b968227dfaf1a14e3e9a5",
+    "c226d4e05087024959f68dc967d049267a9a8c5aa98188f9157260e1897e57aa",
   "changelog-request.schema.json":
     "9bea6549ecdbf494779eefd4f31653bfb81efaa6ee3927d623a62d8459ce3944",
 };
