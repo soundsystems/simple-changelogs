@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added distribution-topology reconciliation to consumer discovery and broad
+  publication runs. When `.simple-changelogs.json` selects `web-cms` and the
+  matching combined consumer is present, a standalone `simple-changelogs-cms`
+  consumer is now reported as `superseded-install` with
+  `supersededBy: "simple-changelogs-web-cms"`; publication removes its package
+  and lock instead of reinstalling it, unless repository instructions require
+  both independently. `.simple-changelogs-cms.json` remains the combined
+  package's protected-CMS policy. Updated release-map, production-loop, and
+  merge-verification guidance and added discovery coverage for the retained
+  sidecar and both-package topology.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-09-02T17:54:18-05:00" -->
 - Aligned handoff negotiation with the consumer-owned compatibility contract:
   schema-digest differences are advisory while missing version overlap remains
   blocking, capability schemas accept positive integer protocol versions, and

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Skill publishing**
+  - Broad publication runs now recognize Web + CMS as the complete changelog
+    installation for combined repositories, preventing a redundant standalone
+    CMS package from being reinstalled while preserving the protected CMS
+    policy.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-09-02T17:54:18-05:00" -->
 - **Release handoffs**
   - Release orchestrators now treat schema-digest differences as compatibility
     status instead of blocking a handoff; an unsupported request or receipt

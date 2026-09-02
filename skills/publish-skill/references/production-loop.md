@@ -83,6 +83,16 @@ unlocked installs, and lock-only records before writing. Treat paths resolving
 to the same physical package as symlinked paths, not duplicate installs.
 Do not select only one consumer for convenience.
 
+Before reinstalling, reconcile combined-distribution topology. When a valid
+`.simple-changelogs.json` selects `web-cms` and that combined package is
+present, its protected CMS workflow makes a separate
+`simple-changelogs-cms` installation redundant. The
+`.simple-changelogs-cms.json` sidecar remains required CMS policy for the
+combined package. Treat a discovered standalone CMS package as redundant and
+remove its package plus lock entry unless repository instructions explicitly
+document both packages as independently maintained consumers. Never let a
+broad reinstall recreate a package already removed by this topology rule.
+
 For every confirmed consumer:
 
 1. Determine its retention mode from repository instructions and prior
