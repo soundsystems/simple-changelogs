@@ -4,7 +4,7 @@
   "defaultFinish": "ship",
   "guidance": {
     "disposition": "accepted",
-    "version": 18
+    "version": 21
   },
   "handoffTiming": "automatic",
   "productionDeploy": "ask",
@@ -15,5 +15,6 @@
   "gitPushAuthorization": "ask",
   "migrationHandling": "ask-after-review",
   "migrationTargets": [],
-  "shippingMode": "standard"
+  "shippingMode": "standard",
+  "proposalScheduling": "balanced"
 }
