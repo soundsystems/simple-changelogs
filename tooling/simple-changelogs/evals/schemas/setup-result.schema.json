@@ -190,17 +190,31 @@
         "schemaVersion": { "const": 1 },
         "provider": { "const": "simple-changelogs" },
         "distribution": {
-          "enum": ["full", "web", "mobile", "web-cms", "skill-repository"]
+          "enum": [
+            "full",
+            "web",
+            "mobile",
+            "web-cms",
+            "skill-repository",
+            "cms"
+          ]
         },
         "guidanceVersion": { "type": "integer", "minimum": 1 },
         "requestVersions": { "const": [1] },
         "receiptVersions": { "const": [1, 2] },
         "features": {
-          "const": [
-            "public-version-policy",
-            "classify-prepare-verify",
-            "multi-train-receipts",
-            "guidance-update-notices"
+          "anyOf": [
+            {
+              "const": [
+                "public-version-policy",
+                "classify-prepare-verify",
+                "multi-train-receipts",
+                "guidance-update-notices"
+              ]
+            },
+            {
+              "const": ["classify-prepare-verify", "guidance-update-notices"]
+            }
           ]
         },
         "schemaDigests": {

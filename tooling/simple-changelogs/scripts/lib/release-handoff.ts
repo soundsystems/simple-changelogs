@@ -17,6 +17,7 @@ export const RELEASE_IMPACTS = [
 ] as const;
 export const RECEIPT_STATUSES = [
   "decision-required",
+  "classified",
   "prepared",
   "verified",
   "not-applicable",
@@ -67,9 +68,10 @@ type RequiredAction = (typeof REASON_ACTIONS)[ReasonCode];
 export interface ChangelogRequestV1 {
   approvedDecisionDigest: string | null;
   approvedVersion: string | null;
-  attempt: number;
+  // Optional and informational: never stored, echoed, or used to key retries.
+  attempt?: number;
   boundary: Boundary;
-  environment: string | null;
+  environment?: string;
   finalizedTargetRevision: string | null;
   inputTargetRevision: string;
   mutationScope: (typeof MUTATION_SCOPES)[number];
@@ -141,6 +143,15 @@ const nonEmpty = (value: unknown): value is string =>
 const exactKeys = (value: Record<string, unknown>, keys: readonly string[]) =>
   Object.keys(value).length === keys.length &&
   keys.every((key) => Object.hasOwn(value, key));
+const closedKeys = (
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[]
+) =>
+  required.every((key) => Object.hasOwn(value, key)) &&
+  Object.keys(value).every(
+    (key) => required.includes(key) || optional.includes(key)
+  );
 const requireCondition = (
   errors: string[],
   condition: boolean,
@@ -188,10 +199,8 @@ export const validateChangelogRequest = (
     "transactionId",
     "releaseSetId",
     "phase",
-    "attempt",
     "releaseTrain",
     "boundary",
-    "environment",
     "mutationScope",
     "inputTargetRevision",
     "finalizedTargetRevision",
@@ -200,7 +209,10 @@ export const validateChangelogRequest = (
     "priorReceiptDigest",
     "supportedReceiptVersions",
   ];
-  if (!(isRecord(value) && exactKeys(value, keys))) {
+  // Informational fields the schema allows but does not require. They are
+  // shape-checked when present and otherwise ignored.
+  const optionalKeys = ["attempt", "environment"];
+  if (!(isRecord(value) && closedKeys(value, keys, optionalKeys))) {
     return { errors: ["request has missing or unknown fields"] };
   }
   requireCondition(
@@ -221,7 +233,8 @@ export const validateChangelogRequest = (
   requireCondition(errors, oneOf(value.phase, PHASES), "phase is unsupported");
   requireCondition(
     errors,
-    Number.isInteger(value.attempt) && (value.attempt as number) >= 1,
+    value.attempt === undefined ||
+      (Number.isInteger(value.attempt) && (value.attempt as number) >= 1),
     "attempt must be positive"
   );
   requireCondition(
@@ -236,7 +249,7 @@ export const validateChangelogRequest = (
   );
   requireCondition(
     errors,
-    value.environment === null || typeof value.environment === "string",
+    value.environment === undefined || nonEmpty(value.environment),
     "environment is invalid"
   );
   requireCondition(
@@ -295,6 +308,21 @@ export const validateChangelogRequest = (
       ? "verify requires finalizedTargetRevision"
       : "finalizedTargetRevision belongs only to verify"
   );
+  // An entry-only handoff on the `none` boundary never approves a version;
+  // a public boundary must carry one into prepare and verify.
+  if (value.boundary === "none") {
+    requireCondition(
+      errors,
+      value.approvedVersion === null,
+      "the none boundary carries no approvedVersion"
+    );
+  } else if (value.phase === "prepare" || value.phase === "verify") {
+    requireCondition(
+      errors,
+      nonEmpty(value.approvedVersion),
+      `${String(value.phase)} requires approvedVersion on a public boundary`
+    );
+  }
   return errors.length > 0
     ? { errors }
     : { errors, value: value as unknown as ChangelogRequestV1 };
@@ -344,24 +372,72 @@ const receiptRequestErrors = (
   if (!request) {
     return [];
   }
+  const errors: string[] = [];
   const decision = receipt.versionDecision;
+  const entryOnly = request.boundary === "none";
+  // An entry-only receipt may omit its version decision entirely; a public
+  // boundary must name the train and boundary it decided.
+  const decisionMatches =
+    decision === null
+      ? entryOnly
+      : decision.releaseTrain === request.releaseTrain &&
+        decision.boundary === request.boundary;
   const matches =
     receipt.transactionId === request.transactionId &&
     receipt.releaseSetId === request.releaseSetId &&
     receipt.phase === request.phase &&
-    decision?.releaseTrain === request.releaseTrain &&
-    decision.boundary === request.boundary &&
+    decisionMatches &&
     receipt.revisionLineage.inputTargetRevision === request.inputTargetRevision;
-  return matches ? [] : ["receipt does not match its exact request"];
+  requireCondition(errors, matches, "receipt does not match its exact request");
+  // The receipt does not carry the boundary, so the null release record is
+  // bound here: only the none boundary prepares or verifies without a version.
+  if (receipt.status === "prepared" || receipt.status === "verified") {
+    requireCondition(
+      errors,
+      (receipt.release === null) === entryOnly,
+      entryOnly
+        ? "entry-only handoff must not name a release"
+        : "public boundary requires a release record"
+    );
+  }
+  return errors;
+};
+
+// A prepared or verified receipt without a release record is valid only as an
+// entry-only outcome: no version was selected, bumped, or suggested.
+const isEntryOnlyOutcome = (receipt: ChangelogReceiptV2): boolean => {
+  const decision = receipt.versionDecision;
+  return (
+    receipt.release === null &&
+    (decision === null ||
+      (decision.boundary === "none" &&
+        decision.bumpLevel === "none" &&
+        decision.resolution === "not-required" &&
+        decision.selectedVersion === null &&
+        decision.suggestedVersion === null))
+  );
 };
 
 const receiptStatusErrors = (receipt: ChangelogReceiptV2): string[] => {
   const errors: string[] = [];
   const decision = receipt.versionDecision;
+  const entryOnly = isEntryOnlyOutcome(receipt);
   requireCondition(
     errors,
     receipt.releaseImpact !== "none" || receipt.status === "not-applicable",
     "internal-only or non-public work must be not-applicable"
+  );
+  requireCondition(
+    errors,
+    receipt.status !== "classified" ||
+      (receipt.phase === "classify" &&
+        entryOnly &&
+        receipt.releaseImpact !== "none" &&
+        receipt.paths.length === 0 &&
+        receipt.reasonCode === null &&
+        receipt.requiredAction === null &&
+        receipt.reason === null),
+    "classified receipt invariants failed"
   );
   requireCondition(
     errors,
@@ -391,21 +467,26 @@ const receiptStatusErrors = (receipt: ChangelogReceiptV2): string[] => {
     !needsSelectedVersion || Boolean(decision?.selectedVersion),
     "resolved version decisions require selectedVersion"
   );
+  const preparedRelease = entryOnly
+    ? receipt.paths.length > 0
+    : Boolean(decision?.selectedVersion && receipt.release) &&
+      receipt.release?.version === decision?.selectedVersion &&
+      receipt.release?.targetContainedUnreleased === "prepared";
   requireCondition(
     errors,
     receipt.status !== "prepared" ||
-      (Boolean(decision?.selectedVersion && receipt.release) &&
-        receipt.release?.version === decision?.selectedVersion &&
-        receipt.release?.targetContainedUnreleased === "prepared" &&
+      (preparedRelease &&
         revision(receipt.revisionLineage.reconciliationHeadRevision)),
     "prepared receipt invariants failed"
   );
+  const verifiedRelease =
+    entryOnly || receipt.release?.targetContainedUnreleased === "integrated";
   requireCondition(
     errors,
     receipt.status !== "verified" ||
       (receipt.phase === "verify" &&
         receipt.paths.length === 0 &&
-        receipt.release?.targetContainedUnreleased === "integrated" &&
+        verifiedRelease &&
         revision(receipt.revisionLineage.finalizedTargetRevision)),
     "verified receipt invariants failed"
   );

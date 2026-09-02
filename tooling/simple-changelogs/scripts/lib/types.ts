@@ -297,25 +297,33 @@ export interface SetupRecommendation {
   reusableDefaults: GlobalPreferences;
 }
 
-export interface SetupResult {
-  capabilities: {
-    distribution: Distribution;
-    features: [
+// The CMS-only distribution advertises the handoff without the public-version
+// features: its classify/prepare/verify transaction is entry-only.
+export type IntegrationFeatures =
+  | [
       "public-version-policy",
       "classify-prepare-verify",
       "multi-train-receipts",
       "guidance-update-notices",
-    ];
-    guidanceVersion: number;
-    provider: "simple-changelogs";
-    receiptVersions: [1, 2];
-    requestVersions: [1];
-    schemaDigests: {
-      changelogReceipt: string;
-      changelogRequest: string;
-    };
-    schemaVersion: 1;
-  } | null;
+    ]
+  | ["classify-prepare-verify", "guidance-update-notices"];
+
+export interface IntegrationCapabilities {
+  distribution: Distribution | "cms";
+  features: IntegrationFeatures;
+  guidanceVersion: number;
+  provider: "simple-changelogs";
+  receiptVersions: [1, 2] | [2];
+  requestVersions: [1];
+  schemaDigests: {
+    changelogReceipt: string;
+    changelogRequest: string;
+  };
+  schemaVersion: 1;
+}
+
+export interface SetupResult {
+  capabilities: IntegrationCapabilities | null;
   cmsPolicy: SetupStateRecord<CmsSetupPolicy> | null;
   command: SetupCommand;
   detection: SetupDetection;

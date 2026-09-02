@@ -498,17 +498,23 @@ export interface OwnerWriteReceipt {
   written: boolean;
 }
 
+// The CMS-only distribution advertises the handoff without the public-version
+// features: its classify/prepare/verify transaction is entry-only.
+export type IntegrationFeatures =
+  | [
+      "public-version-policy",
+      "classify-prepare-verify",
+      "multi-train-receipts",
+      "guidance-update-notices",
+    ]
+  | ["classify-prepare-verify", "guidance-update-notices"];
+
 export interface IntegrationCapabilities {
-  distribution: Distribution;
-  features: [
-    "public-version-policy",
-    "classify-prepare-verify",
-    "multi-train-receipts",
-    "guidance-update-notices",
-  ];
+  distribution: Distribution | "cms";
+  features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2];
+  receiptVersions: [1, 2] | [2];
   requestVersions: [1];
   schemaDigests: {
     changelogReceipt: string;
@@ -698,27 +704,35 @@ const capabilitySchemaPath = (filename: string): string => {
     : join(packageRoot, "evals", "schemas", filename);
 };
 
-const capabilitiesFor = async (
+// The CMS-only distribution takes the same classify/prepare/verify handoff
+// for its version-less operator history, so it advertises the protocol and
+// schema digests but not the public-version features: its handoff is
+// entry-only and never selects, bumps, or reconciles a version.
+const integrationFeaturesFor = (
   installed: Distribution | "cms"
-): Promise<IntegrationCapabilities | null> => {
-  if (installed === "cms") {
-    return null;
-  }
+): IntegrationCapabilities["features"] =>
+  installed === "cms"
+    ? ["classify-prepare-verify", "guidance-update-notices"]
+    : [
+        "public-version-policy",
+        "classify-prepare-verify",
+        "multi-train-receipts",
+        "guidance-update-notices",
+      ];
+
+const integrationCapabilitiesFor = async (
+  installed: Distribution | "cms"
+): Promise<IntegrationCapabilities> => {
   const [requestSchema, receiptSchema] = await Promise.all([
     readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
     readFile(capabilitySchemaPath("changelog-receipt.schema.json"), "utf8"),
   ]);
   return {
     distribution: installed,
-    features: [
-      "public-version-policy",
-      "classify-prepare-verify",
-      "multi-train-receipts",
-      "guidance-update-notices",
-    ],
-    guidanceVersion: GUIDANCE_VERSIONS[installed],
+    features: integrationFeaturesFor(installed),
+    guidanceVersion: currentGuidanceVersionFor(installed),
     provider: "simple-changelogs",
-    receiptVersions: [1, 2],
+    receiptVersions: installed === "cms" ? [2] : [1, 2],
     requestVersions: [1],
     schemaDigests: {
       changelogReceipt: digestSchema(receiptSchema),
@@ -727,6 +741,15 @@ const capabilitiesFor = async (
     schemaVersion: 1,
   };
 };
+
+const capabilitiesFor = (
+  installed: Distribution | "cms"
+): Promise<IntegrationCapabilities> => integrationCapabilitiesFor(installed);
+
+// Canonical source of every shipped changelog-provider.json marker.
+export const providerMarkerFor = (
+  installed: Distribution | "cms"
+): Promise<IntegrationCapabilities> => integrationCapabilitiesFor(installed);
 
 const currentGuidanceVersionFor = (installed: Distribution | "cms"): number =>
   installed === "cms" ? CMS_GUIDANCE_VERSION : GUIDANCE_VERSIONS[installed];

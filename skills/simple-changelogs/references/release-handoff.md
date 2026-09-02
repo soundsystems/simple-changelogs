@@ -9,10 +9,20 @@ data, secret, environment, migration, and DNS authority do not.
 
 Run `scripts/setup.ts inspect --repo <path> --task-mode read --json` and read
 its `capabilities` object. Select the highest request and receipt versions
-supported by both parties and verify the advertised SHA-256 schema digests
+supported by both parties and compare the advertised SHA-256 schema digests
 against `schemas/changelog-request.schema.json` and
-`schemas/changelog-receipt.schema.json`. A missing overlap or digest mismatch
-blocks only release-boundary work. Skill-path presence is not compatibility.
+`schemas/changelog-receipt.schema.json`. A missing version overlap blocks only
+release-boundary work. A digest difference is advisory status, never a block;
+each request and receipt is validated against the packaged schema at use time.
+Skill-path presence is not compatibility.
+
+The `changelog-provider.json` marker beside `SKILL.md` declares provider
+identity, distribution, guidance version, and schema digests. Setup generates
+it; Simple Changes reads it for discovery. The CMS-only distribution
+advertises the same protocol versions but takes an entry-only handoff for its
+version-less operator history: it prepares and verifies a
+`CMS_CHANGELOG.json` entry on the `none` boundary and never a version, tag,
+or public note. Its own `release-handoff.md` describes that contract.
 
 The schemas are pinned producer fixtures from the Simple Changes companion
 contract. Do not independently widen their enums or accept raw prompt prose as
@@ -28,6 +38,9 @@ receipts for reporting but never creates atomic multi-train authority.
 - `prepare` requires `mutationScope: "prepare-release-files"`.
 - `verify` requires the exact non-null `finalizedTargetRevision`; other phases
   require it to be null.
+- `attempt` and `environment` are optional, informational fields. Check their
+  shape when present; never store, echo, or key retries on them. Transaction
+  identity is the transaction ID, phase, revisions, and prior receipt digest.
 - Reject a moved target, mismatched transaction/train/boundary, unsupported
   version, stale prior-receipt digest, malformed policy, or missing
   phase-specific approval field before mutation.

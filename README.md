@@ -14,7 +14,7 @@ lists choices. The table below provides the same selection guide.
 | Skill | Use it for | Does not own |
 | --- | --- | --- |
 | `simple-changelogs` | Full cross-surface repositories: customer and developer histories, web, mobile, store, internal, versions, majors, and prereleases | A narrower distro selected by the repository |
-| `simple-changelogs-cms` | One structured `CMS_CHANGELOG.json` rendered only for authenticated CMS operators | Public or developer changelogs |
+| `simple-changelogs-cms` | One structured `CMS_CHANGELOG.json` rendered only for authenticated CMS operators; takes an entry-only release handoff | Public or developer changelogs, versions, tags, and public notes |
 | `simple-changelogs-web` | Customer and optional developer histories plus established public web release-note destinations | Mobile/store and CMS operator history |
 | `simple-changelogs-mobile` | Customer and optional developer histories plus mobile in-app and existing store-note metadata | Web and CMS operator destinations |
 | `simple-changelogs-web-cms` | Public web history and a separate authenticated CMS operator history in one repository | Mobile/store destinations |
@@ -226,6 +226,16 @@ another one.
 CMS-only uses `.simple-changelogs-cms.json` and a validated
 `CMS_CHANGELOG.json`. The combined web+CMS distribution uses both the standard
 policy and the CMS policy because their sources and audiences remain separate.
+
+`simple-changelogs-cms` ships a `changelog-provider.json` (distribution
+`cms`) that advertises request v1, receipt v2, and the same schema digests as
+the other distributions, without the legacy receipt-v1 or public-version
+features. Its
+handoff is entry-only: Simple Changes delegates on the `none` boundary and the
+`cms-operators` train, `prepare` writes the operator entry into
+`CMS_CHANGELOG.json`, and `verify` proves the entry is in the finalized
+target. No phase selects a version, creates a tag, or produces a public note;
+see `skills/simple-changelogs-cms/references/release-handoff.md`.
 
 For an approved public Web archive, `releaseNoteEnvironmentScope` can expose
 the complete surface in `all-environments`, `non-production`,

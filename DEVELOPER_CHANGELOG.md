@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- Aligned handoff negotiation with the consumer-owned compatibility contract:
+  schema-digest differences are advisory while missing version overlap remains
+  blocking, capability schemas accept positive integer protocol versions, and
+  request/receipt payloads continue to validate against the packaged schemas.
+  Updated the pinned capabilities digest and advanced this repository's recorded
+  skill-maintainer guidance checkpoint from 11 to 12.
+- Made request `attempt` and `environment` optional informational fields across
+  the runtime types, closed-object validator, consumer-owned request schema, and
+  every vendored copy; present values retain shape validation but are never
+  stored, echoed, or used as retry identity. Regenerated request digests and
+  consolidated all six provider-marker payloads behind `providerMarkerFor`.
+- Added the CMS-only entry handoff on `boundary: "none"` and release train
+  `cms-operators`: relevant classification returns the new schema-valid
+  `classified` receipt, prepare writes only `CMS_CHANGELOG.json` and returns its
+  path and digest with `release: null`, and verify proves finalized-target
+  containment through revision lineage. CMS advertises receipt v2 only; updated
+  every vendored receipt schema and digest, shipped the protocol contracts and
+  guidance with the CMS distribution, and added end-to-end
+  classify-to-prepare validation plus marker and distribution-boundary coverage.
+- Accepted Simple Changes guidance 21 while preserving the existing workflow
+  policy and recording balanced proposal scheduling.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-09-02T11:05:06-05:00" -->
 - Shipped a machine-readable `changelog-provider.json` marker beside each
   advertised distribution, recording the distribution, guidance checkpoint,
   advertised features, request/receipt versions, and canonical schema digests

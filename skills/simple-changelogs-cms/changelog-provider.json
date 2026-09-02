@@ -1,14 +1,9 @@
 {
-  "distribution": "full",
-  "features": [
-    "public-version-policy",
-    "classify-prepare-verify",
-    "multi-train-receipts",
-    "guidance-update-notices"
-  ],
-  "guidanceVersion": 20,
+  "distribution": "cms",
+  "features": ["classify-prepare-verify", "guidance-update-notices"],
+  "guidanceVersion": 5,
   "provider": "simple-changelogs",
-  "receiptVersions": [1, 2],
+  "receiptVersions": [2],
   "requestVersions": [1],
   "schemaDigests": {
     "changelogReceipt": "c226d4e05087024959f68dc967d049267a9a8c5aa98188f9157260e1897e57aa",

@@ -11,11 +11,11 @@ import { file } from "bun";
 // digests to the values reported in the failure message.
 const EXPECTED_DIGESTS: Record<string, string> = {
   "changelog-capabilities.schema.json":
-    "9d6d92e61d90b67161fbabd05e0f17c8d78ffc08bbb6f5293b6464e849b5efe2",
+    "d010cbacfe451b1b2cc7651f3e87983d52778512925375c24b7154cf79f56757",
   "changelog-receipt.schema.json":
-    "dc981236280f3bfac348c1e0b0185cb6f353dc834d37ef1ff3b7b90b0358daee",
+    "c226d4e05087024959f68dc967d049267a9a8c5aa98188f9157260e1897e57aa",
   "changelog-request.schema.json":
-    "4eca8faa52c10382567d14c19ab35235991325b6f14302e1478ef57131d1c4c8",
+    "9bea6549ecdbf494779eefd4f31653bfb81efaa6ee3927d623a62d8459ce3944",
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

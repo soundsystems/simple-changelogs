@@ -9,7 +9,9 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-const MAX_DISTRIBUTION_BYTES = 370 * 1024;
+// Raised from 374 KiB so every distribution can vendor the classified-receipt
+// schema while retaining a small, explicit package-growth margin.
+const MAX_DISTRIBUTION_BYTES = 376 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -30,12 +32,23 @@ const portableContractDistributions = new Set([
   "simple-changelogs-web-cms",
   "simple-changelogs-skill-maintainer",
 ]);
+// Distributions that take the Simple Changes release handoff: they vendor the
+// pinned protocol schemas, route delegated requests, and advertise request and
+// receipt versions in their marker. The CMS-only distribution takes an
+// entry-only handoff for its version-less operator history, so it ships the
+// schemas and its own release-handoff reference without the Markdown query
+// helpers or the shared public-release copy.
+const releaseHandoffDistributions = new Set([
+  ...portableContractDistributions,
+  "simple-changelogs-cms",
+]);
 const forbiddenNames = new Set(["EVAL.md"]);
 const PROVIDER_MARKER_FILENAME = "changelog-provider.json";
 // Directory name -> the distribution identifier consumers match on. The marker
 // exists so a consumer never has to re-derive this from the directory name.
 const MARKER_DISTRIBUTIONS = new Map([
   ["simple-changelogs", "full"],
+  ["simple-changelogs-cms", "cms"],
   ["simple-changelogs-mobile", "mobile"],
   ["simple-changelogs-skill-maintainer", "skill-repository"],
   ["simple-changelogs-web", "web"],
@@ -284,7 +297,7 @@ for (const {
       );
     }
 
-    if (portableContractDistributions.has(directoryName)) {
+    if (releaseHandoffDistributions.has(directoryName)) {
       for (const [filename, canonical] of canonicalProtocolFiles) {
         const protocolPath = join(directory, "schemas", filename);
         if (!existsSync(protocolPath)) {
@@ -297,6 +310,29 @@ for (const {
           );
         }
       }
+      if (!source.includes("references/release-handoff.md")) {
+        failures.push(
+          `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
+        );
+      }
+    }
+
+    if (portableContractDistributions.has(directoryName)) {
+      for (const [filename, canonical] of canonicalQueryFiles) {
+        const queryPath = join(directory, "scripts", filename);
+        if (!existsSync(queryPath)) {
+          failures.push(
+            `skills/${directoryName} is missing bundled query helper scripts/${filename}`
+          );
+        } else if (readFileSync(queryPath, "utf8") !== canonical) {
+          failures.push(
+            `skills/${directoryName}/scripts/${filename} is out of sync with maintainer tooling`
+          );
+        }
+      }
+    }
+
+    if (MARKER_DISTRIBUTIONS.has(directoryName)) {
       // Consumers prefer this marker over directory-name and SKILL.md prose
       // inference, so it has to ship inside the installed package.
       const markerPath = join(directory, PROVIDER_MARKER_FILENAME);
@@ -308,6 +344,9 @@ for (const {
           distribution?: unknown;
           guidanceVersion?: unknown;
           provider?: unknown;
+          receiptVersions?: unknown;
+          requestVersions?: unknown;
+          schemaDigests?: unknown;
           schemaVersion?: unknown;
         };
         const expectedDistribution =
@@ -327,28 +366,38 @@ for (const {
             `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} declares distribution ${String(marker.distribution)}, but the directory ships ${String(expectedDistribution)}`
           );
         }
+        // Only distributions that ship the pinned protocol schemas may
+        // advertise request/receipt versions; a marker that advertises none
+        // declares itself discovery-only so no consumer negotiates a handoff
+        // the distribution cannot run.
+        const advertisesProtocol =
+          Array.isArray(marker.requestVersions) &&
+          marker.requestVersions.length > 0 &&
+          Array.isArray(marker.receiptVersions) &&
+          marker.receiptVersions.length > 0;
+        if (
+          advertisesProtocol !== releaseHandoffDistributions.has(directoryName)
+        ) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must advertise request and receipt versions exactly when the distribution ships the release handoff protocol`
+          );
+        }
+        if (
+          advertisesProtocol &&
+          !(
+            typeof marker.schemaDigests === "object" &&
+            marker.schemaDigests !== null
+          )
+        ) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must advertise schema digests with its protocol versions`
+          );
+        }
         markerGuidanceVersions.set(directoryName, marker.guidanceVersion);
       } else {
         failures.push(
           `skills/${directoryName} is missing ${PROVIDER_MARKER_FILENAME} beside SKILL.md`
         );
-      }
-      if (!source.includes("references/release-handoff.md")) {
-        failures.push(
-          `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
-        );
-      }
-      for (const [filename, canonical] of canonicalQueryFiles) {
-        const queryPath = join(directory, "scripts", filename);
-        if (!existsSync(queryPath)) {
-          failures.push(
-            `skills/${directoryName} is missing bundled query helper scripts/${filename}`
-          );
-        } else if (readFileSync(queryPath, "utf8") !== canonical) {
-          failures.push(
-            `skills/${directoryName}/scripts/${filename} is out of sync with maintainer tooling`
-          );
-        }
       }
     }
 
@@ -986,6 +1035,31 @@ for (const { directoryName, source } of otherReleaseHandoffs) {
   if (source !== canonicalReleaseHandoff?.source) {
     failures.push(
       `skills/${directoryName}/references/release-handoff.md diverges from the shared release-handoff reference`
+    );
+  }
+}
+
+// The CMS-only distribution documents an entry-only handoff of its own: the
+// same three phases on the `none` boundary, never a version, tag, or note.
+const cmsReleaseHandoff = await readFile(
+  join(skillsRoot, "simple-changelogs-cms", "references", "release-handoff.md"),
+  "utf8"
+);
+if (cmsReleaseHandoff === canonicalReleaseHandoff?.source) {
+  failures.push(
+    "skills/simple-changelogs-cms/references/release-handoff.md must describe the entry-only handoff, not the shared public-release copy"
+  );
+}
+for (const requiredRule of [
+  '`boundary: "none"`',
+  "`cms-operators`",
+  "`release: null`",
+  "`CMS_CHANGELOG.json`",
+  "never a version",
+]) {
+  if (!cmsReleaseHandoff.includes(requiredRule)) {
+    failures.push(
+      `skills/simple-changelogs-cms/references/release-handoff.md is missing entry-only handoff rule: ${requiredRule}`
     );
   }
 }

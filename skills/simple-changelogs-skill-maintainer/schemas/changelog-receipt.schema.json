@@ -208,6 +208,7 @@
         "status": {
           "enum": [
             "decision-required",
+            "classified",
             "prepared",
             "verified",
             "not-applicable",
@@ -314,6 +315,34 @@
       "allOf": [
         {
           "if": {
+            "properties": { "status": { "const": "classified" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "phase": { "const": "classify" },
+              "paths": { "maxItems": 0 },
+              "releaseImpact": { "enum": ["patch", "minor", "major"] },
+              "release": { "type": "null" },
+              "versionDecision": {
+                "type": "object",
+                "properties": {
+                  "boundary": { "const": "none" },
+                  "bumpLevel": { "const": "none" },
+                  "policyAction": { "const": "not-applicable" },
+                  "resolution": { "const": "not-required" },
+                  "selectedVersion": { "type": "null" },
+                  "suggestedVersion": { "type": "null" }
+                }
+              },
+              "reasonCode": { "type": "null" },
+              "requiredAction": { "type": "null" },
+              "reason": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
             "properties": { "status": { "const": "decision-required" } },
             "required": ["status"]
           },
@@ -354,10 +383,15 @@
                 }
               },
               "release": {
-                "type": "object",
-                "properties": {
-                  "targetContainedUnreleased": { "const": "prepared" }
-                }
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "targetContainedUnreleased": { "const": "prepared" }
+                    }
+                  },
+                  { "type": "null" }
+                ]
               },
               "reasonCode": { "type": "null" },
               "requiredAction": { "type": "null" }
@@ -386,13 +420,47 @@
                 }
               },
               "release": {
-                "type": "object",
-                "properties": {
-                  "targetContainedUnreleased": { "const": "integrated" }
-                }
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "targetContainedUnreleased": { "const": "integrated" }
+                    }
+                  },
+                  { "type": "null" }
+                ]
               },
               "reasonCode": { "type": "null" },
               "requiredAction": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["prepared", "verified"] },
+              "release": { "type": "null" }
+            },
+            "required": ["status", "release"]
+          },
+          "then": {
+            "properties": {
+              "versionDecision": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "boundary": { "const": "none" },
+                      "bumpLevel": { "const": "none" },
+                      "policyAction": { "const": "not-applicable" },
+                      "resolution": { "const": "not-required" },
+                      "selectedVersion": { "type": "null" },
+                      "suggestedVersion": { "type": "null" }
+                    }
+                  },
+                  { "type": "null" }
+                ]
+              }
             }
           }
         },

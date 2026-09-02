@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Release handoffs**
+  - Release orchestrators now treat schema-digest differences as compatibility
+    status instead of blocking a handoff; an unsupported request or receipt
+    version still blocks safely.
+  - `attempt` and `environment` are now optional request metadata, so
+    integrations can omit them without changing handoff behavior.
+  - CMS-only projects can now participate in delegated changelog handoffs
+    through receipt v2: relevant operator changes advance from classification
+    to preparation and verification without creating a version, tag, or public
+    release note.
+<!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-09-02T11:05:06-05:00" -->
 - Release orchestrators can now identify an installed Simple Changelogs
   distribution and its capabilities directly, without inferring them from a
   directory name or documentation prose.
