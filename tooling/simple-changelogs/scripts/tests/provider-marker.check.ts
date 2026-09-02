@@ -117,7 +117,7 @@ describe("changelog-provider marker", () => {
       "guidance-update-notices",
     ]);
     expect(marker.requestVersions).toEqual([1]);
-    expect(marker.receiptVersions).toEqual([1, 2]);
+    expect(marker.receiptVersions).toEqual([2]);
     expect(marker.schemaDigests).toEqual(
       (await providerMarkerFor("full")).schemaDigests
     );

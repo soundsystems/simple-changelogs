@@ -273,6 +273,18 @@ describe("entry-only operator-history handoff", () => {
     versionDecision: entryDecision(),
   });
 
+  const classifiedEntry = () => ({
+    ...preparedEntry(),
+    paths: [],
+    phase: "classify" as const,
+    revisionLineage: {
+      finalizedTargetRevision: null,
+      inputTargetRevision: revision,
+      reconciliationHeadRevision: null,
+    },
+    status: "classified" as const,
+  });
+
   test("binds a version-less request to the none boundary only", () => {
     expect(validateChangelogRequest(entryRequest("prepare")).errors).toEqual(
       []
@@ -307,6 +319,29 @@ describe("entry-only operator-history handoff", () => {
     expect(
       validateChangelogReceipt({ ...preparedEntry(), paths: [] }).errors
     ).toContain("prepared receipt invariants failed");
+  });
+
+  test("advances a relevant entry from classified to prepared", () => {
+    const classifyRequest = validateChangelogRequest(
+      entryRequest("classify")
+    ).value;
+    const classified = validateChangelogReceipt(
+      classifiedEntry(),
+      classifyRequest
+    );
+    expect(classified.errors).toEqual([]);
+    if (!classified.value) {
+      throw new Error("classified receipt did not validate");
+    }
+
+    const prepareRequest = validateChangelogRequest({
+      ...entryRequest("prepare"),
+      approvedDecisionDigest: classified.value.decisionDigest,
+      priorReceiptDigest: digestCanonicalJson(classified.value),
+    }).value;
+    expect(
+      validateChangelogReceipt(preparedEntry(), prepareRequest).errors
+    ).toEqual([]);
   });
 
   test("rejects a version on the none boundary and a missing one elsewhere", () => {

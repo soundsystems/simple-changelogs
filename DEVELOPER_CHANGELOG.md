@@ -14,14 +14,13 @@
   stored, echoed, or used as retry identity. Regenerated request digests and
   consolidated all six provider-marker payloads behind `providerMarkerFor`.
 - Added the CMS-only entry handoff on `boundary: "none"` and release train
-  `cms-operators`: classify determines operator relevance, prepare writes only
-  `CMS_CHANGELOG.json` and returns its path and digest with `release: null`, and
-  verify proves finalized-target containment through revision lineage. Extended
-  request and receipt contracts to permit version-less prepared and verified
-  outcomes only for this boundary, shipped the protocol schemas, provenance,
-  capabilities, and handoff guidance with the CMS distribution, and added
-  contract, setup, marker, and distribution-shape coverage without requiring
-  Markdown query helpers.
+  `cms-operators`: relevant classification returns the new schema-valid
+  `classified` receipt, prepare writes only `CMS_CHANGELOG.json` and returns its
+  path and digest with `release: null`, and verify proves finalized-target
+  containment through revision lineage. CMS advertises receipt v2 only; updated
+  every vendored receipt schema and digest, shipped the protocol contracts and
+  guidance with the CMS distribution, and added end-to-end
+  classify-to-prepare validation plus marker and distribution-boundary coverage.
 - Accepted Simple Changes guidance 21 while preserving the existing workflow
   policy and recording balanced proposal scheduling.
 <!-- simple-changelogs-signature agent="gpt-5.6-sol medium" at="2026-09-02T11:05:06-05:00" -->

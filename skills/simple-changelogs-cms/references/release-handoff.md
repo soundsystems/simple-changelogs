@@ -10,8 +10,8 @@ environment, migration, and DNS authority stay with the orchestrator.
 ## Negotiate before delegation
 
 Run `scripts/setup.ts inspect --repo <path> --task-mode read --json` and read
-its `capabilities` object. It advertises request version 1, receipt versions
-1 and 2, the `classify-prepare-verify` and `guidance-update-notices`
+its `capabilities` object. It advertises request version 1, receipt version 2,
+the `classify-prepare-verify` and `guidance-update-notices`
 features, and SHA-256 digests of `schemas/changelog-request.schema.json` and
 `schemas/changelog-receipt.schema.json`. Select the highest request and
 receipt versions supported by both parties. A missing overlap blocks the
@@ -63,11 +63,10 @@ Apply `references/entry-classification.md`.
 - Operator-relevant outcome: classify the entry's magnitude as
   `releaseImpact` (`patch` for a fix or clarification, `minor` for a new or
   changed workflow, `major` for a change that alters what operators must do)
-  and compute the effective-policy and decision digests. Receipt v2 reserves
-  classify-phase statuses for `decision-required`, `not-applicable`, and
-  `blocked`, exactly as it does for an automatically resolved public version,
-  so report the classified impact and both digests to the orchestrator; it
-  delegates `prepare` with the decision digest as `approvedDecisionDigest`.
+  and compute the effective-policy and decision digests. Return `classified`
+  with no changed paths, no release, the `none`/`none`/`not-required` version
+  decision, and the classified impact. The orchestrator then delegates
+  `prepare` with that decision digest as `approvedDecisionDigest`.
   `releaseImpact` describes the entry and never proposes a version bump.
 - Return `blocked` for stale evidence, malformed contracts, an unreadable
   history, or protocol incompatibility.

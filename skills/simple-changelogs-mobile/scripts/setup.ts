@@ -514,7 +514,7 @@ export interface IntegrationCapabilities {
   features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2];
+  receiptVersions: [1, 2] | [2];
   requestVersions: [1];
   schemaDigests: {
     changelogReceipt: string;
@@ -732,7 +732,7 @@ const integrationCapabilitiesFor = async (
     features: integrationFeaturesFor(installed),
     guidanceVersion: currentGuidanceVersionFor(installed),
     provider: "simple-changelogs",
-    receiptVersions: [1, 2],
+    receiptVersions: installed === "cms" ? [2] : [1, 2],
     requestVersions: [1],
     schemaDigests: {
       changelogReceipt: digestSchema(receiptSchema),

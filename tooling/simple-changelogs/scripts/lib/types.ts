@@ -313,7 +313,7 @@ export interface IntegrationCapabilities {
   features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2];
+  receiptVersions: [1, 2] | [2];
   requestVersions: [1];
   schemaDigests: {
     changelogReceipt: string;

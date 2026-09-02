@@ -3,10 +3,10 @@
   "features": ["classify-prepare-verify", "guidance-update-notices"],
   "guidanceVersion": 5,
   "provider": "simple-changelogs",
-  "receiptVersions": [1, 2],
+  "receiptVersions": [2],
   "requestVersions": [1],
   "schemaDigests": {
-    "changelogReceipt": "65bc21e3b2c8628f025b5b9c09de06a845a7c71ab17b968227dfaf1a14e3e9a5",
+    "changelogReceipt": "c226d4e05087024959f68dc967d049267a9a8c5aa98188f9157260e1897e57aa",
     "changelogRequest": "9bea6549ecdbf494779eefd4f31653bfb81efaa6ee3927d623a62d8459ce3944"
   },
   "schemaVersion": 1

@@ -17,6 +17,7 @@ export const RELEASE_IMPACTS = [
 ] as const;
 export const RECEIPT_STATUSES = [
   "decision-required",
+  "classified",
   "prepared",
   "verified",
   "not-applicable",
@@ -425,6 +426,18 @@ const receiptStatusErrors = (receipt: ChangelogReceiptV2): string[] => {
     errors,
     receipt.releaseImpact !== "none" || receipt.status === "not-applicable",
     "internal-only or non-public work must be not-applicable"
+  );
+  requireCondition(
+    errors,
+    receipt.status !== "classified" ||
+      (receipt.phase === "classify" &&
+        entryOnly &&
+        receipt.releaseImpact !== "none" &&
+        receipt.paths.length === 0 &&
+        receipt.reasonCode === null &&
+        receipt.requiredAction === null &&
+        receipt.reason === null),
+    "classified receipt invariants failed"
   );
   requireCondition(
     errors,
