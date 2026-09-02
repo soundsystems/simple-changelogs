@@ -97,10 +97,18 @@ Read [references/production-loop.md](references/production-loop.md), then:
    when available, and apply its declared retention mode. Preserve maintained
    installs, remove temporary validation-only installs, and leave intentional
    pins unchanged with an explicit report.
-10. Repair a stale lock or remove a stale duplicate only when its identity,
-    intended retention mode, and obsolescence are proven. Never remove a
-    distinct skill merely because its name is similar.
-11. Open, verify, and merge one consumer MR or PR per changed repository. Fetch
+10. Reconcile distribution topology before reinstalling narrower packages. A
+   repository whose valid `.simple-changelogs.json` selects `web-cms` uses that
+   combined package for both public Web and protected CMS workflows;
+   `.simple-changelogs-cms.json` is its CMS-side policy, not evidence that the
+   standalone CMS skill must also be installed. Remove a discovered standalone
+   `simple-changelogs-cms` package and lock when the matching Web+CMS package is
+   present, unless repository instructions explicitly require both packages as
+   independently maintained consumers.
+11. Repair a stale lock or remove a stale duplicate only when its identity,
+   intended retention mode, and obsolescence are proven. Never remove a
+   distinct skill merely because its name is similar.
+12. Open, verify, and merge one consumer MR or PR per changed repository. Fetch
     every target default branch and prove the expected pins, policy versions,
     lock hashes, and retained files exist there.
 
