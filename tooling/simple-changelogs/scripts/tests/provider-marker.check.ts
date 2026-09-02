@@ -83,10 +83,10 @@ describe("changelog-provider marker", () => {
     });
   }
 
-  // The CMS-only distribution owns an authenticated operator history and no
-  // public release files, so its marker identifies the provider for discovery
-  // while advertising no request or receipt protocol at all.
-  test("skills/simple-changelogs-cms ships a discovery-only marker", async () => {
+  // The CMS-only distribution takes the same three-phase handoff for its
+  // version-less operator history, so its marker advertises the protocol and
+  // schema digests while omitting the public-version features.
+  test("skills/simple-changelogs-cms ships an entry-only handoff marker", async () => {
     const markerPath = join(
       SKILLS_ROOT,
       "simple-changelogs-cms",
@@ -101,8 +101,8 @@ describe("changelog-provider marker", () => {
       ]);
     const marker = JSON.parse(source) as Record<string, unknown>;
 
-    expect(capabilities).toBeNull();
     expect(marker).toEqual(computed as Record<string, unknown>);
+    expect(marker).toEqual(capabilities as Record<string, unknown>);
     expect(Object.keys(marker)).toEqual(
       Object.keys(computed as Record<string, unknown>)
     );
@@ -112,9 +112,14 @@ describe("changelog-provider marker", () => {
     expect(marker.guidanceVersion).toBe(
       declaredGuidance.get("simple-changelogs-cms") as number
     );
-    expect(marker.features).toEqual(["guidance-update-notices"]);
-    expect(marker.requestVersions).toEqual([]);
-    expect(marker.receiptVersions).toEqual([]);
-    expect(marker).not.toHaveProperty("schemaDigests");
+    expect(marker.features).toEqual([
+      "classify-prepare-verify",
+      "guidance-update-notices",
+    ]);
+    expect(marker.requestVersions).toEqual([1]);
+    expect(marker.receiptVersions).toEqual([1, 2]);
+    expect(marker.schemaDigests).toEqual(
+      (await providerMarkerFor("full")).schemaDigests
+    );
   });
 });

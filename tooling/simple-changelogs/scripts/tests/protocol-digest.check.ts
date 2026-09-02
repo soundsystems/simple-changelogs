@@ -13,9 +13,9 @@ const EXPECTED_DIGESTS: Record<string, string> = {
   "changelog-capabilities.schema.json":
     "d010cbacfe451b1b2cc7651f3e87983d52778512925375c24b7154cf79f56757",
   "changelog-receipt.schema.json":
-    "dc981236280f3bfac348c1e0b0185cb6f353dc834d37ef1ff3b7b90b0358daee",
+    "65bc21e3b2c8628f025b5b9c09de06a845a7c71ab17b968227dfaf1a14e3e9a5",
   "changelog-request.schema.json":
-    "daa3b9238664e1843fafb128c6870eb830cb1218c6205e4d54b5dcef437a84fc",
+    "9bea6549ecdbf494779eefd4f31653bfb81efaa6ee3927d623a62d8459ce3944",
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

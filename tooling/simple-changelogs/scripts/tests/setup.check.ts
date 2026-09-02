@@ -355,13 +355,15 @@ describe("setup inspection", () => {
     ) as {
       $defs: {
         capabilities: {
-          properties: { features: { const: string[] } };
+          properties: { features: { anyOf: Array<{ const: string[] }> } };
         };
       };
     };
     expect(
-      setupResultSchema.$defs.capabilities.properties.features.const
-    ).toEqual(result.capabilities?.features ?? []);
+      setupResultSchema.$defs.capabilities.properties.features.anyOf.map(
+        (option) => option.const
+      )
+    ).toContainEqual(result.capabilities?.features ?? []);
     const requestSchema = JSON.parse(
       await readFile(
         join(
@@ -386,6 +388,46 @@ describe("setup inspection", () => {
     });
     expect(result.onboardingContribution).toBeNull();
     expect(result.writes).toEqual([]);
+  });
+
+  test("advertises the entry-only handoff for the CMS distribution", async () => {
+    const { config, repo } = await fixture();
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "cms",
+      repo,
+      taskMode: "read",
+    });
+    const capabilitiesSchema = JSON.parse(
+      await readFile(
+        join(
+          import.meta.dir,
+          "../../evals/schemas/changelog-capabilities.schema.json"
+        ),
+        "utf8"
+      )
+    ) as Record<string, unknown>;
+    const full = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+      taskMode: "read",
+    });
+
+    expect(result.capabilities).toMatchObject({
+      distribution: "cms",
+      features: ["classify-prepare-verify", "guidance-update-notices"],
+      provider: "simple-changelogs",
+      receiptVersions: [1, 2],
+      requestVersions: [1],
+      schemaVersion: 1,
+    });
+    expect(result.capabilities?.schemaDigests).toEqual(
+      full.capabilities?.schemaDigests
+    );
+    expect(schemaViolations(capabilitiesSchema, result.capabilities)).toEqual(
+      []
+    );
   });
 
   test("reports capabilities that satisfy the vendored consumer capabilities schema", async () => {

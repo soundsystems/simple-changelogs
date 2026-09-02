@@ -233,3 +233,127 @@ describe("release handoff protocol", () => {
     ).toContain("verified receipt invariants failed");
   });
 });
+
+// The CMS-only distribution prepares and verifies an operator entry on the
+// `none` boundary: no version is approved, selected, bumped, or released.
+describe("entry-only operator-history handoff", () => {
+  const entryRequest = (phase: "classify" | "prepare" | "verify") => ({
+    ...request(phase),
+    approvedVersion: null,
+    boundary: "none" as const,
+    releaseTrain: "cms-operators",
+    transactionId: "cms-entry-01",
+  });
+  const entryDecision = () => ({
+    boundary: "none" as const,
+    bumpLevel: "none" as const,
+    currentVersion: null,
+    policyAction: "not-applicable" as const,
+    releaseTrain: "cms-operators",
+    resolution: "not-required" as const,
+    selectedVersion: null,
+    source: "repository-policy" as const,
+    suggestedVersion: null,
+  });
+  const preparedEntry = () => ({
+    ...decisionRequired(),
+    paths: [{ digest, path: "CMS_CHANGELOG.json" }],
+    phase: "prepare" as const,
+    reason: null,
+    reasonCode: null,
+    release: null,
+    requiredAction: null,
+    revisionLineage: {
+      finalizedTargetRevision: null,
+      inputTargetRevision: revision,
+      reconciliationHeadRevision: revision,
+    },
+    status: "prepared" as const,
+    transactionId: "cms-entry-01",
+    versionDecision: entryDecision(),
+  });
+
+  test("binds a version-less request to the none boundary only", () => {
+    expect(validateChangelogRequest(entryRequest("prepare")).errors).toEqual(
+      []
+    );
+    expect(
+      validateChangelogRequest({
+        ...entryRequest("prepare"),
+        approvedVersion: "1.0.0",
+      }).errors
+    ).toContain("the none boundary carries no approvedVersion");
+    expect(
+      validateChangelogRequest({
+        ...request("prepare"),
+        approvedVersion: null,
+      }).errors
+    ).toContain("prepare requires approvedVersion on a public boundary");
+  });
+
+  test("accepts a prepared entry with or without a version decision", () => {
+    const prepareRequest = validateChangelogRequest(
+      entryRequest("prepare")
+    ).value;
+    expect(
+      validateChangelogReceipt(preparedEntry(), prepareRequest).errors
+    ).toEqual([]);
+    expect(
+      validateChangelogReceipt(
+        { ...preparedEntry(), versionDecision: null },
+        prepareRequest
+      ).errors
+    ).toEqual([]);
+    expect(
+      validateChangelogReceipt({ ...preparedEntry(), paths: [] }).errors
+    ).toContain("prepared receipt invariants failed");
+  });
+
+  test("rejects a version on the none boundary and a missing one elsewhere", () => {
+    const prepareRequest = validateChangelogRequest(
+      entryRequest("prepare")
+    ).value;
+    expect(
+      validateChangelogReceipt(
+        {
+          ...preparedEntry(),
+          release: {
+            date: "2026-08-10",
+            targetContainedUnreleased: "prepared" as const,
+            version: "0.10.0",
+          },
+        },
+        prepareRequest
+      ).errors
+    ).toContain("entry-only handoff must not name a release");
+    expect(
+      validateChangelogReceipt(
+        {
+          ...preparedEntry(),
+          transactionId: "release-01",
+          versionDecision: null,
+        },
+        validateChangelogRequest(request("prepare")).value
+      ).errors
+    ).toContain("public boundary requires a release record");
+  });
+
+  test("verifies an integrated entry without a release record", () => {
+    const verifiedEntry = {
+      ...preparedEntry(),
+      paths: [],
+      phase: "verify" as const,
+      revisionLineage: {
+        ...preparedEntry().revisionLineage,
+        finalizedTargetRevision: revision,
+      },
+      status: "verified" as const,
+    };
+    expect(
+      validateChangelogReceipt(
+        verifiedEntry,
+        validateChangelogRequest(entryRequest("verify")).value
+      ).errors
+    ).toEqual([]);
+  });
+});

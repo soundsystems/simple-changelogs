@@ -18,11 +18,11 @@ Skill-path presence is not compatibility.
 
 The `changelog-provider.json` marker beside `SKILL.md` declares provider
 identity, distribution, guidance version, and schema digests. Setup generates
-it; Simple Changes reads it for discovery. The CMS-only distribution ships a
-discovery-only marker with empty `requestVersions` and `receiptVersions`: it
-owns an authenticated operator history and no public release files, so it
-implements none of these phases and Simple Changes reports it as discovered
-but not applicable for release delegation.
+it; Simple Changes reads it for discovery. The CMS-only distribution
+advertises the same protocol versions but takes an entry-only handoff for its
+version-less operator history: it prepares and verifies a
+`CMS_CHANGELOG.json` entry on the `none` boundary and never a version, tag,
+or public note. Its own `release-handoff.md` describes that contract.
 
 The schemas are pinned producer fixtures from the Simple Changes companion
 contract. Do not independently widen their enums or accept raw prompt prose as

@@ -32,12 +32,20 @@ const portableContractDistributions = new Set([
   "simple-changelogs-web-cms",
   "simple-changelogs-skill-maintainer",
 ]);
+// Distributions that take the Simple Changes release handoff: they vendor the
+// pinned protocol schemas, route delegated requests, and advertise request and
+// receipt versions in their marker. The CMS-only distribution takes an
+// entry-only handoff for its version-less operator history, so it ships the
+// schemas and its own release-handoff reference without the Markdown query
+// helpers or the shared public-release copy.
+const releaseHandoffDistributions = new Set([
+  ...portableContractDistributions,
+  "simple-changelogs-cms",
+]);
 const forbiddenNames = new Set(["EVAL.md"]);
 const PROVIDER_MARKER_FILENAME = "changelog-provider.json";
 // Directory name -> the distribution identifier consumers match on. The marker
 // exists so a consumer never has to re-derive this from the directory name.
-// The CMS-only distribution ships a discovery-only marker: it is identifiable
-// but advertises no request/receipt protocol because it owns no release files.
 const MARKER_DISTRIBUTIONS = new Map([
   ["simple-changelogs", "full"],
   ["simple-changelogs-cms", "cms"],
@@ -289,7 +297,7 @@ for (const {
       );
     }
 
-    if (portableContractDistributions.has(directoryName)) {
+    if (releaseHandoffDistributions.has(directoryName)) {
       for (const [filename, canonical] of canonicalProtocolFiles) {
         const protocolPath = join(directory, "schemas", filename);
         if (!existsSync(protocolPath)) {
@@ -307,6 +315,9 @@ for (const {
           `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
         );
       }
+    }
+
+    if (portableContractDistributions.has(directoryName)) {
       for (const [filename, canonical] of canonicalQueryFiles) {
         const queryPath = join(directory, "scripts", filename);
         if (!existsSync(queryPath)) {
@@ -335,6 +346,7 @@ for (const {
           provider?: unknown;
           receiptVersions?: unknown;
           requestVersions?: unknown;
+          schemaDigests?: unknown;
           schemaVersion?: unknown;
         };
         const expectedDistribution =
@@ -355,19 +367,30 @@ for (const {
           );
         }
         // Only distributions that ship the pinned protocol schemas may
-        // advertise request/receipt versions; a discovery-only marker must
-        // advertise none so no consumer negotiates a handoff it cannot run.
+        // advertise request/receipt versions; a marker that advertises none
+        // declares itself discovery-only so no consumer negotiates a handoff
+        // the distribution cannot run.
         const advertisesProtocol =
           Array.isArray(marker.requestVersions) &&
           marker.requestVersions.length > 0 &&
           Array.isArray(marker.receiptVersions) &&
           marker.receiptVersions.length > 0;
         if (
-          advertisesProtocol !==
-          portableContractDistributions.has(directoryName)
+          advertisesProtocol !== releaseHandoffDistributions.has(directoryName)
         ) {
           failures.push(
             `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must advertise request and receipt versions exactly when the distribution ships the release handoff protocol`
+          );
+        }
+        if (
+          advertisesProtocol &&
+          !(
+            typeof marker.schemaDigests === "object" &&
+            marker.schemaDigests !== null
+          )
+        ) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must advertise schema digests with its protocol versions`
           );
         }
         markerGuidanceVersions.set(directoryName, marker.guidanceVersion);
@@ -1012,6 +1035,31 @@ for (const { directoryName, source } of otherReleaseHandoffs) {
   if (source !== canonicalReleaseHandoff?.source) {
     failures.push(
       `skills/${directoryName}/references/release-handoff.md diverges from the shared release-handoff reference`
+    );
+  }
+}
+
+// The CMS-only distribution documents an entry-only handoff of its own: the
+// same three phases on the `none` boundary, never a version, tag, or note.
+const cmsReleaseHandoff = await readFile(
+  join(skillsRoot, "simple-changelogs-cms", "references", "release-handoff.md"),
+  "utf8"
+);
+if (cmsReleaseHandoff === canonicalReleaseHandoff?.source) {
+  failures.push(
+    "skills/simple-changelogs-cms/references/release-handoff.md must describe the entry-only handoff, not the shared public-release copy"
+  );
+}
+for (const requiredRule of [
+  '`boundary: "none"`',
+  "`cms-operators`",
+  "`release: null`",
+  "`CMS_CHANGELOG.json`",
+  "never a version",
+]) {
+  if (!cmsReleaseHandoff.includes(requiredRule)) {
+    failures.push(
+      `skills/simple-changelogs-cms/references/release-handoff.md is missing entry-only handoff rule: ${requiredRule}`
     );
   }
 }

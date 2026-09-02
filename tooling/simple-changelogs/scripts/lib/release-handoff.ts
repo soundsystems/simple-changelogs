@@ -307,6 +307,21 @@ export const validateChangelogRequest = (
       ? "verify requires finalizedTargetRevision"
       : "finalizedTargetRevision belongs only to verify"
   );
+  // An entry-only handoff on the `none` boundary never approves a version;
+  // a public boundary must carry one into prepare and verify.
+  if (value.boundary === "none") {
+    requireCondition(
+      errors,
+      value.approvedVersion === null,
+      "the none boundary carries no approvedVersion"
+    );
+  } else if (value.phase === "prepare" || value.phase === "verify") {
+    requireCondition(
+      errors,
+      nonEmpty(value.approvedVersion),
+      `${String(value.phase)} requires approvedVersion on a public boundary`
+    );
+  }
   return errors.length > 0
     ? { errors }
     : { errors, value: value as unknown as ChangelogRequestV1 };
@@ -356,20 +371,56 @@ const receiptRequestErrors = (
   if (!request) {
     return [];
   }
+  const errors: string[] = [];
   const decision = receipt.versionDecision;
+  const entryOnly = request.boundary === "none";
+  // An entry-only receipt may omit its version decision entirely; a public
+  // boundary must name the train and boundary it decided.
+  const decisionMatches =
+    decision === null
+      ? entryOnly
+      : decision.releaseTrain === request.releaseTrain &&
+        decision.boundary === request.boundary;
   const matches =
     receipt.transactionId === request.transactionId &&
     receipt.releaseSetId === request.releaseSetId &&
     receipt.phase === request.phase &&
-    decision?.releaseTrain === request.releaseTrain &&
-    decision.boundary === request.boundary &&
+    decisionMatches &&
     receipt.revisionLineage.inputTargetRevision === request.inputTargetRevision;
-  return matches ? [] : ["receipt does not match its exact request"];
+  requireCondition(errors, matches, "receipt does not match its exact request");
+  // The receipt does not carry the boundary, so the null release record is
+  // bound here: only the none boundary prepares or verifies without a version.
+  if (receipt.status === "prepared" || receipt.status === "verified") {
+    requireCondition(
+      errors,
+      (receipt.release === null) === entryOnly,
+      entryOnly
+        ? "entry-only handoff must not name a release"
+        : "public boundary requires a release record"
+    );
+  }
+  return errors;
+};
+
+// A prepared or verified receipt without a release record is valid only as an
+// entry-only outcome: no version was selected, bumped, or suggested.
+const isEntryOnlyOutcome = (receipt: ChangelogReceiptV2): boolean => {
+  const decision = receipt.versionDecision;
+  return (
+    receipt.release === null &&
+    (decision === null ||
+      (decision.boundary === "none" &&
+        decision.bumpLevel === "none" &&
+        decision.resolution === "not-required" &&
+        decision.selectedVersion === null &&
+        decision.suggestedVersion === null))
+  );
 };
 
 const receiptStatusErrors = (receipt: ChangelogReceiptV2): string[] => {
   const errors: string[] = [];
   const decision = receipt.versionDecision;
+  const entryOnly = isEntryOnlyOutcome(receipt);
   requireCondition(
     errors,
     receipt.releaseImpact !== "none" || receipt.status === "not-applicable",
@@ -403,21 +454,26 @@ const receiptStatusErrors = (receipt: ChangelogReceiptV2): string[] => {
     !needsSelectedVersion || Boolean(decision?.selectedVersion),
     "resolved version decisions require selectedVersion"
   );
+  const preparedRelease = entryOnly
+    ? receipt.paths.length > 0
+    : Boolean(decision?.selectedVersion && receipt.release) &&
+      receipt.release?.version === decision?.selectedVersion &&
+      receipt.release?.targetContainedUnreleased === "prepared";
   requireCondition(
     errors,
     receipt.status !== "prepared" ||
-      (Boolean(decision?.selectedVersion && receipt.release) &&
-        receipt.release?.version === decision?.selectedVersion &&
-        receipt.release?.targetContainedUnreleased === "prepared" &&
+      (preparedRelease &&
         revision(receipt.revisionLineage.reconciliationHeadRevision)),
     "prepared receipt invariants failed"
   );
+  const verifiedRelease =
+    entryOnly || receipt.release?.targetContainedUnreleased === "integrated";
   requireCondition(
     errors,
     receipt.status !== "verified" ||
       (receipt.phase === "verify" &&
         receipt.paths.length === 0 &&
-        receipt.release?.targetContainedUnreleased === "integrated" &&
+        verifiedRelease &&
         revision(receipt.revisionLineage.finalizedTargetRevision)),
     "verified receipt invariants failed"
   );

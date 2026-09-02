@@ -498,14 +498,20 @@ export interface OwnerWriteReceipt {
   written: boolean;
 }
 
+// The CMS-only distribution advertises the handoff without the public-version
+// features: its classify/prepare/verify transaction is entry-only.
+export type IntegrationFeatures =
+  | [
+      "public-version-policy",
+      "classify-prepare-verify",
+      "multi-train-receipts",
+      "guidance-update-notices",
+    ]
+  | ["classify-prepare-verify", "guidance-update-notices"];
+
 export interface IntegrationCapabilities {
-  distribution: Distribution;
-  features: [
-    "public-version-policy",
-    "classify-prepare-verify",
-    "multi-train-receipts",
-    "guidance-update-notices",
-  ];
+  distribution: Distribution | "cms";
+  features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
   receiptVersions: [1, 2];
@@ -698,8 +704,24 @@ const capabilitySchemaPath = (filename: string): string => {
     : join(packageRoot, "evals", "schemas", filename);
 };
 
+// The CMS-only distribution takes the same classify/prepare/verify handoff
+// for its version-less operator history, so it advertises the protocol and
+// schema digests but not the public-version features: its handoff is
+// entry-only and never selects, bumps, or reconciles a version.
+const integrationFeaturesFor = (
+  installed: Distribution | "cms"
+): IntegrationCapabilities["features"] =>
+  installed === "cms"
+    ? ["classify-prepare-verify", "guidance-update-notices"]
+    : [
+        "public-version-policy",
+        "classify-prepare-verify",
+        "multi-train-receipts",
+        "guidance-update-notices",
+      ];
+
 const integrationCapabilitiesFor = async (
-  installed: Distribution
+  installed: Distribution | "cms"
 ): Promise<IntegrationCapabilities> => {
   const [requestSchema, receiptSchema] = await Promise.all([
     readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
@@ -707,13 +729,8 @@ const integrationCapabilitiesFor = async (
   ]);
   return {
     distribution: installed,
-    features: [
-      "public-version-policy",
-      "classify-prepare-verify",
-      "multi-train-receipts",
-      "guidance-update-notices",
-    ],
-    guidanceVersion: GUIDANCE_VERSIONS[installed],
+    features: integrationFeaturesFor(installed),
+    guidanceVersion: currentGuidanceVersionFor(installed),
     provider: "simple-changelogs",
     receiptVersions: [1, 2],
     requestVersions: [1],
@@ -725,42 +742,14 @@ const integrationCapabilitiesFor = async (
   };
 };
 
-const capabilitiesFor = async (
+const capabilitiesFor = (
   installed: Distribution | "cms"
-): Promise<IntegrationCapabilities | null> =>
-  installed === "cms" ? null : integrationCapabilitiesFor(installed);
-
-// The CMS-only distribution owns an authenticated operator history and no
-// public release files, so it implements no classify, prepare, or verify
-// handoff. Its marker still identifies the provider, distribution, and
-// guidance checkpoint for discovery while advertising no protocol versions.
-export interface DiscoveryOnlyMarker {
-  distribution: "cms";
-  features: ["guidance-update-notices"];
-  guidanceVersion: number;
-  provider: "simple-changelogs";
-  receiptVersions: [];
-  requestVersions: [];
-  schemaVersion: 1;
-}
+): Promise<IntegrationCapabilities> => integrationCapabilitiesFor(installed);
 
 // Canonical source of every shipped changelog-provider.json marker.
 export const providerMarkerFor = (
   installed: Distribution | "cms"
-): Promise<IntegrationCapabilities | DiscoveryOnlyMarker> => {
-  if (installed === "cms") {
-    return Promise.resolve({
-      distribution: "cms",
-      features: ["guidance-update-notices"],
-      guidanceVersion: CMS_GUIDANCE_VERSION,
-      provider: "simple-changelogs",
-      receiptVersions: [],
-      requestVersions: [],
-      schemaVersion: 1,
-    });
-  }
-  return integrationCapabilitiesFor(installed);
-};
+): Promise<IntegrationCapabilities> => integrationCapabilitiesFor(installed);
 
 const currentGuidanceVersionFor = (installed: Distribution | "cms"): number =>
   installed === "cms" ? CMS_GUIDANCE_VERSION : GUIDANCE_VERSIONS[installed];
