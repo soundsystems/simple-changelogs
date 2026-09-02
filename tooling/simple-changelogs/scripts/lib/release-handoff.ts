@@ -67,9 +67,10 @@ type RequiredAction = (typeof REASON_ACTIONS)[ReasonCode];
 export interface ChangelogRequestV1 {
   approvedDecisionDigest: string | null;
   approvedVersion: string | null;
-  attempt: number;
+  // Optional and informational: never stored, echoed, or used to key retries.
+  attempt?: number;
   boundary: Boundary;
-  environment: string | null;
+  environment?: string;
   finalizedTargetRevision: string | null;
   inputTargetRevision: string;
   mutationScope: (typeof MUTATION_SCOPES)[number];
@@ -141,6 +142,15 @@ const nonEmpty = (value: unknown): value is string =>
 const exactKeys = (value: Record<string, unknown>, keys: readonly string[]) =>
   Object.keys(value).length === keys.length &&
   keys.every((key) => Object.hasOwn(value, key));
+const closedKeys = (
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[]
+) =>
+  required.every((key) => Object.hasOwn(value, key)) &&
+  Object.keys(value).every(
+    (key) => required.includes(key) || optional.includes(key)
+  );
 const requireCondition = (
   errors: string[],
   condition: boolean,
@@ -188,10 +198,8 @@ export const validateChangelogRequest = (
     "transactionId",
     "releaseSetId",
     "phase",
-    "attempt",
     "releaseTrain",
     "boundary",
-    "environment",
     "mutationScope",
     "inputTargetRevision",
     "finalizedTargetRevision",
@@ -200,7 +208,10 @@ export const validateChangelogRequest = (
     "priorReceiptDigest",
     "supportedReceiptVersions",
   ];
-  if (!(isRecord(value) && exactKeys(value, keys))) {
+  // Informational fields the schema allows but does not require. They are
+  // shape-checked when present and otherwise ignored.
+  const optionalKeys = ["attempt", "environment"];
+  if (!(isRecord(value) && closedKeys(value, keys, optionalKeys))) {
     return { errors: ["request has missing or unknown fields"] };
   }
   requireCondition(
@@ -221,7 +232,8 @@ export const validateChangelogRequest = (
   requireCondition(errors, oneOf(value.phase, PHASES), "phase is unsupported");
   requireCondition(
     errors,
-    Number.isInteger(value.attempt) && (value.attempt as number) >= 1,
+    value.attempt === undefined ||
+      (Number.isInteger(value.attempt) && (value.attempt as number) >= 1),
     "attempt must be positive"
   );
   requireCondition(
@@ -236,7 +248,7 @@ export const validateChangelogRequest = (
   );
   requireCondition(
     errors,
-    value.environment === null || typeof value.environment === "string",
+    value.environment === undefined || nonEmpty(value.environment),
     "environment is invalid"
   );
   requireCondition(

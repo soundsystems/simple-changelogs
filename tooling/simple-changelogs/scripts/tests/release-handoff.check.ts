@@ -120,6 +120,28 @@ describe("release handoff protocol", () => {
     ).toContain("verify requires finalizedTargetRevision");
   });
 
+  test("treats attempt and environment as optional informational fields", () => {
+    const { attempt, environment, ...minimal } = request();
+    expect(attempt).toBe(1);
+    expect(environment).toBe("production");
+    expect(validateChangelogRequest(minimal).errors).toEqual([]);
+    expect(
+      validateChangelogRequest({ ...minimal, attempt: 0 }).errors
+    ).toContain("attempt must be positive");
+    expect(
+      validateChangelogRequest({ ...minimal, environment: "" }).errors
+    ).toContain("environment is invalid");
+    expect(
+      validateChangelogRequest({ ...minimal, environment: null }).errors
+    ).toContain("environment is invalid");
+    expect(
+      validateChangelogReceipt(
+        decisionRequired(),
+        validateChangelogRequest(minimal).value
+      ).errors
+    ).toEqual([]);
+  });
+
   test("accepts decision-required and rejects approval encoded as blocked", () => {
     const validatedRequest = validateChangelogRequest(request()).value;
     expect(

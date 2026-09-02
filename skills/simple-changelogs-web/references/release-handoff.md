@@ -18,7 +18,11 @@ Skill-path presence is not compatibility.
 
 The `changelog-provider.json` marker beside `SKILL.md` declares provider
 identity, distribution, guidance version, and schema digests. Setup generates
-it; Simple Changes reads it for discovery.
+it; Simple Changes reads it for discovery. The CMS-only distribution ships a
+discovery-only marker with empty `requestVersions` and `receiptVersions`: it
+owns an authenticated operator history and no public release files, so it
+implements none of these phases and Simple Changes reports it as discovered
+but not applicable for release delegation.
 
 The schemas are pinned producer fixtures from the Simple Changes companion
 contract. Do not independently widen their enums or accept raw prompt prose as
@@ -34,6 +38,9 @@ receipts for reporting but never creates atomic multi-train authority.
 - `prepare` requires `mutationScope: "prepare-release-files"`.
 - `verify` requires the exact non-null `finalizedTargetRevision`; other phases
   require it to be null.
+- `attempt` and `environment` are optional, informational fields. Check their
+  shape when present; never store, echo, or key retries on them. Transaction
+  identity is the transaction ID, phase, revisions, and prior receipt digest.
 - Reject a moved target, mismatched transaction/train/boundary, unsupported
   version, stale prior-receipt digest, malformed policy, or missing
   phase-specific approval field before mutation.

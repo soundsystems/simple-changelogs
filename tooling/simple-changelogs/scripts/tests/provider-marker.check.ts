@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Distribution } from "../lib/types.ts";
-import { inspectRepository } from "../setup.ts";
+import { inspectRepository, providerMarkerFor } from "../setup.ts";
 
 const MARKER_FILENAME = "changelog-provider.json";
 const REPOSITORY_ROOT = join(import.meta.dir, "..", "..", "..", "..");
@@ -21,7 +21,7 @@ const MARKER_DIRECTORIES: ReadonlyArray<readonly [Distribution, string]> = [
 ];
 
 const computeCapabilities = async (
-  distribution: Distribution
+  distribution: Distribution | "cms"
 ): Promise<unknown> => {
   const repo = await mkdtemp(join(tmpdir(), "changelog-provider-repo-"));
   const configDirectory = await mkdtemp(
@@ -64,6 +64,8 @@ describe("changelog-provider marker", () => {
       const marker = JSON.parse(source) as Record<string, unknown>;
 
       expect(marker).toEqual(computed as Record<string, unknown>);
+      const expectedMarker: unknown = await providerMarkerFor(distribution);
+      expect(marker).toEqual(expectedMarker as Record<string, unknown>);
       // The committed file is formatted by Biome, so assert stable key order
       // rather than exact bytes; a reordered marker still fails here.
       expect(Object.keys(marker)).toEqual(
@@ -80,4 +82,39 @@ describe("changelog-provider marker", () => {
       expect(marker.receiptVersions).toEqual([1, 2]);
     });
   }
+
+  // The CMS-only distribution owns an authenticated operator history and no
+  // public release files, so its marker identifies the provider for discovery
+  // while advertising no request or receipt protocol at all.
+  test("skills/simple-changelogs-cms ships a discovery-only marker", async () => {
+    const markerPath = join(
+      SKILLS_ROOT,
+      "simple-changelogs-cms",
+      MARKER_FILENAME
+    );
+    const [source, computed, capabilities, declaredGuidance] =
+      await Promise.all([
+        readFile(markerPath, "utf8"),
+        providerMarkerFor("cms") as Promise<unknown>,
+        computeCapabilities("cms"),
+        manifestGuidanceVersions(),
+      ]);
+    const marker = JSON.parse(source) as Record<string, unknown>;
+
+    expect(capabilities).toBeNull();
+    expect(marker).toEqual(computed as Record<string, unknown>);
+    expect(Object.keys(marker)).toEqual(
+      Object.keys(computed as Record<string, unknown>)
+    );
+    expect(marker.schemaVersion).toBe(1);
+    expect(marker.provider).toBe("simple-changelogs");
+    expect(marker.distribution).toBe("cms");
+    expect(marker.guidanceVersion).toBe(
+      declaredGuidance.get("simple-changelogs-cms") as number
+    );
+    expect(marker.features).toEqual(["guidance-update-notices"]);
+    expect(marker.requestVersions).toEqual([]);
+    expect(marker.receiptVersions).toEqual([]);
+    expect(marker).not.toHaveProperty("schemaDigests");
+  });
 });

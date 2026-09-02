@@ -227,6 +227,12 @@ CMS-only uses `.simple-changelogs-cms.json` and a validated
 `CMS_CHANGELOG.json`. The combined web+CMS distribution uses both the standard
 policy and the CMS policy because their sources and audiences remain separate.
 
+`simple-changelogs-cms` ships a discovery-only `changelog-provider.json`
+(distribution `cms`, empty `requestVersions` and `receiptVersions`). Simple
+Changes discovers it and reports release delegation as not applicable: the
+operator history sits outside the public release boundary, so the distribution
+implements no classify, prepare, or verify handoff.
+
 For an approved public Web archive, `releaseNoteEnvironmentScope` can expose
 the complete surface in `all-environments`, `non-production`,
 `production-only`, or `disabled`. The gate includes the route or page,

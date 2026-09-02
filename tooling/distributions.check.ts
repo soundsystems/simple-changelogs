@@ -9,7 +9,9 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-const MAX_DISTRIBUTION_BYTES = 370 * 1024;
+// Raised from 370 KiB: the web-cms distribution sat 24 bytes under that cap
+// before the discovery-only marker path was added to the shared setup helper.
+const MAX_DISTRIBUTION_BYTES = 374 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -34,8 +36,11 @@ const forbiddenNames = new Set(["EVAL.md"]);
 const PROVIDER_MARKER_FILENAME = "changelog-provider.json";
 // Directory name -> the distribution identifier consumers match on. The marker
 // exists so a consumer never has to re-derive this from the directory name.
+// The CMS-only distribution ships a discovery-only marker: it is identifiable
+// but advertises no request/receipt protocol because it owns no release files.
 const MARKER_DISTRIBUTIONS = new Map([
   ["simple-changelogs", "full"],
+  ["simple-changelogs-cms", "cms"],
   ["simple-changelogs-mobile", "mobile"],
   ["simple-changelogs-skill-maintainer", "skill-repository"],
   ["simple-changelogs-web", "web"],
@@ -297,6 +302,26 @@ for (const {
           );
         }
       }
+      if (!source.includes("references/release-handoff.md")) {
+        failures.push(
+          `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
+        );
+      }
+      for (const [filename, canonical] of canonicalQueryFiles) {
+        const queryPath = join(directory, "scripts", filename);
+        if (!existsSync(queryPath)) {
+          failures.push(
+            `skills/${directoryName} is missing bundled query helper scripts/${filename}`
+          );
+        } else if (readFileSync(queryPath, "utf8") !== canonical) {
+          failures.push(
+            `skills/${directoryName}/scripts/${filename} is out of sync with maintainer tooling`
+          );
+        }
+      }
+    }
+
+    if (MARKER_DISTRIBUTIONS.has(directoryName)) {
       // Consumers prefer this marker over directory-name and SKILL.md prose
       // inference, so it has to ship inside the installed package.
       const markerPath = join(directory, PROVIDER_MARKER_FILENAME);
@@ -308,6 +333,8 @@ for (const {
           distribution?: unknown;
           guidanceVersion?: unknown;
           provider?: unknown;
+          receiptVersions?: unknown;
+          requestVersions?: unknown;
           schemaVersion?: unknown;
         };
         const expectedDistribution =
@@ -327,28 +354,27 @@ for (const {
             `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} declares distribution ${String(marker.distribution)}, but the directory ships ${String(expectedDistribution)}`
           );
         }
+        // Only distributions that ship the pinned protocol schemas may
+        // advertise request/receipt versions; a discovery-only marker must
+        // advertise none so no consumer negotiates a handoff it cannot run.
+        const advertisesProtocol =
+          Array.isArray(marker.requestVersions) &&
+          marker.requestVersions.length > 0 &&
+          Array.isArray(marker.receiptVersions) &&
+          marker.receiptVersions.length > 0;
+        if (
+          advertisesProtocol !==
+          portableContractDistributions.has(directoryName)
+        ) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must advertise request and receipt versions exactly when the distribution ships the release handoff protocol`
+          );
+        }
         markerGuidanceVersions.set(directoryName, marker.guidanceVersion);
       } else {
         failures.push(
           `skills/${directoryName} is missing ${PROVIDER_MARKER_FILENAME} beside SKILL.md`
         );
-      }
-      if (!source.includes("references/release-handoff.md")) {
-        failures.push(
-          `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
-        );
-      }
-      for (const [filename, canonical] of canonicalQueryFiles) {
-        const queryPath = join(directory, "scripts", filename);
-        if (!existsSync(queryPath)) {
-          failures.push(
-            `skills/${directoryName} is missing bundled query helper scripts/${filename}`
-          );
-        } else if (readFileSync(queryPath, "utf8") !== canonical) {
-          failures.push(
-            `skills/${directoryName}/scripts/${filename} is out of sync with maintainer tooling`
-          );
-        }
       }
     }
 

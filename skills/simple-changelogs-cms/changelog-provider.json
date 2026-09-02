@@ -1,0 +1,9 @@
+{
+  "distribution": "cms",
+  "features": ["guidance-update-notices"],
+  "guidanceVersion": 5,
+  "provider": "simple-changelogs",
+  "receiptVersions": [],
+  "requestVersions": [],
+  "schemaVersion": 1
+}

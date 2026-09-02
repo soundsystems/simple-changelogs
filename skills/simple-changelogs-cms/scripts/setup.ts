@@ -698,12 +698,9 @@ const capabilitySchemaPath = (filename: string): string => {
     : join(packageRoot, "evals", "schemas", filename);
 };
 
-const capabilitiesFor = async (
-  installed: Distribution | "cms"
-): Promise<IntegrationCapabilities | null> => {
-  if (installed === "cms") {
-    return null;
-  }
+const integrationCapabilitiesFor = async (
+  installed: Distribution
+): Promise<IntegrationCapabilities> => {
   const [requestSchema, receiptSchema] = await Promise.all([
     readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
     readFile(capabilitySchemaPath("changelog-receipt.schema.json"), "utf8"),
@@ -726,6 +723,43 @@ const capabilitiesFor = async (
     },
     schemaVersion: 1,
   };
+};
+
+const capabilitiesFor = async (
+  installed: Distribution | "cms"
+): Promise<IntegrationCapabilities | null> =>
+  installed === "cms" ? null : integrationCapabilitiesFor(installed);
+
+// The CMS-only distribution owns an authenticated operator history and no
+// public release files, so it implements no classify, prepare, or verify
+// handoff. Its marker still identifies the provider, distribution, and
+// guidance checkpoint for discovery while advertising no protocol versions.
+export interface DiscoveryOnlyMarker {
+  distribution: "cms";
+  features: ["guidance-update-notices"];
+  guidanceVersion: number;
+  provider: "simple-changelogs";
+  receiptVersions: [];
+  requestVersions: [];
+  schemaVersion: 1;
+}
+
+// Canonical source of every shipped changelog-provider.json marker.
+export const providerMarkerFor = (
+  installed: Distribution | "cms"
+): Promise<IntegrationCapabilities | DiscoveryOnlyMarker> => {
+  if (installed === "cms") {
+    return Promise.resolve({
+      distribution: "cms",
+      features: ["guidance-update-notices"],
+      guidanceVersion: CMS_GUIDANCE_VERSION,
+      provider: "simple-changelogs",
+      receiptVersions: [],
+      requestVersions: [],
+      schemaVersion: 1,
+    });
+  }
+  return integrationCapabilitiesFor(installed);
 };
 
 const currentGuidanceVersionFor = (installed: Distribution | "cms"): number =>
