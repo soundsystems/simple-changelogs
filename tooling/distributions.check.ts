@@ -9,9 +9,9 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-// Raised from 370 KiB: the web-cms distribution sat 24 bytes under that cap
-// before the discovery-only marker path was added to the shared setup helper.
-const MAX_DISTRIBUTION_BYTES = 374 * 1024;
+// Raised from 374 KiB so every distribution can vendor the classified-receipt
+// schema while retaining a small, explicit package-growth margin.
+const MAX_DISTRIBUTION_BYTES = 376 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
