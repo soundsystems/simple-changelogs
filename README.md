@@ -228,8 +228,9 @@ CMS-only uses `.simple-changelogs-cms.json` and a validated
 policy and the CMS policy because their sources and audiences remain separate.
 
 `simple-changelogs-cms` ships a `changelog-provider.json` (distribution
-`cms`) that advertises the same request and receipt versions and schema
-digests as the other distributions, without the public-version features. Its
+`cms`) that advertises request v1, receipt v2, and the same schema digests as
+the other distributions, without the legacy receipt-v1 or public-version
+features. Its
 handoff is entry-only: Simple Changes delegates on the `none` boundary and the
 `cms-operators` train, `prepare` writes the operator entry into
 `CMS_CHANGELOG.json`, and `verify` proves the entry is in the finalized
