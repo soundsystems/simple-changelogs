@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Reversed the release-lifecycle rule that removed an empty `Unreleased`
+  heading after reconciliation. A downstream reconcile left no heading, so the
+  next merge prepended its entries into the newest released section with the
+  changelog gate still green. The full, Web, Web+CMS, Mobile, and
+  skill-maintainer lifecycle, verification, backfill, and querying references
+  and the `SKILL.md` edit steps now keep one empty `## Unreleased` heading in
+  both changelogs as the prepend anchor. `query.ts check` (canonical copy and
+  all five vendored copies) accepts a lone empty heading and reports every
+  `Unreleased` heading after the first as a diagnostic. The four
+  release-reconciliation behavior evals now require an empty `Unreleased`
+  directly above the newest release and no duplicate, pinned by
+  `manifest-coverage.check.ts`, with new `query.check.ts` coverage. No guidance
+  checkpoint advanced: this is a prospective lifecycle fix that leaves released
+  history untouched, matching the precedent of the internal-only version fix.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5" at="2026-09-30T16:27:17-05:00" -->
 - Added distribution-topology reconciliation to consumer discovery and broad
   publication runs. When `.simple-changelogs.json` selects `web-cms` and the
   matching combined consumer is present, a standalone `simple-changelogs-cms`

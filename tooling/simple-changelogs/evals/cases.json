@@ -955,9 +955,14 @@
               "expected": true
             },
             {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+            },
+            {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
             },
             {
               "kind": "report.decision",
@@ -995,9 +1000,14 @@
               "expected": true
             },
             {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+            },
+            {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
             },
             {
               "kind": "report.decision",
@@ -1648,9 +1658,14 @@
               "expected": "[Aa]ccount recovery"
             },
             {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+            },
+            {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
             },
             {
               "kind": "text.match",
@@ -1716,9 +1731,14 @@
               "expected": "[Aa]ccount recovery|[Ss]cheduled report"
             },
             {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+            },
+            {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?"
+              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
             },
             {
               "kind": "report.decision",

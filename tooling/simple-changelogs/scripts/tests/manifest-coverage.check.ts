@@ -29,6 +29,19 @@ const collapseWhitespace = (value: string): string =>
   value.replace(/\s+/gu, " ");
 
 const RECORDED_DISPOSITION_PHRASE = "once a disposition is recorded";
+// A reconcile leaves one empty `## Unreleased` directly above the newest
+// release so the next merge prepends pending work there, never into history.
+const UNRELEASED_ANCHOR_PHRASE = "anchors the next merge's prepend";
+const EMPTY_UNRELEASED_ANCHOR_PATTERN =
+  "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## ";
+const DUPLICATE_UNRELEASED_PATTERN =
+  "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?";
+const RELEASE_RECONCILIATION_CASE_IDS = [
+  "behavior-release-bearing-branch",
+  "behavior-merge-batch-existing-unreleased",
+  "behavior-initial-major-synthesis",
+  "behavior-later-major-transition",
+];
 const SHARED_RELEASE_SCOPE_PATTERN =
   /shared (?:repository, release date, or version|version or release date)/;
 const WRONG_SURFACE_EXCLUSION_PHRASE =
@@ -1052,6 +1065,56 @@ describe("portable guidance consistency", () => {
 
     expect(backfill).toContain("copying the same unambiguous value");
     expect(backfill).toContain("established mirror");
+  });
+
+  test("keeps one empty Unreleased anchor after release reconciliation", async () => {
+    const skillsRoot = join(SKILL_ROOT, "..");
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-mobile",
+      "simple-changelogs-skill-maintainer",
+      "simple-changelogs-web",
+      "simple-changelogs-web-cms",
+    ];
+
+    const lifecycles = await Promise.all(
+      distributions.map((distribution) =>
+        readFile(
+          join(skillsRoot, distribution, "references", "release-lifecycle.md"),
+          "utf8"
+        )
+      )
+    );
+
+    for (const lifecycle of lifecycles.map(collapseWhitespace)) {
+      expect(lifecycle).toContain(UNRELEASED_ANCHOR_PHRASE);
+      expect(lifecycle).not.toContain("remove the empty `Unreleased` heading");
+      expect(lifecycle).not.toContain("Remove empty `Unreleased` headings");
+      expect(lifecycle).not.toContain("Omit an empty section");
+    }
+
+    const manifest = await loadManifest();
+    for (const id of RELEASE_RECONCILIATION_CASE_IDS) {
+      const item = caseById(manifest, id);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.match",
+          EMPTY_UNRELEASED_ANCHOR_PATTERN,
+          "CHANGELOG.md"
+        )
+      ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.notMatch",
+          DUPLICATE_UNRELEASED_PATTERN,
+          "CHANGELOG.md"
+        )
+      ).toBe(true);
+    }
   });
 
   test("explains setup and updates before asking and labels mobile placement by outcome", async () => {

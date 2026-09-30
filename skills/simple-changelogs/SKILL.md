@@ -109,7 +109,7 @@ implementation context separately.
 ### 3. Edit
 
 Use the repository's established Markdown structure. Keep pending work under a
-nonempty `Unreleased` section, combine related outcomes, and apply the
+single `Unreleased` section, combine related outcomes, and apply the
 repository's signature policy owned by `references/setup.md` to each contiguous
 raw-markdown block you change.
 

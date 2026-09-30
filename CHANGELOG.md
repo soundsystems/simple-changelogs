@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Release reconciliation**
+  - After a release is reconciled, both changelogs now keep an empty
+    `## Unreleased` heading instead of removing it, so the next merged change
+    lands under Unreleased rather than inside the newest released section.
+  - The bundled `query.ts check` accepts that empty heading and now reports a
+    duplicate `Unreleased` heading as a problem.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5" at="2026-09-30T16:27:17-05:00" -->
 - **Skill publishing**
   - Broad publication runs now recognize Web + CMS as the complete changelog
     installation for combined repositories, preventing a redundant standalone

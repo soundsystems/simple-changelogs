@@ -287,6 +287,71 @@ describe("query CLI on synthetic fixtures", () => {
     expect(payload.files[0]?.malformedSignatures).toHaveLength(1);
   });
 
+  test("check accepts one empty Unreleased heading after a release", async () => {
+    const repo = await fixtureRepo(
+      [
+        "# Changelog",
+        "",
+        "## Unreleased",
+        "",
+        "## 1.0.0 - 2026-01-01",
+        "",
+        "- Initial release",
+        "",
+      ].join("\n")
+    );
+    const result = await runQuery([
+      "check",
+      "--log",
+      "customer",
+      "--repo",
+      repo,
+      "--json",
+    ]);
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as { ok: boolean };
+    expect(payload.ok).toBe(true);
+
+    const pending = await runQuery(["show", "unreleased", "--repo", repo]);
+    expect(pending.exitCode).toBe(0);
+  });
+
+  test("check rejects a duplicate Unreleased heading", async () => {
+    const repo = await fixtureRepo(
+      [
+        "# Changelog",
+        "",
+        "## Unreleased",
+        "",
+        "- Pending work",
+        "",
+        "## [Unreleased]",
+        "",
+        "## 1.0.0 - 2026-01-01",
+        "",
+        "- Initial release",
+        "",
+      ].join("\n")
+    );
+    const result = await runQuery([
+      "check",
+      "--log",
+      "customer",
+      "--repo",
+      repo,
+      "--json",
+    ]);
+    expect(result.exitCode).toBe(1);
+    const payload = JSON.parse(result.stdout) as {
+      files: Array<{ diagnostics: string[] }>;
+      ok: boolean;
+    };
+    expect(payload.ok).toBe(false);
+    expect(payload.files[0]?.diagnostics).toEqual([
+      'duplicate Unreleased heading "## [Unreleased]"',
+    ]);
+  });
+
   test("errors when the developer log is explicitly requested but missing", async () => {
     const repo = await fixtureRepo(
       ["# Changelog", "", "## Unreleased", "", "- Pending", ""].join("\n")

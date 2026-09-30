@@ -16,7 +16,7 @@ Run repository-native checks and inspect the final diff. At minimum verify:
   adapters, contributor harnesses, or symlinks;
 - maintainer tooling contains no discoverable `SKILL.md`;
 - public and developer changelog entries are classified by audience;
-- a nonempty `Unreleased` section exists only while pending work remains;
+- exactly one `Unreleased` section exists, empty when no work is pending;
 - released public and developer headings, package versions, and packaged
   read-only notes agree for the intended release;
 - raw signature comments stay out of rendered or CLI release notes;

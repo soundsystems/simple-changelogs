@@ -723,8 +723,16 @@ interface CheckFileReport {
   unrecognizedHeadings: string[];
 }
 
+// One Unreleased heading, even empty, is the anchor for the next prepend; a
+// second one splits pending work and is always a problem.
+const duplicateUnreleased = (parsed: ParsedChangelog): string[] =>
+  parsed.releases
+    .filter((release) => release.unreleased)
+    .slice(1)
+    .map((release) => `duplicate Unreleased heading "## ${release.heading}"`);
+
 const checkFileReport = ({ parsed, path }: LoadedLog): CheckFileReport => ({
-  diagnostics: parsed.diagnostics,
+  diagnostics: [...parsed.diagnostics, ...duplicateUnreleased(parsed)],
   legacySignatures: parsed.legacySignatureCount,
   malformedSignatures: parsed.malformedSignatures,
   path,
