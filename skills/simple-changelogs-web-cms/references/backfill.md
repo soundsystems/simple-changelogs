@@ -23,8 +23,8 @@ When pending work exists, start with the appropriate heading:
 - Pending technical outcome.
 ```
 
-When no pending entry exists, create only the title. Add `Unreleased` with the
-first real item rather than keeping a placeholder section.
+When no pending entry exists, create the title and one empty `## Unreleased`
+heading; it anchors the next prepend.
 
 ## Historical Reconstruction
 
