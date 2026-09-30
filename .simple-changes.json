@@ -4,7 +4,7 @@
   "defaultFinish": "ship",
   "guidance": {
     "disposition": "accepted",
-    "version": 21
+    "version": 22
   },
   "handoffTiming": "automatic",
   "productionDeploy": "ask",
@@ -16,5 +16,6 @@
   "migrationHandling": "ask-after-review",
   "migrationTargets": [],
   "shippingMode": "standard",
-  "proposalScheduling": "balanced"
+  "proposalScheduling": "balanced",
+  "proposalSignatures": "agent-and-version"
 }
