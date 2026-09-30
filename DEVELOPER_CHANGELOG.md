@@ -9,14 +9,27 @@
   skill-maintainer lifecycle, verification, backfill, and querying references
   and the `SKILL.md` edit steps now keep one empty `## Unreleased` heading in
   both changelogs as the prepend anchor. `query.ts check` (canonical copy and
-  all five vendored copies) accepts a lone empty heading and reports every
-  `Unreleased` heading after the first as a diagnostic. The four
-  release-reconciliation behavior evals now require an empty `Unreleased`
-  directly above the newest release and no duplicate, pinned by
-  `manifest-coverage.check.ts`, with new `query.check.ts` coverage. No guidance
-  checkpoint advanced: this is a prospective lifecycle fix that leaves released
-  history untouched, matching the precedent of the internal-only version fix.
-<!-- simple-changelogs-signature agent="Claude Opus 5.5" at="2026-09-30T16:27:17-05:00" -->
+  all five vendored copies) accepts a lone empty heading, reports every
+  `Unreleased` heading after the first as a diagnostic, and adds a
+  non-failing `unanchored` note when the first release heading is not
+  `Unreleased`.
+- Advanced guidance to full 21, Web 20, Web+CMS 20, Mobile 19, and
+  skill-maintainer 13 (`SKILL.md`, provider markers, distribution manifest,
+  and `GUIDANCE_VERSIONS` in every `setup.ts` copy) with a `behavior`
+  update notice marked `backfill="optional"`. Repositories that reconciled
+  under the old rule have no `Unreleased` heading, and their next prepend can
+  land inside a released section, so the old rule can already have affected
+  released history. The optional audit restores the missing empty heading and
+  reports any entries the newest release absorbed; moving them stays a
+  meaning-changing edit that needs separate authority.
+- The four release-reconciliation behavior evals now require `Unreleased` to
+  be the first depth-2 heading, empty, and directly followed by a versioned
+  heading, plus a case-insensitive no-duplicate assertion (via `(?i:...)`,
+  since the harness compiles with only the `u` flag).
+  `manifest-coverage.check.ts` pins both patterns and exercises them against a
+  misplaced next-major layout; `query.check.ts` covers the empty, duplicate,
+  and unanchored cases.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5" at="2026-09-30T16:54:26-05:00" -->
 - Added distribution-topology reconciliation to consumer discovery and broad
   publication runs. When `.simple-changelogs.json` selects `web-cms` and the
   matching combined consumer is present, a standalone `simple-changelogs-cms`

@@ -28,7 +28,7 @@ const curatedPolicy = (budget?: { max: number; min: number }) => ({
   ...(budget === undefined ? {} : { curationBudget: budget }),
   developerChangelog: "required",
   distribution: "web",
-  guidance: { backfillStatus: "completed", version: 19 },
+  guidance: { backfillStatus: "completed", version: 20 },
   newReleaseNoteSurfaces: "ask",
   publicReleaseNotes: "curated",
   schemaVersion: 1,

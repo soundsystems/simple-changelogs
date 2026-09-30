@@ -309,11 +309,69 @@ describe("query CLI on synthetic fixtures", () => {
       "--json",
     ]);
     expect(result.exitCode).toBe(0);
-    const payload = JSON.parse(result.stdout) as { ok: boolean };
+    const payload = JSON.parse(result.stdout) as {
+      files: Array<{ unanchored: boolean }>;
+      ok: boolean;
+    };
     expect(payload.ok).toBe(true);
+    expect(payload.files[0]?.unanchored).toBe(false);
 
     const pending = await runQuery(["show", "unreleased", "--repo", repo]);
     expect(pending.exitCode).toBe(0);
+  });
+
+  test("check notes a missing or non-leading Unreleased heading without failing", async () => {
+    const missing = await fixtureRepo(
+      [
+        "# Changelog",
+        "",
+        "## 1.0.0 - 2026-01-01",
+        "",
+        "- Initial release",
+        "",
+      ].join("\n")
+    );
+    const missingResult = await runQuery([
+      "check",
+      "--log",
+      "customer",
+      "--repo",
+      missing,
+    ]);
+    expect(missingResult.exitCode).toBe(0);
+    expect(missingResult.stdout).toContain(
+      "note: Unreleased is not the first release heading"
+    );
+
+    const misplaced = await fixtureRepo(
+      [
+        "# Changelog",
+        "",
+        "## 2.0.0 - 2026-07-01",
+        "",
+        "- Stable release",
+        "",
+        "## Unreleased",
+        "",
+        "## 2.0.0-beta.2 - 2026-06-15",
+        "",
+        "- Beta release",
+        "",
+      ].join("\n")
+    );
+    const misplacedResult = await runQuery([
+      "check",
+      "--log",
+      "customer",
+      "--repo",
+      misplaced,
+      "--json",
+    ]);
+    expect(misplacedResult.exitCode).toBe(0);
+    const payload = JSON.parse(misplacedResult.stdout) as {
+      files: Array<{ unanchored: boolean }>;
+    };
+    expect(payload.files[0]?.unanchored).toBe(true);
   });
 
   test("check rejects a duplicate Unreleased heading", async () => {

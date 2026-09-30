@@ -29,13 +29,16 @@ const collapseWhitespace = (value: string): string =>
   value.replace(/\s+/gu, " ");
 
 const RECORDED_DISPOSITION_PHRASE = "once a disposition is recorded";
-// A reconcile leaves one empty `## Unreleased` directly above the newest
-// release so the next merge prepends pending work there, never into history.
+// A reconcile leaves one empty `## Unreleased` as the first depth-2 heading,
+// directly above a versioned release, so the next merge prepends pending work
+// there and never into released history. The eval harness compiles patterns
+// with only the `u` flag, so `(?i:...)` mirrors the parser's case-insensitive
+// Unreleased match.
 const UNRELEASED_ANCHOR_PHRASE = "anchors the next merge's prepend";
 const EMPTY_UNRELEASED_ANCHOR_PATTERN =
-  "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## ";
+  "^(?!## )(?:(?!\\n## )[\\s\\S])*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## \\[?v?\\d";
 const DUPLICATE_UNRELEASED_PATTERN =
-  "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?";
+  "(?:^|\\n)## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)[\\s\\S]*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)";
 const RELEASE_RECONCILIATION_CASE_IDS = [
   "behavior-release-bearing-branch",
   "behavior-merge-batch-existing-unreleased",
@@ -1115,6 +1118,41 @@ describe("portable guidance consistency", () => {
         )
       ).toBe(true);
     }
+  });
+
+  test("anchor patterns enforce placement and catch case-variant duplicates", () => {
+    // Compiled exactly as the eval harness compiles text assertions.
+    const anchor = new RegExp(EMPTY_UNRELEASED_ANCHOR_PATTERN, "u");
+    const duplicate = new RegExp(DUPLICATE_UNRELEASED_PATTERN, "u");
+    const changelog = (...headings: string[]): string =>
+      ["# Changelog", ...headings.map((heading) => `## ${heading}\n`), ""].join(
+        "\n\n"
+      );
+
+    expect(anchor.test(changelog("Unreleased", "2.0.0 - 2026-07-01"))).toBe(
+      true
+    );
+    expect(anchor.test(changelog("[Unreleased]", "[1.0.0] - 2026-07-01"))).toBe(
+      true
+    );
+    // Misplaced below the newest release, as in the next-major fixture.
+    expect(
+      anchor.test(changelog("2.0.0", "Unreleased", "2.0.0-beta.2 - 2026-06-15"))
+    ).toBe(false);
+    expect(anchor.test(changelog("2.0.0 - 2026-07-01"))).toBe(false);
+    expect(
+      anchor.test(
+        ["# Changelog", "## Unreleased", "- Pending", "## 2.0.0", ""].join(
+          "\n\n"
+        )
+      )
+    ).toBe(false);
+
+    expect(duplicate.test(changelog("Unreleased", "2.0.0"))).toBe(false);
+    expect(duplicate.test(changelog("Unreleased", "2.0.0", "UNRELEASED"))).toBe(
+      true
+    );
+    expect(duplicate.test(changelog("Unreleased", "[unreleased]"))).toBe(true);
   });
 
   test("explains setup and updates before asking and labels mobile placement by outcome", async () => {

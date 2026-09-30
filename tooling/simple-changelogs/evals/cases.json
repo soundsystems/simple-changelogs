@@ -957,12 +957,12 @@
             {
               "kind": "text.match",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+              "expected": "^(?!## )(?:(?!\\n## )[\\s\\S])*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## \\[?v?\\d"
             },
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
+              "expected": "(?:^|\\n)## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)[\\s\\S]*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)"
             },
             {
               "kind": "report.decision",
@@ -1002,12 +1002,12 @@
             {
               "kind": "text.match",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+              "expected": "^(?!## )(?:(?!\\n## )[\\s\\S])*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## \\[?v?\\d"
             },
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
+              "expected": "(?:^|\\n)## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)[\\s\\S]*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)"
             },
             {
               "kind": "report.decision",
@@ -1660,12 +1660,12 @@
             {
               "kind": "text.match",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+              "expected": "^(?!## )(?:(?!\\n## )[\\s\\S])*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## \\[?v?\\d"
             },
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
+              "expected": "(?:^|\\n)## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)[\\s\\S]*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)"
             },
             {
               "kind": "text.match",
@@ -1733,12 +1733,12 @@
             {
               "kind": "text.match",
               "target": "CHANGELOG.md",
-              "expected": "(?:^|\\n)## \\[?Unreleased\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## "
+              "expected": "^(?!## )(?:(?!\\n## )[\\s\\S])*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n[ \\t]*)*\\n## \\[?v?\\d"
             },
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
-              "expected": "## \\[?Unreleased\\]?[\\s\\S]*\\n## \\[?Unreleased\\]?"
+              "expected": "(?:^|\\n)## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)[\\s\\S]*\\n## \\[?(?i:unreleased)\\]?[ \\t]*(?:\\n|$)"
             },
             {
               "kind": "report.decision",

@@ -249,11 +249,11 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 20,
-  mobile: 18,
-  "skill-repository": 12,
-  web: 19,
-  "web-cms": 19,
+  full: 21,
+  mobile: 19,
+  "skill-repository": 13,
+  web: 20,
+  "web-cms": 20,
 } as const satisfies Record<Distribution, number>;
 const CMS_GUIDANCE_VERSION = 5;
 // The web-cms distribution records the CMS side of its policy on a separate

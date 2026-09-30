@@ -25,10 +25,10 @@ Subcommands:
   `--group` for `- **Group**:` bullets, `--agent`, and `--grep`.
 - `check` — structure lint: unrecognized release headings, duplicate
   `Unreleased` headings, malformed signature comments, and parser diagnostics.
-  One empty `Unreleased` heading is valid. Exits nonzero on problems, so it can
-  join repository verification checklists. Legacy `<!-- Agent: ... -->`
-  signatures are reported as notes, not problems; they remain valid released
-  history.
+  One empty `Unreleased` heading is valid; a missing or non-leading one is a
+  note. Exits nonzero on problems, so it can join repository verification
+  checklists. Legacy `<!-- Agent: ... -->` signatures are reported as notes,
+  not problems; they remain valid released history.
 
 For curated release notes (see `references/curation.md`): `entries --ids`
 prints each entry's 12-hex identity for use in curation provenance comments,
