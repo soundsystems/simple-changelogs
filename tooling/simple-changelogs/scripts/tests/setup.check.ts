@@ -242,14 +242,14 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "optional",
-      currentVersion: 19,
+      currentVersion: 20,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
-        "Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity.",
         "Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section.",
         "A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories. Curated public release notes can now derive RELEASE_NOTES.md from the changelog.",
+        "Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release.",
       ],
       userPrompt:
         "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
@@ -271,6 +271,11 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate?.changes[3]).toMatchObject({
       kinds: ["capability", "onboarding"],
       version: 19,
+    });
+    expect(inspection.guidanceUpdate?.changes[4]).toMatchObject({
+      backfillRecommendation: "optional",
+      kinds: ["behavior"],
+      version: 20,
     });
 
     const rejected = await applySetup({
@@ -301,7 +306,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 19,
+      version: 20,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -1133,13 +1138,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(20);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(21);
 
     const distributionVersions = [
-      ["web", 19],
-      ["mobile", 18],
-      ["web-cms", 19],
-      ["skill-repository", 12],
+      ["web", 20],
+      ["mobile", 19],
+      ["web-cms", 20],
+      ["skill-repository", 13],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -1941,7 +1946,7 @@ describe("distribution and CMS boundaries", () => {
     await writeJson(join(repo, ".simple-changelogs.json"), {
       developerChangelog: "required",
       distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 19 },
+      guidance: { backfillStatus: "not-applicable", version: 20 },
       majorReleaseNaming: "named",
       newReleaseNoteSurfaces: "ask",
       publicVersioning: {
@@ -2176,7 +2181,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 19 },
+      { backfillStatus: "completed", version: 20 },
       { backfillStatus: "completed", version: 1 }
     );
 
@@ -2220,7 +2225,7 @@ describe("post-onboarding update paths", () => {
     const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
     expect(repoPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 19,
+      version: 20,
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2240,7 +2245,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 19 },
+      { backfillStatus: "completed", version: 20 },
       { backfillStatus: "completed", version: 2 }
     );
 
@@ -2284,7 +2289,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "partial", version: 19 },
+      { backfillStatus: "partial", version: 20 },
       { backfillStatus: "partial", version: 1 }
     );
 
@@ -2306,7 +2311,7 @@ describe("post-onboarding update paths", () => {
     const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
     expect(repoPolicy.guidance).toEqual({
       backfillStatus: "completed",
-      version: 19,
+      version: 20,
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "completed",

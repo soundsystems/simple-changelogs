@@ -13,7 +13,7 @@ CMS-operator, or skill-package workflows.
   selects a single-changelog workflow.
 - Established mobile and store destinations mirror release-scoped highlights.
 
-Current guidance version: 18
+Current guidance version: 19
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -85,7 +85,7 @@ release flow, source of truth, or store boundary.
 2. Classify each durable mobile outcome as customer, developer, both, or
    neither, then include it in each in-app or store destination only when that
    app and release train are affected.
-3. Edit the established Markdown structure. Keep pending work under a nonempty
+3. Edit the established Markdown structure. Keep pending work under a single
    `Unreleased` section and follow the recorded signature policy.
 4. For release-bearing work, reconcile the intended boundary and update only
    metadata, mobile notes, and store destinations proven to share that release.

@@ -1,7 +1,8 @@
 # Skill-Repository Release Lifecycle
 
-Keep pending work under a nonempty `## Unreleased` section. Omit an empty
-section; recreate it when new pending work appears.
+Keep pending work under one `## Unreleased` section. After a release, leave
+that heading empty instead of removing it: it anchors the next merge's prepend,
+which otherwise files new entries into the newest released section.
 
 ## Release intent
 

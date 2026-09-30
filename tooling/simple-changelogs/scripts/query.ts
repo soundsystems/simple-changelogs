@@ -720,14 +720,23 @@ interface CheckFileReport {
   legacySignatures: number;
   malformedSignatures: string[];
   path: string;
+  unanchored?: boolean;
   unrecognizedHeadings: string[];
 }
 
+// One Unreleased heading, even empty, must lead: it anchors the next prepend.
+const duplicateUnreleased = (parsed: ParsedChangelog): string[] =>
+  parsed.releases
+    .filter((release) => release.unreleased)
+    .slice(1)
+    .map((release) => `duplicate Unreleased heading "## ${release.heading}"`);
+
 const checkFileReport = ({ parsed, path }: LoadedLog): CheckFileReport => ({
-  diagnostics: parsed.diagnostics,
+  diagnostics: [...parsed.diagnostics, ...duplicateUnreleased(parsed)],
   legacySignatures: parsed.legacySignatureCount,
   malformedSignatures: parsed.malformedSignatures,
   path,
+  unanchored: parsed.releases[0]?.unreleased !== true,
   unrecognizedHeadings: parsed.unrecognizedHeadings,
 });
 
@@ -751,6 +760,9 @@ const describeCheckFile = (report: CheckFileReport): string => {
     lines.push(
       `  note: ${report.legacySignatures} legacy signature comments (valid history; the canonical form is <!-- simple-changelogs-signature ... -->)`
     );
+  }
+  if (report.unanchored) {
+    lines.push("  note: Unreleased is not the first release heading");
   }
   if (checkProblemCount(report) === 0) {
     lines.push("  ok");

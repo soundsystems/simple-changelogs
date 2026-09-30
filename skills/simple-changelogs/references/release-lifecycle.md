@@ -66,8 +66,10 @@ Before pushing, merging, publishing, or deploying with release intent:
   release.
 - Do not leave entries under `Unreleased` after a public default-branch release
   unless the repo documents a separate release system that has not shipped yet.
-- After all pending entries have moved into a released section, remove the empty
-  `Unreleased` heading from both customer and developer changelogs.
+- After all pending entries have moved into a released section, leave one empty
+  `## Unreleased` heading in both customer and developer changelogs. It anchors
+  the next merge's prepend; without it, new entries land in the newest released
+  section.
 - Apply initial-development and pre-release hot-fix omission rules from
   `references/entry-classification.md` before adding or keeping any user-facing
   entry.
@@ -119,8 +121,9 @@ complete:
 4. Move target-contained customer entries out of `Unreleased` into the matching
    version/date heading, and move matching developer notes when they belong to
    the same release.
-5. Remove empty `Unreleased` headings and sync documented release-note surfaces
-   or version metadata when applicable.
+5. Keep exactly one `Unreleased` heading, empty when nothing remains pending,
+   and sync documented release-note surfaces or version metadata when
+   applicable.
 6. Run the repo-native changelog/release-note checks. If the repo has no
    automated check, state the manual reconciliation performed.
 7. Do not call the merge cleanup complete while a release-bearing target branch

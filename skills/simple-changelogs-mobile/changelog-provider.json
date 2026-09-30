@@ -6,7 +6,7 @@
     "multi-train-receipts",
     "guidance-update-notices"
   ],
-  "guidanceVersion": 18,
+  "guidanceVersion": 19,
   "provider": "simple-changelogs",
   "receiptVersions": [1, 2],
   "requestVersions": [1],

@@ -19,10 +19,10 @@ be omitted, but record the reason for each omission instead of silently
 sampling recent commits or highlights.
 
 Safe drift repair can copy an unambiguous released value into an established
-mirror, restore a missing generated packaged note, or remove an empty
-`Unreleased` heading. Deleting, materially rewording, collapsing, moving
-release boundaries, or changing the audience of released entries requires
-explicit meaning-changing authority.
+mirror, or restore a missing generated packaged note or empty `Unreleased`
+heading. Deleting, materially rewording, collapsing, moving release boundaries,
+or changing the audience of released entries requires explicit
+meaning-changing authority.
 
 When an approved audit begins, record `partial`; set `completed` only after the
 requested range and all established mirrors are verified. For an initial

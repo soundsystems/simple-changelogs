@@ -391,3 +391,12 @@ question only when a public destination is detected, and repositories that
 keep the default `full` policy see no change. Backfilling curated sections for
 already-released history is a safe derived operation, offered once, never
 automatic.
+
+<!-- simple-changelogs-guidance-update version="20" kinds="behavior" backfill="optional" summary="Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release." -->
+## Guidance 20
+
+A reconciled release now keeps an empty `## Unreleased` heading in both
+changelogs; removing it let the next merge prepend into the newest release.
+`query.ts check` flags a duplicate or non-leading `Unreleased`. An optional
+audit restores a missing empty heading and reports entries the newest release
+absorbed; moving them needs separate authority.

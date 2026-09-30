@@ -61,7 +61,8 @@ encode an uncertain or independently versioned relationship.
 ## Release Lifecycle
 
 - Release intent came from repository evidence before pending entries moved.
-- `Unreleased` contains only genuine pending work and no empty placeholder.
+- `Unreleased` contains only genuine pending work and no placeholder text; one
+  empty `Unreleased` heading remains after a release.
 - Merge reconciliation accounted for all release-bearing inputs.
 - Released headings, dates, and established mirrors agree.
 - A deploy was not mistaken for a release without evidence connecting them.
@@ -148,7 +149,7 @@ encode an uncertain or independently versioned relationship.
 
 When local architecture supports them, tests may enforce:
 
-- no empty pending headings;
+- exactly one `Unreleased` heading and no empty pending subsections;
 - signature comments are ignored by parsers;
 - latest released heading matches canonical release-note data;
 - product metadata known to share one version remains aligned;

@@ -23,8 +23,8 @@ When pending work exists, start with the appropriate heading:
 - Pending technical outcome.
 ```
 
-When no pending entry exists, create only the title. Add `Unreleased` with the
-first real item rather than keeping a placeholder section.
+When no pending entry exists, create the title and one empty `## Unreleased`
+heading; it anchors the next prepend.
 
 ## Historical Reconstruction
 
@@ -65,7 +65,8 @@ meaning and visibility remain unchanged:
 
 - regenerate an established derived mirror from its unchanged canonical source;
 - align copied version or date metadata when the source of truth is unambiguous;
-- remove empty pending headings after finalization;
+- remove empty pending subsections after finalization while keeping or
+  restoring one empty `Unreleased` heading;
 - remove duplicate generated artifacts while keeping their canonical source;
 - report ambiguous or semantic drift without changing it.
 

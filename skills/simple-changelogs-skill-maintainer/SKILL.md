@@ -16,7 +16,7 @@ and maintenance, not an application changelog distribution.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
 
-Current guidance version: 12
+Current guidance version: 13
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -90,7 +90,7 @@ versioning, eval requirements, publication flow, and generated mirrors.
    safety, installation, and output changes usually belong in public history;
    harness, schema, adapter, fixture, and release mechanics belong in developer
    history unless they affect adopters directly.
-3. Edit the established Markdown structure. Keep pending work under a nonempty
+3. Edit the established Markdown structure. Keep pending work under a single
    `Unreleased` section and follow signature policy.
 4. For release-bearing work, reconcile versions and packaged public notes with
    the intended boundary. Never expose `Unreleased`, developer-only detail, or
