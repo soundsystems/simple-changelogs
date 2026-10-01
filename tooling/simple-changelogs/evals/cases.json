@@ -2850,6 +2850,16 @@
               "target": "apps/mobile/app.json#/expo/ios/buildNumber"
             },
             {
+              "expected": 1842,
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/android/versionCode"
+            },
+            {
+              "expected": "3.3.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/version"
+            },
+            {
               "expected": {
                 "field": "expo.version",
                 "identifierRole": "public-version",
