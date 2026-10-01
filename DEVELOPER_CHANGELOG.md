@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Corrected the `behavior-independent-mobile-release` eval's `json.path`
+  assertion on `apps/mobile/app.json#/expo/ios/buildNumber` from "3.2.0" to
+  "1842" to match the fixture and sibling `behavior-shared-train-release`
+  case. "3.2.0" was the fixture's prior public version, so a correct run
+  (bump `expo.version` to 3.3.0, leave the build number alone) failed and
+  only a run that overwrote the build number with a public version could
+  pass, violating `version-decisions.md` and release-identifier invariant 3.
+<!-- simple-changelogs-signature agent="Claude Fable 5.1" at="2026-10-01T16:29:58-05:00" -->
 - Reversed the release-lifecycle rule that removed an empty `Unreleased`
   heading after reconciliation. A downstream reconcile left no heading, so the
   next merge prepended its entries into the newest released section with the

@@ -2845,7 +2845,7 @@
               "target": "apps/web/CHANGELOG.md"
             },
             {
-              "expected": "3.2.0",
+              "expected": "1842",
               "kind": "json.path",
               "target": "apps/mobile/app.json#/expo/ios/buildNumber"
             },
