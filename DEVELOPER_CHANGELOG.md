@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added `json.path` assertions on `apps/mobile/app.json#/expo/version`
+  ("3.3.0") and `#/expo/android/versionCode` (1842) to the
+  `behavior-independent-mobile-release` eval. The case only checked the
+  reported version map, so a run that left the public version unbumped or
+  overwrote the Android submission counter could still pass; the new checks
+  mirror the existing iOS `buildNumber` guard. Also acknowledged
+  skill-maintainer guidance 13 with `backfillStatus` `completed` after a
+  read-only `query.ts check` audit found both changelogs already lead with
+  one `## Unreleased` heading and each 2026-07-30 section holds only its own
+  entry, so nothing was absorbed or needed repair.
+<!-- simple-changelogs-signature agent="Claude Fable 5.1" at="2026-10-01T17:00:51-05:00" -->
 - Corrected the `behavior-independent-mobile-release` eval's `json.path`
   assertion on `apps/mobile/app.json#/expo/ios/buildNumber` from "3.2.0" to
   "1842" to match the fixture and sibling `behavior-shared-train-release`
