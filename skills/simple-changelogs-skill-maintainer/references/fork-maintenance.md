@@ -36,9 +36,8 @@ copy should classify, write, and verify a given repository action.
 
 ## Checking Drift
 
-The bundled checker works from any directory. The leading path is this
-distribution's own package directory, which is `skills/simple-changelogs-skill-maintainer`
-inside an upstream checkout and the install directory when installed:
+The bundled checker works from any directory. In an upstream checkout its
+leading path is `skills/simple-changelogs-skill-maintainer`:
 
 ```bash
 /absolute/path/to/simple-changelogs-skill-maintainer/scripts/check-fork-sync.sh \
