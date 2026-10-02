@@ -185,6 +185,10 @@ it. Never infer and persist a value from equal or unequal current strings. A
 repository evidence naming each affected train's version owner. This field is
 repository-specific and never joins the all-projects preferences.
 
+`sharedVersionLines` is optional, full-only, and repository-only. Absent means
+each release train numbers itself; `[]` records that choice. Lines follow
+`references/shared-version-lines.md`.
+
 `mobileReleaseNotePlacement` accepts:
 
 - `store-only` (**App stores only**): prepare mobile-specific update notes only

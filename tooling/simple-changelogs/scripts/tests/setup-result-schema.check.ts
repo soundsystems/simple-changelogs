@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ApplyOptions, applySetup, inspectRepository } from "../setup.ts";
@@ -294,6 +294,49 @@ describe("setup-result.schema.json", () => {
     expect(blocked.status).toBe("blocked");
     expect(runOnly.status).toBe("run-only");
     expect([notice, blocked, runOnly].flatMap(check)).toEqual([]);
+  });
+
+  test("accepts detected version trains, the version-line notice, and recorded lines", async () => {
+    const config = await temporaryDirectory("config");
+    const repo = await temporaryDirectory("repo");
+    const write = async (path: string, value: unknown) => {
+      await mkdir(join(repo, path, ".."), { recursive: true });
+      await writeFile(join(repo, path), JSON.stringify(value), "utf8");
+    };
+    await write("apps/web/package.json", { version: "1.0.0" });
+    await write("apps/mobile/app.json", { expo: { version: "0.21.3" } });
+    const onboarding = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+    await write(".simple-changelogs.json", {
+      developerChangelog: "required",
+      distribution: "full",
+      guidance: { backfillStatus: "not-applicable", version: 21 },
+      mobileReleaseNotePlacement: "mobile-only",
+      newReleaseNoteSurfaces: "ask",
+      schemaVersion: 1,
+      signatures: "agent-and-timestamp",
+    });
+    const notice = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+    const recorded = await applySetup({
+      configDirectory: config,
+      confirm: true,
+      distribution: "full",
+      guidanceBackfill: "not-applicable",
+      repo,
+      sharedVersionLines: [{ mode: "catch-up", trains: ["mobile", "web"] }],
+    });
+
+    expect(onboarding.inventory.versionTrains).toHaveLength(2);
+    expect(notice.guidanceUpdate?.questions).toEqual(["shared-version-lines"]);
+    expect(recorded.policy?.state).toBe("valid");
+    expect([onboarding, notice, recorded].flatMap(check)).toEqual([]);
   });
 
   test("rejects a CMS policy at guidance version 0 and unknown fields", async () => {

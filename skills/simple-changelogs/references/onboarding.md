@@ -12,6 +12,7 @@ inside the original task, not a separate task.
 - First screen
 - Customized questions
 - Mobile-history placement
+- Shared version numbers
 - Public-version choice
 - Release-note organization and major names
 - Public release-note layer
@@ -275,6 +276,12 @@ Do not shorten these to bare `store-only`, `mobile-only`, `web-tabs`, or
 explanations. Choosing a presentation records the desired placement but does
 not authorize a missing tab set, page, route, navigation entry, in-app screen,
 store submission, deployment, or publication.
+
+## Shared version numbers
+
+When inspection lists `shared-version-lines`, ask the one question in
+`references/shared-version-lines.md` here; a one-answer receipt shows its
+recommended answer.
 
 ## Public-version choice
 

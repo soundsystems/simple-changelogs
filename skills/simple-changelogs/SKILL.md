@@ -18,7 +18,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 21
+Current guidance version: 22
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -52,9 +52,10 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
   review, continuing with the current settings, or opening the detailed release
   notes. A walkthrough explains every new ability, affected setting,
   proposed default, example, consequence, and safety boundary before any
-  decision. Ask about a historical backfill only afterward and only when
-  `userPrompt` is non-null; never run one automatically. Record the one-time
-  disposition with `apply --guidance-backfill <status> --confirm`.
+  decision. Ask any listed `questions` once during that review. Ask about a
+  historical backfill only afterward and only when `userPrompt` is non-null;
+  never run one automatically. Record the one-time disposition with
+  `apply --guidance-backfill <status> --confirm`.
 - When it exists, validate it before relying on its decisions. Report malformed
   or unsupported state; do not silently replace it.
 - When it is absent and the request authorizes changelog work, follow
@@ -83,6 +84,7 @@ Read only the references needed for the current branch of work:
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
+| Apps sharing one version number (`sharedVersionLines`) | `references/shared-version-lines.md` |
 | Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |

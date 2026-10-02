@@ -1138,7 +1138,7 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(21);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(22);
 
     const distributionVersions = [
       ["web", 20],

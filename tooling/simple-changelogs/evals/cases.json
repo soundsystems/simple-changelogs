@@ -3298,6 +3298,126 @@
           "prompt": "Rewrite the iOS store notes for the current mobile release. Do not change any\nversion field."
         }
       ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-lines-catch-up",
+      "id": "behavior-version-line-catch-up",
+      "suite": "behavior",
+      "tags": ["versions", "mobile", "major-releases", "wording"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": "PUBLIC_VERSION_DIRECTION_REQUIRED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Ship the pending Mobile fixes as the next Mobile release."
+        },
+        {
+          "assertions": [
+            {
+              "expected": "1.0.0",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/version"
+            },
+            {
+              "expected": "1842",
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/ios/buildNumber"
+            },
+            {
+              "expected": 1842,
+              "kind": "json.path",
+              "target": "apps/mobile/app.json#/expo/android/versionCode"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/web/CHANGELOG.md"
+            },
+            {
+              "expected": "\\n## \\[?v?1\\.0\\.0",
+              "kind": "text.match",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": "Bug Fixes & Improvements",
+              "kind": "text.match",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": "(?i:major release|launch|stable release|1\\.0 is here)",
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": "SHARED_VERSION_CAUGHT_UP",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Yes, ship Mobile as 1.0.0."
+        }
+      ]
+    },
+    {
+      "activationMode": "explicit",
+      "fixture": "version-lines-catch-up",
+      "id": "behavior-version-line-advance",
+      "suite": "behavior",
+      "tags": ["versions", "lifecycle"],
+      "turns": [
+        {
+          "assertions": [
+            {
+              "expected": "1.0.1",
+              "kind": "json.path",
+              "target": "apps/web/package.json#/version"
+            },
+            {
+              "expected": "\\n## \\[?v?1\\.0\\.1",
+              "kind": "text.match",
+              "target": "apps/web/CHANGELOG.md"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json"
+            },
+            {
+              "expected": true,
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md"
+            },
+            {
+              "expected": "SHARED_VERSION_ADVANCED",
+              "kind": "report.decision"
+            }
+          ],
+          "prompt": "Release the pending Web changes."
+        }
+      ]
     }
   ]
 }
