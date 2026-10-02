@@ -4,3 +4,4 @@ dist/
 build/
 *.log
 /BUILD_PLAN.md
+/docs/plans/
