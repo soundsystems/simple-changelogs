@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "distribution": "full",
+  "guidance": {
+    "version": 22,
+    "backfillStatus": "completed"
+  },
+  "developerChangelog": "required",
+  "signatures": "agent-and-timestamp",
+  "newReleaseNoteSurfaces": "ask",
+  "mobileReleaseNotePlacement": "mobile-only",
+  "crossSurfaceVersioning": "independent",
+  "publicVersioning": {
+    "patch": "automatic",
+    "minor": "automatic",
+    "major": "ask",
+    "suggestWhenAsking": true
+  },
+  "sharedVersionLines": [
+    {
+      "mode": "catch-up",
+      "trains": ["mobile", "web"]
+    }
+  ]
+}

@@ -88,6 +88,14 @@ or `mixed`; when several public version owners exist and the relationship stays
 ambiguous, the skill asks once, records the answer, and leaves version fields
 untouched until then.
 
+In the full distribution, optional `sharedVersionLines` lets separately
+versioned apps, such as Web, iOS, Android, or desktop, share one public number.
+A `catch-up` line lets an app that is behind ship the highest released number,
+so Web `1.0.0` makes Mobile's next release `1.0.0`; a `bump-shared` line gives
+every release the next number and lets apps that did not ship skip it. Setup
+detects the apps and asks one plain question; release notes still describe
+each app's own changes at their actual impact.
+
 For the full distribution, setup asks where people should read mobile-specific
 history whenever inspection reports mobile applicability as detected or
 uncertain; a complete scan that finds another product shape and reports mobile

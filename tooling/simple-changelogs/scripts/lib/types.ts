@@ -96,6 +96,7 @@ export const CROSS_SURFACE_VERSIONING_POLICIES = [
   "independent",
   "mixed",
 ] as const;
+export const SHARED_VERSION_LINE_MODES = ["catch-up", "bump-shared"] as const;
 export const VERIFICATION_STATUSES = ["passed", "failed", "not-run"] as const;
 export const ASSERTION_KINDS = [
   "activation",
@@ -121,6 +122,11 @@ export type PublicVersionAction = (typeof PUBLIC_VERSION_ACTIONS)[number];
 export type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 export type CrossSurfaceVersioning =
   (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
+export type SharedVersionLineMode = (typeof SHARED_VERSION_LINE_MODES)[number];
+export interface SharedVersionLine {
+  mode: SharedVersionLineMode;
+  trains: string[];
+}
 export type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 export type ReleaseNoteLinkPolicy = (typeof RELEASE_NOTE_LINK_POLICIES)[number];
@@ -178,6 +184,7 @@ export interface RepoPolicy {
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
+  sharedVersionLines?: SharedVersionLine[];
   signatures: SignaturePolicy;
 }
 
@@ -228,6 +235,7 @@ export interface SetupSelection {
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: SetupScope;
   setupStyle?: SetupStyle;
+  sharedVersionLines?: SharedVersionLine[];
   signatures?: SignaturePolicy;
 }
 
@@ -289,6 +297,11 @@ export interface SetupInventory {
     web: string[];
     workspace: string[];
   };
+  versionTrains?: {
+    path: string;
+    train: string;
+    version: string | null;
+  }[];
 }
 
 export interface SetupRecommendation {
@@ -340,6 +353,7 @@ export interface SetupResult {
     }[];
     currentVersion: number;
     headline: "Simple Changelogs has recently been updated.";
+    questions?: ["shared-version-lines"];
     recordedVersion: number;
     releaseNotesOffer: string;
     releaseNotesPath: string;

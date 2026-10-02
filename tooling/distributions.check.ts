@@ -14,9 +14,11 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // distribution. 400 KiB is required because those copies grew with necessary
 // code, not prose: the query parser and curation-check correctness fixes
 // (MR !60) and setup transaction recovery (MR !59). Reference prose was
-// already trimmed in MR !56. Measured after both: Web+CMS 396,476 bytes, full
-// 393,734, Web 366,808, mobile 357,580, skill-maintainer 289,496, CMS-only
-// 219,638. When this binds again, prefer trimming reference prose over
+// already trimmed in MR !56. Shared version lines then added train detection
+// and line validation to setup.ts plus full-only guidance, leaving full the
+// closest to the cap. Measured after that: full 409,247 bytes, Web+CMS
+// 403,826, Web 374,158, mobile 364,930, skill-maintainer 296,846, CMS-only
+// 226,988. When this binds again, prefer trimming reference prose over
 // raising the cap: the budget exists to keep an installed package small.
 const MAX_DISTRIBUTION_BYTES = 400 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
@@ -1092,6 +1094,41 @@ for (const requiredRule of [
   }
 }
 
+// Shared version lines relate separately versioned release trains, which only
+// the full distribution owns. Every package carries the byte-synced setup
+// helper, but only full may route to or mention the policy in its guidance.
+const SHARED_VERSION_LINES_REFERENCE = "references/shared-version-lines.md";
+for (const {
+  directory,
+  directoryName,
+  entries,
+  source,
+} of distributionSnapshots) {
+  if (!changelogDistributions.has(directoryName)) {
+    continue;
+  }
+  const full = directoryName === "simple-changelogs";
+  if (full !== source.includes(SHARED_VERSION_LINES_REFERENCE)) {
+    failures.push(
+      full
+        ? `skills/${directoryName}/SKILL.md does not route ${SHARED_VERSION_LINES_REFERENCE}`
+        : `skills/${directoryName}/SKILL.md routes full-only ${SHARED_VERSION_LINES_REFERENCE}`
+    );
+  }
+  const mentions = entries.filter(
+    (entry) =>
+      (entry.path === "SKILL.md" || entry.path.startsWith("references/")) &&
+      readFileSync(join(directory, entry.path), "utf8").includes(
+        "sharedVersionLines"
+      )
+  );
+  if (!full && mentions.length > 0) {
+    failures.push(
+      `skills/${directoryName} documents full-only sharedVersionLines in ${mentions.map((entry) => entry.path).join(", ")}`
+    );
+  }
+}
+
 // Agents preview the first lines of a reference to decide whether to read on,
 // so every long reference opens with a contents list naming each `##` heading
 // in order. guidance-updates.md is exempt: the setup helper addresses its
@@ -1182,7 +1219,8 @@ for (const { directoryName, source } of cmsPolicySchemas) {
     source.includes("releaseNoteEnvironmentScope") ||
     source.includes("releaseNoteLinks") ||
     source.includes("releaseNoteGrouping") ||
-    source.includes("majorReleaseNaming")
+    source.includes("majorReleaseNaming") ||
+    source.includes("sharedVersionLines")
   ) {
     failures.push(
       `skills/${directoryName}/schemas/repo-policy.schema.json must not carry repository-only app policy`

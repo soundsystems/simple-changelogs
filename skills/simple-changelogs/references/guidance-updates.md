@@ -426,3 +426,13 @@ changelogs; removing it let the next merge prepend into the newest release.
 `query.ts check` flags a duplicate or non-leading `Unreleased`. An optional
 audit restores a missing empty heading and reports entries the newest release
 absorbed; moving them needs separate authority.
+
+<!-- simple-changelogs-guidance-update version="22" kinds="capability,onboarding" backfill="not-needed" summary="Apps that release separately can now share one version number, so an app that is behind catches up to the latest release number." -->
+## Guidance 22
+
+Separately versioned apps, such as Web, iOS, Android, or desktop, can share
+one number through `sharedVersionLines`: under `catch-up`, Web `1.0.0` makes
+Mobile's next release `1.0.0`; under `bump-shared`, every release takes the
+next number. Notes still follow each app's own impact. Where two or more such
+apps have no recorded answer, this update asks **Should your apps share
+version numbers?** once. Nothing is renumbered and no backfill is needed.

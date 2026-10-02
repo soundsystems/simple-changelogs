@@ -59,6 +59,7 @@ const CROSS_SURFACE_VERSIONING_POLICIES = [
   "independent",
   "mixed",
 ] as const;
+const SHARED_VERSION_LINE_MODES = ["catch-up", "bump-shared"] as const;
 const RELEASE_NOTE_ENVIRONMENT_SCOPES = [
   "all-environments",
   "non-production",
@@ -176,6 +177,14 @@ const COMPONENT_CONFIG_FILE = "components.json";
 const SWIFT_SOURCE_PATH = /\.swift$/u;
 const SWIFT_UI_CONTENT = /\bSwiftUI\b/u;
 const GRADLE_SOURCE_PATH = /\.(?:gradle|kts)$/u;
+const PLIST_VERSION =
+  /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]*)<\/string>/u;
+// 1-3 numeric parts; a prerelease needs a letter, so a date never parses.
+const PUBLIC_VERSION =
+  /^\d+(?:\.\d+){0,2}(?:-[\w.-]*[a-z][\w.-]*)?(?:\+[\w.-]+)?$/iu;
+const GRADLE_VERSION = /\bversionName\s*=?\s*["']([^"']+)["']/u;
+const NATIVE_OWNER =
+  /(?:^|\/)(ios|macos|android)\/(?:.+\/)?(?:info\.plist|build\.gradle(?:\.kts)?)$/u;
 const COMPOSE_CONTENT =
   /(?:androidx\.compose|composeOptions|org\.jetbrains\.compose)/u;
 const TEXT_EXTENSIONS = new Set([
@@ -190,6 +199,7 @@ const TEXT_EXTENSIONS = new Set([
   ".md",
   ".mjs",
   ".php",
+  ".plist",
   ".py",
   ".rb",
   ".rs",
@@ -225,6 +235,15 @@ export type PublicVersionAction = (typeof PUBLIC_VERSION_ACTIONS)[number];
 type SurfaceComponentSource = (typeof SURFACE_COMPONENT_SOURCES)[number];
 type CrossSurfaceVersioning =
   (typeof CROSS_SURFACE_VERSIONING_POLICIES)[number];
+interface SharedVersionLine {
+  mode: (typeof SHARED_VERSION_LINE_MODES)[number];
+  trains: string[];
+}
+interface VersionTrain {
+  path: string;
+  train: string;
+  version: string | null;
+}
 type ReleaseNoteEnvironmentScope =
   (typeof RELEASE_NOTE_ENVIRONMENT_SCOPES)[number];
 type ReleaseNoteLinkPolicy = (typeof RELEASE_NOTE_LINK_POLICIES)[number];
@@ -250,7 +269,7 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 21,
+  full: 22,
   mobile: 19,
   "skill-repository": 13,
   web: 20,
@@ -274,6 +293,7 @@ const DISTRIBUTION_DIRECTORIES = {
 // against the current version would silently retire the invariant on the next
 // guidance bump.
 const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
+const SHARED_VERSION_LINES_GUIDANCE = 22;
 
 export interface CurationBudget {
   max: number;
@@ -299,6 +319,7 @@ interface RepoPolicy {
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   schemaVersion: 1;
+  sharedVersionLines?: SharedVersionLine[];
   signatures: SignaturePolicy;
 }
 
@@ -372,6 +393,7 @@ interface Inventory {
     web: string[];
     workspace: string[];
   };
+  versionTrains?: VersionTrain[];
 }
 
 type SurfaceApplicability = "detected" | "not-detected" | "uncertain";
@@ -398,6 +420,7 @@ interface Selection {
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
+  sharedVersionLines?: SharedVersionLine[];
   signatures?: SignaturePolicy;
 }
 
@@ -411,7 +434,8 @@ type OptionalSelectionKeys =
   | "publicVersioning"
   | "releaseNoteEnvironmentScope"
   | "releaseNoteGrouping"
-  | "releaseNoteLinks";
+  | "releaseNoteLinks"
+  | "sharedVersionLines";
 
 type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
   Pick<Selection, OptionalSelectionKeys>;
@@ -464,6 +488,7 @@ export interface GuidanceUpdateNotice {
   }[];
   currentVersion: number;
   headline: "Simple Changelogs has recently been updated.";
+  questions?: ["shared-version-lines"];
   recordedVersion: number;
   releaseNotesOffer: string;
   releaseNotesPath: string;
@@ -558,6 +583,7 @@ export interface ApplyOptions extends InspectOptions {
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
+  sharedVersionLines?: SharedVersionLine[];
   signatures?: SignaturePolicy;
 }
 
@@ -928,6 +954,41 @@ const validateCurationBudget = (value: unknown): string[] => {
   return errors;
 };
 
+// Full-only; a train joins one line; "shared" crossSurfaceVersioning is one train.
+const sharedVersionLineErrors = (value: Record<string, unknown>): string[] => {
+  const lines = value.sharedVersionLines;
+  if (lines === undefined) {
+    return [];
+  }
+  if (!Array.isArray(lines)) {
+    return ["sharedVersionLines must be an array"];
+  }
+  const errors: string[] = [];
+  const valid = lines.filter(
+    (line): line is SharedVersionLine =>
+      isRecord(line) &&
+      hasExactKeys(line, ["mode", "trains"]) &&
+      oneOf(line.mode, SHARED_VERSION_LINE_MODES) &&
+      Array.isArray(line.trains) &&
+      line.trains.length > 1 &&
+      line.trains.every((train) => typeof train === "string" && train)
+  );
+  if (valid.length < lines.length) {
+    errors.push("each shared version line needs a mode and 2+ trains");
+  }
+  const trains = valid.flatMap((line) => line.trains);
+  if (new Set(trains).size < trains.length) {
+    errors.push("a train repeats in sharedVersionLines");
+  }
+  if (value.distribution !== undefined && value.distribution !== "full") {
+    errors.push("sharedVersionLines applies only to full");
+  }
+  if (lines.length > 0 && value.crossSurfaceVersioning === "shared") {
+    errors.push("sharedVersionLines contradicts crossSurfaceVersioning shared");
+  }
+  return errors;
+};
+
 const validateRepoPolicy = (
   value: unknown
 ): { errors: string[]; value?: RepoPolicy } => {
@@ -955,6 +1016,7 @@ const validateRepoPolicy = (
           "releaseNoteEnvironmentScope",
           "releaseNoteGrouping",
           "releaseNoteLinks",
+          "sharedVersionLines",
         ]
       )
     )
@@ -1010,6 +1072,7 @@ const validateRepoPolicy = (
     value.crossSurfaceVersioning,
     CROSS_SURFACE_VERSIONING_POLICIES
   );
+  errors.push(...sharedVersionLineErrors(value));
   reportUnsupportedOptionalEnum(
     errors,
     "releaseNoteEnvironmentScope",
@@ -1489,9 +1552,67 @@ const collectFileEvidence = (
   }
 };
 
+// Release-train version owners; a "$(...)" build variable reads as null.
+const versionOwnerFor = (
+  path: string,
+  content: string
+): VersionTrain | undefined => {
+  const lower = path.toLowerCase();
+  const name = basename(lower);
+  const app = WORKSPACE_APP_PATH.exec(lower)?.[1];
+  const native = NATIVE_OWNER.exec(lower)?.[1];
+  let train = native;
+  let raw: unknown;
+  try {
+    if (native) {
+      raw = (name === "info.plist" ? PLIST_VERSION : GRADLE_VERSION).exec(
+        content
+      )?.[1];
+    } else if (name === "app.json") {
+      train = app ?? "mobile";
+      raw = JSON.parse(content).expo?.version;
+    } else if (name === "package.json" && dirname(lower) === `apps/${app}`) {
+      train = app;
+      raw = JSON.parse(content).version;
+    } else if (name === "tauri.conf.json") {
+      const config = JSON.parse(content);
+      train = "desktop";
+      raw = config.version ?? config.package?.version;
+    }
+  } catch {
+    return;
+  }
+  if (!train || typeof raw !== "string") {
+    return;
+  }
+  return { path, train, version: raw.includes("$") ? null : raw };
+};
+
+const ownerPrefix = (path: string): string =>
+  dirname(path) === "." ? "" : `${dirname(path)}/`;
+
+// package.json beside another owner, or native files in an Expo app, mirror.
+const versionTrainsFrom = (owners: VersionTrain[]): VersionTrain[] => {
+  const trains: VersionTrain[] = [];
+  for (const owner of owners) {
+    const mirror = owners.some((other) =>
+      owner.path.endsWith("package.json")
+        ? other !== owner && other.path.startsWith(ownerPrefix(owner.path))
+        : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
+          other.path.endsWith("app.json") &&
+          owner.path.startsWith(ownerPrefix(other.path))
+    );
+    if (!(mirror || trains.some(({ train }) => train === owner.train))) {
+      trains.push(owner);
+    }
+  }
+  return trains;
+};
+
 const inspectInventory = async (
   root: string,
-  dependencies: string[]
+  dependencies: string[],
+  withTrains = false
 ): Promise<Inventory> => {
   const publicPath = join(root, "CHANGELOG.md");
   const developerPath = join(root, "DEVELOPER_CHANGELOG.md");
@@ -1573,6 +1694,7 @@ const inspectInventory = async (
         mobileAppPath: MOBILE_APP_PATH.test(lowerPath),
         nativeToolkit: nativeToolkitFor(lowerPath, content),
         storeMetadataPath: STORE_METADATA_PATH.test(lowerPath),
+        versionOwner: versionOwnerFor(localPath, content),
         webAppPath: WEB_APP_PATH.test(lowerPath),
         workspaceAppPath,
       };
@@ -1664,6 +1786,11 @@ const inspectInventory = async (
       workspace: applicabilityFor(surfaceStructureEvidence.workspace),
     },
     surfaceStructureEvidence,
+    ...(withTrains && {
+      versionTrains: versionTrainsFrom(
+        fileEvidence.flatMap(({ versionOwner }) => versionOwner ?? [])
+      ),
+    }),
   };
 };
 
@@ -1923,6 +2050,33 @@ const mobileTopologyQuestionFor = (
   return null;
 };
 
+// Only full inventories list trains; ask for 2+ unless answered or one train.
+const asksVersionLines = (inventory: Inventory, policy?: RepoPolicy): boolean =>
+  inventory.versionTrains?.[1] !== undefined &&
+  policy?.sharedVersionLines === undefined &&
+  policy?.crossSurfaceVersioning !== "shared";
+
+const fullTopologyQuestionsFor = (
+  installed: Distribution | "cms",
+  inventory: Inventory,
+  policy: StateRecord<RepoPolicy>
+): string[] => {
+  const questions: string[] = [];
+  const mobileQuestion = mobileTopologyQuestionFor(inventory);
+  if (
+    installed === "full" &&
+    mobileQuestion &&
+    (policy.state === "absent" ||
+      policy.value?.mobileReleaseNotePlacement === undefined)
+  ) {
+    questions.push(mobileQuestion);
+  }
+  if (policy.state === "absent" && asksVersionLines(inventory)) {
+    questions.push("shared-version-lines");
+  }
+  return questions;
+};
+
 const unresolvedFor = (
   installed: Distribution | "cms",
   inventory: Inventory,
@@ -1934,16 +2088,7 @@ const unresolvedFor = (
   if (detection.confidence === "conflict") {
     unresolved.push("distribution-conflict");
   }
-  if (
-    installed === "full" &&
-    (policy.state === "absent" ||
-      policy.value?.mobileReleaseNotePlacement === undefined)
-  ) {
-    const mobileQuestion = mobileTopologyQuestionFor(inventory);
-    if (mobileQuestion) {
-      unresolved.push(mobileQuestion);
-    }
-  }
+  unresolved.push(...fullTopologyQuestionsFor(installed, inventory, policy));
   if (
     (installed === "cms" || installed === "web-cms") &&
     cmsPolicy.state === "absent"
@@ -2054,7 +2199,7 @@ export const inspectRepository = async (
         resolveGlobalPreferencesPath(options.configDirectory),
         validateGlobalPreferences
       ),
-      inspectInventory(root, dependencies),
+      inspectInventory(root, dependencies, installed === "full"),
       capabilitiesFor(installed),
     ]);
   const projectEvidence = inspectProjectEvidence(root, inventory, dependencies);
@@ -2081,6 +2226,13 @@ export const inspectRepository = async (
     installed === "cms" ? cmsPolicy.value : policy.value,
     installed === "web-cms" ? cmsPolicy.value : undefined
   );
+  if (
+    guidanceUpdate &&
+    guidanceUpdate.recordedVersion < SHARED_VERSION_LINES_GUIDANCE &&
+    asksVersionLines(inventory, policy.value)
+  ) {
+    guidanceUpdate.questions = ["shared-version-lines"];
+  }
   const unresolvedQuestions = configured
     ? []
     : unresolvedFor(installed, inventory, policy, cmsPolicy, detection);
@@ -2513,6 +2665,7 @@ const selectionFrom = (
     releaseNoteLinks: options.releaseNoteLinks,
     scope: options.scope ?? "repository",
     setupStyle: options.setupStyle ?? defaults.setupStyle,
+    sharedVersionLines: options.sharedVersionLines,
     signatures: options.signatures ?? defaults.signatures,
   };
 };
@@ -2615,6 +2768,9 @@ const repoPolicyFor = (
   }
   if (selection.releaseNoteLinks !== undefined) {
     policy.releaseNoteLinks = selection.releaseNoteLinks;
+  }
+  if (selection.sharedVersionLines !== undefined) {
+    policy.sharedVersionLines = selection.sharedVersionLines;
   }
   return policy;
 };
@@ -2806,8 +2962,12 @@ const updateGuidanceDisposition = async (
   }
   // Recorded versions never decrease, so acknowledging one track cannot
   // lower the other below what a newer helper already recorded.
+  const lines = options.sharedVersionLines && {
+    sharedVersionLines: options.sharedVersionLines,
+  };
   const updatedPolicy = {
     ...record.value,
+    ...lines,
     guidance: {
       backfillStatus: disposition,
       version: Math.max(
@@ -2864,7 +3024,7 @@ const updateGuidanceDisposition = async (
           installed === "cms"
             ? null
             : ownerWriteReceiptFor(updatedPolicy as RepoPolicy, true),
-        selection: { backfillStatus: disposition },
+        selection: { backfillStatus: disposition, ...lines },
         status: "configured",
         summary:
           disposition === "partial"
@@ -2965,6 +3125,10 @@ const updateContextualPreferences = async (
   if (options.releaseNoteLinks !== undefined) {
     selection.releaseNoteLinks = options.releaseNoteLinks;
     updates.releaseNoteLinks = options.releaseNoteLinks;
+  }
+  if (options.sharedVersionLines !== undefined) {
+    selection.sharedVersionLines = options.sharedVersionLines;
+    updates.sharedVersionLines = options.sharedVersionLines;
   }
   const record = inspect.policy;
   if (
@@ -3394,6 +3558,33 @@ const curationSelectionErrors = (
   return [];
 };
 
+const sharedVersionLineApplyErrors = (
+  options: ApplyOptions,
+  inspect: SetupResult,
+  installed: Distribution | "cms"
+): string[] => {
+  const lines = options.sharedVersionLines;
+  if (lines && installed !== "full") {
+    return ["Shared version lines apply only to full."];
+  }
+  if (lines && options.scope === "run-only") {
+    return ["Shared version lines are never run-only."];
+  }
+  const stored = inspect.policy?.value;
+  const errors = sharedVersionLineErrors({
+    crossSurfaceVersioning:
+      options.crossSurfaceVersioning ?? stored?.crossSurfaceVersioning,
+    sharedVersionLines: lines ?? stored?.sharedVersionLines,
+  });
+  const listed = errors.length > 0 ? [] : lines?.flatMap((line) => line.trains);
+  for (const { train, version } of inspect.inventory.versionTrains ?? []) {
+    if (listed?.includes(train) && version && !PUBLIC_VERSION.test(version)) {
+      errors.push(`${train} has no numbered version (${version}) to share.`);
+    }
+  }
+  return errors;
+};
+
 export const applySetup = async (
   options: ApplyOptions
 ): Promise<SetupResult> => {
@@ -3448,7 +3639,11 @@ export const applySetup = async (
       "--version-suggestions may be omitted only for the complete ask/ask/ask default.",
     ]);
   }
-  const curationErrors = curationSelectionErrors(options, inspect);
+  // Checked before every write path so an invalid line is never stored.
+  const curationErrors = [
+    ...curationSelectionErrors(options, inspect),
+    ...sharedVersionLineApplyErrors(options, inspect, installed),
+  ];
   if (curationErrors.length > 0) {
     return blockResult(inspect, curationErrors);
   }
@@ -3524,6 +3719,7 @@ const valueOptionNames = new Set([
   "--repo",
   "--scope",
   "--setup-style",
+  "--shared-version-lines",
   "--signatures",
   "--surface-components",
   "--task-mode",
@@ -3591,6 +3787,13 @@ export const parseCli = (argv: string[]): ParsedCli => {
     }
     return value;
   };
+  const lines = values.get("--shared-version-lines");
+  let sharedVersionLines: SharedVersionLine[] | undefined;
+  try {
+    sharedVersionLines = lines === undefined ? undefined : JSON.parse(lines);
+  } catch (error) {
+    throw new Error("--shared-version-lines must be JSON", { cause: error });
+  }
   return {
     command,
     options: {
@@ -3651,6 +3854,7 @@ export const parseCli = (argv: string[]): ParsedCli => {
       repo: values.get("--repo") ?? ".",
       scope: enumValue("--scope", SCOPES),
       setupStyle: enumValue("--setup-style", SETUP_STYLES),
+      sharedVersionLines,
       signatures: enumValue("--signatures", SIGNATURE_POLICIES),
       taskMode: enumValue("--task-mode", TASK_MODES),
     },

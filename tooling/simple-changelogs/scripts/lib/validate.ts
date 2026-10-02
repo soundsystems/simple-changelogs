@@ -39,6 +39,7 @@ import {
   type RunnerRequest,
   type RunnerResponse,
   SETUP_STYLES,
+  SHARED_VERSION_LINE_MODES,
   SIGNATURE_POLICIES,
   SOURCE_REWRITE_CHANGE_KINDS,
   SURFACE_CHRONOLOGICAL_ACCESS_MODES,
@@ -454,6 +455,14 @@ const repoPolicyBase = objectOf({
   releaseNoteGrouping: optional(enumOf(RELEASE_NOTE_GROUPING_POLICIES)),
   releaseNoteLinks: optional(enumOf(RELEASE_NOTE_LINK_POLICIES)),
   schemaVersion: literal(1),
+  sharedVersionLines: optional(
+    arrayOf(
+      objectOf({
+        mode: enumOf(SHARED_VERSION_LINE_MODES),
+        trains: arrayOf(nonEmptyString, { minItems: 2, uniqueStrings: true }),
+      })
+    )
+  ),
   signatures: enumOf(SIGNATURE_POLICIES),
 });
 
@@ -476,6 +485,31 @@ const globalPreferences = objectOf({
   signatures: enumOf(SIGNATURE_POLICIES),
 });
 
+// Lines join separately versioned trains: full-only, a train in at most one
+// line, and contradicted by crossSurfaceVersioning "shared" (one train).
+const sharedVersionLineErrors = (
+  policy: Record<string, unknown>,
+  path: string,
+  errors: string[]
+): void => {
+  const lines = policy.sharedVersionLines;
+  if (!Array.isArray(lines)) {
+    return;
+  }
+  const trains = lines.flatMap((line: unknown) =>
+    isPlainObject(line) && Array.isArray(line.trains) ? line.trains : []
+  );
+  if (new Set(trains).size < trains.length) {
+    errors.push(`${path} must not place a train in more than one line`);
+  }
+  if (policy.distribution !== undefined && policy.distribution !== "full") {
+    errors.push(`${path} applies only to the full distribution`);
+  }
+  if (lines.length > 0 && policy.crossSurfaceVersioning === "shared") {
+    errors.push(`${path} contradicts crossSurfaceVersioning shared`);
+  }
+};
+
 const repoPolicy: Validator = (value, path, errors) => {
   repoPolicyBase(value, path, errors);
   if (!isPlainObject(value)) {
@@ -495,6 +529,7 @@ const repoPolicy: Validator = (value, path, errors) => {
       `${childPath(path, "mobileReleaseNotePlacement")} is required for full distribution guidance version 6 or newer`
     );
   }
+  sharedVersionLineErrors(value, childPath(path, "sharedVersionLines"), errors);
 };
 
 const manifest = objectOf({

@@ -43,6 +43,20 @@
       "then": {
         "required": ["mobileReleaseNotePlacement"]
       }
+    },
+    {
+      "if": {
+        "properties": { "distribution": { "not": { "const": "full" } } },
+        "required": ["distribution"]
+      },
+      "then": { "not": { "required": ["sharedVersionLines"] } }
+    },
+    {
+      "if": {
+        "properties": { "crossSurfaceVersioning": { "const": "shared" } },
+        "required": ["crossSurfaceVersioning"]
+      },
+      "then": { "properties": { "sharedVersionLines": { "maxItems": 0 } } }
     }
   ],
   "properties": {
@@ -117,6 +131,24 @@
     },
     "crossSurfaceVersioning": {
       "enum": ["shared", "independent", "mixed"]
+    },
+    "sharedVersionLines": {
+      "$comment": "A train may join at most one line; the setup helper and lib/validate.ts enforce that.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "trains"],
+        "properties": {
+          "mode": { "enum": ["catch-up", "bump-shared"] },
+          "trains": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
     }
   },
   "$defs": {

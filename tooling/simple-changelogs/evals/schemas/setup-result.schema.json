@@ -170,7 +170,13 @@
         },
         "walkthroughQuestion": { "type": "string", "minLength": 1 },
         "releaseNotesPath": { "type": "string", "minLength": 1 },
-        "releaseNotesOffer": { "type": "string", "minLength": 1 }
+        "releaseNotesOffer": { "type": "string", "minLength": 1 },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "const": "shared-version-lines" }
+        }
       }
     },
     "capabilities": {
@@ -275,6 +281,24 @@
     "crossSurfaceVersioning": {
       "enum": ["shared", "independent", "mixed"]
     },
+    "sharedVersionLines": {
+      "$comment": "A train in more than one line, a non-full distribution, and a line beside crossSurfaceVersioning shared are rejected by the setup helper and lib/validate.ts.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "trains"],
+        "properties": {
+          "mode": { "enum": ["catch-up", "bump-shared"] },
+          "trains": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
     "releaseNoteEnvironmentScope": {
       "enum": [
         "all-environments",
@@ -361,7 +385,8 @@
           "$ref": "#/$defs/releaseNoteLinks"
         },
         "publicReleaseNotes": { "$ref": "#/$defs/publicReleaseNotes" },
-        "curationBudget": { "$ref": "#/$defs/curationBudget" }
+        "curationBudget": { "$ref": "#/$defs/curationBudget" },
+        "sharedVersionLines": { "$ref": "#/$defs/sharedVersionLines" }
       }
     },
     "cmsPolicy": {
@@ -657,6 +682,21 @@
               "items": { "type": "string", "minLength": 1 }
             }
           }
+        },
+        "versionTrains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "train", "version"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "train": { "type": "string", "minLength": 1 },
+              "version": {
+                "oneOf": [{ "type": "null" }, { "type": "string" }]
+              }
+            }
+          }
         }
       }
     },
@@ -762,6 +802,7 @@
         "publicReleaseNotes": { "$ref": "#/$defs/publicReleaseNotes" },
         "curationBudget": { "$ref": "#/$defs/curationBudget" },
         "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
+        "sharedVersionLines": { "$ref": "#/$defs/sharedVersionLines" },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },
         "signatures": { "enum": ["agent-and-timestamp", "none"] }

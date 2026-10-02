@@ -1,0 +1,8 @@
+{
+  "name": "@trailhead/mobile",
+  "version": "0.21.3",
+  "dependencies": {
+    "expo": "54.0.0",
+    "react-native": "0.81.0"
+  }
+}

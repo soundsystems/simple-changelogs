@@ -77,6 +77,7 @@ const FIXTURE_IDS = new Set([
   "surface-mobile-store",
   "surface-radix-app",
   "surface-react-tailwind",
+  "version-lines-catch-up",
   "version-trains-ambiguous",
   "version-trains-independent",
   "version-trains-mixed",
@@ -189,6 +190,8 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-release-name-presentation",
   "behavior-shared-train-release",
   "behavior-store-copy-public-version",
+  "behavior-version-line-advance",
+  "behavior-version-line-catch-up",
 ]);
 
 const loadManifest = async (): Promise<EvalManifest> => {
@@ -249,8 +252,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(71);
-    expect(new Set(ids).size).toBe(71);
+    expect(ids).toHaveLength(73);
+    expect(new Set(ids).size).toBe(73);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

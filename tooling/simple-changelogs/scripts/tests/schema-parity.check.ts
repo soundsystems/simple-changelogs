@@ -37,6 +37,7 @@ import {
   SETUP_SCOPES,
   SETUP_STATUSES,
   SETUP_STYLES,
+  SHARED_VERSION_LINE_MODES,
   SIGNATURE_POLICIES,
   SOURCE_REWRITE_CHANGE_KINDS,
   SURFACE_CHRONOLOGICAL_ACCESS_MODES,
@@ -394,6 +395,16 @@ describe("schema parity", () => {
         setupResultSchema,
         "$defs.crossSurfaceVersioning.enum",
         CROSS_SURFACE_VERSIONING_POLICIES,
+      ],
+      [
+        policySchema,
+        "properties.sharedVersionLines.items.properties.mode.enum",
+        SHARED_VERSION_LINE_MODES,
+      ],
+      [
+        setupResultSchema,
+        "$defs.sharedVersionLines.items.properties.mode.enum",
+        SHARED_VERSION_LINE_MODES,
       ],
       [
         policySchema,

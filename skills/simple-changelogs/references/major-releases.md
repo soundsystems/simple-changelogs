@@ -29,6 +29,9 @@ Treat a stable major release as ready to finalize only when:
 3. explicit release intent or a documented release-bearing action exists; and
 4. the affected product surface shares that version and release flow.
 
+Catching up to a shared version line never finalizes a stable major
+(`references/shared-version-lines.md`).
+
 Treat names such as `v2`, `next`, and `release/2.x` as supporting evidence only.
 A merge from one of those branches is not a major release when `main` is merely
 an integration branch, the canonical version remains a prerelease, or the repo
