@@ -2,6 +2,100 @@
 
 ## Unreleased
 
+- Added `sharedVersionLines` to the full-distribution repository policy and
+  bumped full guidance to 22 (`distribution-manifest.json`,
+  `changelog-provider.json`, SKILL.md, and `GUIDANCE_VERSIONS.full`). The
+  field is an optional array of `{ mode: "catch-up" | "bump-shared", trains }`
+  lines; each line names 2+ unique `releaseTrain` ids, a train joins at most
+  one line, absent means every train numbers itself, and `[]` records that the
+  owner chose separate numbers. `setup.ts` (all six byte-synced copies) and
+  `lib/validate.ts` reject a non-full `distribution`, a repeated train, and a
+  non-empty line beside `crossSurfaceVersioning: "shared"` as malformed
+  policy; `applySetup` also blocks a non-full install, `--scope run-only`,
+  and a listed train whose owner holds no numbered version before any write.
+  The evals' `repo-policy` and `setup-result` schemas carry the same shape
+  and conditions.
+  - Full inspection lists version owners in `inventory.versionTrains` as
+    `{ path, train, version | null }`: Expo `app.json` (`expo.version`),
+    `apps/<name>/package.json` (which covers Electron), Tauri
+    `tauri.conf.json` (train `desktop`), `ios/` and `macos/` `Info.plist`
+    (`CFBundleShortVersionString`), and `android/` `versionName` in Groovy or
+    Kotlin DSL; two-part versions are accepted, and a `$(MARKETING_VERSION)`
+    build variable reads as `null`. A `package.json` beside another owner and
+    native files inside an Expo app are mirrors, not extra trains.
+  - The `shared-version-lines` question appears in `unresolvedQuestions` only
+    when 2+ trains are detected, no answer is recorded, and
+    `crossSurfaceVersioning` is not `shared`; a repository recorded below
+    guidance 22 gets it once through the new optional
+    `guidanceUpdate.questions: ["shared-version-lines"]`. Answers are recorded
+    with `--shared-version-lines '<json>'` during onboarding, as a contextual
+    update, or together with `--guidance-backfill` in one apply.
+  - Guidance is full-only: the new `references/shared-version-lines.md` is
+    routed from the full SKILL.md, and full `setup.md`, `onboarding.md`,
+    `major-releases.md`, and `guidance-updates.md` (Guidance 22,
+    `kinds="capability,onboarding"`, `backfill="not-needed"`) carry pointers.
+    `distributions.check.ts` fails when full stops routing the reference, when
+    any other changelog distribution routes it or mentions `sharedVersionLines`
+    in SKILL.md or `references/`, or when a CMS policy schema carries the
+    field. The shared `version-decisions.md`, `release-handoff.md`, and
+    `entry-classification.md` copies are unchanged.
+  - Selection: versions are dotted numeric with 1 to 3 parts, zero-padded so
+    `1.2` equals `1.2.0`; `+build` metadata is ignored, prereleases are
+    excluded from `memberVersions` and from `H` (the line's highest stable
+    version), and a non-numeric or date-only value blocks. Under `catch-up`, a
+    shipping train that is `null` or behind `H` with `next(own, impact) <= H`
+    ships exactly `H`; otherwise the release set ships `next(H, L)` at its
+    highest impact. Under `bump-shared`, every release ships `next(H, L)` and
+    trains that did not ship skip it. Every train in one release set selects
+    the same number. An exact direction is validated, never coerced: it must
+    exceed the train's own version and be at least `H` (above `H` under
+    `bump-shared` unless it is the set's number), or the result is
+    `invalid-version-direction` / `choose-version`; a `bump-shared` number
+    another member outside the set already released fails with
+    `final-verification-failed` / `review-finalization`. Wording and
+    `publicVersioning` key on the train's own impact and the visible jump from
+    its own version, and crossing a major boundary (`0.x` to `1.0.0`
+    included) always asks.
+  - Each receipt carries one evidence item, `versionLine {...}`, with exactly
+    `mode`, `members` (sorted), `memberVersions`, `sharedVersion`,
+    `sharedVersionTrains`, and `outcome` (`catch-up` | `advance`), named and
+    ordered to map 1:1 onto the future receipt v3
+    `versionDecision.versionLine`. No request, receipt, or capability schema
+    changed: `changelog-provider.json` still advertises `receiptVersions [1,
+    2]` and no `shared-version-lines` feature.
+  - `tooling/simple-changelogs/scripts/lib/version-lines.ts` is a
+    maintainer-only model of the reference (not shipped) that pins the
+    arithmetic. New `version-lines.check.ts` (20 tests) parses the worked
+    example table under `<!-- shared-version-line-examples -->` and checks
+    every row against the model, plus the Web 1.0 and 1.1 catch-up cases,
+    release sets, a generated property check over two-train lines, evidence
+    keys, direction and collision refusals, ordering, and required prose; new
+    `shared-version-lines.check.ts` (16 tests) covers policy validation, every
+    owner kind and the Expo mirror rule, question gating, the guidance 22
+    notice, all three recording paths, the apply blocks, and the CLI flag.
+    Schema-conformance, enum-parity, and manifest-coverage tests were
+    extended, and the merge request reports all 17 tracked mutations killed.
+    The eval manifest grew from 71 to 73 cases: `behavior-version-line-catch-up`
+    and `behavior-version-line-advance` use the new `version-lines-catch-up`
+    fixture (Web `1.0.0`, Mobile `0.21.3`), and `SHARED_VERSION_CAUGHT_UP` and
+    `SHARED_VERSION_ADVANCED` join the runner-response decision codes; the two
+    cases have not yet run through a model adapter.
+  - Sizes (`MAX_DISTRIBUTION_BYTES` 409,600): `setup.ts` grew 7,350 bytes in
+    every distribution, and full also ships about 8.2 KB of full-only
+    guidance. Full is now 409,247 bytes (353 under the cap), Web+CMS 403,826,
+    Web 374,158, mobile 364,930, skill-maintainer 296,846, and CMS-only
+    226,988; the cap comment records these. The next full-only addition needs
+    prose trimming or a recorded cap decision.
+  - Deferred: receipt v3 `versionDecision.versionLine`, an explicit
+    multi-train release-set field, and a `shared-version-lines` capability
+    feature wait for Simple Changes 0.23.0 and the fork upgrades; the line is
+    not yet in `effectivePolicyDigest` or `decisionDigest`; the coordinated
+    `onboardingContribution` question enum is unchanged; and lines set numbers
+    only, so desktop release-note destinations, per-train `publicVersioning`,
+    Cargo and non-Tauri Windows or Linux desktop manifests, and
+    train-qualified headings or a duplicate-number diagnostic in `query.ts`
+    are later work.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T17:49:35-05:00" -->
 - Stopped tracking design plans and specs in this public repository.
   `/docs/plans/` and `/docs/specs/` are added to `.gitignore`, the six tracked
   plans and the one tracked spec (the July 2026 portability and evaluation

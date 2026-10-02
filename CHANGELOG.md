@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Version numbers**
+  - Repositories on the full distribution that ship several apps from one
+    codebase, such as web, iOS, Android, and desktop, can now keep their
+    version numbers in sync. Setup finds the apps and asks one question with
+    three plain choices: separate numbers per app; the same number everywhere,
+    where an app that is behind catches up (Web ships 1.0, so the next Mobile
+    release is 1.0); or one shared counter, where every release takes the next
+    number and apps that did not ship skip it. The answer is saved in
+    `.simple-changelogs.json` as `sharedVersionLines`.
+  - Repositories already on the full distribution with several apps are asked
+    that question once, during the Guidance 22 update. Nothing is renumbered.
+  - Release notes still describe each app's real changes. A Mobile release
+    made of fixes that catches up to 1.0 is written as fixes, not as a major
+    release.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T17:49:35-05:00" -->
 - **History queries and checks**
   - `query.ts` no longer skips changelog entries or whole releases that carry
     an HTML comment on the same line as a bullet or heading, a `<!--` inside
