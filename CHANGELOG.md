@@ -2,6 +2,63 @@
 
 ## Unreleased
 
+- **History queries and checks**
+  - `query.ts` no longer skips changelog entries or whole releases that carry
+    an HTML comment on the same line as a bullet or heading, a `<!--` inside
+    inline code, or an indented code block. Such lines used to be read as
+    comments, the hidden entries vanished from `releases`, `show`, and
+    `entries`, and `check` still passed. No affected repository was found:
+    none had adopted curated notes or placed an inline comment on a bullet or
+    heading. An unclosed comment or code block is now reported as a
+    diagnostic instead of swallowing the lines after it.
+  - Curation checks run only when the repository has opted into curated
+    release notes; otherwise an existing `RELEASE_NOTES.md` only earns a note.
+    Under a curated policy, `check` now catches a section whose release or
+    source does not match its heading, a highlight bullet without exactly one
+    highlighted entry, and two sections bound to the same release. Breaking
+    and Security changes are recognized regardless of case, in nested
+    bullets, and through group or section names, and a release with fewer
+    entries than the highlight minimum is no longer failed for being thin.
+  - `query.ts --help` exits 0, `show v1.3.0` resolves, `--omitted` implies the
+    customer log, and `## Unreleased (targeting 1.5.0)` reads as Unreleased
+    with a diagnostic.
+- **Setup**
+  - Two setup updates applied at once can no longer silently discard a
+    confirmed change: the later run is blocked and asked to inspect again and
+    retry. A setup write interrupted part-way is rolled back on the next
+    write-mode run instead of blocking every later update; a transaction left
+    by an older helper version still blocks, now with exact remediation.
+  - Post-onboarding updates, guidance acknowledgments, and audit completion
+    stop before writing when inspection reports a distribution conflict or a
+    malformed policy, and acknowledging one guidance track never lowers the
+    other.
+  - A CMS policy must record a `guidance.version` of at least 1 everywhere it
+    is validated, numeric setup flags accept only plain decimal integers, and
+    a curation budget of `{min: 0, max: 0}` stays valid (every curated release
+    is rollup-only).
+  - Web+CMS update notices now explain what the CMS-track guidance adds
+    (curated highlights on CMS entries) instead of only naming a version.
+- **Curated release notes**
+  - The mobile distribution asks about curated notes only when an in-app
+    release-notes surface or store "What's New" metadata already exists, and
+    recommends them there because store fields are length-limited; the
+    skill-repository distribution asks only when the package has a published
+    release-note destination. Both map curated highlights to those surfaces
+    and keep `CHANGELOG.md` as the complete record; neither mentions marketing
+    or archive pages.
+- **Installation and project docs**
+  - The README now recommends installing from the GitHub mirror, where
+    `skills update` works, shows the current Web guidance version in its
+    example policy, describes the mobile-placement question as conditional,
+    and links the Apache-2.0 license and the new `NOTICE`. Security and
+    conduct reports go through a confidential GitLab issue; the mirror is
+    read-only.
+  - The fork-maintenance reference states that the checker path's leading
+    segment is the distribution's own package directory
+    (`skills/<distribution>` in an upstream checkout, the install directory
+    once installed), so the example is no longer resolved against a
+    repository root where the script does not exist.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T14:32:02-05:00" -->
 - **Release reconciliation**
   - Release-bearing work now carries the core workflow as a checklist in the
     agent's reply, and verification repeats until `query.ts check` and the
