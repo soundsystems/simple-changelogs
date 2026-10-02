@@ -18,7 +18,8 @@ audiences and release surfaces its `SKILL.md` claims; shared behavior lives in
 the references it bundles, and `bun run eval` verifies every selectable package
 boundary.
 
-Design plans stay in contributors' local `docs/plans/`, which Git ignores.
+Design plans and specs stay in contributors' local `docs/plans/` and
+`docs/specs/`, which Git ignores.
 Record shipped decisions in the changelogs and the skill references instead.
 
 Never include credentials, environment values, or customer data in fixtures,
