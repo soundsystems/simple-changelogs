@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Restored a green `bun run check`. The fork-maintenance checker note had put
+  Web+CMS 119 bytes over the distribution budget, because that distribution held
+  only 58 bytes of margin and the full distribution 2 KB, so no one-sentence
+  reference correction could land. Tightened the note by 97 bytes per
+  distribution and raised `MAX_DISTRIBUTION_BYTES` from 376 to 384 KiB, leaving
+  both large distributions roughly 8 KB. The budget comment now records that
+  trimming reference prose is preferred over raising the cap again.
+<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-10-02T12:28:16-05:00" -->
 - Stopped the adapter-runner checks from racing process creation. Both timeout
   cases handed `runAdapter` a 300-400 ms budget and then asserted on a pid
   record the adapter writes after it starts, but starting a process costs

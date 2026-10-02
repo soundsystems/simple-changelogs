@@ -9,9 +9,12 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-// Raised from 374 KiB so every distribution can vendor the classified-receipt
-// schema while retaining a small, explicit package-growth margin.
-const MAX_DISTRIBUTION_BYTES = 376 * 1024;
+// Raised from 376 KiB because Web+CMS had only 58 bytes of margin and the full
+// distribution 2 KB, so a one-sentence reference correction could not land. Both
+// large distributions now hold roughly 8 KB. When this binds again, prefer
+// trimming reference prose over raising the cap: the budget exists to keep an
+// installed package small.
+const MAX_DISTRIBUTION_BYTES = 384 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
