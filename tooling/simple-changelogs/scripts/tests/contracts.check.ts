@@ -690,6 +690,32 @@ description: >-
     ).not.toContain("IMPLICIT_UI_CREATION");
   });
 
+  test("does not read a hyphenated compound noun as UI creation", async () => {
+    // A downstream fork tripped this rule with prose that creates nothing:
+    // `build` matched inside `build-plan`, while `internal` and `surface`
+    // satisfied the target pattern.
+    const compoundSkill = await createValidSkill();
+    await writeFixtureFile(
+      compoundSkill,
+      "SKILL.md",
+      `${await readFile(join(compoundSkill, "SKILL.md"), "utf8")}\nAudience, disclosure, build-plan, and internal admin-surface behavior remains locally authoritative.\n`
+    );
+    const realCreationSkill = await createValidSkill();
+    await writeFixtureFile(
+      realCreationSkill,
+      "SKILL.md",
+      `${await readFile(join(realCreationSkill, "SKILL.md"), "utf8")}\nBuild a changelog panel whenever one is missing.\n`
+    );
+
+    expect(findingCodes(await evaluateContracts(compoundSkill))).not.toContain(
+      "IMPLICIT_UI_CREATION"
+    );
+    // The lookahead must not blunt the rule for genuine creation prose.
+    expect(
+      findingCodes(await evaluateContracts(realCreationSkill))
+    ).toContain("IMPLICIT_UI_CREATION");
+  });
+
   test("allowlists canonical policy examples independently", async () => {
     const skillDirectory = await createValidSkill();
 

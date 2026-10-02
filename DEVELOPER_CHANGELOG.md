@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Made the maintainer test runner's per-test timeout configurable. Bun's 5s
+  default is shorter than the real Git work several checks drive through spawned
+  helper scripts, so on machines with slow process creation they timed out
+  spuriously: the full suite reported 57 failures from the canonical checkout
+  while the same commit passed 392/392 elsewhere. `test.ts` now passes
+  `--timeout` with a 30000 ms default, overridable by
+  `SIMPLE_CHANGELOGS_TEST_TIMEOUT_MS` and rejected unless it is a positive
+  integer. A hung process still fails the run.
+- Stopped `IMPLICIT_UI_CREATION` from matching a hyphenated compound noun.
+  `UI_ACTION_PATTERN` now carries a `(?!-\w)` lookahead, so prose such as
+  "build-plan, and internal admin-surface behavior remains locally
+  authoritative" no longer reads as creating a release-note surface. Genuine
+  creation prose still trips the rule, asserted by a new regression test.
+<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-10-02T11:57:53-05:00" -->
 - Added `json.path` assertions on `apps/mobile/app.json#/expo/version`
   ("3.3.0") and `#/expo/android/versionCode` (1842) to the
   `behavior-independent-mobile-release` eval. The case only checked the
