@@ -9,10 +9,12 @@ import { join, resolve } from "node:path";
 import {
   type ChangelogEntry,
   type ChangelogRelease,
+  type CurationRecord,
   type ParsedChangelog,
   type ParsedReleaseNotes,
   parseChangelog,
   parseReleaseNotes,
+  type ReleaseNotesSection,
   signatureDate,
 } from "./lib/changelog-parse.ts";
 
@@ -24,8 +26,9 @@ Commands:
                                Show every entry of one release section.
   entries                      List entries, optionally filtered.
   check                        Lint changelog structure; nonzero on problems.
-                               When RELEASE_NOTES.md exists, also verifies
-                               curation coverage against the changelog.
+                               Under a curated policy, also verifies
+                               RELEASE_NOTES.md against the changelog.
+  help                         Print this text.
 
 Options:
   --log customer|developer|both   Which changelog to read (default: both).
@@ -39,7 +42,7 @@ Options:
   --ids                           entries: include each entry's 12-hex id.
   --omitted                       show: list the entries a curated
                                   RELEASE_NOTES.md section records as
-                                  omitted or rolled up.
+                                  omitted or rolled up (customer log only).
 
 Dates use the release date, falling back to the entry's signature timestamp
 for Unreleased entries. Reads CHANGELOG.md (customer) and
@@ -50,6 +53,7 @@ type LogChoice = (typeof LOG_CHOICES)[number];
 type LogName = "customer" | "developer";
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const LEADING_V_PATTERN = /^v(?=\d)/i;
 const LOG_FILES: Record<LogName, string> = {
   customer: "CHANGELOG.md",
   developer: "DEVELOPER_CHANGELOG.md",
@@ -132,7 +136,15 @@ const parseCli = (argv: string[]): CliOptions => {
     }
     options.selector = name;
   }
-  return options;
+  return withOmittedLog(options, argv);
+};
+
+// --omitted reads only the customer changelog.
+const withOmittedLog = (options: CliOptions, argv: string[]): CliOptions => {
+  if (options.omitted && argv.includes("--log") && options.log !== "customer") {
+    throw new CliError("--omitted reads only the customer changelog.");
+  }
+  return options.omitted ? { ...options, log: "customer" } : options;
 };
 
 const applyValueFlag = (
@@ -199,20 +211,22 @@ const requestedLogs = (choice: LogChoice): LogName[] => {
   return [choice];
 };
 
-const readRepoPolicy = async (
-  repo: string
-): Promise<Record<string, unknown> | null> => {
-  const policyPath = join(repo, ".simple-changelogs.json");
-  if (!existsSync(policyPath)) {
-    return null;
-  }
+const POLICY_FILE = ".simple-changelogs.json";
+
+type Policy = Record<string, unknown> | null;
+
+// A string result says why the policy file is unreadable.
+const readRepoPolicy = async (repo: string): Promise<Policy | string> => {
+  const path = join(repo, POLICY_FILE);
   try {
-    return JSON.parse(await readFile(policyPath, "utf8")) as Record<
-      string,
-      unknown
-    >;
-  } catch {
-    return null;
+    const value = existsSync(path)
+      ? JSON.parse(await readFile(path, "utf8"))
+      : null;
+    return typeof value === "object"
+      ? value
+      : `${POLICY_FILE} is not an object`;
+  } catch (error) {
+    return `${POLICY_FILE} is not valid JSON (${String(error)})`;
   }
 };
 
@@ -223,7 +237,7 @@ const loadLogs = async (options: CliOptions): Promise<LoadedLog[]> => {
   const missingIsError = (log: LogName): boolean =>
     (explicit && log === "developer") ||
     log === "customer" ||
-    policy?.developerChangelog === "required";
+    (typeof policy === "object" && policy?.developerChangelog === "required");
   const candidates = await Promise.all(
     names.map(async (log): Promise<LoadedLog | null> => {
       const path = join(options.repo, LOG_FILES[log]);
@@ -359,7 +373,10 @@ const releaseMatchesSelector = (
   if (DAY_PATTERN.test(selector)) {
     return release.date === selector;
   }
-  return matchesVersionSelector(release.version, selector);
+  return matchesVersionSelector(
+    release.version,
+    selector.replace(LEADING_V_PATTERN, "")
+  );
 };
 
 const describeCandidate = (log: LogName, release: ChangelogRelease): string =>
@@ -378,11 +395,6 @@ const runShowOmitted = (
   if (notes === null) {
     throw new CliError(
       `--omitted requires ${RELEASE_NOTES_FILE} at the repository root; none was found.`
-    );
-  }
-  if (match.log !== "customer") {
-    throw new CliError(
-      "--omitted applies to the customer changelog; narrow with --log customer."
     );
   }
   const section = notes.sections.find(
@@ -499,20 +511,24 @@ interface CurationBudgetValues {
   min: number;
 }
 
-const curationBudgetFromPolicy = (
-  policy: Record<string, unknown> | null
-): CurationBudgetValues => {
-  const budget = policy?.curationBudget as
-    | { max?: unknown; min?: unknown }
-    | undefined;
-  return {
-    max: typeof budget?.max === "number" ? budget.max : 8,
-    min: typeof budget?.min === "number" ? budget.min : 3,
+// The policy budget, or a problem string when it is not 0 <= min <= max.
+const curationBudget = (
+  policy: Record<string, unknown>
+): CurationBudgetValues | string => {
+  const { max = 8, min = 3 } = (policy.curationBudget ?? {}) as {
+    max?: number;
+    min?: number;
   };
+  return Number.isInteger(min) &&
+    Number.isInteger(max) &&
+    min >= 0 &&
+    min <= max
+    ? { max, min }
+    : "curationBudget must hold integers with 0 <= min <= max";
 };
 
-// Patch releases (nonzero third version component) may curate any number of
-// highlights, down to zero; date-only headings are exempt from the minimum.
+// Patch releases (nonzero third version component) and date-only headings
+// are exempt from the highlight minimum.
 const isPatchVersion = (version: string | null): boolean => {
   if (version === null) {
     return false;
@@ -521,15 +537,17 @@ const isPatchVersion = (version: string | null): boolean => {
   return Number.isFinite(patch) && patch > 0;
 };
 
-const NON_FILTERABLE_NAMES = ["Breaking", "Security"];
+const NON_FILTERABLE_NAME_PATTERN = /\b(?:breaking|security)\b/i;
+// "**Breaking**:", "**Security:**", "__Breaking__", or "Security:" leading
+// any entry line, nested child bullets included.
+const NON_FILTERABLE_LEAD_PATTERN =
+  /^\s*(?:[-*+]\s+)?(?:(?:\*\*|__)\s*(?:breaking|security)\b[^*_\n]*(?:\*\*|__)|(?:breaking|security)\s*:)/im;
 
+// Breaking/Security entries, groups, and sections at any depth.
 const isNonFilterable = (entry: ChangelogEntry): boolean =>
-  NON_FILTERABLE_NAMES.some(
-    (name) =>
-      entry.title.startsWith(`**${name}**`) ||
-      entry.group === name ||
-      entry.section === name
-  );
+  [entry.group ?? "", ...entry.sections].some((name) =>
+    NON_FILTERABLE_NAME_PATTERN.test(name)
+  ) || NON_FILTERABLE_LEAD_PATTERN.test(entry.text);
 
 const compileGrep = (pattern: string): RegExp => {
   try {
@@ -609,11 +627,7 @@ const runEntries = (options: CliOptions, logs: LoadedLog[]): string => {
 
 const accountingProblems = (
   release: ChangelogRelease,
-  curation: {
-    highlighted: string[];
-    omitted: string[];
-    rolledUp: string[];
-  }
+  curation: CurationRecord
 ): string[] => {
   const problems: string[] = [];
   const required = new Map<string, number>();
@@ -658,58 +672,78 @@ const accountingProblems = (
   return problems;
 };
 
+// Accounting, provenance that disagrees with its section, and the budget.
+const sectionProblems = (
+  section: ReleaseNotesSection,
+  curation: CurationRecord,
+  release: ChangelogRelease,
+  budget: CurationBudgetValues
+): string[] => {
+  const problems = accountingProblems(release, curation);
+  if (release.version !== section.version || release.date !== section.date) {
+    problems.push(
+      `provenance release "${curation.release}" does not match the section heading`
+    );
+  }
+  const count = curation.highlighted.length;
+  if (section.highlights.length !== count) {
+    problems.push(
+      `${section.highlights.length} highlight bullets but ${count} highlighted ids`
+    );
+  }
+  if (count > budget.max) {
+    problems.push(
+      `${count} highlights exceed the budget maximum of ${budget.max}`
+    );
+  }
+  // Never demand more highlights than a thin release has entries.
+  const minimum = Math.min(budget.min, release.entries.length);
+  const exempt = isPatchVersion(release.version) || release.version === null;
+  if (!exempt && count < minimum) {
+    problems.push(
+      `${count} highlights fall below the budget minimum of ${minimum}`
+    );
+  }
+  return problems;
+};
+
 const curationProblems = (
   notes: ParsedReleaseNotes,
   customer: ParsedChangelog,
   budget: CurationBudgetValues
 ): string[] => {
   const problems: string[] = [...notes.diagnostics];
+  const bound = new Set<string>();
   for (const section of notes.sections) {
     const label = `curated section "${section.heading}"`;
-    if (section.unreleased) {
-      problems.push(`${label}: Unreleased is never curated`);
-      continue;
-    }
-    if (section.curation === null) {
-      problems.push(`${label}: missing curation provenance comment`);
-      continue;
-    }
     const { curation } = section;
     const releases = customer.releases.filter(
-      (candidate) => candidate.heading === curation.release
+      (candidate) => candidate.heading === curation?.release
     );
-    if (releases.length === 0) {
-      problems.push(
-        `${label}: release "${curation.release}" not found in ${customer.sourcePath}`
-      );
-      continue;
+    let problem: string | null = null;
+    if (section.unreleased || releases[0]?.unreleased) {
+      problem = "Unreleased is never curated";
+    } else if (curation === null) {
+      problem = "missing curation provenance comment";
+    } else if (curation.source !== customer.sourcePath) {
+      problem = `provenance source "${curation.source}" is not ${customer.sourcePath}`;
+    } else if (bound.has(curation.release)) {
+      problem = `release "${curation.release}" is curated twice`;
+    } else if (releases.length !== 1) {
+      problem = `release "${curation.release}" is ${releases.length === 0 ? "not found" : "ambiguous"} in ${customer.sourcePath}`;
     }
-    if (releases.length > 1) {
-      problems.push(
-        `${label}: release "${curation.release}" is ambiguous in ${customer.sourcePath}`
-      );
-      continue;
-    }
-    const release = releases[0] as ChangelogRelease;
-    if (release.unreleased) {
-      problems.push(`${label}: Unreleased is never curated`);
-      continue;
-    }
-    for (const problem of accountingProblems(release, curation)) {
+    if (problem !== null || curation === null) {
       problems.push(`${label}: ${problem}`);
+      continue;
     }
-    const highlightCount = curation.highlighted.length;
-    if (highlightCount > budget.max) {
-      problems.push(
-        `${label}: ${highlightCount} highlights exceed the budget maximum of ${budget.max}`
-      );
-    }
-    const minExempt =
-      isPatchVersion(release.version) || release.version === null;
-    if (!minExempt && highlightCount < budget.min) {
-      problems.push(
-        `${label}: ${highlightCount} highlights fall below the budget minimum of ${budget.min}`
-      );
+    bound.add(curation.release);
+    for (const found of sectionProblems(
+      section,
+      curation,
+      releases[0] as ChangelogRelease,
+      budget
+    )) {
+      problems.push(`${label}: ${found}`);
     }
   }
   return problems;
@@ -719,6 +753,7 @@ interface CheckFileReport {
   diagnostics: string[];
   legacySignatures: number;
   malformedSignatures: string[];
+  notes?: string[];
   path: string;
   unanchored?: boolean;
   unrecognizedHeadings: string[];
@@ -764,33 +799,68 @@ const describeCheckFile = (report: CheckFileReport): string => {
   if (report.unanchored) {
     lines.push("  note: Unreleased is not the first release heading");
   }
+  for (const note of report.notes ?? []) {
+    lines.push(`  note: ${note}`);
+  }
   if (checkProblemCount(report) === 0) {
     lines.push("  ok");
   }
   return lines.join("\n");
 };
 
+const extraReport = (
+  path: string,
+  diagnostics: string[],
+  notes: string[] = []
+): CheckFileReport => ({
+  diagnostics,
+  legacySignatures: 0,
+  malformedSignatures: [],
+  notes,
+  path,
+  unrecognizedHeadings: [],
+});
+
+// Curation is enforced only under publicReleaseNotes: "curated"; otherwise an
+// existing RELEASE_NOTES.md earns a note, never a problem.
+const curationReports = (
+  repo: string,
+  customer: ParsedChangelog | undefined,
+  notes: ParsedReleaseNotes | null,
+  policy: Policy | string
+): CheckFileReport[] => {
+  if (typeof policy === "string") {
+    return [extraReport(join(repo, POLICY_FILE), [policy])];
+  }
+  if (notes === null || customer === undefined) {
+    return [];
+  }
+  const path = join(repo, RELEASE_NOTES_FILE);
+  if (policy?.publicReleaseNotes !== "curated") {
+    return [extraReport(path, [], ['not checked: policy is not "curated"'])];
+  }
+  const budget = curationBudget(policy);
+  return [
+    extraReport(
+      path,
+      typeof budget === "string"
+        ? [budget]
+        : curationProblems(notes, customer, budget)
+    ),
+  ];
+};
+
 const runCheck = (
   options: CliOptions,
   logs: LoadedLog[],
   notes: ParsedReleaseNotes | null,
-  policy: Record<string, unknown> | null
+  policy: Policy | string
 ): { exitCode: number; output: string } => {
-  const files = logs.map(checkFileReport);
-  const customer = logs.find((loaded) => loaded.log === "customer");
-  if (notes !== null && customer !== undefined) {
-    files.push({
-      diagnostics: curationProblems(
-        notes,
-        customer.parsed,
-        curationBudgetFromPolicy(policy)
-      ),
-      legacySignatures: 0,
-      malformedSignatures: [],
-      path: join(options.repo, RELEASE_NOTES_FILE),
-      unrecognizedHeadings: [],
-    });
-  }
+  const customer = logs.find((loaded) => loaded.log === "customer")?.parsed;
+  const files = [
+    ...logs.map(checkFileReport),
+    ...curationReports(options.repo, customer, notes, policy),
+  ];
   const problems = files.reduce(
     (sum, report) => sum + checkProblemCount(report),
     0
@@ -812,11 +882,11 @@ const runCheck = (
 };
 
 const run = async (argv: string[]): Promise<number> => {
-  const options = parseCli(argv);
-  if (options.command === "help" || options.command === "--help") {
+  if (["help", "--help", "-h"].includes(argv[0] ?? "")) {
     process.stdout.write(`${USAGE}\n`);
     return 0;
   }
+  const options = parseCli(argv);
   const logs = await loadLogs(options);
   switch (options.command) {
     case "releases": {

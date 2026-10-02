@@ -29,12 +29,19 @@ const runQuery = async (args: string[]): Promise<CliResult> => {
   return { exitCode, stderr, stdout };
 };
 
-const fixtureRepo = async (files: Record<string, string>): Promise<string> => {
+// Curation is enforced only under a curated policy; fixtures opt out by
+// passing their own ".simple-changelogs.json" (or null to omit it).
+const CURATED_POLICY = JSON.stringify({ publicReleaseNotes: "curated" });
+
+const fixtureRepo = async (
+  input: Record<string, string | null>
+): Promise<string> => {
+  const files = { ".simple-changelogs.json": CURATED_POLICY, ...input };
   const root = await mkdtemp(join(tmpdir(), "curation-query-check-"));
   temporaryDirectories.push(root);
   await Promise.all(
     Object.entries(files).map(([name, content]) =>
-      writeFile(join(root, name), content)
+      content === null ? null : writeFile(join(root, name), content)
     )
   );
   return root;
@@ -74,9 +81,11 @@ const CHANGELOG = [
 ].join("\n");
 
 const id = (text: string): string => entryIdentity(text);
-const PLANNER = id("- Added the export planner");
+// Pinned literals, not computed: the stored id format (first 12 hex of
+// sha256 over the entry text) must not drift.
+const PLANNER = "a1a9ff687495";
+const BREAKING = "fb85aa84983f";
 const FILTERS = id("- Added saved filters");
-const BREAKING = id("- **Breaking**: Removed the legacy API");
 const TYPO = id("- Fixed a typo in settings");
 const LOAD = id("- Improved load times");
 const CRASH = id("- Fixed crash on startup");
@@ -482,5 +491,341 @@ describe("parseReleaseNotes", () => {
         diagnostic.includes("more than one curation comment")
       )
     ).toBe(true);
+  });
+});
+
+describe("entry identity format", () => {
+  test("ids are pinned sha256 prefixes of the entry text", () => {
+    expect(entryIdentity("- Added the export planner")).toBe(PLANNER);
+    expect(entryIdentity("  - **Breaking**: Removed the legacy API\n")).toBe(
+      BREAKING
+    );
+  });
+});
+
+const section = (heading: string, bullets: string[], comment: string) => [
+  `## ${heading}`,
+  "",
+  ...bullets,
+  "",
+  comment,
+  "",
+];
+
+describe("curation policy gating", () => {
+  test("RELEASE_NOTES.md without a curated policy is a note, not a problem", async () => {
+    const broken = releaseNotes("<!-- simple-changelogs-curation bogus -->");
+    const results = await Promise.all(
+      [null, JSON.stringify({ publicReleaseNotes: "full" })].map(
+        async (policy) =>
+          runCheck(
+            await fixtureRepo({
+              ".simple-changelogs.json": policy,
+              "CHANGELOG.md": CHANGELOG,
+              "RELEASE_NOTES.md": broken,
+            })
+          )
+      )
+    );
+    for (const result of results) {
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain(
+        'note: not checked: policy is not "curated"'
+      );
+    }
+  });
+
+  test("malformed policy JSON and an inverted budget are problems", async () => {
+    const malformed = await fixtureRepo({
+      ".simple-changelogs.json": "{ not json",
+      "CHANGELOG.md": CHANGELOG,
+    });
+    const malformedResult = await runCheck(malformed);
+    expect(malformedResult.exitCode).toBe(1);
+    expect(malformedResult.stdout).toContain("is not valid JSON");
+
+    const inverted = await fixtureRepo({
+      ".simple-changelogs.json": JSON.stringify({
+        curationBudget: { max: 2, min: 5 },
+        publicReleaseNotes: "curated",
+      }),
+      "CHANGELOG.md": CHANGELOG,
+      "RELEASE_NOTES.md": releaseNotes(CLEAN_MINOR, CLEAN_PATCH),
+    });
+    const invertedResult = await runCheck(inverted);
+    expect(invertedResult.exitCode).toBe(1);
+    expect(invertedResult.stdout).toContain("0 <= min <= max");
+  });
+});
+
+describe("curation provenance consistency", () => {
+  test("heading, source, highlight count, and duplicate bindings are checked", async () => {
+    const repo = await fixtureRepo({
+      "CHANGELOG.md": CHANGELOG,
+      "RELEASE_NOTES.md": [
+        "# Release Notes",
+        "",
+        ...section(
+          "2.2.0 - 2026-08-01",
+          ["- Plan exports", "- Save filters", "- **Breaking**: API gone"],
+          CLEAN_MINOR
+        ),
+        ...section(
+          "2.1.0 - 2026-08-01",
+          ["- Plan exports", "- Save filters", "- **Breaking**: API gone"],
+          CLEAN_MINOR
+        ),
+        ...section(
+          "2.0.1 - 2026-07-10",
+          ["- One bullet too many"],
+          CLEAN_PATCH.replace('source="CHANGELOG.md"', 'source="NOTES.md"')
+        ),
+      ].join("\n"),
+    });
+    const result = await runCheck(repo);
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain(
+      'curated section "2.2.0 - 2026-08-01": provenance release "2.1.0 - 2026-08-01" does not match the section heading'
+    );
+    expect(result.stdout).toContain(
+      'curated section "2.1.0 - 2026-08-01": release "2.1.0 - 2026-08-01" is curated twice'
+    );
+    expect(result.stdout).toContain(
+      'provenance source "NOTES.md" is not CHANGELOG.md'
+    );
+
+    const extraBullet = await fixtureRepo({
+      "CHANGELOG.md": CHANGELOG,
+      "RELEASE_NOTES.md": [
+        "# Release Notes",
+        "",
+        ...section("2.0.1 - 2026-07-10", ["- An unbacked bullet"], CLEAN_PATCH),
+      ].join("\n"),
+    });
+    const extraResult = await runCheck(extraBullet);
+    expect(extraResult.exitCode).toBe(1);
+    expect(extraResult.stdout).toContain(
+      "1 highlight bullets but 0 highlighted ids"
+    );
+  });
+});
+
+describe("Breaking and Security detection", () => {
+  const entries = {
+    group: "- **Web security**: Hardened session cookies",
+    lowercase: "- **breaking:** Dropped Node 18",
+    nested: "- Rotated signing keys\n  - **Security**: old keys revoked",
+    plainA: "- Added CSV export",
+    plainB: "- Added PDF export",
+    plainC: "- Improved search",
+    section: "- Renamed the config file",
+    subsection: "- Patched a token leak",
+  };
+  const changelog = [
+    "# Changelog",
+    "",
+    "## 4.0.0 - 2026-09-01",
+    "",
+    entries.plainA,
+    entries.plainB,
+    entries.plainC,
+    entries.lowercase,
+    entries.nested,
+    entries.group,
+    "",
+    "### Breaking Changes",
+    "",
+    entries.section,
+    "",
+    "### Security",
+    "",
+    "#### Fixed",
+    "",
+    entries.subsection,
+    "",
+  ].join("\n");
+  const plain = [entries.plainA, entries.plainB, entries.plainC].map(id);
+  const flagged = [
+    entries.lowercase,
+    entries.nested,
+    entries.group,
+    entries.section,
+    entries.subsection,
+  ].map(id);
+
+  test("every Breaking/Security form is non-filterable", async () => {
+    const repo = await fixtureRepo({
+      "CHANGELOG.md": changelog,
+      "RELEASE_NOTES.md": [
+        "# Release Notes",
+        "",
+        ...section(
+          "4.0.0 - 2026-09-01",
+          ["- CSV", "- PDF", "- Search"],
+          curationComment("4.0.0 - 2026-09-01", plain, [], flagged)
+        ),
+      ].join("\n"),
+    });
+    const result = await runCheck(repo);
+    expect(result.exitCode).toBe(1);
+    for (const flaggedId of flagged) {
+      expect(result.stdout).toContain(`entry ${flaggedId} (`);
+    }
+    expect(result.stdout).not.toContain(`entry ${plain[0]} (`);
+  });
+
+  test("highlighting them all passes", async () => {
+    const repo = await fixtureRepo({
+      "CHANGELOG.md": changelog,
+      "RELEASE_NOTES.md": [
+        "# Release Notes",
+        "",
+        ...section(
+          "4.0.0 - 2026-09-01",
+          ["- 1", "- 2", "- 3", "- 4", "- 5"],
+          curationComment("4.0.0 - 2026-09-01", flagged, plain, [])
+        ),
+      ].join("\n"),
+    });
+    const result = await runCheck(repo);
+    expect(result.stdout).toContain("Structure check passed.");
+  });
+});
+
+describe("highlight minimum", () => {
+  const thin = [
+    "# Changelog",
+    "",
+    "## 1.5.0 - 2026-09-01",
+    "",
+    "- Added dark mode",
+    "- Added themes",
+    "",
+    "## 2026-08-20",
+    "",
+    "- Fixed one",
+    "- Fixed two",
+    "- Fixed three",
+    "- Fixed four",
+    "",
+  ].join("\n");
+  const dark = id("- Added dark mode");
+  const themes = id("- Added themes");
+  const fixes = ["one", "two", "three", "four"].map((n) => id(`- Fixed ${n}`));
+
+  test("a thin minor release needs only as many highlights as entries", async () => {
+    const full = await fixtureRepo({
+      "CHANGELOG.md": thin,
+      "RELEASE_NOTES.md": [
+        "# Release Notes",
+        "",
+        ...section(
+          "1.5.0 - 2026-09-01",
+          ["- Dark mode", "- Themes"],
+          curationComment("1.5.0 - 2026-09-01", [dark, themes], [], [])
+        ),
+        ...section(
+          "2026-08-20",
+          ["- Fixed one"],
+          curationComment(
+            "2026-08-20",
+            [fixes[0] as string],
+            fixes.slice(1),
+            []
+          )
+        ),
+      ].join("\n"),
+    });
+    const fullResult = await runCheck(full);
+    expect(fullResult.stdout).toContain("Structure check passed.");
+    expect(fullResult.exitCode).toBe(0);
+
+    const short = await fixtureRepo({
+      "CHANGELOG.md": thin,
+      "RELEASE_NOTES.md": [
+        "# Release Notes",
+        "",
+        ...section(
+          "1.5.0 - 2026-09-01",
+          ["- Dark mode"],
+          curationComment("1.5.0 - 2026-09-01", [dark], [themes], [])
+        ),
+      ].join("\n"),
+    });
+    const shortResult = await runCheck(short);
+    expect(shortResult.exitCode).toBe(1);
+    expect(shortResult.stdout).toContain(
+      "1 highlights fall below the budget minimum of 2"
+    );
+  });
+});
+
+describe("duplicate entries", () => {
+  const changelog = [
+    "# Changelog",
+    "",
+    "## 2026-09-02",
+    "",
+    "- Fixed a typo",
+    "- Fixed a typo",
+    "",
+  ].join("\n");
+  const typo = id("- Fixed a typo");
+  const notes = (rolledUp: string[]) =>
+    [
+      "# Release Notes",
+      "",
+      ...section(
+        "2026-09-02",
+        [],
+        curationComment("2026-09-02", [], rolledUp, [])
+      ),
+    ].join("\n");
+
+  test("each occurrence must be accounted", async () => {
+    const once = await fixtureRepo({
+      "CHANGELOG.md": changelog,
+      "RELEASE_NOTES.md": notes([typo]),
+    });
+    const onceResult = await runCheck(once);
+    expect(onceResult.exitCode).toBe(1);
+    expect(onceResult.stdout).toContain(`entry ${typo} is not accounted`);
+
+    const twice = await fixtureRepo({
+      "CHANGELOG.md": changelog,
+      "RELEASE_NOTES.md": notes([typo, typo]),
+    });
+    expect((await runCheck(twice)).exitCode).toBe(0);
+  });
+});
+
+describe("show --omitted log selection", () => {
+  test("implies the customer log and rejects another", async () => {
+    const repo = await fixtureRepo({
+      "CHANGELOG.md": CHANGELOG,
+      "DEVELOPER_CHANGELOG.md": CHANGELOG,
+      "RELEASE_NOTES.md": releaseNotes(CLEAN_MINOR, CLEAN_PATCH),
+    });
+    const implied = await runQuery([
+      "show",
+      "2.1.0",
+      "--omitted",
+      "--repo",
+      repo,
+    ]);
+    expect(implied.exitCode).toBe(0);
+    expect(implied.stdout).toContain("Fixed a typo in settings");
+
+    const developer = await runQuery([
+      "show",
+      "2.1.0",
+      "--omitted",
+      "--log",
+      "developer",
+      "--repo",
+      repo,
+    ]);
+    expect(developer.exitCode).toBe(1);
+    expect(developer.stderr).toContain("only the customer changelog");
   });
 });

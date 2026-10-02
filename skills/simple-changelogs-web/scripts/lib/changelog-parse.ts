@@ -1,7 +1,5 @@
-// Deterministic, read-only Markdown changelog parser shared by the query CLI.
-// Derived from the maintainer curation parser: release headings with optional
-// version/date, fence and HTML-comment awareness, occurrence disambiguation,
-// and diagnostics instead of guessed structure.
+// Deterministic, read-only Markdown changelog parser for the query CLI:
+// diagnostics instead of guessed structure.
 
 import { createHash } from "node:crypto";
 
@@ -14,11 +12,13 @@ export interface ChangelogSignature {
 
 export interface ChangelogEntry {
   group: string | null;
-  // First 12 hex characters of sha256 over the entry's normalized text:
-  // signature comments stripped, per-line trailing whitespace removed,
-  // outer whitespace trimmed (the maintainer curation parser's normalization).
+  // First 12 hex characters of sha256 over the entry's raw text: signature
+  // comments outside code stripped, per-line trailing whitespace removed,
+  // outer whitespace trimmed.
   id: string;
   section: string | null;
+  // Enclosing ### (and deeper) headings, outermost first.
+  sections: string[];
   signature: ChangelogSignature | null;
   text: string;
   title: string;
@@ -42,36 +42,45 @@ export interface ParsedChangelog {
   unrecognizedHeadings: string[];
 }
 
-const FENCE_LINE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
+export interface MarkdownLine {
+  indent: number;
+  kind: "code" | "comment" | "text";
+  raw: string;
+  // `raw` without closed inline HTML comments; code spans stay verbatim.
+  text: string;
+}
+
+const FENCE_OPEN_PATTERN = /^\s*(?:(`{3,})[^`]*|(~{3,}).*)$/;
+const FENCE_CLOSE_PATTERN = /^\s*(`{3,}|~{3,})\s*$/;
+const COMMENT_START_PATTERN = /^\s*<!--/;
+// Lines that start a new block, ending an inline comment's paragraph.
+const BLOCK_BREAK_PATTERN =
+  /^\s*(?:$|#{1,6}\s|[-*+]\s|\d+[.)]\s|`{3}|~{3}|<!--)/;
+const INLINE_PATTERN = /(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)|<!--.*?-->|<!--/g;
+const SIGNATURE_COMMENT_PATTERN =
+  /^<!--\s*(?:simple-changelogs-signature|Agent:)/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.*?)\s*$/;
 const BULLET_PATTERN = /^(\s*)([-*+])\s+(.*)$/;
+const ORDERED_ITEM_PATTERN = /^\s*\d+[.)]\s/;
 const GROUP_BULLET_PATTERN = /^\s*[-*+]\s+\*\*([^*]+?)\*\*:/;
 const VERSION_PATTERN =
   /\[?v?(\d+\.\d+(?:\.\d+)?(?:[a-zA-Z]+\d*)?(?:[.-][0-9A-Za-z]+)*(?:\+[0-9A-Za-z.]+)?)\]?/;
 const DATE_PATTERN = /\d{4}-\d{2}-\d{2}/;
 const UNRELEASED_PATTERN = /^\[?unreleased\]?$/i;
+const UNRELEASED_PREFIX_PATTERN = /^\[?unreleased\b/i;
+const SEPARATORS_PATTERN = /^[\s\-–—:|(]*$/;
 const TRAILING_WHITESPACE_PATTERN = /[ \t]+$/;
 const TRAILING_BLANK_LINES_PATTERN = /\s+$/;
 const LINE_SPLIT_PATTERN = /\r\n|\r|\n/;
-const HTML_COMMENT_OPEN = "<!--";
-const HTML_COMMENT_CLOSE = "-->";
 const CANONICAL_SIGNATURE_LINE_PATTERN =
   /^\s*<!--\s*simple-changelogs-signature\s+agent="([^"]*)"\s+at="([^"]*)"\s*-->\s*$/;
 const LEGACY_SIGNATURE_LINE_PATTERN =
   /^\s*<!--\s*Agent:\s*(.+?)\s*\|\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s*[AP]M(?:\s+[A-Za-z]{2,5})?)\s*-->\s*$/;
 const SIGNATURE_LIKE_LINE_PATTERN =
-  /^\s*<!--(?:(?=[\s\S]*simple-changelogs-signature)|\s*Agent:)[\s\S]*-->\s*$/;
-const ANY_SIGNATURE_COMMENT_PATTERN =
-  /<!--\s*(?:simple-changelogs-signature[\s\S]*?|Agent:[\s\S]*?)-->/g;
+  /^\s*<!--(?:(?=.*simple-changelogs-signature)|\s*Agent:)/;
 const ISO_DATE_PREFIX_PATTERN = /^(\d{4}-\d{2}-\d{2})/;
 const LEGACY_DATE_PREFIX_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})/;
 const BULLET_MARKER_PATTERN = /^\s*[-*+]\s+/;
-
-type LineKind =
-  | { kind: "inert"; indent: number; raw: string }
-  | { kind: "malformed-signature"; raw: string }
-  | { indent: number; kind: "signature"; signature: ChangelogSignature }
-  | { kind: "structural"; indent: number; raw: string };
 
 const indentWidth = (raw: string): number => {
   let width = 0;
@@ -87,116 +96,160 @@ const indentWidth = (raw: string): number => {
   return width;
 };
 
-const parseSignatureLine = (raw: string): LineKind | null => {
-  const indent = indentWidth(raw);
-  const canonical = raw.match(CANONICAL_SIGNATURE_LINE_PATTERN);
-  if (canonical) {
-    return {
-      indent,
-      kind: "signature",
-      signature: {
-        agent: canonical[1] ?? "",
-        at: canonical[2] ?? "",
-        legacy: false,
-      },
-    };
+// Drops closed inline comments outside code spans; `open` is the offset in
+// `text` of an unclosed "<!--", or -1.
+const scanInline = (raw: string): { open: number; text: string } => {
+  let text = "";
+  let last = 0;
+  for (const match of raw.matchAll(INLINE_PATTERN)) {
+    if (match[1] !== undefined) {
+      continue;
+    }
+    text += raw.slice(last, match.index);
+    if (match[0] === "<!--") {
+      return { open: text.length, text: text + raw.slice(match.index) };
+    }
+    last = match.index + match[0].length;
   }
-  const legacy = raw.match(LEGACY_SIGNATURE_LINE_PATTERN);
-  if (legacy) {
-    return {
-      indent,
-      kind: "signature",
-      signature: {
-        agent: legacy[1] ?? "",
-        at: legacy[2] ?? "",
-        legacy: true,
-      },
-    };
+  return { open: -1, text: text + raw.slice(last) };
+};
+
+const isFenceClose = (raw: string, marker: string): boolean => {
+  const close = raw.match(FENCE_CLOSE_PATTERN)?.[1];
+  return close?.[0] === marker[0] && (close?.length ?? 0) >= marker.length;
+};
+
+// Line closing a comment opened before `from`, or -1 when another comment
+// opens first, the file ends, or (inline) the paragraph ends.
+const commentEnd = (lines: MarkdownLine[], from: number, inline: boolean) => {
+  for (let index = from; index < lines.length; index += 1) {
+    const { raw } = lines[index] as MarkdownLine;
+    const close = raw.indexOf("-->");
+    const nested = raw.indexOf("<!--");
+    if (
+      (inline && BLOCK_BREAK_PATTERN.test(raw)) ||
+      (nested !== -1 && (close === -1 || nested < close))
+    ) {
+      return -1;
+    }
+    if (close !== -1) {
+      return index;
+    }
   }
-  if (SIGNATURE_LIKE_LINE_PATTERN.test(raw)) {
-    return { kind: "malformed-signature", raw: raw.trim() };
+  return -1;
+};
+
+// Classifies the fence, comment, or text block starting at `index` and
+// returns the index of its last line.
+const classifyBlock = (
+  lines: MarkdownLine[],
+  index: number,
+  diagnostics: string[]
+): number => {
+  const line = lines[index] as MarkdownLine;
+  const fence = line.raw.match(FENCE_OPEN_PATTERN);
+  const { open, text } = scanInline(line.raw);
+  let end = index;
+  let start = index;
+  if (fence) {
+    const marker = fence[1] ?? fence[2] ?? "";
+    end = lines.findIndex(
+      (other, position) => position > index && isFenceClose(other.raw, marker)
+    );
+  } else if (COMMENT_START_PATTERN.test(line.raw)) {
+    if (!line.raw.includes("-->", line.raw.indexOf("<!--") + 4)) {
+      end = commentEnd(lines, index + 1, false);
+    }
+  } else {
+    start = index + 1;
+    end = open === -1 ? index : commentEnd(lines, index + 1, true);
+    line.text = end > index ? text.slice(0, open) : text;
   }
-  return null;
+  if (end === -1) {
+    diagnostics.push(
+      `Unclosed ${fence ? "code fence" : "HTML comment"} at line ${index + 1} ("${line.raw.trim()}"); later lines read as Markdown.`
+    );
+  }
+  for (const other of lines.slice(start, Math.max(end, index) + 1)) {
+    other.kind = fence ? "code" : "comment";
+  }
+  return Math.max(end, index);
 };
 
 /**
- * Marks each line as structural (outside fenced code and HTML comments) and
- * recognizes standalone signature comment lines, which never open a
- * multi-line comment region.
+ * Classifies lines as fenced code (any indentation), HTML comment, or text.
+ * Inline comments never hide their line, code spans never open comments, and
+ * an unclosed fence or comment is a diagnostic, never swallowed content. Only
+ * a comment block's first line can start with "<!--".
  */
-const classifyLines = (rawLines: string[]): LineKind[] => {
-  const lines: LineKind[] = [];
-  let inFence = false;
-  let inComment = false;
-
-  for (const raw of rawLines) {
-    const indent = indentWidth(raw);
-
-    if (inComment) {
-      if (raw.includes(HTML_COMMENT_CLOSE)) {
-        inComment = false;
-      }
-      lines.push({ indent, kind: "inert", raw });
-      continue;
-    }
-
-    if (inFence) {
-      if (FENCE_LINE_PATTERN.test(raw)) {
-        inFence = false;
-      }
-      lines.push({ indent, kind: "inert", raw });
-      continue;
-    }
-
-    if (FENCE_LINE_PATTERN.test(raw)) {
-      inFence = true;
-      lines.push({ indent, kind: "inert", raw });
-      continue;
-    }
-
-    const signatureLine = parseSignatureLine(raw);
-    if (signatureLine) {
-      lines.push(signatureLine);
-      continue;
-    }
-
-    const commentOpenIndex = raw.indexOf(HTML_COMMENT_OPEN);
-    if (commentOpenIndex !== -1) {
-      const closeIndex = raw.indexOf(
-        HTML_COMMENT_CLOSE,
-        commentOpenIndex + HTML_COMMENT_OPEN.length
-      );
-      if (closeIndex === -1) {
-        inComment = true;
-      }
-      lines.push({ indent, kind: "inert", raw });
-      continue;
-    }
-
-    lines.push({ indent, kind: "structural", raw });
+export function classifyMarkdown(markdown: string): {
+  diagnostics: string[];
+  lines: MarkdownLine[];
+} {
+  const diagnostics: string[] = [];
+  const lines = markdown.split(LINE_SPLIT_PATTERN).map(
+    (raw): MarkdownLine => ({
+      indent: indentWidth(raw),
+      kind: "text",
+      raw,
+      text: raw,
+    })
+  );
+  for (let index = 0; index < lines.length; index += 1) {
+    index = classifyBlock(lines, index, diagnostics);
   }
+  return { diagnostics, lines };
+}
 
-  return lines;
+const parseSignatureLine = (
+  raw: string
+): ChangelogSignature | "malformed" | null => {
+  const canonical = raw.match(CANONICAL_SIGNATURE_LINE_PATTERN);
+  if (canonical) {
+    return { agent: canonical[1] ?? "", at: canonical[2] ?? "", legacy: false };
+  }
+  const legacy = raw.match(LEGACY_SIGNATURE_LINE_PATTERN);
+  if (legacy) {
+    return { agent: legacy[1] ?? "", at: legacy[2] ?? "", legacy: true };
+  }
+  return SIGNATURE_LIKE_LINE_PATTERN.test(raw) ? "malformed" : null;
 };
 
-const parseVersionAndDate = (
-  headingText: string
-): { date: string | null; version: string | null } => {
-  const dateMatch = headingText.match(DATE_PATTERN);
-  const versionMatch = headingText.match(VERSION_PATTERN);
+/**
+ * Reads version, date, and Unreleased from a release heading. A heading that
+ * would need a guess (words beside Unreleased, or a version-like token after
+ * the date and prose, as in "2026-08-25 - hotfix for 3.2") is a diagnostic.
+ */
+export function releaseHeadingFields(
+  text: string,
+  diagnostics: string[] = []
+): { date: string | null; unreleased: boolean; version: string | null } {
+  const unreleased = UNRELEASED_PREFIX_PATTERN.test(text);
+  const date = DATE_PATTERN.exec(text);
+  const version = VERSION_PATTERN.exec(text);
+  const late =
+    date !== null &&
+    version !== null &&
+    !SEPARATORS_PATTERN.test(text.slice(date.index + 10, version.index));
+  if (unreleased ? !UNRELEASED_PATTERN.test(text) : late) {
+    diagnostics.push(
+      `Ambiguous release heading "${text}"; read as ${unreleased ? "Unreleased" : "date-only"}. Use "Unreleased" or "<version> - <date>".`
+    );
+  }
   return {
-    date: dateMatch ? dateMatch[0] : null,
-    version: versionMatch ? (versionMatch[1] ?? null) : null,
+    date: date?.[0] ?? null,
+    unreleased,
+    version: unreleased || late ? null : (version?.[1] ?? null),
   };
-};
+}
 
 interface HeadingLine {
   depth: number;
   text: string;
 }
 
-const parseHeading = (raw: string): HeadingLine | null => {
-  const match = raw.match(HEADING_PATTERN);
+const parseHeading = (text: string): HeadingLine | null => {
+  const match = text.match(HEADING_PATTERN);
   if (!match) {
     return null;
   }
@@ -205,16 +258,18 @@ const parseHeading = (raw: string): HeadingLine | null => {
 
 interface ParserState {
   currentRelease: ChangelogRelease | null;
-  currentSection: string | null;
   diagnostics: string[];
+  // The previous line was entry text, so unindented prose would be lazy.
+  lazy: boolean;
   legacySignatureCount: number;
   malformedSignatures: string[];
+  pendingFirst: string;
   pendingIndent: number;
   pendingInteriorSignature: ChangelogSignature | null;
   pendingLines: string[] | null;
   releaseOccurrences: Map<string, number>;
   releases: ChangelogRelease[];
-  sectionDepth: number;
+  sections: HeadingLine[];
   unattributed: ChangelogEntry[];
   unrecognizedHeadings: string[];
 }
@@ -224,36 +279,42 @@ const entryTitle = (firstLine: string): string =>
 
 /**
  * Identity of one entry: the first 12 hex characters of sha256 over the
- * entry's normalized text (signature comments already stripped, per-line
- * trailing whitespace removed, outer whitespace trimmed). Curation
- * provenance comments in RELEASE_NOTES.md reference entries by this id.
+ * entry's normalized text (see ChangelogEntry.id). Curation provenance
+ * comments in RELEASE_NOTES.md reference entries by this id.
  */
 export function entryIdentity(text: string): string {
   return createHash("sha256").update(text.trim()).digest("hex").slice(0, 12);
 }
 
+// Removes signature comments, never code-span text, from an entry line.
+const stripSignatures = (raw: string): string =>
+  raw.replace(INLINE_PATTERN, (token, run) =>
+    !run && SIGNATURE_COMMENT_PATTERN.test(token) ? "" : token
+  );
+
 const flushPendingItem = (state: ParserState): void => {
   const { pendingLines } = state;
-  if (pendingLines === null || pendingLines.length === 0) {
-    state.pendingLines = null;
-    state.pendingIndent = -1;
+  state.pendingLines = null;
+  state.pendingIndent = -1;
+  if (pendingLines === null) {
     return;
   }
   const text = pendingLines
     .join("\n")
-    .replace(ANY_SIGNATURE_COMMENT_PATTERN, "")
     .replace(TRAILING_BLANK_LINES_PATTERN, "")
     .split("\n")
     .map((line) => line.replace(TRAILING_WHITESPACE_PATTERN, ""))
     .join("\n");
-  const groupMatch = text.match(GROUP_BULLET_PATTERN);
+  const groupMatch = state.pendingFirst.match(GROUP_BULLET_PATTERN);
+  const sections = state.sections.map((heading) => heading.text);
   const entry: ChangelogEntry = {
     group: groupMatch ? (groupMatch[1] ?? "").trim() : null,
     id: entryIdentity(text),
-    section: state.currentSection,
+    section: sections.at(-1) ?? null,
+    sections,
     signature: state.pendingInteriorSignature,
     text,
-    title: entryTitle(text.split("\n")[0] ?? ""),
+    title: entryTitle(state.pendingFirst),
   };
   if (state.currentRelease !== null) {
     state.currentRelease.entries.push(entry);
@@ -262,91 +323,81 @@ const flushPendingItem = (state: ParserState): void => {
     state.unattributed.push(entry);
   }
   state.pendingInteriorSignature = null;
-  state.pendingLines = null;
-  state.pendingIndent = -1;
 };
 
 const handleReleaseHeading = (
   state: ParserState,
   heading: HeadingLine
 ): void => {
-  const parsed = parseVersionAndDate(heading.text);
-  const unreleased = UNRELEASED_PATTERN.test(heading.text.trim());
+  const fields = releaseHeadingFields(heading.text, state.diagnostics);
   const occurrence = (state.releaseOccurrences.get(heading.text) ?? 0) + 1;
   state.releaseOccurrences.set(heading.text, occurrence);
-  if (!(unreleased || parsed.version || parsed.date)) {
+  if (!(fields.unreleased || fields.version || fields.date)) {
     state.unrecognizedHeadings.push(heading.text);
   }
   const release: ChangelogRelease = {
-    date: parsed.date,
+    ...fields,
     entries: [],
     heading: heading.text,
     occurrence,
-    unreleased,
-    version: unreleased ? null : parsed.version,
   };
   state.currentRelease = release;
   state.releases.push(release);
-  state.currentSection = null;
-  state.sectionDepth = 0;
-  state.unattributed = [];
 };
 
 const handleHeadingLine = (state: ParserState, heading: HeadingLine): void => {
   flushPendingItem(state);
-  state.unattributed = [];
-
-  if (heading.depth === 1) {
+  if (heading.depth <= 2) {
+    state.unattributed = [];
+    state.sections = [];
     state.currentRelease = null;
-    state.currentSection = null;
-    state.sectionDepth = 0;
+    if (heading.depth === 2) {
+      handleReleaseHeading(state, heading);
+    }
     return;
   }
-
-  if (heading.depth === 2) {
-    handleReleaseHeading(state, heading);
-    return;
-  }
-
   if (!state.currentRelease) {
     state.diagnostics.push(
       `Section heading "${heading.text}" found before any release heading; skipped.`
     );
     return;
   }
-  state.currentSection = heading.text;
-  state.sectionDepth = heading.depth;
+  // A subsection keeps the release's signature block open: one signature
+  // may sign a whole release section.
+  while ((state.sections.at(-1)?.depth ?? 0) >= heading.depth) {
+    state.sections.pop();
+  }
+  state.sections.push(heading);
 };
 
-const handleBulletLine = (
-  state: ParserState,
-  indent: number,
-  raw: string
-): void => {
+const handleBulletLine = (state: ParserState, line: MarkdownLine): void => {
   const isNewSibling =
-    state.pendingLines === null || indent <= state.pendingIndent;
+    state.pendingLines === null || line.indent <= state.pendingIndent;
 
   if (!isNewSibling) {
     // More indented than the active top-level bullet: a nested child.
-    (state.pendingLines as string[]).push(raw);
+    state.pendingLines?.push(stripSignatures(line.raw));
+    state.lazy = true;
     return;
   }
 
   if (!state.currentRelease) {
     state.diagnostics.push(
-      `Bullet found before any release heading: "${raw.trim()}"; skipped.`
+      `Bullet found before any release heading: "${line.raw.trim()}"; skipped.`
     );
     return;
   }
-  if (state.pendingLines === null && indent > 0) {
+  if (state.pendingLines === null && line.indent > 0) {
     state.diagnostics.push(
-      `Nested bullet with no preceding top-level bullet: "${raw.trim()}"; skipped.`
+      `Nested bullet with no preceding top-level bullet: "${line.raw.trim()}"; skipped.`
     );
     return;
   }
   flushPendingItem(state);
-  state.pendingLines = [raw];
-  state.pendingIndent = indent;
+  state.pendingLines = [stripSignatures(line.raw)];
+  state.pendingFirst = line.text;
+  state.pendingIndent = line.indent;
+  state.lazy = true;
 };
 
 const handleSignatureLine = (
@@ -372,84 +423,94 @@ const handleSignatureLine = (
   state.unattributed = [];
 };
 
-const handleInertLine = (
-  state: ParserState,
-  indent: number,
-  raw: string
-): void => {
-  // Content inside fences/comments is inert unless it belongs to an
-  // already-open atomic entry (an indented continuation of a bullet).
+// Code and comment lines are inert unless they continue an open entry.
+const handleInertLine = (state: ParserState, line: MarkdownLine): void => {
   if (
     state.pendingLines !== null &&
-    raw.trim().length > 0 &&
-    indent > state.pendingIndent
+    line.raw.trim().length > 0 &&
+    line.indent > state.pendingIndent
   ) {
-    state.pendingLines.push(raw);
+    state.pendingLines.push(
+      line.kind === "code" ? line.raw : stripSignatures(line.raw)
+    );
   }
 };
 
-const handleStructuralContentLine = (
+// Prose that continues an open entry joins it. An unindented line right after
+// an entry (lazy continuation) or an ordered-list item is a diagnostic; other
+// prose is not an entry and is ignored.
+const handleProseLine = (
   state: ParserState,
-  indent: number,
-  raw: string
+  line: MarkdownLine,
+  lazy: boolean
 ): void => {
-  if (raw.trim().length === 0) {
+  if (line.text.trim().length === 0) {
     return;
   }
-  if (state.pendingLines !== null && indent > state.pendingIndent) {
-    state.pendingLines.push(raw);
+  if (state.pendingLines !== null && line.indent > state.pendingIndent) {
+    state.pendingLines.push(stripSignatures(line.raw));
+    state.lazy = true;
+  } else if (
+    lazy ||
+    (state.currentRelease && ORDERED_ITEM_PATTERN.test(line.text))
+  ) {
+    state.diagnostics.push(
+      `Line "${line.raw.trim()}" is not read as an entry; use a "-" bullet or indent it under one.`
+    );
   }
-  // Otherwise: stray prose outside any bullet is not an entry; ignored.
+};
+
+const handleTextLine = (
+  state: ParserState,
+  line: MarkdownLine,
+  lazy: boolean
+): void => {
+  const heading = parseHeading(line.text);
+  if (heading) {
+    handleHeadingLine(state, heading);
+  } else if (BULLET_PATTERN.test(line.text)) {
+    handleBulletLine(state, line);
+  } else {
+    handleProseLine(state, line, lazy);
+  }
 };
 
 export function parseChangelog(
   markdown: string,
   sourcePath: string
 ): ParsedChangelog {
-  const lines = classifyLines(markdown.split(LINE_SPLIT_PATTERN));
-
+  const { diagnostics, lines } = classifyMarkdown(markdown);
   const state: ParserState = {
     currentRelease: null,
-    currentSection: null,
-    diagnostics: [],
+    diagnostics,
+    lazy: false,
     legacySignatureCount: 0,
     malformedSignatures: [],
+    pendingFirst: "",
     pendingIndent: -1,
     pendingInteriorSignature: null,
     pendingLines: null,
     releaseOccurrences: new Map(),
     releases: [],
-    sectionDepth: 0,
+    sections: [],
     unattributed: [],
     unrecognizedHeadings: [],
   };
 
   for (const line of lines) {
-    if (line.kind === "signature") {
-      handleSignatureLine(state, line.signature, line.indent);
-      continue;
+    const { lazy } = state;
+    state.lazy = false;
+    const signature =
+      line.kind === "comment" ? parseSignatureLine(line.raw) : null;
+    if (signature === "malformed") {
+      state.malformedSignatures.push(line.raw.trim());
+    } else if (signature) {
+      handleSignatureLine(state, signature, line.indent);
+    } else if (line.kind === "text") {
+      handleTextLine(state, line, lazy);
+    } else {
+      handleInertLine(state, line);
     }
-    if (line.kind === "malformed-signature") {
-      state.malformedSignatures.push(line.raw);
-      continue;
-    }
-    if (line.kind === "inert") {
-      handleInertLine(state, line.indent, line.raw);
-      continue;
-    }
-
-    const heading = parseHeading(line.raw);
-    if (heading) {
-      handleHeadingLine(state, heading);
-      continue;
-    }
-
-    if (BULLET_PATTERN.test(line.raw)) {
-      handleBulletLine(state, line.indent, line.raw);
-      continue;
-    }
-
-    handleStructuralContentLine(state, line.indent, line.raw);
   }
 
   flushPendingItem(state);
@@ -535,12 +596,6 @@ const parseCurationComment = (
   };
 };
 
-/**
- * Parses RELEASE_NOTES.md: the changelog's release-heading grammar, highlight
- * bullets (top-level only; the rollup line is ordinary prose and ignored),
- * and one curation provenance comment per section. Malformed curation
- * comments become diagnostics, never guessed structure.
- */
 interface ReleaseNotesState {
   current: ReleaseNotesSection | null;
   diagnostics: string[];
@@ -576,60 +631,52 @@ const handleReleaseNotesHeading = (
   if (heading.depth !== 2) {
     return;
   }
-  const parsed = parseVersionAndDate(heading.text);
-  const unreleased = UNRELEASED_PATTERN.test(heading.text.trim());
   const occurrence = (state.occurrences.get(heading.text) ?? 0) + 1;
   state.occurrences.set(heading.text, occurrence);
   state.current = {
+    ...releaseHeadingFields(heading.text, state.diagnostics),
     curation: null,
-    date: parsed.date,
     heading: heading.text,
     highlights: [],
     occurrence,
-    unreleased,
-    version: unreleased ? null : parsed.version,
   };
   state.sections.push(state.current);
 };
 
+/**
+ * Parses RELEASE_NOTES.md: the changelog's release-heading grammar, highlight
+ * bullets (top-level only; the rollup line is ordinary prose and ignored),
+ * and one curation provenance comment per section. Malformed curation
+ * comments become diagnostics, never guessed structure.
+ */
 export function parseReleaseNotes(
   markdown: string,
   sourcePath: string
 ): ParsedReleaseNotes {
+  const { diagnostics, lines } = classifyMarkdown(markdown);
   const state: ReleaseNotesState = {
     current: null,
-    diagnostics: [],
+    diagnostics,
     occurrences: new Map(),
     sections: [],
   };
-  let inFence = false;
 
-  for (const raw of markdown.split(LINE_SPLIT_PATTERN)) {
-    if (inFence) {
-      if (FENCE_LINE_PATTERN.test(raw)) {
-        inFence = false;
-      }
-      continue;
-    }
-    if (FENCE_LINE_PATTERN.test(raw)) {
-      inFence = true;
-      continue;
-    }
-
-    if (CURATION_COMMENT_PREFIX_PATTERN.test(raw)) {
-      handleReleaseNotesCurationLine(state, raw);
-      continue;
-    }
-
-    const heading = parseHeading(raw);
-    if (heading) {
+  for (const line of lines) {
+    const heading = line.kind === "text" ? parseHeading(line.text) : null;
+    if (
+      line.kind === "comment" &&
+      CURATION_COMMENT_PREFIX_PATTERN.test(line.raw)
+    ) {
+      handleReleaseNotesCurationLine(state, line.raw);
+    } else if (heading) {
       handleReleaseNotesHeading(state, heading);
-      continue;
-    }
-
-    const bullet = raw.match(BULLET_PATTERN);
-    if (bullet && state.current !== null && (bullet[1] ?? "").length === 0) {
-      state.current.highlights.push(entryTitle(raw));
+    } else if (
+      line.kind === "text" &&
+      line.indent === 0 &&
+      BULLET_PATTERN.test(line.text) &&
+      state.current !== null
+    ) {
+      state.current.highlights.push(entryTitle(line.text));
     }
   }
 

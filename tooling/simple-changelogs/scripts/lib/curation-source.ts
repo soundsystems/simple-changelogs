@@ -1,4 +1,5 @@
 import { CryptoHasher } from "bun";
+import { classifyMarkdown, type MarkdownLine } from "./changelog-parse.ts";
 import type { CurationScope, SourceBoundary } from "./types.ts";
 
 export interface CurationSourceItem {
@@ -28,7 +29,6 @@ export type ScopeResolution =
 
 const SIGNATURE_COMMENT_PATTERN =
   /<!--\s*simple-changelogs-signature[\s\S]*?-->/g;
-const FENCE_LINE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.*?)\s*$/;
 const BULLET_PATTERN = /^(\s*)([-*+])\s+(.*)$/;
 const VERSION_PATTERN =
@@ -36,15 +36,9 @@ const VERSION_PATTERN =
 const DATE_PATTERN = /\d{4}-\d{2}-\d{2}/;
 const TRAILING_WHITESPACE_PATTERN = /[ \t]+$/;
 const TRAILING_BLANK_LINES_PATTERN = /\s+$/;
-const LINE_SPLIT_PATTERN = /\r\n|\r|\n/;
-const HTML_COMMENT_OPEN = "<!--";
-const HTML_COMMENT_CLOSE = "-->";
 
-interface Line {
-  indent: number;
-  raw: string;
-  structural: boolean; // outside fences and HTML comments
-}
+// Text lines are structural; fenced code and HTML comments are not.
+type Line = MarkdownLine;
 
 interface HeadingLine {
   depth: number;
@@ -70,70 +64,6 @@ interface ParserState {
   sourcePath: string;
   topSectionOccurrences: Map<string, number>;
 }
-
-const indentWidth = (raw: string): number => {
-  let width = 0;
-  for (const char of raw) {
-    if (char === "\t") {
-      width += 4;
-    } else if (char === " ") {
-      width += 1;
-    } else {
-      break;
-    }
-  }
-  return width;
-};
-
-/** Marks each line as structural (outside fenced code and HTML comments). */
-const classifyLines = (rawLines: string[]): Line[] => {
-  const lines: Line[] = [];
-  let inFence = false;
-  let inComment = false;
-
-  for (const raw of rawLines) {
-    const indent = indentWidth(raw);
-
-    if (inComment) {
-      if (raw.includes(HTML_COMMENT_CLOSE)) {
-        inComment = false;
-      }
-      lines.push({ indent, raw, structural: false });
-      continue;
-    }
-
-    if (inFence) {
-      if (FENCE_LINE_PATTERN.test(raw)) {
-        inFence = false;
-      }
-      lines.push({ indent, raw, structural: false });
-      continue;
-    }
-
-    if (FENCE_LINE_PATTERN.test(raw)) {
-      inFence = true;
-      lines.push({ indent, raw, structural: false });
-      continue;
-    }
-
-    const commentOpenIndex = raw.indexOf(HTML_COMMENT_OPEN);
-    if (commentOpenIndex !== -1) {
-      const closeIndex = raw.indexOf(
-        HTML_COMMENT_CLOSE,
-        commentOpenIndex + HTML_COMMENT_OPEN.length
-      );
-      if (closeIndex === -1) {
-        inComment = true;
-      }
-      lines.push({ indent, raw, structural: false });
-      continue;
-    }
-
-    lines.push({ indent, raw, structural: true });
-  }
-
-  return lines;
-};
 
 const parseVersionAndDate = (
   headingText: string
@@ -177,10 +107,10 @@ export function fingerprintBytes(content: Uint8Array | string): string {
 }
 
 const parseHeading = (line: Line): HeadingLine | null => {
-  if (!line.structural) {
+  if (line.kind !== "text") {
     return null;
   }
-  const match = line.raw.match(HEADING_PATTERN);
+  const match = line.text.match(HEADING_PATTERN);
   if (!match) {
     return null;
   }
@@ -363,12 +293,12 @@ export function extractCurationSource(
   sourcePath: string
 ): CurationSource {
   const stripped = markdown.replace(SIGNATURE_COMMENT_PATTERN, "");
-  const lines = classifyLines(stripped.split(LINE_SPLIT_PATTERN));
+  const { diagnostics, lines } = classifyMarkdown(stripped);
 
   const state: ParserState = {
     currentRelease: null,
     currentReleaseIdentity: "",
-    diagnostics: [],
+    diagnostics,
     items: [],
     pendingIndent: -1,
     pendingLines: null,
@@ -380,7 +310,7 @@ export function extractCurationSource(
   };
 
   for (const line of lines) {
-    if (!line.structural) {
+    if (line.kind !== "text") {
       handleInertLine(state, line);
       continue;
     }
@@ -391,7 +321,7 @@ export function extractCurationSource(
       continue;
     }
 
-    const bulletMatch = line.raw.match(BULLET_PATTERN);
+    const bulletMatch = line.text.match(BULLET_PATTERN);
     if (bulletMatch) {
       handleBulletLine(state, line);
       continue;

@@ -30,16 +30,18 @@ curated section; never add a separate curation prompt.
 ## Highlight budget
 
 `curationBudget` bounds the highlight count per release; when absent, use 3 to
-8. Patch releases may drop below the minimum, down to zero highlights plus the
-rollup line. Do not pad a thin release to reach the minimum or silently exceed
+8. Patch and date-only releases may drop below the minimum, down to zero
+highlights plus the rollup line, and no release needs more highlights than it
+has entries. Do not pad a thin release to reach the minimum or silently exceed
 the maximum; when a release genuinely warrants more, ask.
 
 ## Coverage and provenance
 
 Every changelog entry in a curated release is accounted exactly once as
-highlighted, rolled up, or omitted. Entries whose text begins with
-`**Breaking**` or `**Security**`, or that belong to a group of that name, may
-never be omitted or rolled up; they are always highlighted.
+highlighted, rolled up, or omitted. Entries labeled Breaking or Security (such
+as `**Breaking**:` on the entry or a nested bullet, in any case), or under a
+group or section heading naming either, may never be omitted or rolled up;
+they are always highlighted.
 
 Each curated section carries one provenance comment:
 
@@ -47,8 +49,10 @@ Each curated section carries one provenance comment:
 <!-- simple-changelogs-curation source="CHANGELOG.md" release="<heading>" highlighted="<id,...>" rolled-up="<id,...>" omitted="<id,...>" -->
 ```
 
-Ids are the first 12 hex characters of the parser's per-entry identity.
-`query.ts check` enforces the coverage and non-filterable rules mechanically.
+Ids are the first 12 hex characters of the parser's per-entry identity. Under
+a curated policy, `query.ts check` enforces these rules, the budget, and that
+each comment matches its heading, names `CHANGELOG.md`, has one highlighted id
+per highlight bullet, and binds a release no other section binds.
 
 The repository signature policy applies to curated blocks exactly as to any
 other contiguous raw-markdown block.
@@ -62,10 +66,10 @@ older releases uncurated without blocking new curated sections.
 
 ## Surfaces
 
-When `RELEASE_NOTES.md` exists, public marketing pages and release-note modals
-render the curated layer by default, archive pages render the full changelog,
-and internal surfaces are unchanged. There is no per-destination layer policy
-field; see `references/release-note-surfaces.md`.
+Curation adds no surface. Public highlight surfaces this distribution already
+owns render the curated layer by default, full-history surfaces render the
+changelog, and internal surfaces are unchanged. There is no per-destination
+layer policy field; see `references/release-note-surfaces.md`.
 
 ## Non-goals
 
