@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Stopped the adapter-runner checks from racing process creation. Both timeout
+  cases handed `runAdapter` a 300-400 ms budget and then asserted on a pid
+  record the adapter writes after it starts, but starting a process costs
+  110-290 ms on this machine and longer under suite contention, so the kill
+  landed before the record existed and the completion cases tripped their own
+  1000 ms ceiling. The adapter scripts now announce their pids before reading
+  stdin, each case waits for that announcement before the timeout window can
+  elapse, and every budget scales from one base overridable by
+  `SIMPLE_CHANGELOGS_ADAPTER_TEST_TIMEOUT_MS`; a readiness wait that expires
+  now reports that spawn latency outran the budget instead of surfacing an
+  `ENOENT`. The ordering assertions are unchanged, so the safety guarantee
+  still bites: the reap is proven by signal 0, which a zombie would answer;
+  the cleanup bound still allows only Bun's reap plus the 250 ms output-drain
+  grace; and both announced processes must be gone. Confirmed by mutation --
+  disabling the process-group kill fails both cases, and narrowing it to the
+  direct child fails the descendant case.
+- Reformatted the one `contracts.check.ts` assertion the previous commit left
+  unformatted, which had `bun run lint`, and therefore the whole `bun run
+  check` gate, failing before the suite ran.
+<!-- simple-changelogs-signature agent="claude-opus-5" at="2026-10-02T12:18:09-05:00" -->
 - Made the maintainer test runner's per-test timeout configurable. Bun's 5s
   default is shorter than the real Git work several checks drive through spawned
   helper scripts, so on machines with slow process creation they timed out

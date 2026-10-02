@@ -711,9 +711,9 @@ description: >-
       "IMPLICIT_UI_CREATION"
     );
     // The lookahead must not blunt the rule for genuine creation prose.
-    expect(
-      findingCodes(await evaluateContracts(realCreationSkill))
-    ).toContain("IMPLICIT_UI_CREATION");
+    expect(findingCodes(await evaluateContracts(realCreationSkill))).toContain(
+      "IMPLICIT_UI_CREATION"
+    );
   });
 
   test("allowlists canonical policy examples independently", async () => {
