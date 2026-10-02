@@ -5,16 +5,18 @@ Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 
 ## Contents
 
-- Pruning rules
-- Customer changelog entries
-- Public detail budget
-- Detail level
-- Audience profiles and public technical ledgers
-- Initial-development, pre-release, and hot-fix rules
-- Developer changelog entries
-- Superseded developer notes
-- Source links
-- Grouping and wording examples
+- Pruning Rules
+- Customer Changelog Entries
+- Selected Product Release-Note Copy
+- Audience Profiles and Public Technical Ledgers
+- Public Detail Budget
+- Detail Level
+- Initial Development, Pre-Releases, and Hot Fixes
+- Developer Changelog Entries
+- Superseded Developer Notes
+- Source Links
+- Introducing and Naming Features
+- Grouping and Wording Examples
 
 ## Pruning Rules
 

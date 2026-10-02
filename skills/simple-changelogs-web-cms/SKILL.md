@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-web-cms
 description: Use only for a repository that explicitly selects the combined web-plus-CMS Simple Changelogs distribution. Maintain public customer and optional developer changelogs, established public web release notes, and a separate authenticated CMS operator history. Do not use for mobile/store notes, skill-package release maintenance, or when another Simple Changelogs distribution owns the repository.
+metadata:
+  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs Web + CMS
@@ -13,6 +15,10 @@ Maintain two audience-separated release systems in one repository:
 - `CMS_CHANGELOG.json` records structured outcomes for authenticated operators.
 - Established public web and protected CMS destinations render only their own
   authorized source.
+
+Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
+later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
+missing, report it instead of improvising the helper's work by hand.
 
 Current guidance version: 20
 
@@ -89,6 +95,11 @@ access, release, source-of-truth, or surface rules.
 
 ## Core workflow
 
+For release-bearing work (a release, a merge into a release-bearing target, a
+production deployment, or a delegated `prepare` or `verify`), copy steps 1–6
+into your reply as a `- [ ]` checklist and tick each only on fresh evidence.
+Other changelog edits skip the checklist.
+
 1. Inspect repository instructions, Git state, all three histories, both policy
    files, release evidence, public web destinations, the CMS route and access
    guard, each destination's audience/app/release scope, and the task diff.
@@ -103,8 +114,11 @@ access, release, source-of-truth, or surface rules.
    public or developer `Unreleased` item first, then update only destinations
    and metadata proven to share that release. Never render CMS-only detail into
    public history.
-5. Run `bun scripts/validate-cms.ts /path/to/repository`, inspect the actual
-   diff, verify the CMS access boundary, and run repository-native checks.
+5. Run `bun scripts/validate-cms.ts /path/to/repository` and
+   `scripts/query.ts check`, inspect the actual diff, verify the CMS access
+   boundary, and run repository-native checks. Fix what a failure reports and
+   rerun until all pass, returning to step 4 for a release-boundary failure and
+   to step 3 otherwise. Never tick a failed step.
 6. Hand off source decisions by audience, release state, destination
    synchronization, authentication evidence, checks, and unresolved authority.
 

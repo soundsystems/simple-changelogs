@@ -492,11 +492,35 @@ description: >-
     );
   });
 
+  test("accepts an optional string metadata map in frontmatter", async () => {
+    const skillDirectory = await createValidSkill();
+    const skill = await readFile(join(skillDirectory, "SKILL.md"), "utf8");
+    await writeFixtureFile(
+      skillDirectory,
+      "SKILL.md",
+      skill.replace(
+        FRONTMATTER_REPLACEMENT_PATTERN,
+        `---
+name: tiny-skill
+description: Use when a tiny fixture needs deterministic changelog checks.
+metadata:
+  models: Model A, Model B
+---`
+      )
+    );
+
+    expect(findingCodes(await evaluateContracts(skillDirectory))).not.toContain(
+      "FRONTMATTER_INVALID"
+    );
+  });
+
   test("rejects malformed, non-object, and extra-field frontmatter", async () => {
     const frontmatterCases = [
       "---\nname: [unterminated\ndescription: bad\n---\n",
       "---\n- tiny-skill\n- description\n---\n",
       "---\nname: tiny-skill\ndescription: valid\nextra: forbidden\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmetadata: [model-a]\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmetadata:\n  models:\n    - model-a\n---\n",
     ];
     const results = await Promise.all(
       frontmatterCases.map(async (frontmatter) => {

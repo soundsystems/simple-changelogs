@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-cms
 description: Use only for a repository that explicitly selects the CMS-only Simple Changelogs distribution. Create, update, backfill, classify, reconcile, validate, or display one internal changelog for authenticated CMS operators while keeping it out of public and developer histories. Do not use for public web, mobile/store, skill-package, or full cross-surface changelogs, or when another distribution owns the repository.
+metadata:
+  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs CMS
@@ -11,6 +13,10 @@ developer changelog ownership, and no public release-note mirrors.
 
 Maintain one repository-owned `CMS_CHANGELOG.json` document for people who
 operate the product through its authenticated content-management surface.
+
+Requires Git for repository work; the bundled setup and validation helpers
+require Bun 1.3 or later. When one is missing, report it instead of improvising
+the helper's work by hand.
 
 Current guidance version: 5
 
@@ -108,7 +114,8 @@ or mirror this content outside the authorized operator surface.
 
 Run the bundled validator, inspect the diff, test the route's access boundary,
 and run the repository's native checks. Confirm the public application cannot
-reach or render the operator history.
+reach or render the operator history. When a check fails, fix what it reports,
+return to step 3 or 4, and rerun until every check passes before handing off.
 
 ### 6. Hand off
 

@@ -7,6 +7,14 @@ For the automatic inspection, recommended/customized entry screen, preference
 scope, confirmation receipt, and helper commands, follow
 `references/onboarding.md`.
 
+## Contents
+
+- Policy File
+- Authorized Initial Setup
+- One Prompt per Guidance Version
+- Surface Authorization State
+- Raw-Markdown Signatures
+
 ## Policy File
 
 Store portable state in `.simple-changelogs.json` at the repository root. This

@@ -7,6 +7,14 @@ prerelease handling, or separate release authority.
 Use this reference for `1.0.0`, later stable major releases, next-major
 development lines, and alpha, beta, or release-candidate trains.
 
+## Contents
+
+- Establish the Boundary
+- Handle Prerelease Trains
+- Synthesize from Evidence
+- Name the Stable Major
+- Shape the Outputs
+
 ## Establish the Boundary
 
 Determine the repository's versioning convention and canonical version owner

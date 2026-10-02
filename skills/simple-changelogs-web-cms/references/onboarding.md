@@ -4,6 +4,24 @@ Use this flow only when a write-capable changelog request reaches a repository
 without valid policy for the selected distribution. Setup is a checkpoint
 inside the original task, not a separate task.
 
+## Contents
+
+- Inspect before asking
+- Question presentation contract
+- Explain before asking
+- First screen
+- Customized questions
+- Public-version choice
+- Release-note organization and major names
+- Public release-note layer
+- Contextual product-surface choice
+- Component-source choice
+- Preference scope
+- Repository-instruction pointer
+- Final history question
+- Confirm, apply, and continue
+- CMS branches
+
 ## Inspect before asking
 
 Classify the current request and run this distribution's bundled

@@ -3,6 +3,16 @@
 Use this reference before changing version headings, app/package versions, or
 release-note version fields.
 
+## Contents
+
+- Decision Questions
+- SemVer Defaults
+- Public-version authority
+- Web Production Release Identity
+- Initial-Development Products
+- Version Identifier Roles
+- Version Field Alignment
+
 ## Decision Questions
 
 Before changing versions, answer:

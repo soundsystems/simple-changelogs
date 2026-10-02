@@ -7,6 +7,18 @@ This distribution owns two release-note channels with different audiences.
   CMS.
 - `DEVELOPER_CHANGELOG.md` is maintainer history, not an automatic CMS feed.
 
+## Contents
+
+- Default visible names
+- Curated Layer Mapping
+- Public web channel
+- Public Feature Actions
+- Product UI editorial selection
+- CMS operator channel
+- Audience isolation
+- Long-form public web archives
+- Release map
+
 ## Default visible names
 
 Use **Release Notes** for public customer histories and compact summaries. Use

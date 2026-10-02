@@ -3,6 +3,20 @@
 ## Unreleased
 
 - **Release reconciliation**
+  - Release-bearing work now carries the core workflow as a checklist in the
+    agent's reply, and verification repeats until `query.ts check` and the
+    repository's own checks pass, returning to the step that needs the fix
+    instead of handing off on a failure. Ordinary changelog edits skip the
+    checklist.
+- Every distribution now states its requirements up front: Git, Bun 1.3 or
+  later for the bundled helpers, and a POSIX shell for the fork checker. A
+  missing requirement is reported rather than worked around by hand. Each
+  skill also declares the models it is written for, Claude Opus 5.5 and Claude
+  Fable 5.1, in its frontmatter.
+- Long references now open with a contents list of their sections, so agents
+  reach rules late in a file without reading all of it first.
+<!-- simple-changelogs-signature agent="claude-opus-5-5" at="2026-10-02T13:46:00-05:00" -->
+- **Release reconciliation**
   - After a release is reconciled, both changelogs now keep an empty
     `## Unreleased` heading instead of removing it, so the next merged change
     lands under Unreleased rather than inside the newest released section.

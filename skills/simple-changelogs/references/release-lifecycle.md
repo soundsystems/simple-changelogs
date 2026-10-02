@@ -3,6 +3,16 @@
 Use this reference when deciding whether to keep entries under `Unreleased` or
 move them into a released heading.
 
+## Contents
+
+- Evidence of Release Intent
+- Before Non-Release Handoff
+- Before Release Finalization
+- Curated Release Notes
+- Pull or Merge Request Reconciliation
+- Web Production Deployments
+- Other Public Deployments
+
 ## Evidence of Release Intent
 
 Do not move entries out of `Unreleased`, bump versions, or sync release-note
@@ -124,8 +134,9 @@ complete:
 5. Keep exactly one `Unreleased` heading, empty when nothing remains pending,
    and sync documented release-note surfaces or version metadata when
    applicable.
-6. Run the repo-native changelog/release-note checks. If the repo has no
-   automated check, state the manual reconciliation performed.
+6. Run the repo-native changelog/release-note checks. If one fails, fix it,
+   return to step 4, and repeat until it passes. If the repo has no automated
+   check, state the manual reconciliation performed.
 7. Do not call the merge cleanup complete while a release-bearing target branch
    still has non-empty `Unreleased`, unless the repo clearly documents a
    separate release system and you explicitly state why those entries remain
@@ -157,6 +168,7 @@ Before Web production:
    deployment target, and refresh that target before deployment.
 5. Verify the refreshed target contains the versioned release, its established
    mirrors agree, and no target-contained item remains under `Unreleased`.
+   If not, return to step 3 and repeat.
 
 An `Unreleased` item may remain only when evidence shows its implementation is
 absent from the production target or belongs to a separate, still-unshipped

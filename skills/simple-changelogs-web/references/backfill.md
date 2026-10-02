@@ -3,6 +3,14 @@
 Use this reference when changelog files are missing, the user requests history
 reconstruction, or an authorized guidance audit examines released notes.
 
+## Contents
+
+- New Changelog Files
+- Historical Reconstruction
+- Guidance Audit Authority
+- Additional Approval for Semantic Changes
+- Audit Completion
+
 ## New Changelog Files
 
 When pending work exists, start with the appropriate heading:

@@ -43,6 +43,13 @@ const POLICY_MARKER = "<!-- simple-changelogs-policy-example -->";
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 const FRONTMATTER_ONLY_PATTERN = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
 const SKILL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// `metadata` is the Agent Skills specification's optional string-to-string
+// map; every other key stays out so loaders see the same portable shape.
+const FRONTMATTER_KEYS = new Set<PropertyKey>([
+  "name",
+  "description",
+  "metadata",
+]);
 const BACKTICK_FENCE_PATTERN = /```[\s\S]*?```/g;
 const TILDE_FENCE_PATTERN = /~~~[\s\S]*?~~~/g;
 const ALL_HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
@@ -109,6 +116,14 @@ const compareText = (left: string, right: string): number => {
   return left > right ? 1 : 0;
 };
 
+const isStringMap = (value: unknown): boolean =>
+  typeof value === "object" &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every(
+    (entry) => typeof entry === "string" && entry.trim().length > 0
+  );
+
 const parseFrontmatter = (source: string): FrontmatterResult => {
   const block = FRONTMATTER_PATTERN.exec(source)?.[1];
   if (block === undefined) {
@@ -134,11 +149,15 @@ const parseFrontmatter = (source: string): FrontmatterResult => {
   const record = value as Record<PropertyKey, unknown>;
   const errors: string[] = [];
   if (
-    keys.length !== 2 ||
-    !keys.includes("name") ||
-    !keys.includes("description")
+    !(keys.includes("name") && keys.includes("description")) ||
+    keys.some((key) => !FRONTMATTER_KEYS.has(key))
   ) {
-    errors.push("Frontmatter must contain only name and description");
+    errors.push(
+      "Frontmatter must contain name and description, plus optional metadata"
+    );
+  }
+  if (keys.includes("metadata") && !isStringMap(record.metadata)) {
+    errors.push("Frontmatter metadata must map keys to non-empty strings");
   }
   if (typeof record.name !== "string" || !record.name.trim()) {
     errors.push("Frontmatter name must be a non-empty string");

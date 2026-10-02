@@ -5,6 +5,16 @@ Simple Changelogs to classify, prepare, or verify a public release. Version
 selection belongs to Simple Changelogs. Merge, deployment, publication, store,
 data, secret, environment, migration, and DNS authority do not.
 
+## Contents
+
+- Negotiate before delegation
+- Validate the request first
+- Classify
+- Digests and approval
+- Prepare
+- Verify
+- Retry and closed failures
+
 ## Negotiate before delegation
 
 Run `scripts/setup.ts inspect --repo <path> --task-mode read --json` and read

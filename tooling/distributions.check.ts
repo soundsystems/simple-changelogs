@@ -1067,6 +1067,71 @@ for (const requiredRule of [
   }
 }
 
+// Agents preview the first lines of a reference to decide whether to read on,
+// so every long reference opens with a contents list naming each `##` heading
+// in order. guidance-updates.md is exempt: the setup helper addresses its
+// numbered `## Guidance N` sections by version.
+const CONTENTS_LINE_THRESHOLD = 100;
+const CONTENTS_EXEMPT_REFERENCES = new Set(["references/guidance-updates.md"]);
+const FENCE_PATTERN = /^\s*(```|~~~)/u;
+const CONTENTS_BULLET_PATTERN = /^- (.+)$/u;
+
+const outlineOf = (
+  source: string
+): { contents: string[]; headings: string[] } => {
+  const headings: string[] = [];
+  const contents: string[] = [];
+  let fence: string | null = null;
+  for (const line of source.split("\n")) {
+    const marker = FENCE_PATTERN.exec(line)?.[1];
+    if (marker) {
+      if (fence === null) {
+        fence = marker;
+      } else if (marker === fence) {
+        fence = null;
+      }
+    } else if (fence === null && line.startsWith("## ")) {
+      headings.push(line.slice(3).trim());
+    } else if (fence === null && headings.length === 1) {
+      const bullet = CONTENTS_BULLET_PATTERN.exec(line)?.[1];
+      if (bullet && headings[0] === "Contents") {
+        contents.push(bullet.trim());
+      }
+    }
+  }
+  return { contents, headings };
+};
+
+for (const { directory, directoryName, entries } of distributionSnapshots) {
+  if (!changelogDistributions.has(directoryName)) {
+    continue;
+  }
+  for (const entry of entries) {
+    if (
+      !(entry.path.startsWith("references/") && entry.path.endsWith(".md")) ||
+      CONTENTS_EXEMPT_REFERENCES.has(entry.path)
+    ) {
+      continue;
+    }
+    const source = readFileSync(join(directory, entry.path), "utf8");
+    const lineCount = source.split("\n").length - 1;
+    const { contents, headings } = outlineOf(source);
+    if (headings[0] !== "Contents") {
+      if (lineCount > CONTENTS_LINE_THRESHOLD) {
+        failures.push(
+          `skills/${directoryName}/${entry.path} has ${lineCount} lines but does not open with a ## Contents list`
+        );
+      }
+      continue;
+    }
+    if (contents.join("\n") !== headings.slice(1).join("\n")) {
+      failures.push(
+        `skills/${directoryName}/${entry.path} ## Contents must list its ## headings exactly and in order`
+      );
+    }
+  }
+}
+
 const cmsPolicySchemas = await Promise.all(
   ["simple-changelogs-cms", "simple-changelogs-web-cms"].map(
     async (directoryName) => ({

@@ -5,6 +5,17 @@ policy authorizes the exact archive or compact surface. Authorization,
 audience, and platform scope remain owned by
 `references/release-note-surfaces.md`.
 
+## Contents
+
+- Component source
+- Archive shape
+- Compact shape
+- Environment boundary
+- Inline emphasis
+- Group titles and categories
+- Verification
+- Seed from canonical history
+
 ## Component source
 
 Use the proven repository design system first. With React and no established
