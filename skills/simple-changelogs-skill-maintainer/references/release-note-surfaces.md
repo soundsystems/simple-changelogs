@@ -21,9 +21,12 @@ developer's unrelated checkout.
 ## Curated Layer Mapping
 
 When repository policy records `publicReleaseNotes: "curated"` and
-`RELEASE_NOTES.md` exists, apply this default layer mapping: public marketing
-pages and release-note modals render the curated layer, archive pages render
-the full changelog, and internal surfaces are unchanged. There is no
+`RELEASE_NOTES.md` exists, apply this default layer mapping: the package's
+published release notes for adopters — a hosted release description or a
+registry or marketplace listing — render the curated layer; `CHANGELOG.md` and
+the read-only packaged notes remain the complete public record; and developer
+history is unchanged. This distribution owns no marketing page, archive page,
+or modal, so none appears in the mapping. There is no
 per-destination layer policy field in this first cut; the mapping is
 documentation, not new configuration. `references/curation.md` owns the
 derived file itself.

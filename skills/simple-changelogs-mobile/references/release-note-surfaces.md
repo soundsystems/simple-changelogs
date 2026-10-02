@@ -30,9 +30,12 @@ customer source and `DEVELOPER_CHANGELOG.md` is the technical source.
 ## Curated Layer Mapping
 
 When repository policy records `publicReleaseNotes: "curated"` and
-`RELEASE_NOTES.md` exists, apply this default layer mapping: public marketing
-pages and release-note modals render the curated layer, archive pages render
-the full changelog, and internal surfaces are unchanged. There is no
+`RELEASE_NOTES.md` exists, apply this default layer mapping: compact in-app
+surfaces — automatic modals, sheets, and latest-release summaries — render the
+curated layer; App Store, Google Play, and testing-track "What's New" copy
+starts from the curated highlights and is trimmed to each store's length
+limit; a manually opened in-app archive renders the full changelog; and
+internal surfaces are unchanged. There is no
 per-destination layer policy field in this first cut; the mapping is
 documentation, not new configuration. `references/curation.md` owns the
 derived file itself.

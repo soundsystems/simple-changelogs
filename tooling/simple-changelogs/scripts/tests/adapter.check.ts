@@ -22,19 +22,44 @@ const temporaryDirectories: string[] = [];
 const DEFAULT_ADAPTER_TIMEOUT_BASE_MS = 2000;
 const READINESS_POLL_INTERVAL_MS = 10;
 const POSITIVE_INTEGER_PATTERN = /^[1-9][0-9]*$/;
+// lib/adapter.ts rejects timeouts above the JavaScript timer ceiling, and the
+// per-test timeouts derived below must stay representable too.
+const RUNTIME_TIMER_MAX_MS = 2_147_483_647;
 
-const parsePositiveInteger = (raw: string | undefined): number | undefined =>
-  raw !== undefined && POSITIVE_INTEGER_PATTERN.test(raw)
-    ? Number.parseInt(raw, 10)
-    : undefined;
+// What the runner may spend after the kill: Bun's reap plus the 250 ms
+// output-drain grace in lib/adapter.ts. The detached-descendant case below
+// holds the output pipes open past the kill, so a runner that waited for them
+// to close instead of giving up after the grace would miss this bound.
+const CLEANUP_BOUND_MS = 1000;
+const COMPLETION_TIMEOUT_MULTIPLIER = 8;
+const MAX_ADAPTER_TIMEOUT_BASE_MS = Math.floor(
+  (RUNTIME_TIMER_MAX_MS - CLEANUP_BOUND_MS) / COMPLETION_TIMEOUT_MULTIPLIER
+);
 
-const ADAPTER_TIMEOUT_BASE_MS =
-  parsePositiveInteger(process.env.SIMPLE_CHANGELOGS_ADAPTER_TEST_TIMEOUT_MS) ??
-  DEFAULT_ADAPTER_TIMEOUT_BASE_MS;
+const resolveAdapterTimeoutBaseMs = (variable: string): number => {
+  const raw = process.env[variable]?.trim();
+  if (raw === undefined || raw === "") {
+    return DEFAULT_ADAPTER_TIMEOUT_BASE_MS;
+  }
+  if (
+    !POSITIVE_INTEGER_PATTERN.test(raw) ||
+    Number(raw) > MAX_ADAPTER_TIMEOUT_BASE_MS
+  ) {
+    throw new Error(
+      `${variable} must be a positive integer of milliseconds no greater than ${MAX_ADAPTER_TIMEOUT_BASE_MS}; received ${JSON.stringify(raw)}`
+    );
+  }
+  return Number(raw);
+};
+
+const ADAPTER_TIMEOUT_BASE_MS = resolveAdapterTimeoutBaseMs(
+  "SIMPLE_CHANGELOGS_ADAPTER_TEST_TIMEOUT_MS"
+);
 
 // Cases that expect the adapter to finish on its own end the moment it exits,
 // so a ceiling no plausible spawn can reach costs them nothing.
-const COMPLETION_TIMEOUT_MS = ADAPTER_TIMEOUT_BASE_MS * 8;
+const COMPLETION_TIMEOUT_MS =
+  ADAPTER_TIMEOUT_BASE_MS * COMPLETION_TIMEOUT_MULTIPLIER;
 
 // Cases that expect the timeout to fire pay their whole budget in wall clock,
 // so they stay at the base: long enough for a slow spawn to announce readiness
@@ -45,10 +70,16 @@ const EXPIRY_TIMEOUT_MS = ADAPTER_TIMEOUT_BASE_MS;
 // measuring spawn latency instead of the runner's cleanup.
 const READINESS_TIMEOUT_MS = EXPIRY_TIMEOUT_MS;
 
-// What the runner may spend after the kill: Bun's reap plus the 250 ms
-// output-drain grace in lib/adapter.ts. A runner that instead waited on output
-// pipes an inherited descendant holds open would miss this by whole seconds.
-const CLEANUP_BOUND_MS = 1000;
+// Bun's own per-test timeout follows the adapter budget rather than its 5s
+// default, so raising the budget on a slow machine cannot make Bun abandon a
+// case mid-run. Expiry cases need the budget, the runner's cleanup bound, and
+// the same bound again for the cleanup in `finally`; completion cases need the
+// adapter's ceiling plus cleanup, so a hung adapter is still reported by the
+// runner's timeout error rather than by Bun.
+const EXPIRY_TEST_TIMEOUT_MS = EXPIRY_TIMEOUT_MS + 3 * CLEANUP_BOUND_MS;
+const COMPLETION_TEST_TIMEOUT_MS = COMPLETION_TIMEOUT_MS + CLEANUP_BOUND_MS;
+const completionCase = { timeout: COMPLETION_TEST_TIMEOUT_MS };
+const expiryCase = { timeout: EXPIRY_TEST_TIMEOUT_MS };
 
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => {
@@ -73,6 +104,16 @@ const createTemporaryDirectory = async (): Promise<string> => {
   const directory = await mkdtemp(join(tmpdir(), "simple-changelogs-adapter-"));
   temporaryDirectories.push(directory);
   return directory;
+};
+
+// Adapters that never exit announce their process ids in a file so cleanup can
+// reach them even when Bun abandons the case before the test body gets there.
+const pidRecordPaths: string[] = [];
+
+const createPidRecordPath = (directory: string, name: string): string => {
+  const path = join(directory, name);
+  pidRecordPaths.push(path);
+  return path;
 };
 
 const createRequest = (
@@ -189,6 +230,10 @@ const processHasExited = async (
 };
 
 afterEach(async () => {
+  const recordedPids = await Promise.all(
+    pidRecordPaths.splice(0).map((path) => readRecordedPids(path))
+  );
+  killProcesses(recordedPids.flat());
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -226,138 +271,166 @@ describe("adapter command resolution", () => {
 });
 
 describe("runAdapter", () => {
-  test("executes a TypeScript adapter without shell interpolation and writes one request line", async () => {
-    const directory = await createTemporaryDirectory();
-    const capturePath = join(directory, "stdin.txt");
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "executes a TypeScript adapter without shell interpolation and writes one request line",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const capturePath = join(directory, "stdin.txt");
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 const input = await Bun.stdin.text();
 await Bun.write(${JSON.stringify(capturePath)}, input);
 if (process.argv.length !== 2) process.exit(97);
 process.stdout.write(${JSON.stringify(JSON.stringify(response))});
 `,
-      "adapter;false;.ts"
-    );
-    const request = createRequest(directory);
+        "adapter;false;.ts"
+      );
+      const request = createRequest(directory);
 
-    const result = await runAdapter(adapterPath, request);
+      const result = await runAdapter(adapterPath, request);
 
-    expect(result).toEqual({ ok: true, response, stderr: "" });
-    expect(await readFile(capturePath, "utf8")).toBe(
-      `${JSON.stringify(request)}\n`
-    );
-  });
+      expect(result).toEqual({ ok: true, response, stderr: "" });
+      expect(await readFile(capturePath, "utf8")).toBe(
+        `${JSON.stringify(request)}\n`
+      );
+    },
+    completionCase
+  );
 
-  test("executes a native adapter directly", async () => {
-    const directory = await createTemporaryDirectory();
-    const adapterPath = join(directory, "native-adapter");
-    const responseJson = JSON.stringify(response).replaceAll("'", "'\\''");
-    await write(
-      adapterPath,
-      `#!/bin/sh
+  test(
+    "executes a native adapter directly",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const adapterPath = join(directory, "native-adapter");
+      const responseJson = JSON.stringify(response).replaceAll("'", "'\\''");
+      await write(
+        adapterPath,
+        `#!/bin/sh
 cat >/dev/null
 printf '%s' '${responseJson}'
 `
-    );
-    await chmod(adapterPath, 0o700);
+      );
+      await chmod(adapterPath, 0o700);
 
-    const result = await runAdapter(adapterPath, createRequest(directory));
+      const result = await runAdapter(adapterPath, createRequest(directory));
 
-    expect(result).toEqual({ ok: true, response, stderr: "" });
-  });
+      expect(result).toEqual({ ok: true, response, stderr: "" });
+    },
+    completionCase
+  );
 
-  test("captures adapter logs from stderr separately", async () => {
-    const directory = await createTemporaryDirectory();
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "captures adapter logs from stderr separately",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 await Bun.stdin.text();
 console.error("adapter diagnostic");
 process.stdout.write(${JSON.stringify(JSON.stringify(response))});
 `
-    );
+      );
 
-    const result = await runAdapter(adapterPath, createRequest(directory));
+      const result = await runAdapter(adapterPath, createRequest(directory));
 
-    expect(result).toEqual({
-      ok: true,
-      response,
-      stderr: "adapter diagnostic\n",
-    });
-  });
+      expect(result).toEqual({
+        ok: true,
+        response,
+        stderr: "adapter diagnostic\n",
+      });
+    },
+    completionCase
+  );
 
-  test("returns a protocol error for malformed JSON stdout", async () => {
-    const directory = await createTemporaryDirectory();
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "returns a protocol error for malformed JSON stdout",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 await Bun.stdin.text();
 process.stdout.write("not json");
 `
-    );
+      );
 
-    const result = await runAdapter(adapterPath, createRequest(directory));
+      const result = await runAdapter(adapterPath, createRequest(directory));
 
-    expect(resultError(result)).toMatchObject({ kind: "protocol" });
-  });
+      expect(resultError(result)).toMatchObject({ kind: "protocol" });
+    },
+    completionCase
+  );
 
-  test("returns a protocol error for additional stdout after the response", async () => {
-    const directory = await createTemporaryDirectory();
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "returns a protocol error for additional stdout after the response",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 await Bun.stdin.text();
 process.stdout.write(${JSON.stringify(`${JSON.stringify(response)}\nlog`)});
 `
-    );
+      );
 
-    const result = await runAdapter(adapterPath, createRequest(directory));
+      const result = await runAdapter(adapterPath, createRequest(directory));
 
-    expect(resultError(result)).toMatchObject({ kind: "protocol" });
-  });
+      expect(resultError(result)).toMatchObject({ kind: "protocol" });
+    },
+    completionCase
+  );
 
-  test("returns a process error for a nonzero exit", async () => {
-    const directory = await createTemporaryDirectory();
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "returns a process error for a nonzero exit",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 await Bun.stdin.text();
 console.error("adapter failed");
 process.exit(23);
 `
-    );
+      );
 
-    const result = await runAdapter(adapterPath, createRequest(directory));
+      const result = await runAdapter(adapterPath, createRequest(directory));
 
-    expect(resultError(result)).toEqual({
-      exitCode: 23,
-      kind: "process",
-      message: "Adapter exited with status 23",
-    });
-    expect(result.stderr).toBe("adapter failed\n");
-  });
+      expect(resultError(result)).toEqual({
+        exitCode: 23,
+        kind: "process",
+        message: "Adapter exited with status 23",
+      });
+      expect(result.stderr).toBe("adapter failed\n");
+    },
+    completionCase
+  );
 
-  test("returns a protocol error for an incompatible response version", async () => {
-    const directory = await createTemporaryDirectory();
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "returns a protocol error for an incompatible response version",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 await Bun.stdin.text();
 process.stdout.write(${JSON.stringify(
-        JSON.stringify({ ...response, protocolVersion: 3 })
-      )});
+          JSON.stringify({ ...response, protocolVersion: 3 })
+        )});
 `
-    );
+      );
 
-    const result = await runAdapter(adapterPath, createRequest(directory));
+      const result = await runAdapter(adapterPath, createRequest(directory));
 
-    const error = resultError(result);
-    expect(error).toMatchObject({ kind: "protocol" });
-    if (error.kind === "protocol") {
-      expect(error.errors).toContain("$.protocolVersion must equal 2");
-    }
-  });
+      const error = resultError(result);
+      expect(error).toMatchObject({ kind: "protocol" });
+      if (error.kind === "protocol") {
+        expect(error.errors).toContain("$.protocolVersion must equal 2");
+      }
+    },
+    completionCase
+  );
 
   test("returns a configuration error when the executable is missing", async () => {
     const directory = await createTemporaryDirectory();
@@ -398,54 +471,63 @@ process.stdout.write(${JSON.stringify(
     });
   });
 
-  test("kills and reaps an adapter that exceeds its timeout", async () => {
-    const directory = await createTemporaryDirectory();
-    const pidsPath = join(directory, "adapter.pid.json");
-    // Announce the pid before reading stdin so the record exists even when this
-    // machine is slow to start a process. The adapter never exits on its own,
-    // so only the runner's timeout can end it.
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "kills and reaps an adapter that exceeds its timeout",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const pidsPath = createPidRecordPath(directory, "adapter.pid.json");
+      // Announce the pid before reading stdin so the record exists even when this
+      // machine is slow to start a process. The adapter never exits on its own,
+      // so only the runner's timeout can end it.
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 await Bun.write(${JSON.stringify(pidsPath)}, JSON.stringify([process.pid]));
 await Bun.stdin.text();
 setInterval(() => {}, 1_000);
 `
-    );
-    const runPromise = runAdapter(
-      adapterPath,
-      createRequest(directory, EXPIRY_TIMEOUT_MS)
-    );
-    let pids: number[] = [];
+      );
+      const runPromise = runAdapter(
+        adapterPath,
+        createRequest(directory, EXPIRY_TIMEOUT_MS)
+      );
+      let pids: number[] = [];
 
-    try {
-      const pid = await waitForRecordedPid(pidsPath);
-      pids = [pid];
+      try {
+        const pid = await waitForRecordedPid(pidsPath);
+        pids = [pid];
 
-      expect(resultError(await runPromise)).toMatchObject({
-        kind: "configuration",
-        timeoutMs: EXPIRY_TIMEOUT_MS,
-      });
-      // A killed but unreaped child still answers signal 0 as a zombie, so this
-      // asserts the reap and not merely the kill.
-      expect(() => process.kill(pid, 0)).toThrow();
-    } finally {
-      killProcesses(pids);
-      await Promise.race([runPromise, delay(CLEANUP_BOUND_MS)]);
-    }
-  });
+        expect(resultError(await runPromise)).toMatchObject({
+          kind: "configuration",
+          timeoutMs: EXPIRY_TIMEOUT_MS,
+        });
+        // A killed but unreaped child still answers signal 0 as a zombie, so this
+        // asserts the reap and not merely the kill.
+        expect(() => process.kill(pid, 0)).toThrow();
+      } finally {
+        killProcesses(pids);
+        await Promise.race([runPromise, delay(CLEANUP_BOUND_MS)]);
+      }
+    },
+    expiryCase
+  );
 
-  test("bounds timeout cleanup when a descendant inherits output pipes", async () => {
-    const directory = await createTemporaryDirectory();
-    const pidsPath = join(directory, "processes.json");
-    // Announce both pids before reading stdin, so the record survives a slow
-    // spawn. Neither process exits on its own, and the descendant holds the
-    // adapter's stdout and stderr pipes open after the adapter dies.
-    const adapterPath = await writeTypeScriptAdapter(
-      directory,
-      `
+  test(
+    "bounds timeout cleanup when a detached descendant holds the output pipes",
+    async () => {
+      const directory = await createTemporaryDirectory();
+      const pidsPath = createPidRecordPath(directory, "processes.json");
+      // Announce both pids before reading stdin, so the record survives a slow
+      // spawn. Neither process exits on its own. The descendant starts its own
+      // process group, so the runner's group kill cannot reach it, and it keeps
+      // the adapter's inherited stdout and stderr pipes open after the adapter
+      // dies: only the output-drain grace lets the runner return.
+      const adapterPath = await writeTypeScriptAdapter(
+        directory,
+        `
 const descendant = Bun.spawn({
   cmd: [process.execPath, "-e", "setInterval(() => {}, 1_000)"],
+  detached: true,
   stdin: "ignore",
   stdout: "inherit",
   stderr: "inherit",
@@ -457,44 +539,51 @@ await Bun.write(
 await Bun.stdin.text();
 setInterval(() => {}, 1_000);
 `
-    );
-    const timeoutMs = EXPIRY_TIMEOUT_MS;
-    const deadlineMs = timeoutMs + CLEANUP_BOUND_MS;
-    const startedAt = performance.now();
-    const runPromise = runAdapter(
-      adapterPath,
-      createRequest(directory, timeoutMs)
-    );
-    // Start the deadline with the run, not after the readiness wait, so the
-    // bound still measures the runner from the moment it spawned the adapter.
-    const deadlineReached = delay(deadlineMs).then(() => ({
-      kind: "deadline" as const,
-    }));
-    let pids: number[] = [];
+      );
+      const timeoutMs = EXPIRY_TIMEOUT_MS;
+      const deadlineMs = timeoutMs + CLEANUP_BOUND_MS;
+      const startedAt = performance.now();
+      const runPromise = runAdapter(
+        adapterPath,
+        createRequest(directory, timeoutMs)
+      );
+      // Start the deadline with the run, not after the readiness wait, so the
+      // bound still measures the runner from the moment it spawned the adapter.
+      const deadlineReached = delay(deadlineMs).then(() => ({
+        kind: "deadline" as const,
+      }));
+      let pids: number[] = [];
 
-    try {
-      pids = await waitForRecordedPids(pidsPath, 2);
+      try {
+        pids = await waitForRecordedPids(pidsPath, 2);
+        const [adapterPid, descendantPid] = pids;
 
-      const outcome = await Promise.race([
-        runPromise.then((result) => ({ kind: "result" as const, result })),
-        deadlineReached,
-      ]);
+        const outcome = await Promise.race([
+          runPromise.then((result) => ({ kind: "result" as const, result })),
+          deadlineReached,
+        ]);
 
-      expect(outcome.kind).toBe("result");
-      expect(performance.now() - startedAt).toBeLessThan(deadlineMs);
-      expect(pids).toHaveLength(2);
-      if (outcome.kind === "result") {
-        expect(resultError(outcome.result)).toMatchObject({
-          kind: "configuration",
-          timeoutMs,
-        });
+        expect(outcome.kind).toBe("result");
+        expect(performance.now() - startedAt).toBeLessThan(deadlineMs);
+        if (outcome.kind === "result") {
+          expect(resultError(outcome.result)).toMatchObject({
+            kind: "configuration",
+            timeoutMs,
+          });
+        }
+        // The adapter itself was killed and reaped, while the descendant that
+        // escaped the group kill is still alive: the runner returned without
+        // waiting for the pipes it holds to close.
+        expect(await processHasExited(adapterPid as number)).toBe(true);
+        expect(() => process.kill(descendantPid as number, 0)).not.toThrow();
+      } finally {
+        killProcesses(pids);
+        await Promise.race([runPromise, delay(CLEANUP_BOUND_MS)]);
       }
       expect(
         await Promise.all(pids.map((pid) => processHasExited(pid)))
       ).toEqual(pids.map(() => true));
-    } finally {
-      killProcesses(pids);
-      await Promise.race([runPromise, delay(CLEANUP_BOUND_MS)]);
-    }
-  });
+    },
+    expiryCase
+  );
 });

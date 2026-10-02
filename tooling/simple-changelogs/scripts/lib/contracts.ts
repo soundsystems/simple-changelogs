@@ -66,25 +66,37 @@ const GUIDANCE_HEADING_PATTERN = /^## Guidance ([1-9]\d*)[\t ]*$/gm;
 const INSTALLED_TARGET_PATTERN =
   /(?:\b(?:globally[- ]installed|installed)\b.{0,80}\b(?:skill|copy|directory|file)\b|\b(?:skill|copy|directory|file)\b.{0,80}\b(?:globally[- ]installed|installed)\b)/i;
 const MUTATION_ACTION_PATTERN =
-  /\b(?:append(?:s|ed|ing)?|clear(?:s|ed|ing)?|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|inject(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|mutat(?:e|es|ed|ing)|overwrit(?:e|es|ten|ing)|patch(?:es|ed|ing)?|replac(?:e|es|ed|ing)|remov(?:e|es|ed|ing)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|writ(?:e|es|ten|ing))\b/i;
-// The trailing lookahead keeps these verbs from matching inside a hyphenated
-// compound noun such as `build-plan` or `add-on`, which names a thing rather
-// than describing the creation of a release-note surface.
+  /\b(?:append(?:s|ed|ing)?|clear(?:s|ed|ing)?|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|inject(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|mutat(?:e|es|ed|ing)|overwrit(?:e|es|ten|ing)|patch(?:es|ed|ing)?|replac(?:e|es|ed|ing)|remov(?:e|es|ed|ing)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|writ(?:e|es|ten|ing))\b/gi;
 const UI_ACTION_PATTERN =
-  /\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|build(?:s|ing)?|built|wir(?:e|es|ed|ing))\b(?!-\w)/i;
+  /\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|build(?:s|ing)?|built|wir(?:e|es|ed|ing))\b/gi;
+// A creation verb inside a hyphenated compound usually names a thing rather
+// than an action, but not always; `isCompoundNounVerb` tells the cases apart
+// from the compound's shape and the word that follows it.
+const PAST_PARTICIPLE_PATTERN = /^(?:built|created|added|wired)$/i;
+const HYPHEN_TAIL_PATTERN = /^-([A-Za-z]+)/;
+const CONJUNCTION_TAIL_PATTERN = /^(?:and|or|nor|then)$/i;
+const PARTICLE_TAIL_PATTERN =
+  /^(?:away|back|down|in|off|on|out|over|through|together|up)$/i;
+const OBJECT_INTRODUCER_PATTERN =
+  /^\s+(?:a|an|the|each|every|any|some|all|one|another|this|that|these|those|its|our|your|their|my|new)\b/i;
+const NOUN_DETERMINER_PATTERN =
+  /\b(?:a|an|the|this|that|each|every|any|per|of|its|our|your|their|my|latest|current|previous|last|next|nightly|failed|failing|green|red)\s+$/i;
+const BUILD_COMPOUND_NOUN_PATTERN =
+  /^builds? (?:artifact|id|log|matrix|number|output|plan|step|system|time)s?\b/i;
+const BUILD_VERB_PATTERN = /^builds?$/i;
+const HYPHEN_PREFIX_PATTERN = /\w-$/;
 const UI_TARGET_PATTERN =
   /(?:\b(?:release[- ]note|what(?:'|’)s new|changelog|internal)\b.{0,100}\b(?:surface|ui|modal|route|page|screen|panel)\b|\b(?:surface|ui|modal|route|page|screen|panel)\b.{0,100}\b(?:release[- ]note|what(?:'|’)s new|changelog|internal)\b)/i;
 const PROHIBITION_PATTERN =
-  /\b(?:do not|does not|did not|must not|should not|may not|cannot|can't|never)\b/i;
+  /\b(?:do not|does not|did not|must not|should not|may not|cannot|can't|never)\b/gi;
 const PASSIVE_PROHIBITION_PATTERN =
   /\b(?:is|are|was|were) not (?:allowed|permitted)\b/i;
 const NEGATED_AUTHORIZATION_PATTERN =
   /(?:\bwithout\b.{0,60}\b(?:explicit (?:user |task )?(?:authorization|approval|request)|documented (?:repository|repo) policy|stored (?:repository )?policy)\b|\bnot explicitly (?:(?:user|task)-)?(?:authorized|approved|requested)\b|\b(?:documented (?:repository|repo) policy|stored (?:repository )?policy)\b.{0,80}\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b)/i;
-const NEGATED_PERMISSION_CLAUSE_PATTERN =
-  /\b(?:does|do|must|should|may|can) not\b.{0,40}\b(?:allow|allows|authorize|authorizes|grant|grants)\b/i;
+// `so that` introduces purpose, not a clause that escapes the prohibition.
 const OPPOSING_TRANSITION_PATTERN =
-  /\b(?:anyway|but|however|nevertheless|so|still|yet)\b/gi;
-const ANYWAY_CLAUSE_BOUNDARY_PATTERN = /[,;:—–]|\b(?:and|but)\b/gi;
+  /\b(?:anyway|but|however|nevertheless|so(?!\s+that\b)|still|yet)\b/i;
+const ANYWAY_CLAUSE_BOUNDARY_PATTERN = /[,;:—–]|\b(?:and|but)\b/i;
 const ANYWAY_PATTERN = /\banyway\b/i;
 const AUTHORIZATION_PATTERNS = [
   /\bcurrent (?:user )?request\b.{0,100}\bexplicitly authoriz(?:e|es|ed|ation)\b/i,
@@ -490,48 +502,90 @@ const checkProseDuplication = (context: ContractContext): ContractFinding[] => {
   );
 };
 
-const isProhibition = (sentence: string, action: RegExp): boolean => {
-  const actionIndex = sentence.search(action);
-  if (actionIndex < 0) {
+// Hyphenated compounds that contain a creation verb mostly name things:
+// `build-plan` and `add-on` are nouns, `pre-built` and `self-built` are
+// participial adjectives, and `built-in` modifies a surface that already
+// exists. Verb compounds still describe creation and keep matching:
+// coordinated verbs (`create-or-update`, `build-and-deploy`), a prefixed base
+// verb (`re-create`, `auto-create`), and a phrasal verb that takes a direct
+// object (`wire-up a modal`, `build-out the route`). Without a hyphen only a
+// determiner (`the build`) or a short lexicon of software compounds (`build
+// plan`) marks a noun, because nothing else separates `build plan` from
+// `build pages`; a bare-object phrasal compound (`Wire-up changelog modals`)
+// is the accepted miss, since its unhyphenated form still matches.
+const isCompoundNounVerb = (
+  sentence: string,
+  match: RegExpMatchArray
+): boolean => {
+  const start = match.index ?? 0;
+  const [verb] = match;
+  const trailing = sentence.slice(start + verb.length);
+  const leading = sentence.slice(0, start);
+  if (HYPHEN_PREFIX_PATTERN.test(leading)) {
+    return PAST_PARTICIPLE_PATTERN.test(verb);
+  }
+  const tail = HYPHEN_TAIL_PATTERN.exec(trailing)?.[1];
+  if (tail !== undefined) {
+    if (CONJUNCTION_TAIL_PATTERN.test(tail)) {
+      return false;
+    }
+    if (PARTICLE_TAIL_PATTERN.test(tail)) {
+      return !OBJECT_INTRODUCER_PATTERN.test(trailing.slice(tail.length + 1));
+    }
+    return true;
+  }
+  if (!BUILD_VERB_PATTERN.test(verb)) {
+    return false;
+  }
+  return (
+    NOUN_DETERMINER_PATTERN.test(leading) ||
+    BUILD_COMPOUND_NOUN_PATTERN.test(sentence.slice(start))
+  );
+};
+
+const uiActionIndices = (sentence: string): number[] =>
+  Array.from(sentence.matchAll(UI_ACTION_PATTERN))
+    .filter((match) => !isCompoundNounVerb(sentence, match))
+    .map((match) => match.index ?? 0);
+
+const mutationActionIndices = (sentence: string): number[] =>
+  Array.from(
+    sentence.matchAll(MUTATION_ACTION_PATTERN),
+    (match) => match.index ?? 0
+  );
+
+// Every action is judged in its own clause: it is prohibited when the nearest
+// earlier prohibition still governs it, which an opposing transition (`so`,
+// `but`, `yet`, ...) between the two breaks, as does an `anyway` after an
+// action that sits past a clause boundary. The sentence counts as a
+// prohibition only when no action escapes.
+const isProhibition = (sentence: string, actionIndices: number[]): boolean => {
+  if (actionIndices.length === 0) {
     return false;
   }
   if (PASSIVE_PROHIBITION_PATTERN.test(sentence)) {
     return true;
   }
-  const prohibitionIndex = sentence.search(PROHIBITION_PATTERN);
-  if (prohibitionIndex < 0 || prohibitionIndex > actionIndex) {
-    return false;
-  }
-  const prohibitedSource = sentence.slice(prohibitionIndex);
-  const negatedPermission = prohibitedSource.match(
-    NEGATED_PERMISSION_CLAUSE_PATTERN
+  const prohibitionIndices = Array.from(
+    sentence.matchAll(PROHIBITION_PATTERN),
+    (match) => match.index ?? 0
   );
-  if (negatedPermission === null) {
-    return true;
-  }
-  const permissionIndex =
-    prohibitionIndex + (negatedPermission.index ?? Number.POSITIVE_INFINITY);
-  if (permissionIndex > actionIndex) {
-    return true;
-  }
-  const permissionEnd = permissionIndex + negatedPermission[0].length;
-  const trailingSource = sentence.slice(permissionEnd);
-  const actionAfterTransition = Array.from(
-    trailingSource.matchAll(OPPOSING_TRANSITION_PATTERN)
-  ).some((match) =>
-    action.test(trailingSource.slice((match.index ?? 0) + match[0].length))
-  );
-  const actionBeforeAnyway = Array.from(
-    trailingSource.matchAll(ANYWAY_CLAUSE_BOUNDARY_PATTERN)
-  ).some((match) => {
-    const clause = trailingSource.slice((match.index ?? 0) + match[0].length);
-    const clauseActionIndex = clause.search(action);
-    return (
-      clauseActionIndex >= 0 &&
-      ANYWAY_PATTERN.test(clause.slice(clauseActionIndex))
+  return actionIndices.every((actionIndex) => {
+    const prohibitionIndex = prohibitionIndices
+      .filter((index) => index < actionIndex)
+      .at(-1);
+    if (prohibitionIndex === undefined) {
+      return false;
+    }
+    const governed = sentence.slice(prohibitionIndex, actionIndex);
+    if (OPPOSING_TRANSITION_PATTERN.test(governed)) {
+      return false;
+    }
+    return !(
+      ANYWAY_CLAUSE_BOUNDARY_PATTERN.test(governed) &&
+      ANYWAY_PATTERN.test(sentence.slice(actionIndex))
     );
   });
-  return !(actionAfterTransition || actionBeforeAnyway);
 };
 
 const instructionSentences = (source: string): string[] =>
@@ -553,12 +607,14 @@ const checkInstructionBoundaries = (
   const findings: ContractFinding[] = [];
   for (const entry of markdownEntries(context)) {
     const sentences = instructionSentences(entry.text ?? "");
-    const installedMutation = sentences.some(
-      (sentence) =>
+    const installedMutation = sentences.some((sentence) => {
+      const actions = mutationActionIndices(sentence);
+      return (
+        actions.length > 0 &&
         INSTALLED_TARGET_PATTERN.test(sentence) &&
-        MUTATION_ACTION_PATTERN.test(sentence) &&
-        !isProhibition(sentence, MUTATION_ACTION_PATTERN)
-    );
+        !isProhibition(sentence, actions)
+      );
+    });
     if (installedMutation) {
       findings.push(
         finding(
@@ -569,13 +625,15 @@ const checkInstructionBoundaries = (
       );
     }
 
-    const implicitUi = sentences.some(
-      (sentence) =>
+    const implicitUi = sentences.some((sentence) => {
+      const actions = uiActionIndices(sentence);
+      return (
+        actions.length > 0 &&
         UI_TARGET_PATTERN.test(sentence) &&
-        UI_ACTION_PATTERN.test(sentence) &&
-        !isProhibition(sentence, UI_ACTION_PATTERN) &&
+        !isProhibition(sentence, actions) &&
         !hasConcreteAuthorization(sentence)
-    );
+      );
+    });
     if (implicitUi) {
       findings.push(
         finding(

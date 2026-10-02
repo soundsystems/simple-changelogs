@@ -89,7 +89,10 @@ ambiguous, the skill asks once, records the answer, and leaves version fields
 untouched until then.
 
 For the full distribution, setup asks where people should read mobile-specific
-history. The owner chooses **App stores only**, **Mobile app and app stores —
+history whenever inspection reports mobile applicability as detected or
+uncertain; a complete scan that finds another product shape and reports mobile
+as not detected suppresses the question and leaves the value unresolved. The
+owner chooses **App stores only**, **Mobile app and app stores —
 no Web**, **Web and mobile — one tabbed Release Notes page**, or **Web and
 mobile — separate Release Notes pages**. Store-only prepares concise storefront
 copy without adding an in-app history; the other choices retain established
@@ -116,37 +119,48 @@ and rolls the remainder into one line; it is never authored directly and never
 introduces facts the changelog does not contain. Each curated section carries a
 provenance comment accounting every changelog entry as highlighted, rolled up,
 or omitted, and `query.ts check` verifies that coverage mechanically —
-Breaking and Security entries can never be filtered out. Each distribution's
-`references/curation.md` documents the conventions.
+Breaking and Security entries can never be filtered out. Each Markdown
+changelog distribution's `references/curation.md` documents the conventions;
+the CMS-only distribution has no curated layer, and its operator-surface rules
+live in `references/cms-surface.md`.
 
 ## Install
+
+Development happens on GitLab at
+<https://gitlab.com/soundsystems/simple-changelogs>, and a read-only mirror is
+kept in sync at <https://github.com/soundsystems/simple-changelogs>. Install
+from the mirror: the Skills CLI stores a source without its host and later
+re-resolves it as GitHub shorthand, so an install from the mirror records
+`sourceType: github` and `skills update` works, while an install from GitLab
+cannot be updated in place. The commands below therefore use the mirror; the
+installed tree is byte-identical either way.
 
 List names and discovery descriptions without installing:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --list
+bunx skills add https://github.com/soundsystems/simple-changelogs --list
 ```
 
 Install one changelog distribution interactively:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs
 ```
 
 Examples for every narrower distribution:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-cms
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-web
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-mobile
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-web-cms
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs-skill-maintainer
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs-cms
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs-web
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs-mobile
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs-web-cms
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs-skill-maintainer
 ```
 
 For a non-interactive project install to every detected agent:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs \
+bunx skills add https://github.com/soundsystems/simple-changelogs \
   --skill simple-changelogs-web \
   --agent '*' \
   -y
@@ -156,15 +170,15 @@ Add `-g` for a global install. Use `pnpx` instead of `bunx` if preferred. Agent
 targets can be explicit:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent claude-code -g -y
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs --skill simple-changelogs --agent cursor -g -y
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs --agent codex -g -y
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs --agent claude-code -g -y
+bunx skills add https://github.com/soundsystems/simple-changelogs --skill simple-changelogs --agent cursor -g -y
 ```
 
 Install a branch or tag with an explicit Git ref:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs.git#<branch-or-tag> \
+bunx skills add https://github.com/soundsystems/simple-changelogs.git#<branch-or-tag> \
   --skill simple-changelogs
 ```
 
@@ -172,7 +186,7 @@ Install the non-owning fork publication workflow independently or alongside the
 selected distro:
 
 ```sh
-bunx skills add https://gitlab.com/soundsystems/simple-changelogs \
+bunx skills add https://github.com/soundsystems/simple-changelogs \
   --skill publish-skill
 ```
 
@@ -194,7 +208,7 @@ record one of:
   "schemaVersion": 1,
   "distribution": "web",
   "guidance": {
-    "version": 13,
+    "version": 20,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
@@ -469,6 +483,10 @@ skills/simple-changelogs/scripts/check-fork-sync.sh \
 Exit `0` means current, `1` behind, `2` invalid input, and `3` divergent.
 Repo-local precedence is a documented convention, not a claim that every
 runtime loader deduplicates automatically.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Repository layout
 

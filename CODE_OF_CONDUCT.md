@@ -6,6 +6,7 @@ focus criticism on ideas and behavior.
 
 Unacceptable behavior includes harassment, discrimination, threats, deliberate
 disclosure of private information, and sustained disruption. Report conduct or
-safety concerns privately to the maintainers through the repository security
-contact. Maintainers may remove content or participation that violates this
+safety concerns privately to the maintainers as a confidential GitLab issue at
+<https://gitlab.com/soundsystems/simple-changelogs/-/issues/new> with **This
+issue is confidential** ticked. Maintainers may remove content or participation that violates this
 standard.

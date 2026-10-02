@@ -714,29 +714,122 @@ metadata:
     ).not.toContain("IMPLICIT_UI_CREATION");
   });
 
-  test("does not read a hyphenated compound noun as UI creation", async () => {
+  test("separates compound nouns from verb compounds when reading UI creation", async () => {
     // A downstream fork tripped this rule with prose that creates nothing:
     // `build` matched inside `build-plan`, while `internal` and `surface`
-    // satisfied the target pattern.
-    const compoundSkill = await createValidSkill();
-    await writeFixtureFile(
-      compoundSkill,
-      "SKILL.md",
-      `${await readFile(join(compoundSkill, "SKILL.md"), "utf8")}\nAudience, disclosure, build-plan, and internal admin-surface behavior remains locally authoritative.\n`
-    );
-    const realCreationSkill = await createValidSkill();
-    await writeFixtureFile(
-      realCreationSkill,
-      "SKILL.md",
-      `${await readFile(join(realCreationSkill, "SKILL.md"), "utf8")}\nBuild a changelog panel whenever one is missing.\n`
+    // satisfied the target pattern. The fix must not blunt the rule for verb
+    // compounds, prefixed verbs, or a later clause that escapes a prohibition.
+    const table: [sentence: string, flagged: boolean, reason: string][] = [
+      [
+        "Hash audience, disclosure, scraper, GitLab, build-plan, and internal admin-surface behavior remains locally authoritative.",
+        false,
+        "the downstream sentence: `build-plan` is a compound noun",
+      ],
+      [
+        "Hash audience, disclosure, scraper, GitLab, build plan, and internal admin-surface behavior remains locally authoritative.",
+        false,
+        "unhyphenated `build plan` is in the compound-noun lexicon",
+      ],
+      [
+        "Ship the changelog add-on beside the release-note page.",
+        false,
+        "`add-on` takes no object, so it is a noun",
+      ],
+      [
+        "A pre-built internal admin surface already renders release notes.",
+        false,
+        "`pre-built` is a participial adjective for something that exists",
+      ],
+      [
+        "The self-built changelog page stays as it is.",
+        false,
+        "`self-built` describes the page, it does not create one",
+      ],
+      [
+        "The built-in release-note modal stays unchanged.",
+        false,
+        "`built-in` modifies an existing surface",
+      ],
+      [
+        "Keep the changelog page as it is so the build stays green.",
+        false,
+        "`the build` is a noun",
+      ],
+      ["Do not create a release-note page.", false, "an ordinary prohibition"],
+      [
+        "Create-or-update the changelog page on every release.",
+        true,
+        "coordinated verbs still create",
+      ],
+      [
+        "Build-and-deploy a release-note page for each version.",
+        true,
+        "coordinated verbs still create",
+      ],
+      [
+        "Wire-up a what's new modal after each release.",
+        true,
+        "a phrasal verb with a direct object creates",
+      ],
+      [
+        "Build-out a changelog route for the web app.",
+        true,
+        "a phrasal verb with a direct object creates",
+      ],
+      [
+        "Build-out a changelog page for testers.",
+        true,
+        "a phrasal verb with a direct object creates",
+      ],
+      [
+        "Re-create the release-note page when it is missing.",
+        true,
+        "a prefixed base verb creates",
+      ],
+      [
+        "Auto-create a changelog panel for each release.",
+        true,
+        "a prefixed base verb creates",
+      ],
+      [
+        "The build-plan cannot slip, so build a changelog page.",
+        true,
+        "the `so` clause escapes `cannot`, and `build-plan` must not hide it",
+      ],
+      [
+        "Do not create a release-note page, but add a changelog panel.",
+        true,
+        "the `but` clause escapes the prohibition",
+      ],
+      [
+        "Build a changelog panel whenever one is missing.",
+        true,
+        "an ordinary true positive",
+      ],
+    ];
+    const results = await Promise.all(
+      table.map(async ([sentence, _flagged, reason]) => {
+        const skillDirectory = await createValidSkill();
+        await writeFixtureFile(
+          skillDirectory,
+          "SKILL.md",
+          `${await readFile(join(skillDirectory, "SKILL.md"), "utf8")}\n${sentence}\n`
+        );
+        const codes = findingCodes(await evaluateContracts(skillDirectory));
+        return {
+          flagged: codes.includes("IMPLICIT_UI_CREATION"),
+          reason,
+          sentence,
+        };
+      })
     );
 
-    expect(findingCodes(await evaluateContracts(compoundSkill))).not.toContain(
-      "IMPLICIT_UI_CREATION"
-    );
-    // The lookahead must not blunt the rule for genuine creation prose.
-    expect(findingCodes(await evaluateContracts(realCreationSkill))).toContain(
-      "IMPLICIT_UI_CREATION"
+    expect(results).toEqual(
+      table.map(([sentence, flagged, reason]) => ({
+        flagged,
+        reason,
+        sentence,
+      }))
     );
   });
 
