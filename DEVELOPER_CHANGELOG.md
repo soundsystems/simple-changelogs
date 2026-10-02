@@ -2,6 +2,114 @@
 
 ## Unreleased
 
+- Rebuilt line classification in `changelog-parse.ts` and shared it with
+  `curation-source.ts`. Any line containing `<!--` used to be classified as a
+  comment before the bullet or heading check, so an inline comment dropped the
+  entry or heading and a `<!--` inside a code span swallowed everything up to
+  the next `-->`, usually a signature line, while `check` exited 0. No live
+  exposure was found, since no repository had adopted curated mode or carried
+  an inline comment on a bullet or heading. Inline comments are now stripped
+  from heading and title text, code spans never open comments, fences are
+  recognized at any indentation with matching close markers, and an unclosed
+  fence or comment, or one interrupted by another `<!--`, becomes a diagnostic
+  with later lines parsed normally. Entry text and id normalization are
+  unchanged; the only id that moved in this repository belongs to the
+  developer entry whose `` `<!-- Agent: NAME | ... -->` `` span used to render
+  empty.
+  - `query.ts check` gates curation on `publicReleaseNotes: "curated"`,
+    reports malformed policy JSON and a budget outside `0 <= min <= max`, and
+    validates each provenance comment's `release=` against its heading,
+    `source=` as `CHANGELOG.md`, one highlighted id per highlight bullet, and
+    no duplicate release bindings. The effective minimum is
+    `min(budget.min, entry count)`; patch and date-only releases stay exempt.
+  - Breaking/Security detection accepts `**Breaking**:`, `**Breaking:**`,
+    `__x__`, and plain `Breaking:` case-insensitively, covers nested child
+    bullets, and matches group or section names at any heading depth.
+  - `--help` exits 0, `show` strips a `v` prefix, `--omitted` implies the
+    customer log and rejects another `--log`, signature-like text inside code
+    spans is kept, a `###` subsection no longer resets signature attribution,
+    and lazy continuation lines, top-level ordered items, and ambiguous
+    headings (`## Unreleased (targeting 1.5.0)`, a version after the date) are
+    diagnostics.
+  - Added `markdown-structure.check.ts` (19 tests) and pinned entry-id
+    literals; the merge request reports all 21 tracked parser and curation
+    mutations killed. `querying.md` and `curation.md` in the five markdown
+    distributions document `--omitted`, curation gating, and the thin-release
+    rule; `curation.md` stays byte-identical across distributions.
+  - Raised `MAX_DISTRIBUTION_BYTES` to 400 KiB (409,600 B) because this change
+    on top of the setup transaction work overflowed Web+CMS at 384 KiB with
+    byte-synced script code rather than prose; the comment records the
+    post-rebase sizes (Web+CMS 396,476 B, full 393,734 B) and keeps "prefer
+    trimming prose". No guidance bump: heading grammar, signature dialects,
+    and the provenance comment format are untouched.
+- `setup.ts` (all six copies): the transaction marker is schemaVersion 2,
+  records the pid and every target's prior content, and is taken with an
+  exclusive `link` before targets are read; `replace` rewrites re-check under
+  the lock that each target still holds the parsed base, and a stale run is
+  blocked with "inspect again and retry". An orphaned marker (dead pid, or
+  older than `STALE_TRANSACTION_MS` = 10 min) is claimed by atomic rename and
+  rolled back; a live one blocks untouched; a legacy v1 or unparseable marker
+  blocks with remediation instead of resuming, because v1 carried no
+  pre-images. A failed commit restores only renamed targets, removes the
+  marker only after every restore succeeds, and rethrows the original error;
+  post-onboarding write failures return `status: "blocked"` with
+  `Setup write failed: ...` instead of throwing. Inspect stays write-free.
+  - `applySetup` returns inspect's own blocked result (conflict or malformed)
+    before every post-onboarding path, closing the hole where a web helper
+    could write web guidance into a `full` policy. Guidance acknowledgment
+    takes `Math.max(recorded, current)` on both tracks. The CLI integer parser
+    is `/^(?:0|[1-9]\d{0,8})$/u`; `{min: 0, max: 0}` stays valid, recorded in
+    the schema `$comment` and tested. `parseCli` is exported.
+  - CMS `guidance.version >= 1` in `setup.ts`, both CMS lib validators, and
+    `setup-result.schema.json`; the CMS lib's Breaking/Security rule tolerates
+    leading whitespace. `setup-result.schema.json` accepts
+    `globalPreferences.publicVersioning` and CMS `receiptVersions [2]`;
+    `curationBudget` gains a min-less-than-or-equal-max `$comment`;
+    `protocol-provenance.json` gains a `scope` field and
+    `distributions.check.ts` keeps marker versions within it.
+  - Web+CMS now declares `Current CMS guidance version: 2`, and
+    `guidance-updates.md` carries a real `## CMS Guidance 2` entry with a
+    `simple-changelogs-cms-guidance-update` marker that setup parses through
+    `parseGuidanceUpdateChanges(..., cmsTrack)`, so the synthesized notice is
+    only a fallback. `distributions.check.ts` asserts the SKILL.md line, the
+    marker, the `cms-setup.md` example, and CMS lib/data-schema parity, and
+    its cap comment now gives the real reason for the earlier 384 KiB raise.
+  - New `setup-transaction.check.ts` (13 tests, 12 of which fail on the
+    pre-fix code) and `setup-result-schema.check.ts` (validates real inspect
+    and apply output for all six distributions); the merge request reports
+    all 13 audited mutations killed and six parity-guard breaks each failing
+    the check.
+- Replaced the `UI_ACTION_PATTERN` `(?!-\w)` lookahead in `contracts.ts` with
+  `isCompoundNounVerb`: noun heads (`build-plan`), objectless particles
+  (`add-on`, `built-in`), and participial prefixes (`pre-built`) read as nouns
+  or adjectives, while conjunction compounds (`create-or-update`), particle
+  compounds with a direct object (`wire-up a modal`), and prefixed base verbs
+  (`re-create`) still flag; a short lexicon covers unhyphenated `build plan`
+  compounds and a determiner marks `the build` as a noun. `isProhibition` now
+  judges every action match in its own clause, so `The build-plan cannot
+  slip, so build a changelog page.` is flagged again, and the unused
+  `NEGATED_PERMISSION_CLAUSE_PATTERN` is gone. An 18-row table test replaces
+  the single regression; the merge request reports it failing under no
+  lookahead, the old `(?!-\w)`, and a narrow `(?!-plan)`, and the contract
+  eval still reports 0 findings.
+  - All three test runners share one `--timeout` contract: an empty or
+    whitespace `SIMPLE_CHANGELOGS_TEST_TIMEOUT_MS` means the 30 s default, and
+    any other value must be a positive integer no greater than 2,147,483,647.
+    `adapter.check.ts` validates `SIMPLE_CHANGELOGS_ADAPTER_TEST_TIMEOUT_MS`
+    the same way, derives Bun's per-test timeouts from the adapter budget,
+    records non-exiting adapter pids through `createPidRecordPath` and kills
+    them in `afterEach`, and the descendant case now detaches into its own
+    process group so the output-drain grace is genuinely exercised (reported
+    mutation: waiting for the pipes fails that case alone).
+  - Added `NOTICE`; `CONTRIBUTING.md` names the GitLab repository and only
+    `package.json` scripts; `SECURITY.md` and `CODE_OF_CONDUCT.md` route
+    reports through a confidential GitLab issue. The mobile and
+    skill-maintainer `onboarding.md` and `release-note-surfaces.md` rewrites
+    changed no `##` heading, so no `## Contents` list moved.
+- Clarified in every shipped `fork-maintenance.md` that the checker path's
+  leading segment is the distribution's package directory; the five copies are
+  intentionally divergent, so each was edited in place.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T14:32:02-05:00" -->
 - Applied the current skill-authoring recommendations across all six
   changelog distributions. Every reference over 100 lines (50 files) now opens
   with a `## Contents` list of its exact `##` headings, because agents preview
