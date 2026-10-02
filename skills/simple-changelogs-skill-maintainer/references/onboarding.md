@@ -301,29 +301,30 @@ authorized historical correction applies.
 
 ## Public release-note layer
 
-Ask this question only when inspection detects a public release-note
-destination — an established public archive, marketing or release-notes page,
-or release-note modal — or when the user chose **Customize**. Skip it
-otherwise; a missing field behaves as `full`.
+Ask this question only when inspection detects a published release-note
+destination for the package — an established hosted release description, a
+registry or marketplace listing, or a published release-notes file — or when
+the user chose **Customize**. Skip it otherwise; a missing field behaves as
+`full`.
 
 Define the term first: curated release notes are a short, advertised version
 of each release. The complete changelog still records every change; a derived
 `RELEASE_NOTES.md` file additionally picks a few one-sentence highlights per
 release and sums up the rest in one rollup line.
 
-Ask **What should public release-note surfaces show for each release? Choose
-one:**
+Ask **What should the package's published release notes show for each
+release? Choose one:**
 
 1. **A short curated summary** — Save `publicReleaseNotes: "curated"`. Each
    release gets 3-8 one-sentence highlights plus one rollup line in a derived
-   `RELEASE_NOTES.md`; the complete changelog remains the source of truth, so
-   nothing is lost.
+   `RELEASE_NOTES.md` that adopters read on the hosted release or listing; the
+   complete changelog remains the source of truth, so nothing is lost.
 2. **The complete history** — Save `publicReleaseNotes: "full"`, the default.
-   Public surfaces render the full changelog and no separate curated file is
-   maintained.
+   Published release notes carry the full changelog and no separate curated
+   file is maintained.
 
-Mark the curated option **Recommended** when a public marketing or web surface
-exists; otherwise mark the complete history **Recommended**. Breaking changes
+Mark the curated option **Recommended** when an established hosted release or
+listing exists; otherwise mark the complete history **Recommended**. Breaking changes
 and security notices are always shown and never summarized away under either
 choice. The one-answer recommended path asks no extra question; it includes
 the resolved choice in the setup receipt. An optional highlight budget
