@@ -36,7 +36,9 @@ copy should classify, write, and verify a given repository action.
 
 ## Checking Drift
 
-The bundled checker works from any directory:
+The bundled checker works from any directory. The leading path is this
+distribution's own package directory, which is `skills/simple-changelogs-web-cms`
+inside an upstream checkout and the install directory when installed:
 
 ```bash
 /absolute/path/to/simple-changelogs-web-cms/scripts/check-fork-sync.sh \
