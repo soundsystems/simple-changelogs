@@ -60,8 +60,11 @@ const INSTALLED_TARGET_PATTERN =
   /(?:\b(?:globally[- ]installed|installed)\b.{0,80}\b(?:skill|copy|directory|file)\b|\b(?:skill|copy|directory|file)\b.{0,80}\b(?:globally[- ]installed|installed)\b)/i;
 const MUTATION_ACTION_PATTERN =
   /\b(?:append(?:s|ed|ing)?|clear(?:s|ed|ing)?|delet(?:e|es|ed|ing)|edit(?:s|ed|ing)?|inject(?:s|ed|ing)?|modif(?:y|ies|ied|ying)|mutat(?:e|es|ed|ing)|overwrit(?:e|es|ten|ing)|patch(?:es|ed|ing)?|replac(?:e|es|ed|ing)|remov(?:e|es|ed|ing)|rewrit(?:e|es|ten|ing)|updat(?:e|es|ed|ing)|writ(?:e|es|ten|ing))\b/i;
+// The trailing lookahead keeps these verbs from matching inside a hyphenated
+// compound noun such as `build-plan` or `add-on`, which names a thing rather
+// than describing the creation of a release-note surface.
 const UI_ACTION_PATTERN =
-  /\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|build(?:s|ing)?|built|wir(?:e|es|ed|ing))\b/i;
+  /\b(?:creat(?:e|es|ed|ing)|add(?:s|ed|ing)?|build(?:s|ing)?|built|wir(?:e|es|ed|ing))\b(?!-\w)/i;
 const UI_TARGET_PATTERN =
   /(?:\b(?:release[- ]note|what(?:'|’)s new|changelog|internal)\b.{0,100}\b(?:surface|ui|modal|route|page|screen|panel)\b|\b(?:surface|ui|modal|route|page|screen|panel)\b.{0,100}\b(?:release[- ]note|what(?:'|’)s new|changelog|internal)\b)/i;
 const PROHIBITION_PATTERN =
