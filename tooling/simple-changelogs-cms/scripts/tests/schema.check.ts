@@ -106,6 +106,34 @@ describe("CMS changelog policy", () => {
     expect(validateCmsPolicy(written).errors).toEqual([]);
   });
 
+  test("requires a positive guidance version, like setup and both JSON schemas", async () => {
+    const guidance = (version: number) => ({
+      ...policy(),
+      guidance: { backfillStatus: "completed", version },
+    });
+    expect(validateCmsPolicy(guidance(0)).errors.join("\n")).toContain(
+      "positive version"
+    );
+    expect(validateCmsPolicy(guidance(1)).errors).toEqual([]);
+
+    const schemaMinimums = await Promise.all(
+      [
+        "../../../../skills/simple-changelogs-cms/schemas/repo-policy.schema.json",
+        "../../../../skills/simple-changelogs-web-cms/schemas/repo-policy.schema.json",
+      ].map(async (path) => {
+        const schema = JSON.parse(
+          await readFile(new URL(path, import.meta.url), "utf8")
+        ) as {
+          properties: {
+            guidance: { properties: { version: { minimum: number } } };
+          };
+        };
+        return schema.properties.guidance.properties.version.minimum;
+      })
+    );
+    expect(schemaMinimums).toEqual([1, 1]);
+  });
+
   test("rejects public roots, path traversal, and unknown policy fields", () => {
     expect(
       validateCmsPolicy({

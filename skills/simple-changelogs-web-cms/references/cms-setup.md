@@ -9,7 +9,7 @@ does not copy this skill's prose.
 {
   "schemaVersion": 1,
   "guidance": {
-    "version": 1,
+    "version": 2,
     "backfillStatus": "completed"
   },
   "changelogPath": "CMS_CHANGELOG.json",

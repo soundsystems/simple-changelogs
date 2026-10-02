@@ -9,11 +9,12 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-// Raised from 376 KiB because Web+CMS had only 58 bytes of margin and the full
-// distribution 2 KB, so a one-sentence reference correction could not land. Both
-// large distributions now hold roughly 8 KB. When this binds again, prefer
-// trimming reference prose over raising the cap: the budget exists to keep an
-// installed package small.
+// 384 KiB is required now: the reference `## Contents` lists (MR !57) put
+// Web+CMS at 388,189 bytes, above the earlier 376 KiB (385,024-byte) cap. The
+// raise itself landed earlier for a reference correction that a small trim
+// would have fit (Web+CMS was 22 bytes over), so treat it as spent headroom,
+// not a precedent. When this binds again, prefer trimming reference prose over
+// raising the cap: the budget exists to keep an installed package small.
 const MAX_DISTRIBUTION_BYTES = 384 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
@@ -108,6 +109,12 @@ const canonicalProtocolFiles = new Map(
     )
   )
 );
+
+// protocol-provenance.json describes the Simple Changes protocol; each
+// distribution's marker advertises only the subset it supports.
+const protocolProvenance = JSON.parse(
+  canonicalProtocolFiles.get("protocol-provenance.json") ?? "{}"
+) as { receiptVersions?: unknown[]; requestVersion?: unknown };
 
 interface WalkedEntry {
   bytes: number;
@@ -383,6 +390,21 @@ for (const {
         ) {
           failures.push(
             `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} must advertise request and receipt versions exactly when the distribution ships the release handoff protocol`
+          );
+        }
+        if (
+          advertisesProtocol &&
+          !(
+            (marker.requestVersions as unknown[]).every(
+              (version) => version === protocolProvenance.requestVersion
+            ) &&
+            (marker.receiptVersions as unknown[]).every((version) =>
+              protocolProvenance.receiptVersions?.includes(version)
+            )
+          )
+        ) {
+          failures.push(
+            `skills/${directoryName}/${PROVIDER_MARKER_FILENAME} advertises versions outside protocol-provenance.json`
           );
         }
         if (
@@ -1163,6 +1185,74 @@ for (const { directoryName, source } of cmsPolicySchemas) {
       `skills/${directoryName}/schemas/repo-policy.schema.json must not carry repository-only app policy`
     );
   }
+}
+
+// The Web+CMS package ships copies of the CMS-only validator and data schema.
+// Nothing else catches a drifted copy, such as one with a curation rule removed.
+for (const [canonical, copy] of [
+  [
+    "simple-changelogs-cms/scripts/lib/schema.ts",
+    "simple-changelogs-web-cms/scripts/lib/cms-schema.ts",
+  ],
+  [
+    "simple-changelogs-cms/schemas/cms-changelog.schema.json",
+    "simple-changelogs-web-cms/schemas/cms-changelog.schema.json",
+  ],
+] as const) {
+  if (
+    readFileSync(join(skillsRoot, copy), "utf8") !==
+    readFileSync(join(skillsRoot, canonical), "utf8")
+  ) {
+    failures.push(`skills/${copy} diverges from skills/${canonical}`);
+  }
+}
+
+// Web+CMS records its CMS policy on a second guidance track. The SKILL.md
+// declaration, the CMS-track update notes, and the policy example must all
+// match the setup helper's constant.
+const webCmsCmsGuidance = /const WEB_CMS_CMS_GUIDANCE_VERSION = (\d+);/u.exec(
+  canonicalSetupHelper
+)?.[1];
+const [webCmsSkill, webCmsGuidanceNotes, webCmsSetup] = await Promise.all(
+  ["SKILL.md", "references/guidance-updates.md", "references/cms-setup.md"].map(
+    (filename) =>
+      readFile(join(skillsRoot, "simple-changelogs-web-cms", filename), "utf8")
+  )
+);
+if (
+  !webCmsCmsGuidance ||
+  /Current CMS guidance version: (\d+)/u.exec(webCmsSkill ?? "")?.[1] !==
+    webCmsCmsGuidance
+) {
+  failures.push(
+    `skills/simple-changelogs-web-cms/SKILL.md must declare Current CMS guidance version: ${String(webCmsCmsGuidance)} (WEB_CMS_CMS_GUIDANCE_VERSION in setup.ts)`
+  );
+}
+if (
+  !webCmsGuidanceNotes?.includes(
+    `simple-changelogs-cms-guidance-update version="${String(webCmsCmsGuidance)}"`
+  )
+) {
+  failures.push(
+    `skills/simple-changelogs-web-cms CMS guidance ${String(webCmsCmsGuidance)} lacks CMS-track update-notice metadata`
+  );
+}
+const webCmsPolicyExample =
+  /<!-- simple-changelogs-cms-policy-example -->\s*```json\n([\s\S]*?)\n```/u.exec(
+    webCmsSetup ?? ""
+  )?.[1];
+if (
+  String(
+    (
+      JSON.parse(webCmsPolicyExample ?? "{}") as {
+        guidance?: { version?: unknown };
+      }
+    ).guidance?.version
+  ) !== webCmsCmsGuidance
+) {
+  failures.push(
+    `skills/simple-changelogs-web-cms/references/cms-setup.md policy example must record CMS guidance ${String(webCmsCmsGuidance)}`
+  );
 }
 
 if (failures.length > 0) {

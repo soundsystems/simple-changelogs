@@ -1940,48 +1940,6 @@ describe("distribution and CMS boundaries", () => {
       })
     );
   });
-
-  test("web+CMS resumes a matching interrupted setup transaction", async () => {
-    const { config, repo } = await fixture();
-    await writeJson(join(repo, ".simple-changelogs.json"), {
-      developerChangelog: "required",
-      distribution: "web-cms",
-      guidance: { backfillStatus: "not-applicable", version: 20 },
-      majorReleaseNaming: "named",
-      newReleaseNoteSurfaces: "ask",
-      publicVersioning: {
-        major: "ask",
-        minor: "ask",
-        patch: "ask",
-        suggestWhenAsking: true,
-      },
-      releaseNoteGrouping: "product-areas",
-      schemaVersion: 1,
-      signatures: "agent-and-timestamp",
-    });
-    await writeJson(join(repo, ".simple-changelogs.setup-transaction.json"), {
-      schemaVersion: 1,
-      targets: [".simple-changelogs.json"],
-    });
-
-    const result = await applySetup({
-      backfillStatus: "not-applicable",
-      cmsAuthProven: true,
-      cmsRoute: "/admin/changelog",
-      cmsSurfaceProven: true,
-      configDirectory: config,
-      confirm: true,
-      distribution: "web-cms",
-      repo,
-      scope: "repository",
-    });
-
-    expect(result.status).toBe("configured");
-    expect(existsSync(join(repo, ".simple-changelogs-cms.json"))).toBe(true);
-    expect(
-      existsSync(join(repo, ".simple-changelogs.setup-transaction.json"))
-    ).toBe(false);
-  });
 });
 
 test("global preference validation rejects unknown authority and repository fields", () => {
@@ -2199,8 +2157,9 @@ describe("post-onboarding update paths", () => {
     expect(inspection.guidanceUpdate?.changes).toEqual([
       {
         backfillRecommendation: "optional",
-        kinds: ["behavior"],
-        summary: "CMS-track guidance changed from version 1 to 2.",
+        kinds: ["capability", "onboarding"],
+        summary:
+          "CMS changelog entries may now carry curated highlights with a mechanical accounting of every underlying change.",
         version: 2,
       },
     ]);

@@ -201,7 +201,9 @@
         },
         "guidanceVersion": { "type": "integer", "minimum": 1 },
         "requestVersions": { "const": [1] },
-        "receiptVersions": { "const": [1, 2] },
+        "receiptVersions": {
+          "anyOf": [{ "const": [1, 2] }, { "const": [2] }]
+        },
         "features": {
           "anyOf": [
             {
@@ -247,6 +249,7 @@
     "majorReleaseNaming": { "enum": ["named", "version-only"] },
     "publicReleaseNotes": { "enum": ["full", "curated"] },
     "curationBudget": {
+      "$comment": "min <= max is enforced by the setup helper and lib/validate.ts, not by this schema, which cannot compare fields. {min: 0, max: 0} is valid: each release gets only the rollup line.",
       "type": "object",
       "additionalProperties": false,
       "required": ["min", "max"],
@@ -378,7 +381,7 @@
           "additionalProperties": false,
           "required": ["version", "backfillStatus"],
           "properties": {
-            "version": { "type": "integer", "minimum": 0 },
+            "version": { "type": "integer", "minimum": 1 },
             "backfillStatus": { "$ref": "#/$defs/backfillStatus" }
           }
         },
@@ -417,6 +420,7 @@
         "majorReleaseNaming": { "$ref": "#/$defs/majorReleaseNaming" },
         "signatures": { "enum": ["agent-and-timestamp", "none"] },
         "newReleaseNoteSurfaces": { "$ref": "#/$defs/surfacePolicy" },
+        "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
         "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" },
         "setupStyle": { "enum": ["recommended", "customized"] }
       }

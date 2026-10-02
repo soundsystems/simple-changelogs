@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "bun";
 import { validateRepoPolicy } from "../lib/validate.ts";
-import { applySetup } from "../setup.ts";
+import { applySetup, parseCli } from "../setup.ts";
 
 const setupScript = fileURLToPath(new URL("../setup.ts", import.meta.url));
 const temporaryPaths: string[] = [];
@@ -242,6 +242,37 @@ describe("curated release-note setup", () => {
 
     expect(exitCode).toBe(2);
     expect(stderr).toContain("--curation-min must be a non-negative integer");
+  });
+
+  test("the CLI parser accepts only plain decimal non-negative integers", () => {
+    const parse = (value: string) =>
+      parseCli(["apply", "--curation-min", value]).options.curationMin;
+
+    expect([parse("0"), parse("3"), parse("999999999")]).toEqual([
+      0, 3, 999_999_999,
+    ]);
+    for (const value of [" ", "1e0", "0x3", "-1", "1.5", "01", "+1", "1e9"]) {
+      expect(() => parse(value)).toThrow(
+        "--curation-min must be a non-negative integer"
+      );
+    }
+  });
+
+  // Decision: a {0, 0} budget stays valid everywhere; every curated release
+  // then publishes only its rollup line. The schemas' $comment records this.
+  test("a zero-highlight curation budget is accepted", async () => {
+    const { config, repo } = await fixture();
+    const result = await applySetup({
+      ...webOptions(repo, config),
+      curationMax: 0,
+      curationMin: 0,
+      publicReleaseNotes: "curated",
+    });
+
+    expect(result.status).toBe("configured");
+    expect(
+      (await readJson(join(repo, ".simple-changelogs.json"))).curationBudget
+    ).toEqual({ max: 0, min: 0 });
   });
 
   test("malformed stored curation state is reported, not replaced", async () => {
