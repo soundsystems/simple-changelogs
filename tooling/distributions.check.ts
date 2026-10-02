@@ -9,13 +9,16 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-// 384 KiB is required now: the reference `## Contents` lists (MR !57) put
-// Web+CMS at 388,189 bytes, above the earlier 376 KiB (385,024-byte) cap. The
-// raise itself landed earlier for a reference correction that a small trim
-// would have fit (Web+CMS was 22 bytes over), so treat it as spent headroom,
-// not a precedent. When this binds again, prefer trimming reference prose over
+// The cap counts every installed file, including the byte-synced copies of
+// query.ts, lib/changelog-parse.ts, and setup.ts bundled into each Markdown
+// distribution. 400 KiB is required because those copies grew with necessary
+// code, not prose: the query parser and curation-check correctness fixes
+// (MR !60) and setup transaction recovery (MR !59). Reference prose was
+// already trimmed in MR !56. Measured after both: Web+CMS 396,476 bytes, full
+// 393,734, Web 366,808, mobile 357,580, skill-maintainer 289,496, CMS-only
+// 219,638. When this binds again, prefer trimming reference prose over
 // raising the cap: the budget exists to keep an installed package small.
-const MAX_DISTRIBUTION_BYTES = 384 * 1024;
+const MAX_DISTRIBUTION_BYTES = 400 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;

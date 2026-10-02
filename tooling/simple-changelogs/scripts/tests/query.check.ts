@@ -410,6 +410,50 @@ describe("query CLI on synthetic fixtures", () => {
     ]);
   });
 
+  test("help exits 0 and a leading v selects a version", async () => {
+    const help = await runQuery(["--help"]);
+    expect(help.exitCode).toBe(0);
+    expect(help.stdout).toContain("Usage: query.ts");
+
+    const repo = await fixtureRepo(
+      [
+        "# Changelog",
+        "",
+        "## 1.3.0 - 2026-04-01",
+        "",
+        "- Added filters",
+        "",
+      ].join("\n")
+    );
+    const show = await runQuery(["show", "v1.3.0", "--repo", repo, "--json"]);
+    expect(show.exitCode).toBe(0);
+  });
+
+  test("check fails on a comment that would swallow a release", async () => {
+    const repo = await fixtureRepo(
+      [
+        "# Changelog",
+        "",
+        "## Unreleased",
+        "",
+        "<!-- TODO",
+        "## 1.0.0 - 2026-01-01",
+        "",
+        "- Initial release",
+        "",
+      ].join("\n")
+    );
+    const result = await runQuery([
+      "check",
+      "--log",
+      "customer",
+      "--repo",
+      repo,
+    ]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("Unclosed HTML comment at line 5");
+  });
+
   test("errors when the developer log is explicitly requested but missing", async () => {
     const repo = await fixtureRepo(
       ["# Changelog", "", "## Unreleased", "", "- Pending", ""].join("\n")
