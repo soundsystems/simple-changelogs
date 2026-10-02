@@ -91,8 +91,8 @@
   (full 20, Web 19, Mobile 18, skill-maintainer 12, Web+CMS 19) after this
   branch's checkpoint bumps.
 <!-- simple-changelogs-signature agent="claude-fable-5" at="2026-08-26T09:20:17-05:00" -->
-- Added the curated release-notes layer (design:
-  `docs/plans/2026-08-25-curated-release-notes.md`):
+- Added the curated release-notes layer (design record approved 2026-08-25,
+  retired from `docs/plans/` once implemented):
   - Policy: optional `publicReleaseNotes: "full" | "curated"` (default full)
     and `curationBudget {min,max}` (defaults 3/8) with CLI flags, interlocks,
     contextual updates via `atomicReplaceSet`, schema and receipt coverage.
