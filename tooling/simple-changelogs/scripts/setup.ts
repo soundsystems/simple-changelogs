@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { type Dirent, existsSync } from "node:fs";
 import {
   chmod,
+  link,
   lstat,
   mkdir,
   open,
@@ -589,6 +590,8 @@ const DEFAULT_RELEASE_NOTE_GROUPING: ReleaseNoteGroupingPolicy =
   "product-areas";
 
 interface CandidateWrite {
+  // The parsed state a rewrite was derived from; see commitSet.
+  base?: unknown;
   content: string;
   kind: WriteRecord["kind"];
   mode: number;
@@ -654,6 +657,9 @@ const validatePublicVersioning = (
 
 const stringifyError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+const errorCode = (error: unknown): unknown =>
+  isRecord(error) ? error.code : undefined;
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 
@@ -772,16 +778,19 @@ const guidanceReleaseNotesPath = (installed: Distribution | "cms"): string => {
 };
 
 const GUIDANCE_UPDATE_MARKER =
-  /<!-- simple-changelogs-guidance-update version="(\d+)" kinds="([^"]+)" backfill="(recommended|optional|not-needed)" summary="([^"]+)" -->/gu;
+  /<!-- simple-changelogs-(cms-)?guidance-update version="(\d+)" kinds="([^"]+)" backfill="(recommended|optional|not-needed)" summary="([^"]+)" -->/gu;
 
+// `cmsTrack` selects the web-cms CMS policy's `cms-` prefixed markers.
 export const parseGuidanceUpdateChanges = (
   markdown: string,
   recordedVersion: number,
-  currentVersion: number
+  currentVersion: number,
+  cmsTrack = false
 ): GuidanceUpdateNotice["changes"] => {
   const changes: GuidanceUpdateNotice["changes"] = [];
   for (const match of markdown.matchAll(GUIDANCE_UPDATE_MARKER)) {
-    const [, versionValue, kindValues, backfillRecommendation, summary] = match;
+    const [, cms, versionValue, kindValues, backfillRecommendation, summary] =
+      match;
     const version = Number(versionValue);
     const kinds = (kindValues ?? "")
       .split(",")
@@ -789,6 +798,7 @@ export const parseGuidanceUpdateChanges = (
         oneOf(kind, GUIDANCE_UPDATE_KINDS)
       );
     if (
+      Boolean(cms) !== cmsTrack ||
       version <= recordedVersion ||
       version > currentVersion ||
       kinds.length === 0 ||
@@ -816,28 +826,6 @@ export const guidanceBackfillRecommendationFor = (
   return "not-needed";
 };
 
-// The web-cms CMS track has no marker file yet, so a pending CMS-side update
-// surfaces the same synthesized fallback entry used for unreadable notes.
-const webCmsCmsTrackChanges = (
-  cmsPolicy: CmsPolicy | undefined
-): GuidanceUpdateNotice["changes"] => {
-  if (!cmsPolicy) {
-    return [];
-  }
-  const recordedVersion = cmsPolicy.guidance.version;
-  if (recordedVersion >= WEB_CMS_CMS_GUIDANCE_VERSION) {
-    return [];
-  }
-  return [
-    {
-      backfillRecommendation: "optional",
-      kinds: ["behavior"],
-      summary: `CMS-track guidance changed from version ${recordedVersion} to ${WEB_CMS_CMS_GUIDANCE_VERSION}.`,
-      version: WEB_CMS_CMS_GUIDANCE_VERSION,
-    },
-  ];
-};
-
 const guidanceUpdateNoticeFor = async (
   installed: Distribution | "cms",
   policy: RepoPolicy | CmsPolicy | undefined,
@@ -846,48 +834,52 @@ const guidanceUpdateNoticeFor = async (
   if (!policy) {
     return null;
   }
-  const mainRecordedVersion = policy.guidance.version;
-  const mainCurrentVersion = currentGuidanceVersionFor(installed);
-  const cmsTrackChanges =
-    installed === "web-cms" ? webCmsCmsTrackChanges(webCmsCmsPolicy) : [];
-  const mainOutdated = mainRecordedVersion < mainCurrentVersion;
-  if (!mainOutdated && cmsTrackChanges.length === 0) {
+  // A web-cms CMS policy records guidance on its own second track.
+  const tracks = [
+    {
+      cmsTrack: false,
+      current: currentGuidanceVersionFor(installed),
+      recorded: policy.guidance.version,
+    },
+    {
+      cmsTrack: true,
+      current: WEB_CMS_CMS_GUIDANCE_VERSION,
+      recorded: webCmsCmsPolicy
+        ? webCmsCmsPolicy.guidance.version
+        : WEB_CMS_CMS_GUIDANCE_VERSION,
+    },
+  ].filter(({ current, recorded }) => recorded < current);
+  const [first] = tracks;
+  if (!first) {
     return null;
   }
-  const cmsRecordedVersion = webCmsCmsPolicy
-    ? webCmsCmsPolicy.guidance.version
-    : mainRecordedVersion;
-  const recordedVersion = mainOutdated
-    ? mainRecordedVersion
-    : cmsRecordedVersion;
-  const currentVersion = mainOutdated
-    ? mainCurrentVersion
-    : WEB_CMS_CMS_GUIDANCE_VERSION;
-  const releaseNotesPath = guidanceReleaseNotesPath(installed);
-  let mainChanges: GuidanceUpdateNotice["changes"] = [];
-  if (mainOutdated) {
-    try {
-      mainChanges = parseGuidanceUpdateChanges(
-        await readFile(releaseNotesPath, "utf8"),
-        mainRecordedVersion,
-        mainCurrentVersion
-      );
-    } catch {
-      // A source checkout can be mid-update. Still surface the version change;
-      // verification will report a missing routed reference separately.
-    }
-    if (mainChanges.length === 0) {
-      mainChanges = [
-        {
-          backfillRecommendation: "optional",
-          kinds: ["behavior"],
-          summary: `Guidance changed from version ${mainRecordedVersion} to ${mainCurrentVersion}.`,
-          version: mainCurrentVersion,
-        },
-      ];
-    }
+  let notes = "";
+  try {
+    notes = await readFile(guidanceReleaseNotesPath(installed), "utf8");
+  } catch {
+    // A source checkout can be mid-update. Still surface the version change;
+    // verification will report a missing routed reference separately.
   }
-  const changes = [...mainChanges, ...cmsTrackChanges];
+  const changes = tracks.flatMap(
+    ({ cmsTrack, current, recorded }): GuidanceUpdateNotice["changes"] => {
+      const parsed = parseGuidanceUpdateChanges(
+        notes,
+        recorded,
+        current,
+        cmsTrack
+      );
+      return parsed.length > 0
+        ? parsed
+        : [
+            {
+              backfillRecommendation: "optional",
+              kinds: ["behavior"],
+              summary: `${cmsTrack ? "CMS-track guidance" : "Guidance"} changed from version ${recorded} to ${current}.`,
+              version: current,
+            },
+          ];
+    }
+  );
   const backfillRecommendation = guidanceBackfillRecommendationFor(changes);
   const releaseNotesOffer =
     "Detailed skill release notes are available if you would like to review them.";
@@ -904,9 +896,9 @@ const guidanceUpdateNoticeFor = async (
     actions: ["walkthrough", "continue", "view-release-notes"],
     backfillRecommendation,
     changes,
-    currentVersion,
+    currentVersion: first.current,
     headline: "Simple Changelogs has recently been updated.",
-    recordedVersion,
+    recordedVersion: first.recorded,
     releaseNotesOffer,
     releaseNotesPath: "references/guidance-updates.md",
     summary: `${changeSummary} ${backfillSummary}`,
@@ -1126,14 +1118,12 @@ const validateCmsPolicy = (
       isRecord(value.guidance) &&
       hasExactKeys(value.guidance, ["version", "backfillStatus"]) &&
       Number.isInteger(value.guidance.version) &&
-      // Version 0 marks CMS-side guidance recorded before the track's first
-      // checkpoint; it stays valid so a pending track update can surface.
-      (value.guidance.version as number) >= 0 &&
+      (value.guidance.version as number) >= 1 &&
       oneOf(value.guidance.backfillStatus, BACKFILL_STATUSES)
     )
   ) {
     errors.push(
-      "CMS guidance must contain a non-negative version and a supported backfillStatus"
+      "CMS guidance must contain a positive version and a supported backfillStatus"
     );
   }
   if (!oneOf(value.newReleaseNoteSurfaces, SURFACE_POLICIES)) {
@@ -1269,11 +1259,7 @@ const readState = async <T>(
   try {
     metadata = await lstat(path);
   } catch (error) {
-    if (
-      isRecord(error) &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "ENOENT"
-    ) {
+    if (errorCode(error) === "ENOENT") {
       return { errors: [], path, state: "absent" };
     }
     return {
@@ -2152,11 +2138,7 @@ const ensureNoSymlink = async (path: string): Promise<void> => {
       throw new Error(`Refusing symbolic-link target: ${path}`);
     }
   } catch (error) {
-    if (
-      isRecord(error) &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "ENOENT"
-    ) {
+    if (errorCode(error) === "ENOENT") {
       return;
     }
     throw error;
@@ -2169,11 +2151,7 @@ const ensureAbsent = async (path: string): Promise<void> => {
     const targetKind = metadata.isSymbolicLink() ? "symbolic-link" : "existing";
     throw new Error(`Refusing ${targetKind} target: ${path}`);
   } catch (error) {
-    if (
-      isRecord(error) &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "ENOENT"
-    ) {
+    if (errorCode(error) === "ENOENT") {
       return;
     }
     throw error;
@@ -2218,195 +2196,231 @@ const stageCandidates = async (
   return staged;
 };
 
-const recoverSetupTransaction = async (
-  root: string,
-  candidates: CandidateWrite[]
-): Promise<void> => {
-  const markerPath = join(root, SETUP_TRANSACTION_FILENAME);
-  if (!existsSync(markerPath)) {
-    return;
-  }
-  await ensureNoSymlink(markerPath);
-  const marker = JSON.parse(await readFile(markerPath, "utf8")) as unknown;
-  if (
-    !(
-      isRecord(marker) &&
-      hasExactKeys(marker, ["schemaVersion", "targets"]) &&
-      marker.schemaVersion === 1 &&
-      Array.isArray(marker.targets) &&
-      marker.targets.length > 0 &&
-      marker.targets.every(
-        (target) =>
-          typeof target === "string" &&
-          target.length > 0 &&
-          !target.startsWith("/") &&
-          !target.split("/").includes("..")
-      )
-    )
-  ) {
-    throw new Error(`Unfinished setup transaction is malformed: ${markerPath}`);
-  }
-  const targets = marker.targets.map((target) => resolve(root, target));
-  if (
-    targets.some((target) => {
-      const local = relative(root, target);
-      return local.startsWith("..") || local === "";
-    })
-  ) {
-    throw new Error(`Unfinished setup transaction escapes ${root}`);
-  }
-  const candidatesByPath = new Map(
-    candidates.map((candidate) => [candidate.path, candidate])
-  );
-  if (targets.some((target) => !candidatesByPath.has(target))) {
-    throw new Error(
-      "Unfinished setup transaction does not match the requested setup choices"
-    );
-  }
-  const existingTargets = targets.filter((target) => existsSync(target));
-  const existingContent = await Promise.all(
-    existingTargets.map(async (target) => ({
-      candidate: candidatesByPath.get(target),
-      content: await readFile(target, "utf8"),
-    }))
-  );
-  if (
-    existingContent.some(
-      ({ candidate, content }) => candidate?.content !== content
-    )
-  ) {
-    throw new Error(
-      "Unfinished setup transaction contains a target with unexpected content"
-    );
-  }
-  await rm(markerPath, { force: true });
-};
+// Every setup write holds one transaction marker. It is created exclusively
+// before any target is read, so concurrent runs serialize, and it records each
+// target's prior content so a later run can roll an interrupted write back.
+const ROOT_FILE_NAME = /^(?!\.\.?$)[^/\\]+$/u;
+const STALE_TRANSACTION_MS = 600_000;
 
-const createTransactionMarker = async (
-  root: string,
+interface TransactionMarker {
+  pid: number;
+  schemaVersion: 2;
+  targets: Record<string, string | null>;
+}
+
+const stageMarker = (
   markerPath: string,
-  staged: { candidate: CandidateWrite }[]
-): Promise<void> => {
-  const marker = {
-    schemaVersion: 1,
-    targets: staged.map(({ candidate }) =>
-      relative(root, candidate.path).split(sep).join("/")
-    ),
-  };
-  const markerHandle = await open(markerPath, "wx", 0o600);
+  targets: TransactionMarker["targets"] = {}
+): ReturnType<typeof stageFile> =>
+  stageFile({
+    content: json({ pid: process.pid, schemaVersion: 2, targets }),
+    kind: "repository-policy",
+    mode: 0o600,
+    path: markerPath,
+  });
+
+const parseMarker = (raw: string): TransactionMarker | null => {
   try {
-    await markerHandle.writeFile(json(marker), "utf8");
-    await markerHandle.sync();
-  } finally {
-    await markerHandle.close();
+    const marker = JSON.parse(raw) as unknown;
+    if (
+      isRecord(marker) &&
+      marker.schemaVersion === 2 &&
+      Number.isInteger(marker.pid) &&
+      isRecord(marker.targets) &&
+      Object.entries(marker.targets).every(
+        ([name, prior]) =>
+          ROOT_FILE_NAME.test(name) &&
+          (prior === null || typeof prior === "string")
+      )
+    ) {
+      return marker as unknown as TransactionMarker;
+    }
+  } catch {
+    // An unreadable marker gets the remediation error instead.
+  }
+  return null;
+};
+
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return errorCode(error) === "EPERM";
   }
 };
 
-const commitStaged = async (
-  staged: { candidate: CandidateWrite; temporaryPath: string }[]
-): Promise<void> => {
-  await Promise.all(
-    staged.map(async ({ candidate, temporaryPath }) => {
-      await ensureNoSymlink(candidate.path);
-      await rename(temporaryPath, candidate.path);
-      await chmod(candidate.path, candidate.mode);
-    })
-  );
+// Restores the prior content recorded by a run that stopped mid-transaction.
+const recoverTransaction = async (markerPath: string): Promise<void> => {
+  let raw: string;
+  let age: number;
+  try {
+    raw = await readFile(markerPath, "utf8");
+    age = Date.now() - (await stat(markerPath)).mtimeMs;
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+  const marker = parseMarker(raw);
+  if (!marker) {
+    throw new Error(
+      `Unfinished setup transaction ${markerPath} has no recovery data; confirm each file it names holds the intended content, then delete it.`
+    );
+  }
+  const held = `Another setup run holds ${markerPath}; retry after it finishes.`;
+  if (isAlive(marker.pid) && age < STALE_TRANSACTION_MS) {
+    throw new Error(held);
+  }
+  // Claim the orphan under a private name so only one run rolls it back.
+  const claimed = `${markerPath}.${process.pid}-${crypto.randomUUID()}`;
+  try {
+    await rename(markerPath, claimed);
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+  const release = async (error: Error): Promise<never> => {
+    await link(claimed, markerPath).catch(() => undefined);
+    await rm(claimed, { force: true });
+    throw error;
+  };
+  if ((await readFile(claimed, "utf8")) !== raw) {
+    await release(new Error(held));
+  }
+  try {
+    await Promise.all(
+      Object.entries(marker.targets).map(async ([name, prior]) => {
+        const path = join(dirname(markerPath), name);
+        await ensureNoSymlink(path);
+        await (prior === null
+          ? rm(path, { force: true })
+          : writeFile(path, prior));
+      })
+    );
+  } catch (error) {
+    await release(error as Error);
+  }
+  await rm(claimed, { force: true });
 };
 
-// Rewrites existing setup state with the same transaction marker, staging,
-// and rollback as onboarding; prior content is restored on failure.
-const atomicReplaceSet = async (
-  root: string,
-  candidates: CandidateWrite[]
-): Promise<WriteRecord[]> => {
-  await Promise.all(
-    candidates.map((candidate) => ensureNoSymlink(candidate.path))
-  );
-  const markerPath = join(root, SETUP_TRANSACTION_FILENAME);
-  await ensureAbsent(markerPath);
-  const originals = await Promise.all(
-    candidates.map(async (candidate) => ({
-      candidate,
-      content: existsSync(candidate.path)
-        ? await readFile(candidate.path, "utf8")
-        : null,
-    }))
-  );
-  const staged = await stageCandidates(candidates);
-  let markerCreated = false;
+const acquireTransaction = async (markerPath: string): Promise<void> => {
+  const lock = await stageMarker(markerPath);
+  const attempt = async (): Promise<void> => {
+    try {
+      await link(lock.temporaryPath, markerPath);
+    } catch (error) {
+      if (errorCode(error) !== "EEXIST") {
+        throw error;
+      }
+      await recoverTransaction(markerPath);
+      await attempt();
+    }
+  };
   try {
-    await createTransactionMarker(root, markerPath, staged);
-    markerCreated = true;
-    await commitStaged(staged);
+    await attempt();
+  } finally {
+    await rm(lock.temporaryPath, { force: true });
+  }
+};
+
+const holdsValue = (text: string | null, value: unknown): boolean => {
+  try {
+    return text !== null && sameStoredValue(JSON.parse(text), value);
+  } catch {
+    return false;
+  }
+};
+
+// Onboarding creates only absent targets. A `replace` rewrite requires each
+// target to still hold the `base` its candidate was derived from.
+const commitSet = async (
+  root: string,
+  candidates: CandidateWrite[],
+  replace = false
+): Promise<WriteRecord[]> => {
+  const markerPath = join(root, SETUP_TRANSACTION_FILENAME);
+  await acquireTransaction(markerPath);
+  const priors = new Map<CandidateWrite, string | null>();
+  const renamed: CandidateWrite[] = [];
+  let staged: Awaited<ReturnType<typeof stageFile>>[] = [];
+  try {
+    await Promise.all(
+      candidates.map(async (candidate) => {
+        await ensureNoSymlink(candidate.path);
+        priors.set(
+          candidate,
+          existsSync(candidate.path)
+            ? await readFile(candidate.path, "utf8")
+            : null
+        );
+      })
+    );
+    const prior = (candidate: CandidateWrite): string | null =>
+      priors.get(candidate) ?? null;
+    if (
+      replace &&
+      candidates.some(
+        (candidate) => !holdsValue(prior(candidate), candidate.base)
+      )
+    ) {
+      throw new Error(
+        "Setup state changed after this run inspected it; inspect again and retry."
+      );
+    }
+    const pending = candidates.filter(
+      (candidate) => replace || prior(candidate) === null
+    );
+    const marker = await stageMarker(
+      markerPath,
+      Object.fromEntries(
+        pending.map((candidate) => [basename(candidate.path), prior(candidate)])
+      )
+    );
+    await rename(marker.temporaryPath, markerPath);
+    staged = await stageCandidates(pending);
+    const failure = (
+      await Promise.allSettled(
+        staged.map(async ({ candidate, temporaryPath }) => {
+          await ensureNoSymlink(candidate.path);
+          if (!replace) {
+            await ensureAbsent(candidate.path);
+          }
+          await rename(temporaryPath, candidate.path);
+          renamed.push(candidate);
+          await chmod(candidate.path, candidate.mode);
+        })
+      )
+    ).find((result) => result.status === "rejected");
+    if (failure) {
+      throw failure.reason;
+    }
     await unlink(markerPath);
     return candidates.map((candidate) => ({
       kind: candidate.kind,
       path: candidate.path,
-      written: true,
+      written: pending.includes(candidate),
     }));
   } catch (error) {
-    await Promise.all([
-      ...originals.map(({ candidate, content }) =>
-        content === null
-          ? rm(candidate.path, { force: true })
-          : writeFile(candidate.path, content, { mode: candidate.mode })
-      ),
-      ...staged.map(({ temporaryPath }) => rm(temporaryPath, { force: true })),
-      ...(markerCreated ? [rm(markerPath, { force: true })] : []),
-    ]);
-    throw error;
-  }
-};
-
-const atomicWriteSet = async (
-  root: string,
-  candidates: CandidateWrite[]
-): Promise<WriteRecord[]> => {
-  await recoverSetupTransaction(root, candidates);
-  await Promise.all(
-    candidates.map((candidate) => ensureNoSymlink(candidate.path))
-  );
-  const pending = candidates.filter((candidate) => !existsSync(candidate.path));
-  const unchanged = candidates
-    .filter((candidate) => existsSync(candidate.path))
-    .map((candidate) => ({
-      kind: candidate.kind,
-      path: candidate.path,
-      written: false,
-    }));
-  if (pending.length === 0) {
-    return unchanged;
-  }
-  const markerPath = join(root, SETUP_TRANSACTION_FILENAME);
-  await ensureAbsent(markerPath);
-  const staged = await stageCandidates(pending);
-  let markerCreated = false;
-  try {
-    await createTransactionMarker(root, markerPath, staged);
-    markerCreated = true;
-    await Promise.all(
-      staged.map(async ({ candidate, temporaryPath }) => {
-        await ensureAbsent(candidate.path);
-        await rename(temporaryPath, candidate.path);
-        await chmod(candidate.path, candidate.mode);
-      })
-    );
-    await unlink(markerPath);
-    return [
-      ...unchanged,
-      ...pending.map((candidate) => ({
-        kind: candidate.kind,
-        path: candidate.path,
-        written: true,
-      })),
-    ];
-  } catch (error) {
-    await Promise.all([
-      ...pending.map((candidate) => rm(candidate.path, { force: true })),
-      ...staged.map(({ temporaryPath }) => rm(temporaryPath, { force: true })),
-      ...(markerCreated ? [rm(markerPath, { force: true })] : []),
-    ]);
+    try {
+      await Promise.all([
+        ...staged.map(({ temporaryPath }) =>
+          rm(temporaryPath, { force: true })
+        ),
+        ...renamed.map((candidate) => {
+          const content = priors.get(candidate) ?? null;
+          return content === null
+            ? rm(candidate.path, { force: true })
+            : writeFile(candidate.path, content, { mode: candidate.mode });
+        }),
+      ]);
+      await rm(markerPath, { force: true });
+    } catch {
+      // The marker stays so the next run finishes this rollback.
+    }
     throw error;
   }
 };
@@ -2633,6 +2647,26 @@ const validateStoredPolicies = async (
   return errors;
 };
 
+// Rewrites configured state in one transaction, then revalidates it.
+const replaceState = async (
+  inspect: SetupResult,
+  installed: Distribution | "cms",
+  candidates: CandidateWrite[]
+): Promise<{ errors: string[]; writes: WriteRecord[] }> => {
+  try {
+    const writes = await commitSet(inspect.repository, candidates, true);
+    return {
+      errors: await validateStoredPolicies(installed, inspect.repository),
+      writes,
+    };
+  } catch (error) {
+    return {
+      errors: [`Setup write failed: ${stringifyError(error)}`],
+      writes: [],
+    };
+  }
+};
+
 const completePartialAudit = async (
   options: ApplyOptions,
   inspect: SetupResult,
@@ -2665,6 +2699,7 @@ const completePartialAudit = async (
   const candidates: CandidateWrite[] = [];
   if (standard && standardPath) {
     candidates.push({
+      base: standard,
       content: json({
         ...standard,
         guidance: { ...standard.guidance, backfillStatus: "completed" },
@@ -2676,6 +2711,7 @@ const completePartialAudit = async (
   }
   if (cms && cmsPath) {
     candidates.push({
+      base: cms,
       content: json({
         ...cms,
         guidance: { ...cms.guidance, backfillStatus: "completed" },
@@ -2685,8 +2721,7 @@ const completePartialAudit = async (
       path: cmsPath,
     });
   }
-  const writes = await atomicReplaceSet(inspect.repository, candidates);
-  const errors = await validateStoredPolicies(installed, inspect.repository);
+  const { errors, writes } = await replaceState(inspect, installed, candidates);
   return errors.length > 0
     ? blockResult(inspect, errors)
     : {
@@ -2769,15 +2804,21 @@ const updateGuidanceDisposition = async (
       "A valid repository policy is required before recording a guidance update.",
     ]);
   }
+  // Recorded versions never decrease, so acknowledging one track cannot
+  // lower the other below what a newer helper already recorded.
   const updatedPolicy = {
     ...record.value,
     guidance: {
       backfillStatus: disposition,
-      version: currentGuidanceVersionFor(installed),
+      version: Math.max(
+        record.value.guidance.version,
+        currentGuidanceVersionFor(installed)
+      ),
     },
   };
   const candidates: CandidateWrite[] = [
     {
+      base: record.value,
       content: json(updatedPolicy),
       kind: installed === "cms" ? "cms-policy" : "repository-policy",
       mode: 0o644,
@@ -2795,11 +2836,15 @@ const updateGuidanceDisposition = async (
       ]);
     }
     candidates.push({
+      base: cmsRecord.value,
       content: json({
         ...cmsRecord.value,
         guidance: {
           backfillStatus: disposition,
-          version: WEB_CMS_CMS_GUIDANCE_VERSION,
+          version: Math.max(
+            cmsRecord.value.guidance.version,
+            WEB_CMS_CMS_GUIDANCE_VERSION
+          ),
         },
       }),
       kind: "cms-policy",
@@ -2807,8 +2852,7 @@ const updateGuidanceDisposition = async (
       path: cmsRecord.path,
     });
   }
-  const writes = await atomicReplaceSet(inspect.repository, candidates);
-  const errors = await validateStoredPolicies(installed, inspect.repository);
+  const { errors, writes } = await replaceState(inspect, installed, candidates);
   return errors.length > 0
     ? blockResult(inspect, errors)
     : {
@@ -2879,12 +2923,10 @@ const contextualPreferenceErrors = (
 
 const updateContextualPreferences = async (
   options: ApplyOptions,
-  inspect: SetupResult
+  inspect: SetupResult,
+  installed: Distribution | "cms"
 ): Promise<SetupResult | null> => {
-  const applicabilityErrors = contextualPreferenceErrors(
-    options,
-    inspect.detection.distribution
-  );
+  const applicabilityErrors = contextualPreferenceErrors(options, installed);
   if (applicabilityErrors.length > 0) {
     return blockResult(inspect, applicabilityErrors);
   }
@@ -2962,17 +3004,15 @@ const updateContextualPreferences = async (
       "Confirmation is required before recording contextual repository preferences.",
     ]);
   }
-  const candidate: CandidateWrite = {
-    content: json({ ...current, ...updates }),
-    kind: "repository-policy",
-    mode: 0o644,
-    path,
-  };
-  const writes = await atomicReplaceSet(inspect.repository, [candidate]);
-  const errors = await validateStoredPolicies(
-    inspect.detection.distribution ?? "full",
-    inspect.repository
-  );
+  const { errors, writes } = await replaceState(inspect, installed, [
+    {
+      base: current,
+      content: json({ ...current, ...updates }),
+      kind: "repository-policy",
+      mode: 0o644,
+      path,
+    },
+  ]);
   return errors.length > 0
     ? blockResult(inspect, errors)
     : {
@@ -3013,9 +3053,6 @@ const preSetupResult = (inspect: SetupResult): SetupResult | null => {
       summary:
         "Valid repository policy already exists; onboarding made no changes.",
     };
-  }
-  if (inspect.status === "blocked") {
-    return { ...inspect, command: "apply" };
   }
   return null;
 };
@@ -3263,7 +3300,7 @@ const persistSetup = async (
         installed
       );
     }
-    writes = await atomicWriteSet(inspect.repository, candidates);
+    writes = await commitSet(inspect.repository, candidates);
     const validationErrors = await validateStoredPolicies(
       installed,
       inspect.repository
@@ -3375,6 +3412,11 @@ export const applySetup = async (
       "Read-only tasks cannot apply onboarding state.",
     ]);
   }
+  if (inspect.status === "blocked") {
+    // Conflicting or malformed state blocks every apply path, including
+    // post-onboarding updates, exactly as inspection reports it.
+    return { ...inspect, command: "apply" };
+  }
   const suppliedVersionActions = [
     options.publicVersionPatch,
     options.publicVersionMinor,
@@ -3426,7 +3468,11 @@ export const applySetup = async (
   if (guidanceDisposition) {
     return guidanceDisposition;
   }
-  const contextualUpdate = await updateContextualPreferences(options, inspect);
+  const contextualUpdate = await updateContextualPreferences(
+    options,
+    inspect,
+    installed
+  );
   if (contextualUpdate) {
     return contextualUpdate;
   }
@@ -3494,7 +3540,9 @@ const booleanOptionNames = new Set([
   "--json",
 ]);
 
-const parseCli = (argv: string[]): ParsedCli => {
+const NON_NEGATIVE_INTEGER = /^(?:0|[1-9]\d{0,8})$/u;
+
+export const parseCli = (argv: string[]): ParsedCli => {
   const [command] = argv;
   if (command !== "inspect" && command !== "apply") {
     throw new Error("Usage: setup.ts <inspect|apply> [options]");
@@ -3525,11 +3573,10 @@ const parseCli = (argv: string[]): ParsedCli => {
     if (value === undefined) {
       return;
     }
-    const parsed = Number(value);
-    if (!(Number.isInteger(parsed) && parsed >= 0)) {
+    if (!NON_NEGATIVE_INTEGER.test(value)) {
       throw new Error(`${name} must be a non-negative integer`);
     }
-    return parsed;
+    return Number(value);
   };
   const enumValue = <T extends string>(
     name: string,

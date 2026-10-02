@@ -25,7 +25,7 @@ Current guidance version: 20
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
 name this distribution, its guidance, and the Git ref or commit when known.
-Current CMS guidance version: 1
+Current CMS guidance version: 2
 
 ## Distribution checkpoint
 

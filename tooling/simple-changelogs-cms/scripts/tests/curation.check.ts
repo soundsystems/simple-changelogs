@@ -110,6 +110,30 @@ describe("CMS curated highlights", () => {
     expect(security).toContain("breaking or security");
   });
 
+  test("derives change ids from the exact, untrimmed change text", () => {
+    // Fixed values computed independently with `shasum -a 256`.
+    expect(cmsChangeId("Added a protected history view.")).toBe("82b4c4f74733");
+    expect(cmsChangeId("  Added a protected history view.  ")).toBe(
+      "f63fbf3e12e7"
+    );
+  });
+
+  test("treats a breaking change with leading whitespace as non-filterable", () => {
+    const padded = "  **Breaking** Renamed the export endpoint.";
+    expect(
+      validateCmsChangelog(
+        changelogWith({
+          changes: [padded],
+          curation: {
+            highlighted: [],
+            omitted: [cmsChangeId(padded)],
+            rolledUp: [],
+          },
+        })
+      ).errors.join("\n")
+    ).toContain("breaking or security");
+  });
+
   test("rejects malformed curation shapes and duplicate change text", () => {
     expect(
       validateCmsChangelog(

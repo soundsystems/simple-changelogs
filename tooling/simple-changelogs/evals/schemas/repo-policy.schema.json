@@ -121,6 +121,7 @@
   },
   "$defs": {
     "curationBudget": {
+      "$comment": "min <= max is enforced by the setup helper and lib/validate.ts, not by this schema, which cannot compare fields. {min: 0, max: 0} is valid: each release gets only the rollup line.",
       "type": "object",
       "additionalProperties": false,
       "required": ["min", "max"],

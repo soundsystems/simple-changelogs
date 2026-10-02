@@ -22,7 +22,8 @@ const ENTRY_KINDS = new Set(["release", "backfill"]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ENTRY_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const CHANGE_ID_PATTERN = /^[0-9a-f]{12}$/;
-const NON_FILTERABLE_CHANGE = /^\*\*(?:Breaking|Security)\*\*/u;
+// Leading whitespace is ignored, as the Markdown side trims entry titles.
+const NON_FILTERABLE_CHANGE = /^\s*\*\*(?:Breaking|Security)\*\*/u;
 const PATH_SEPARATOR_PATTERN = /[\\/]/u;
 
 // The stable identity of one change string: the first 12 hex characters of its

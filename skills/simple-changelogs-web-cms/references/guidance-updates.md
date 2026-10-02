@@ -400,3 +400,14 @@ changelogs; removing it let the next merge prepend into the newest release.
 `query.ts check` flags a duplicate or non-leading `Unreleased`. An optional
 audit restores a missing empty heading and reports entries the newest release
 absorbed; moving them needs separate authority.
+
+<!-- simple-changelogs-cms-guidance-update version="2" kinds="capability,onboarding" backfill="optional" summary="CMS changelog entries may now carry curated highlights with a mechanical accounting of every underlying change." -->
+## CMS Guidance 2
+
+`.simple-changelogs-cms.json` records this separate CMS track. A
+`CMS_CHANGELOG.json` entry may now carry optional `highlights` beside its full
+`changes`, plus an optional `curation` object accounting every change by its
+stable 12-hex id as highlighted, rolled up, or omitted. The validator rejects
+unknown or repeated ids and never lets a `**Breaking**` or `**Security**`
+change be omitted or rolled up. Other entries are unchanged; a backfill of
+released operator history is optional and derives only from recorded changes.
