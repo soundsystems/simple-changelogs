@@ -2,15 +2,17 @@
 
 ## Unreleased
 
-- Stopped tracking design plans in this public repository. `/docs/plans/` is
-  added to `.gitignore`, the six tracked plans are removed from the index
-  (`git rm --cached`; history keeps them and contributors' local copies
-  remain), and CONTRIBUTING.md says plans stay local while shipped decisions
-  are recorded in the changelogs and skill references. The unimplemented
-  shared Web/Mobile version-numbering proposal (MR !49) was closed unmerged
-  for the same reason. The `sourcePlan` path in `protocol-provenance.json`
-  is unaffected: it points into the Simple Changes repository, which owns the
-  protocol.
+- Stopped tracking design plans and specs in this public repository.
+  `/docs/plans/` and `/docs/specs/` are added to `.gitignore`, the six tracked
+  plans and the one tracked spec (the July 2026 portability and evaluation
+  design, long since implemented and partly outdated) are removed from the
+  index (`git rm --cached`; history keeps them and contributors' local copies
+  remain), and CONTRIBUTING.md says plans and specs stay local while shipped
+  decisions are recorded in the changelogs and skill references. The
+  unimplemented shared Web/Mobile version-numbering proposal (MR !49) was
+  closed unmerged for the same reason. The `sourcePlan` path in
+  `protocol-provenance.json` is unaffected: it points into the Simple Changes
+  repository, which owns the protocol.
 <!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T16:51:32-05:00" -->
 - Rebuilt line classification in `changelog-parse.ts` and shared it with
   `curation-source.ts`. Any line containing `<!--` used to be classified as a
