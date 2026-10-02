@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs
 description: Use as the full cross-surface Simple Changelogs distribution when a repository spans web, mobile, store, internal, or other release-note destinations, or when no narrower distribution is selected. Create, update, backfill, classify, reconcile, or finalize customer and developer changelogs, release notes, metadata, versions, major releases, and prerelease trains. Do not use when the repository selects the CMS-only, web-only, mobile-only, web+CMS, or skill-repository distribution.
+metadata:
+  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs
@@ -11,6 +13,10 @@ Maintain two complementary histories:
   stakeholders, and operators.
 - `DEVELOPER_CHANGELOG.md` preserves technical context that future maintainers
   should not have to reconstruct from commits.
+
+Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
+later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
+missing, report it instead of improvising the helper's work by hand.
 
 Current guidance version: 21
 
@@ -87,6 +93,11 @@ Read only the references needed for the current branch of work:
 
 ## Core Workflow
 
+For release-bearing work (a release, a merge into a release-bearing target, a
+production deployment, or a delegated `prepare` or `verify`), copy steps 1–6
+into your reply as a `- [ ]` checklist and tick each only on fresh evidence.
+Other changelog edits skip the checklist.
+
 ### 1. Inspect
 
 Read repository instructions, Git state, recent history, both changelogs, and
@@ -124,9 +135,13 @@ that release flow. Filter each destination through its own scope map.
 ### 5. Verify
 
 Review the actual diff, apply the checklist in
-`references/automation-verification.md`, and run relevant repository checks.
-Treat reported claims as context; filesystem and command evidence establish
-what changed.
+`references/automation-verification.md`, and run `scripts/query.ts check` plus
+relevant repository checks. Treat reported claims as context; filesystem and
+command evidence establish what changed.
+
+Verification is a loop: fix what a failing check reports and rerun until all
+pass, returning to step 4 when the failure involves the release boundary and to
+step 3 otherwise. Never tick a failed step.
 
 ### 6. Hand Off
 

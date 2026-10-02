@@ -4,7 +4,8 @@ The bundled `scripts/query.ts` CLI answers questions about the raw Markdown
 histories without writing anything. The Markdown files stay the source of
 truth: there is no cache, index, or generated database to refresh.
 
-Run it with Bun from the repository root (or pass `--repo PATH`):
+Run it with Bun 1.3 or later from the repository root (or pass
+`--repo PATH`):
 
 ```bash
 bun scripts/query.ts releases --log customer
@@ -26,8 +27,8 @@ Subcommands:
 - `check` — structure lint: unrecognized release headings, duplicate
   `Unreleased` headings, malformed signature comments, and parser diagnostics.
   One empty `Unreleased` heading is valid; a missing or non-leading one is a
-  note. Exits nonzero on problems, so it can join repository verification
-  checklists. Legacy `<!-- Agent: ... -->` signatures are reported as notes,
+  note. Exits nonzero on problems; fix what it reports and rerun it until it
+  exits 0. Legacy `<!-- Agent: ... -->` signatures are reported as notes,
   not problems; they remain valid released history.
 
 For curated release notes (see `references/curation.md`): `entries --ids`

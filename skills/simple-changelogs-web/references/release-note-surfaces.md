@@ -4,6 +4,19 @@ Use this reference only for web-facing release notes. `CHANGELOG.md` is the
 durable customer source; a web page, docs route, modal, panel, or structured
 data file is a destination selected for a particular audience and release.
 
+## Contents
+
+- Default visible names
+- Curated Layer Mapping
+- Discover before editing
+- Links to Released Features
+- Destination scope
+- Product UI editorial selection
+- Content budget
+- Long-form expert archives
+- Reachability and sequencing
+- Release alignment
+
 ## Default visible names
 
 Use **Release Notes** for customer-facing full histories, recent summaries, and

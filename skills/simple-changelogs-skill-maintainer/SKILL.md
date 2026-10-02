@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-skill-maintainer
 description: Use only inside a repository that develops or distributes agent skills and explicitly selects this Simple Changelogs distribution. Maintain the skill package's public and developer changelogs, release-note copy, guidance-version explanations, fork provenance, and installable package boundaries without app, CMS, mobile, or store-release workflows. Do not use in ordinary product repositories or alongside another changelog-owning distribution for the same task.
+metadata:
+  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs Skill Maintainer
@@ -15,6 +17,10 @@ and maintenance, not an application changelog distribution.
 - Packaged or CLI-readable release notes mirror released public history only.
 - Maintainer-only adapters, fixtures, evals, and fork machinery remain outside
   installable skill directories.
+
+Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
+later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
+missing, report it instead of improvising the helper's work by hand.
 
 Current guidance version: 13
 
@@ -83,6 +89,11 @@ versioning, eval requirements, publication flow, and generated mirrors.
 
 ## Core workflow
 
+For release-bearing work (a package release, a merge into a release-bearing
+target, or a delegated `prepare` or `verify`), copy steps 1–7 into your reply as
+a `- [ ]` checklist and tick each only on fresh evidence. Other changelog edits
+skip the checklist.
+
 1. Inspect repository instructions, Git state, public and developer histories,
    skill directories, package manifests, install docs, release-note readers,
    evals, and the task diff.
@@ -97,8 +108,11 @@ versioning, eval requirements, publication flow, and generated mirrors.
    raw signature comments through a read-only CLI or packaged note surface.
 5. Verify every installable directory is self-contained, contains exactly one
    discoverable `SKILL.md`, and excludes maintainer-only tooling.
-6. Run repository-native checks and a real package/consumer install check when
-   the repository provides one.
+6. Run `scripts/query.ts check`, repository-native checks, and a real
+   package/consumer install check when the repository provides one. Fix what a
+   failure in step 5 or 6 reports and rerun until all pass, returning to step 4
+   for a release-boundary failure and to step 3 otherwise. Never tick a failed
+   step.
 7. Hand off public/developer decisions, package and version map, fork
    provenance, checks, and any publish authority still needed.
 

@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-mobile
 description: Use only for a repository that explicitly selects the mobile-only Simple Changelogs distribution, including a repo-local installation of this sole changelog distro. Maintain customer and optional developer changelogs, mobile in-app release notes, and existing App Store or Google Play metadata. Do not use for web or CMS surfaces, skill-package release maintenance, or when another Simple Changelogs distribution owns the repository.
+metadata:
+  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs Mobile
@@ -12,6 +14,10 @@ CMS-operator, or skill-package workflows.
 - `DEVELOPER_CHANGELOG.md` preserves technical context unless repository policy
   selects a single-changelog workflow.
 - Established mobile and store destinations mirror release-scoped highlights.
+
+Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
+later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
+missing, report it instead of improvising the helper's work by hand.
 
 Current guidance version: 19
 
@@ -79,6 +85,11 @@ release flow, source of truth, or store boundary.
 
 ## Core workflow
 
+For release-bearing work (a release, a merge into a release-bearing target, a
+public deployment, or a delegated `prepare` or `verify`), copy steps 1–6 into
+your reply as a `- [ ]` checklist and tick each only on fresh evidence. Other
+changelog edits skip the checklist.
+
 1. Inspect repository instructions, Git state, both changelogs, release
    evidence, mobile package metadata, established in-app/store destinations,
    each destination's app/platform/release scope, and the task diff.
@@ -89,7 +100,10 @@ release flow, source of truth, or store boundary.
    `Unreleased` section and follow the recorded signature policy.
 4. For release-bearing work, reconcile the intended boundary and update only
    metadata, mobile notes, and store destinations proven to share that release.
-5. Review the actual diff and run repository-native checks.
+5. Review the actual diff and run `scripts/query.ts check` plus
+   repository-native checks. Fix what a failure reports and rerun until all
+   pass, returning to step 4 for a release-boundary failure and to step 3
+   otherwise. Never tick a failed step.
 6. Hand off customer/developer decisions, store and in-app dispositions,
    version alignment, checks, and any submission authority still needed.
 

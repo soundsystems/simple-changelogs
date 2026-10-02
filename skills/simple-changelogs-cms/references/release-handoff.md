@@ -7,6 +7,16 @@ history, so the outcome is an operator entry and never a version, tag, hosted
 release, or public note. Merge, deployment, publication, data, secret,
 environment, migration, and DNS authority stay with the orchestrator.
 
+## Contents
+
+- Negotiate before delegation
+- Validate the request first
+- Classify
+- Digests and approval
+- Prepare
+- Verify
+- Never a version, tag, or public note
+
 ## Negotiate before delegation
 
 Run `scripts/setup.ts inspect --repo <path> --task-mode read --json` and read

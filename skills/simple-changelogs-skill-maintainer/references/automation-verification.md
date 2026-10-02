@@ -30,5 +30,7 @@ Use the repository's package-shape test and create a real temporary consumer
 install when that workflow exists. A source-tree pass alone does not prove that
 the Skills CLI copied the intended boundary.
 
-Report checks as passed, failed, blocked, skipped with reason, or unavailable.
-Do not claim publication or remote merge from local package evidence.
+When a check fails, fix what it reports and rerun it until it passes or the
+failure becomes a reported blocker. Report checks as passed, failed, blocked,
+skipped with reason, or unavailable. Do not claim publication or remote merge
+from local package evidence.

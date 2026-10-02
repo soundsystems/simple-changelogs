@@ -8,6 +8,14 @@ For the automatic inspection, CMS-specific questions, preference scope,
 confirmation receipt, and helper commands, follow
 `references/onboarding.md`.
 
+## Contents
+
+- Policy File
+- Authorized initial setup
+- One Prompt per Guidance Version
+
+## Policy File
+
 <!-- simple-changelogs-cms-policy-example -->
 ```json
 {

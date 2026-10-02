@@ -4,6 +4,17 @@ Use this reference for mobile in-app notes and existing App Store, Google Play,
 TestFlight, internal-testing, or marketplace metadata. `CHANGELOG.md` remains
 the durable customer source.
 
+## Contents
+
+- Default visible names
+- Curated Layer Mapping
+- Scope by app and release
+- Deep Links to Released Features
+- Product UI editorial selection
+- Content budget
+- Authorization
+- Version map
+
 ## Default visible names
 
 Use **Release Notes** for customer-facing in-app histories, recent summaries,

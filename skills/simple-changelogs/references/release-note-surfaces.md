@@ -3,6 +3,26 @@
 Use this reference to synchronize established destinations, prepare platform
 copy, or implement a missing destination after authority is established.
 
+## Contents
+
+- Authorization Before Product Implementation
+- Default Visible Names
+- Curated Layer Mapping
+- Find Existing Destinations First
+- Contextual Feature Links
+- Destination Scope Map
+- Product UI Editorial Selection
+- Canonical Web and Mobile Feeds
+- Audience and Platform Scope
+- Existing-Surface Synchronization
+- Mobile Store Copy
+- Release Names and Version Display
+- Authorized Missing-Surface Implementation
+- Summary Versus Full History
+- Long-Form Expert Release Archives
+- Internal Destinations
+- Verification
+
 ## Authorization Before Product Implementation
 
 Updating documented release-note data or an existing reachable surface is

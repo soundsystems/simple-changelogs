@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- Applied the current skill-authoring recommendations across all six
+  changelog distributions. Every reference over 100 lines (50 files) now opens
+  with a `## Contents` list of its exact `##` headings, because agents preview
+  roughly the first 100 lines to judge relevance. The existing
+  `entry-classification.md` list was stale (two headings missing, one
+  misplaced) and is regenerated; CMS `setup.md` gained a `## Policy File`
+  heading so its list covers the policy section. `distributions.check.ts` now
+  fails a long reference without the list, or any list that differs from its
+  headings; mutation-tested both ways. `guidance-updates.md` stays exempt and untouched:
+  the setup helper addresses its `## Guidance N` sections by version.
+- Allowed an optional frontmatter `metadata` string map, the Agent Skills
+  specification field, in the portable contract; `contracts.ts` previously
+  rejected every key beyond `name` and `description`, and any other extra key
+  still fails. Each SKILL.md declares `metadata.models`.
+- Documented runtime dependencies beside the helpers. Bun 1.3 is the floor
+  because `packageManager` pins 1.3.13 and no older runtime is tested; the
+  shipped scripts need only `import.meta.dir`, `import.meta.main`, and `node:`
+  built-ins, so an older floor is plausible but unverified.
+- Scoped the Core Workflow checklist to release-bearing work and made
+  verification an explicit fix-and-rerun loop with a return-to-step rule in
+  SKILL.md, `automation-verification.md`, `querying.md`, and the merge and Web
+  production checklists in `release-lifecycle.md`. CMS-only gets the loop
+  without a checklist because it has no release boundary. No guidance bump:
+  these change navigation, document existing requirements, and restate the
+  completion gate without touching settings, policy, or released history, as
+  with a13db6d9. Distribution growth: full +3,508 B, Web+CMS +3,143 B, Web
+  +3,178 B, Mobile +3,014 B, skill-repository +1,616 B, CMS +974 B.
+<!-- simple-changelogs-signature agent="claude-opus-5-5" at="2026-10-02T13:46:00-05:00" -->
 - Restored a green `bun run check`. The fork-maintenance checker note had put
   Web+CMS 119 bytes over the distribution budget, because that distribution held
   only 58 bytes of margin and the full distribution 2 KB, so no one-sentence

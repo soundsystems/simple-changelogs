@@ -4,6 +4,19 @@ Use this reference for final review and repository-native checks. Verification
 must examine actual state; a response or evaluation report cannot prove its own
 filesystem claims.
 
+## Contents
+
+- Choose Proportionate Evidence
+- Policy and Setup
+- Customer History
+- Developer History
+- Release Lifecycle
+- Version Alignment
+- Release-Note Destinations
+- Backfills
+- Signatures
+- Useful Automated Checks
+
 ## Choose Proportionate Evidence
 
 For Markdown-only changes, inspect the diff and render-sensitive structure. If
@@ -193,5 +206,7 @@ When local architecture supports them, tests may enforce:
   independent seen versions, and all recorded mobile placement modes; and
 - long-form release media references resolve without placeholders.
 
-Run final commands after the last edit. Record command, outcome, and any skipped
-check with its reason; do not summarize stale evidence as current verification.
+Run final commands after the last edit. When one fails, fix what it reports and
+run it again until it passes or the failure becomes a reported blocker. Record
+command, outcome, and any skipped check with its reason; do not summarize stale
+evidence as current verification.

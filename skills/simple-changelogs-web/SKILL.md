@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-web
 description: Use only for a repository that explicitly selects the web-only Simple Changelogs distribution, including a repo-local installation of this sole changelog distro. Maintain customer and optional developer changelogs plus established public web release-note destinations. Do not use for mobile/store notes, authenticated CMS operator history, skill-package release maintenance, or when another Simple Changelogs distribution owns the repository.
+metadata:
+  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs Web
@@ -12,6 +14,10 @@ store, CMS-operator, or skill-package workflows.
 - `DEVELOPER_CHANGELOG.md` preserves technical context unless repository policy
   selects a single-changelog workflow.
 - Established public web release-note destinations mirror selected highlights.
+
+Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
+later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
+missing, report it instead of improvising the helper's work by hand.
 
 Current guidance version: 20
 
@@ -79,6 +85,11 @@ release flow, source of truth, or surface boundary.
 
 ## Core workflow
 
+For release-bearing work (a release, a merge into a release-bearing target, a
+production deployment, or a delegated `prepare` or `verify`), copy steps 1–6
+into your reply as a `- [ ]` checklist and tick each only on fresh evidence.
+Other changelog edits skip the checklist.
+
 1. Inspect repository instructions, Git state, both changelogs, release
    evidence, established public web destinations, their audience/app/release
    scope, and the task diff.
@@ -90,7 +101,10 @@ release flow, source of truth, or surface boundary.
    deployment is always a product release: version and integrate every
    target-contained `Unreleased` item first, then update only metadata and
    existing Web destinations proven to share that release.
-5. Review the actual diff and run repository-native checks.
+5. Review the actual diff and run `scripts/query.ts check` plus
+   repository-native checks. Fix what a failure reports and rerun until all
+   pass, returning to step 4 for a release-boundary failure and to step 3
+   otherwise. Never tick a failed step.
 6. Hand off customer/developer decisions, release state, synchronized
    destinations, checks, and any authority still needed.
 
