@@ -206,9 +206,15 @@
           ]
         },
         "guidanceVersion": { "type": "integer", "minimum": 1 },
-        "requestVersions": { "const": [1] },
+        "requestVersions": {
+          "anyOf": [{ "const": [1, 2] }, { "const": [1] }]
+        },
         "receiptVersions": {
-          "anyOf": [{ "const": [1, 2] }, { "const": [2] }]
+          "anyOf": [
+            { "const": [1, 2, 3] },
+            { "const": [1, 2] },
+            { "const": [2] }
+          ]
         },
         "features": {
           "anyOf": [

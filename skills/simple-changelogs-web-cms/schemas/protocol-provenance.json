@@ -4,8 +4,8 @@
   "scope": "The protocol; changelog-provider.json lists the subset a distribution supports.",
   "ownerRepository": "https://gitlab.com/soundsystems/simple-changes",
   "sourcePlan": "docs/plans/2026-08-10-public-release-versioning-deploy-orchestration.md",
-  "requestVersion": 1,
-  "receiptVersions": [1, 2],
+  "requestVersions": [1, 2],
+  "receiptVersions": [1, 2, 3],
   "canonicalJson": "RFC 8785",
   "digest": "SHA-256"
 }

@@ -34,20 +34,22 @@ destinations.
 At the input target revision, read each member's latest stable public version
 from its canonical owner. Order dotted numeric versions of one to three parts,
 zero-padded (`1.2` equals `1.2.0`), ignoring `+build`; exclude prereleases, and
-block on a version with non-numeric parts. Report one evidence item,
-`versionLine ` plus compact JSON with exactly these keys (the future
-`versionDecision.versionLine`):
+block on a version with non-numeric parts. Record exactly these keys as
+receipt v3's `versionDecision.versionLine`, or in receipt v2 as one evidence
+item, `versionLine ` plus compact JSON:
 
 - `mode`, and `members`: the line's trains, sorted;
 - `memberVersions`: each member's version, or `null` before its first stable
   release;
 - `sharedVersion` (`H`): the highest non-null member version, or `null`;
-- `sharedVersionTrains`: the members holding `H`, empty when `H` is `null`;
+- `sharedVersionTrains`: the members holding `H`, sorted, empty when `H` is
+  `null`;
 - `outcome`: `catch-up` or `advance`.
 
 A release set may span any subset of a line, and every train in it selects the
-same number. `L` is a train's own impact after the repository's `0.x` mapping,
-and `next(v, L)` is the next version after `v` at `L`.
+identical version string, never `1.0` beside `1.0.0`. `L` is a train's own
+impact after the repository's `0.x` mapping, and `next(v, L)` is the next
+version after `v` at `L`.
 
 1. A train without target-contained changes never ships just to match.
 2. `catch-up`: when every shipping train is `null` or behind `H` and its own
@@ -56,12 +58,17 @@ and `next(v, L)` is the next version after `v` at `L`.
 3. `bump-shared`: every release ships that `next(H, L)` (`advance`). Trains
    that did not ship skip it with no placeholder or receipt.
 4. With `H` null, choose the first number normally (`advance`).
-5. Every number exceeds the train's own version. `catch-up` selects exactly
-   `H`; `advance` selects above `H`, or `H` is null.
+5. Every number exceeds the train's own version and is never below its owner's
+   stable current version. `catch-up` selects exactly `H`; `advance` selects
+   above `H`, or `H` is null.
 
-Receipts keep their schema: `releaseImpact` is the train's own impact, the
-bump level is the jump from its own version, and evidence carries, for
-example, `versionLine {"members":["mobile","web"],"memberVersions":{"mobile":"0.21.3","web":"1.0.0"},"mode":"catch-up","outcome":"catch-up","sharedVersion":"1.0.0","sharedVersionTrains":["web"]}`.
+Answer with the highest receipt version in the request's
+`supportedReceiptVersions`, so request v1 never gets v3. Receipt v3 echoes
+request v2's `releaseSetTrains` exactly; `versionLine` is null off a line. On a
+line, the decision digest also covers `mode`, `members`, `memberVersions`, and
+`sharedVersion`, and the effective-policy digest covers `sharedVersionLines`.
+`releaseImpact` is the train's own impact, the bump level is the jump from its
+own version, and v2 evidence carries, for example, `versionLine {"members":["mobile","web"],"memberVersions":{"mobile":"0.21.3","web":"1.0.0"},"mode":"catch-up","outcome":"catch-up","sharedVersion":"1.0.0","sharedVersionTrains":["web"]}`.
 
 ## Examples
 
@@ -91,10 +98,11 @@ ships `1.1.0` first, Mobile catches up to `1.1.0` and skips `1.0.0`.
 - `publicVersioning` keys on the jump from the train's own version, and a
   number crossing a major boundary, `0.x` to `1.0.0` included, always asks.
 - Validate exact direction; never coerce it. It must exceed the train's own
-  version and be at least `H`; under `bump-shared` it must exceed `H` unless
-  it is its release set's number. Otherwise block with
-  `invalid-version-direction` and `choose-version`, name the mode's number in
-  evidence, and change nothing.
+  version and be at least `H`, or above `H` under `bump-shared`; otherwise
+  block with `invalid-version-direction` and `choose-version`, name the mode's
+  number in evidence, and change nothing. A member holding `H` at the set's
+  input target released it before the set, so a train reclassifying after a
+  partner released advances or starts a new release set.
 - Each train keeps its own notes and scope map; equal numbers never mean equal
   contents. A catch-up gets its own section, never appended to another train's
   released one; in a shared `CHANGELOG.md`, use the repository's

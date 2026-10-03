@@ -6,8 +6,8 @@
   "receiptVersions": [2],
   "requestVersions": [1],
   "schemaDigests": {
-    "changelogReceipt": "c226d4e05087024959f68dc967d049267a9a8c5aa98188f9157260e1897e57aa",
-    "changelogRequest": "9bea6549ecdbf494779eefd4f31653bfb81efaa6ee3927d623a62d8459ce3944"
+    "changelogReceipt": "7abe2ca338d12ca88c2dad03e904fa451dc6424fda9497bb4331845431416f93",
+    "changelogRequest": "b5bbccd66631ead9029834a675ed2144de895b1ee3ef50abedfa424650b0e7e5"
   },
   "schemaVersion": 1
 }
