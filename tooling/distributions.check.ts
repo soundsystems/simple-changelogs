@@ -9,18 +9,19 @@ import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts"
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
 const toolingRoot = join(repositoryRoot, "tooling");
-// The cap counts every installed file, including the byte-synced copies of
-// query.ts, lib/changelog-parse.ts, and setup.ts bundled into each Markdown
-// distribution. 400 KiB is required because those copies grew with necessary
-// code, not prose: the query parser and curation-check correctness fixes
-// (MR !60) and setup transaction recovery (MR !59). Reference prose was
-// already trimmed in MR !56. Shared version lines then added train detection
-// and line validation to setup.ts plus full-only guidance, leaving full the
-// closest to the cap. Measured after that: full 409,247 bytes, Web+CMS
-// 403,826, Web 374,158, mobile 364,930, skill-maintainer 296,846, CMS-only
-// 226,988. When this binds again, prefer trimming reference prose over
-// raising the cap: the budget exists to keep an installed package small.
-const MAX_DISTRIBUTION_BYTES = 400 * 1024;
+// Two budgets, because the two kinds of installed file cost different things.
+// Markdown (SKILL.md and references) is what an agent reads into context, so it
+// gets the tight guidance budget. Scripts, schemas, and JSON are executed or
+// validated, not read, and are mostly byte-synced copies (setup.ts ships in
+// every distribution), so they get a separate support budget that keeps the
+// install small without forcing correctness code to compete with guidance.
+// Measured at the split (MR after !64): Markdown full 210,710 bytes, Web+CMS
+// 188,652, Web 175,616, mobile 166,377, skill-maintainer 98,243, CMS-only
+// 64,373; support files Web+CMS 215,174, the other Markdown distributions
+// about 198,600, CMS-only 162,615. When the guidance budget binds, trim
+// reference prose before raising it.
+const MAX_GUIDANCE_BYTES = 224 * 1024;
+const MAX_SUPPORT_BYTES = 256 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -249,10 +250,20 @@ for (const {
       );
     }
   }
-  const totalBytes = entries.reduce((sum, entry) => sum + entry.bytes, 0);
-  if (totalBytes > MAX_DISTRIBUTION_BYTES) {
+  const guidanceBytes = entries
+    .filter((entry) => entry.path.endsWith(".md"))
+    .reduce((sum, entry) => sum + entry.bytes, 0);
+  const supportBytes = entries
+    .filter((entry) => !entry.path.endsWith(".md"))
+    .reduce((sum, entry) => sum + entry.bytes, 0);
+  if (guidanceBytes > MAX_GUIDANCE_BYTES) {
     failures.push(
-      `skills/${directoryName} is ${totalBytes} bytes; maximum is ${MAX_DISTRIBUTION_BYTES}`
+      `skills/${directoryName} Markdown is ${guidanceBytes} bytes; the guidance maximum is ${MAX_GUIDANCE_BYTES}`
+    );
+  }
+  if (supportBytes > MAX_SUPPORT_BYTES) {
+    failures.push(
+      `skills/${directoryName} scripts, schemas, and data are ${supportBytes} bytes; the support maximum is ${MAX_SUPPORT_BYTES}`
     );
   }
 
