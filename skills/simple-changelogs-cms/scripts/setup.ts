@@ -1612,6 +1612,89 @@ const versionTrainsFrom = (owners: VersionTrain[]): VersionTrain[] => {
   return trains;
 };
 
+const OWNER_FILES = [
+  "app.json",
+  "package.json",
+  "src-tauri/tauri.conf.json",
+  "android/app/build.gradle",
+  "android/app/build.gradle.kts",
+];
+
+// Skips dot (agent, cache), vendored, and build-output directories.
+const probeEntries = async (root: string, path: string): Promise<Dirent[]> => {
+  try {
+    return (await readdir(join(root, path), { withFileTypes: true })).filter(
+      (entry) =>
+        !(
+          entry.isDirectory() &&
+          (entry.name.startsWith(".") ||
+            entry.name === "Pods" ||
+            IGNORED_DIRECTORIES.has(entry.name))
+        )
+    );
+  } catch {
+    return [];
+  }
+};
+
+// Info.plist files at most three directories below ios/ or macos/.
+const infoPlists = async (
+  root: string,
+  path: string,
+  depth = 3
+): Promise<string[]> => {
+  const found = await Promise.all(
+    (await probeEntries(root, path)).map((entry) => {
+      const child = `${path}/${entry.name}`;
+      if (entry.isDirectory()) {
+        return depth > 0 ? infoPlists(root, child, depth - 1) : [];
+      }
+      return entry.name.toLowerCase() === "info.plist" ? [child] : [];
+    })
+  );
+  return found.flat();
+};
+
+// The walk's order (each directory sorted), so a train's first owner holds.
+const walkOrder = (left: string, right: string): number => {
+  const a = left.split("/");
+  const b = right.split("/");
+  const at = a.findIndex((part, index) => part !== b[index]);
+  return (a[at] ?? "").localeCompare(b[at] ?? "", "en");
+};
+
+// Probes known owner spots in the root, apps/*, and packages/*, past the
+// capped walk; only apps/*/package.json owns a version, as before.
+const versionTrainsIn = async (
+  root: string
+): Promise<Pick<Inventory, "versionTrains">> => {
+  const packages = await Promise.all(
+    ["apps", "packages"].map(async (parent) =>
+      (await probeEntries(root, parent)).flatMap((entry) =>
+        entry.isDirectory() ? [`${parent}/${entry.name}/`] : []
+      )
+    )
+  );
+  const paths = await Promise.all(
+    ["", ...packages.flat()].flatMap((base) => [
+      OWNER_FILES.map((file) => base + file),
+      infoPlists(root, `${base}ios`),
+      infoPlists(root, `${base}macos`),
+    ])
+  );
+  const owners = await Promise.all(
+    paths
+      .flat()
+      .sort(walkOrder)
+      .map(async (path) =>
+        versionOwnerFor(path, await readSmallText(join(root, path)))
+      )
+  );
+  return {
+    versionTrains: versionTrainsFrom(owners.flatMap((owner) => owner ?? [])),
+  };
+};
+
 const inspectInventory = async (
   root: string,
   dependencies: string[],
@@ -1619,10 +1702,11 @@ const inspectInventory = async (
 ): Promise<Inventory> => {
   const publicPath = join(root, "CHANGELOG.md");
   const developerPath = join(root, "DEVELOPER_CHANGELOG.md");
-  const [publicReleases, developerReleases, scan] = await Promise.all([
+  const [publicReleases, developerReleases, scan, trains] = await Promise.all([
     countReleasedHeadings(publicPath),
     countReleasedHeadings(developerPath),
     walkTextFiles(root),
+    withTrains && versionTrainsIn(root),
   ]);
   const { files } = scan;
   const developerHistoryEvidence: string[] = [];
@@ -1697,7 +1781,6 @@ const inspectInventory = async (
         mobileAppPath: MOBILE_APP_PATH.test(lowerPath),
         nativeToolkit: nativeToolkitFor(lowerPath, content),
         storeMetadataPath: STORE_METADATA_PATH.test(lowerPath),
-        versionOwner: versionOwnerFor(localPath, content),
         webAppPath: WEB_APP_PATH.test(lowerPath),
         workspaceAppPath,
       };
@@ -1789,11 +1872,7 @@ const inspectInventory = async (
       workspace: applicabilityFor(surfaceStructureEvidence.workspace),
     },
     surfaceStructureEvidence,
-    ...(withTrains && {
-      versionTrains: versionTrainsFrom(
-        fileEvidence.flatMap(({ versionOwner }) => versionOwner ?? [])
-      ),
-    }),
+    ...trains,
   };
 };
 
