@@ -270,6 +270,114 @@ describe("release-train detection", () => {
     );
   });
 
+  test("sees owners past the capped file walk in a large monorepo", async () => {
+    // 450 route files sort ahead of apps/, so the 400-file walk stops first.
+    const repo = await twoTrainRepo();
+    await Promise.all([
+      ...Array.from({ length: 450 }, (_, index) =>
+        writeText(repo, `api/routes/route-${index}.ts`, "export {};\n")
+      ),
+      writeJson(repo, "apps/mobile/package.json", { version: "3.2.0" }),
+      writeText(
+        repo,
+        "apps/mobile/ios/Mobile/Supporting/Info.plist",
+        plist("3.2.0")
+      ),
+      writeText(
+        repo,
+        "apps/mobile/android/app/build.gradle",
+        'versionName "3.2.0"\n'
+      ),
+      writeJson(repo, "apps/desktop/src-tauri/tauri.conf.json", {
+        version: "0.4.0",
+      }),
+    ]);
+
+    const onboarding = await inspectFull(repo);
+    await writeJson(
+      repo,
+      ".simple-changelogs.json",
+      fullPolicy({
+        guidance: { backfillStatus: "not-applicable", version: 21 },
+      })
+    );
+    const configured = await inspectFull(repo);
+
+    expect(onboarding.inventory.scan.truncated).toBe(true);
+    expect(onboarding.inventory.versionTrains).toEqual([
+      {
+        path: "apps/desktop/src-tauri/tauri.conf.json",
+        train: "desktop",
+        version: "0.4.0",
+      },
+      { path: "apps/mobile/app.json", train: "mobile", version: "3.2.0" },
+      { path: "apps/web/package.json", train: "web", version: "6.7.0" },
+    ]);
+    expect(onboarding.unresolvedQuestions).toContain("shared-version-lines");
+    expect(configured.guidanceUpdate?.questions).toEqual([
+      "shared-version-lines",
+    ]);
+  });
+
+  test("probes packages/* after apps/* with the same owner rules", async () => {
+    const repo = await temporaryDirectory("repo");
+    await Promise.all([
+      writeJson(repo, "packages/mobile/app.json", {
+        expo: { version: "2.0.0" },
+      }),
+      writeText(repo, "packages/mobile/ios/Mobile/Info.plist", plist("2.0.0")),
+      // Only apps/*/package.json owns a version, so libraries never count.
+      writeJson(repo, "packages/web/package.json", {
+        dependencies: { next: "16.0.0" },
+        version: "5.0.0",
+      }),
+      writeJson(repo, "packages/db/package.json", { version: "0.3.0" }),
+      writeJson(repo, "apps/desktop/src-tauri/tauri.conf.json", {
+        version: "1.0.0",
+      }),
+      writeJson(repo, "packages/desktop/src-tauri/tauri.conf.json", {
+        version: "0.1.0",
+      }),
+    ]);
+
+    const inspection = await inspectFull(repo);
+
+    expect(inspection.inventory.versionTrains).toEqual([
+      {
+        path: "apps/desktop/src-tauri/tauri.conf.json",
+        train: "desktop",
+        version: "1.0.0",
+      },
+      { path: "packages/mobile/app.json", train: "mobile", version: "2.0.0" },
+    ]);
+    expect(inspection.unresolvedQuestions).toContain("shared-version-lines");
+  });
+
+  test("skips agent, dependency, and build directories and keeps the walk's first owner", async () => {
+    const repo = await temporaryDirectory("repo");
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "2.0.0" }),
+      writeJson(repo, "apps/node_modules/package.json", { version: "9.9.9" }),
+      writeJson(repo, "apps/.cache/package.json", { version: "9.9.9" }),
+      writeJson(repo, ".worktrees/feature/apps/mobile/app.json", {
+        expo: { version: "9.9.9" },
+      }),
+      // Zebra-Widget sorts after Zebra per directory, before it as a full path.
+      ...[".build", "build", "Pods/Analytics", "Zebra-Widget"].map(
+        (directory) =>
+          writeText(repo, `ios/${directory}/Info.plist`, plist("9.9"))
+      ),
+      writeText(repo, "ios/Zebra/Info.plist", plist("1.4")),
+    ]);
+
+    const inspection = await inspectFull(repo);
+
+    expect(inspection.inventory.versionTrains).toEqual([
+      { path: "apps/web/package.json", train: "web", version: "2.0.0" },
+      { path: "ios/Zebra/Info.plist", train: "ios", version: "1.4" },
+    ]);
+  });
+
   test("other distributions never detect trains or ask", async () => {
     const repo = await fourTrainRepo();
     const inspections = await Promise.all(

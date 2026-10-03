@@ -2,6 +2,51 @@
 
 ## Unreleased
 
+- Release-train detection for `inventory.versionTrains` no longer depends on
+  the 400-file `walkTextFiles` cap, which in a large monorepo can stop before
+  it reaches `apps/` and leave `versionTrains` empty, so the
+  `shared-version-lines` question was never asked. `versionTrainsIn` in
+  `setup.ts` (all seven byte-synced copies) replaces the walk-based owner
+  collection, and `fileEvidence` no longer carries `versionOwner`. The probe
+  reads fixed paths under the repository root, every `apps/*` directory, and
+  every `packages/*` directory: `app.json`, `package.json`,
+  `src-tauri/tauri.conf.json`, `android/app/build.gradle(.kts)`, and
+  `Info.plist` at most three directories below `ios/` and `macos/`.
+  Workspace globs are not parsed. Dot directories, `Pods`, and
+  `IGNORED_DIRECTORIES` (`node_modules`, `build`, `dist`, and the rest) are
+  skipped, so owners under `.worktrees`, `.claude`, `ios/.build`, or
+  `ios/Pods` no longer leak in. Candidates are sorted in the walk's
+  per-directory order (`walkOrder`), so a train's first owner still wins and
+  `apps/*` takes precedence over `packages/*`; a full-path `localeCompare`
+  would put `ios/App-Widget/` ahead of `ios/App/`. `versionOwnerFor` and
+  `versionTrainsFrom` are unchanged: only `apps/*/package.json` owns a
+  version, so `packages/*/package.json` and the root `package.json` are
+  probed but never count as trains, and Expo native files or a
+  `package.json` beside another owner remain mirrors. Owners outside the
+  probed locations, such as a top-level `mobile/` or anything deeper than
+  one level under `apps/`, are no longer detected.
+  - `inspectInventory` runs the probe beside the walk, for full only, and
+    the Guidance 22 notice gating reads the same `inventory.versionTrains`
+    through `asksVersionLines`, so onboarding and the notice agree.
+  - Three new tests in `shared-version-lines.check.ts`: a monorepo with 450
+    route files ahead of `apps/` has a truncated walk yet yields `desktop`,
+    `mobile`, and `web` and asks the question at onboarding and in a
+    Guidance 21 notice; `packages/*` is probed after `apps/*` under the same
+    owner rules (`apps/desktop` beats `packages/desktop`,
+    `packages/mobile/app.json` is the `mobile` train, and
+    `packages/web/package.json` is not a train); and `.worktrees`,
+    `node_modules`, `.cache`, `ios/.build`, `ios/build`, `ios/Pods`, and
+    `ios/Zebra-Widget` are skipped so `ios/Zebra/Info.plist` wins. The file
+    runs 19 tests, 0 failures. The merge request reports seven mutations
+    each failing it: walk-based detection, dropping `packages/*`, ordering
+    `packages/*` first, dropping `apps/*`, dropping the skip filter, dropping
+    the sort, and full-path `localeCompare`.
+  - Each `setup.ts` copy grows from 119,752 to 122,048 bytes (+2,296).
+    Saved settings do not change, so full guidance stays at 22.
+  - Known gap: a Web app kept in `packages/web` is not detected, because its
+    `package.json` is not an owner. Before this change it was never detected
+    anywhere.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T22:52:43-05:00" -->
 - Adopted the Simple Changes 0.23.0 companion protocol: request v2
   (`releaseSetTrains`, the trains one `releaseSetId` releases from one input
   target revision) and receipt v3 (the `releaseSetTrains` echo plus
