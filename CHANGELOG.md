@@ -3,6 +3,14 @@
 ## Unreleased
 
 - **Version numbers**
+  - Setup now finds every app in large repositories that hold several apps.
+    It used to stop scanning early and could miss the web app, so the
+    question about keeping version numbers in sync never appeared. It now
+    looks for web apps in `apps/*`, and for mobile and desktop apps in the
+    repository root, `apps/*`, and `packages/*`, and no longer mistakes
+    copies inside worktrees or build folders for apps.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T22:52:43-05:00" -->
+- **Version numbers**
   - Apps released together now take exactly the same number, written the
     same way everywhere: `1.0` beside `1.0.0` no longer counts as a match.
     Under one shared counter, an app that releases after another app already
