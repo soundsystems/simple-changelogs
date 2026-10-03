@@ -78,8 +78,13 @@ describe("changelog-provider marker", () => {
         declaredGuidance.get(directoryName) as number
       );
       expect(marker.features).toContain("guidance-update-notices");
-      expect(marker.requestVersions).toEqual([1]);
-      expect(marker.receiptVersions).toEqual([1, 2]);
+      // Only full writes receipt v3; no marker advertises the
+      // shared-version-lines feature, which consumers before Simple Changes
+      // 0.23.0 reject.
+      const full = distribution === "full";
+      expect(marker.requestVersions).toEqual(full ? [1, 2] : [1]);
+      expect(marker.receiptVersions).toEqual(full ? [1, 2, 3] : [1, 2]);
+      expect(marker.features).not.toContain("shared-version-lines");
     });
   }
 

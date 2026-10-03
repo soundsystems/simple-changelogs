@@ -120,7 +120,7 @@ const canonicalProtocolFiles = new Map(
 // distribution's marker advertises only the subset it supports.
 const protocolProvenance = JSON.parse(
   canonicalProtocolFiles.get("protocol-provenance.json") ?? "{}"
-) as { receiptVersions?: unknown[]; requestVersion?: unknown };
+) as { receiptVersions?: unknown[]; requestVersions?: unknown[] };
 
 interface WalkedEntry {
   bytes: number;
@@ -411,8 +411,8 @@ for (const {
         if (
           advertisesProtocol &&
           !(
-            (marker.requestVersions as unknown[]).every(
-              (version) => version === protocolProvenance.requestVersion
+            (marker.requestVersions as unknown[]).every((version) =>
+              protocolProvenance.requestVersions?.includes(version)
             ) &&
             (marker.receiptVersions as unknown[]).every((version) =>
               protocolProvenance.receiptVersions?.includes(version)

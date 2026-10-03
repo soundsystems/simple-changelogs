@@ -540,8 +540,8 @@ export interface IntegrationCapabilities {
   features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2] | [2];
-  requestVersions: [1];
+  receiptVersions: [1, 2, 3] | [1, 2] | [2];
+  requestVersions: [1, 2] | [1];
   schemaDigests: {
     changelogReceipt: string;
     changelogRequest: string;
@@ -759,13 +759,16 @@ const integrationCapabilitiesFor = async (
     readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
     readFile(capabilitySchemaPath("changelog-receipt.schema.json"), "utf8"),
   ]);
+  // Only full writes request v2's receipt v3 with its version line.
+  const full = installed === "full";
+  const receiptVersions: [1, 2] | [2] = installed === "cms" ? [2] : [1, 2];
   return {
     distribution: installed,
     features: integrationFeaturesFor(installed),
     guidanceVersion: currentGuidanceVersionFor(installed),
     provider: "simple-changelogs",
-    receiptVersions: installed === "cms" ? [2] : [1, 2],
-    requestVersions: [1],
+    receiptVersions: full ? [1, 2, 3] : receiptVersions,
+    requestVersions: full ? [1, 2] : [1],
     schemaDigests: {
       changelogReceipt: digestSchema(receiptSchema),
       changelogRequest: digestSchema(requestSchema),

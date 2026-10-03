@@ -2,6 +2,68 @@
 
 ## Unreleased
 
+- Adopted the Simple Changes 0.23.0 companion protocol: request v2
+  (`releaseSetTrains`, the trains one `releaseSetId` releases from one input
+  target revision) and receipt v3 (the `releaseSetTrains` echo plus
+  `versionDecision.versionLine`). The 0.23.0 request, receipt, and
+  capabilities schemas are vendored byte-exact from simple-changes `f6b7541`
+  into `tooling/simple-changelogs/evals/schemas` and all six handoff
+  distributions. In `protocol-provenance.json`, `requestVersion` becomes
+  `requestVersions: [1, 2]` and `receiptVersions` is now `[1, 2, 3]`. Every
+  marker's `schemaDigests` are recomputed, and `protocol-digest.check.ts` pins
+  them. Only full's `changelog-provider.json` (and `setup.ts` in all seven
+  copies) advertises request `[1, 2]` and receipt `[1, 2, 3]`. Web, mobile,
+  Web+CMS, and skill-maintainer keep `[1]` and `[1, 2]`, and CMS keeps `[1]`
+  and `[2]`. No marker gains a feature: `shared-version-lines` waits for a
+  one-line flip once every Simple Changes copy, forks included, is 0.23.0+,
+  because earlier consumers reject unknown features. Controllers 0.20.0 and
+  0.22.5 still negotiate request v1 and receipt v2 (digests `differs`, which
+  is advisory). 0.23.0 negotiates request v2 and receipt v3 with full
+  (`match`).
+  - Full-only guidance (`references/shared-version-lines.md`, routed from
+    full SKILL.md for request v2) covers:
+    - answering with the highest version in `supportedReceiptVersions`, so
+      request v1 never gets receipt v3;
+    - writing the line as structured `versionDecision.versionLine` on
+      receipt v3 (null off a line), and echoing `releaseSetTrains` exactly;
+    - keeping receipt v2's `versionLine {...}` evidence item;
+    - one identical version string per release set, never `1.0` beside
+      `1.0.0`;
+    - never going below the owner's stable current version.
+    The `bump-shared` exception for "its release set's number" is gone: a
+    member holding `H` at the set's shared input target released it before
+    the set, so a train that reclassifies after a partner released advances
+    or starts a new release set. `lib/version-lines.ts` `directionRefusal`
+    follows. Shared references are unchanged, and the guidance stays at 22.
+  - `lib/release-handoff.ts` validates request v2 and receipt v3: every
+    schema shape and status condition, plus the controller rules (the echo,
+    `sharedVersion`/`sharedVersionTrains` recomputed from `memberVersions`,
+    catch-up/advance/bump-shared outcomes, a monotonic proposal, request
+    bindings, and the prior receipt's line state under one decision digest).
+    It adds `validateChangelogReleaseSet`, `shapeReceipt`,
+    `receiptVersionFor`, and `sameLineState`. `decisionDigest` takes an
+    optional `versionLine` and covers `mode`, `members`, `memberVersions`,
+    and `sharedVersion`, but not `outcome`. `effectivePolicyDigest` takes
+    optional `sharedVersionLines`. Both are unchanged when no line exists. A
+    blocked receipt v3 may omit `versionDecision`, as in Simple Changes.
+    Request v1 and receipt v2 results are byte-for-byte unchanged.
+  - New `protocol-schema-parity.check.ts` runs 7,834 generated requests and
+    receipts against the vendored schemas:
+    - 4,068 request v2 and receipt v3 cases never accept what the schema
+      refuses;
+    - a digest of all 3,766 request v1 and receipt v2 results equals
+      origin/main's output, with their 29 pre-existing schema gaps pinned.
+    `release-handoff.check.ts` covers rules 1 to 9, release sets, and the
+    request v1 `[1, 2]` to receipt v2 rule; `schema-parity`,
+    `provider-marker`, and `version-lines` checks were updated. The merge
+    request reports 13 of 13 tracked mutations killed, and agreement with
+    the 0.23.0 controller's schema and transaction validators.
+  - Supersedes the Guidance 22 entry below, where it says the line "is not
+    yet in `effectivePolicyDigest` or `decisionDigest`" and defers receipt
+    v3 `versionLine` and a release-set field. Both digests now cover the
+    line when one exists, and request v2 and receipt v3 are adopted. Only
+    the `shared-version-lines` capability feature remains deferred.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T19:36:06-05:00" -->
 - Split the single 400 KiB per-distribution cap (`MAX_DISTRIBUTION_BYTES`) in
   `tooling/distributions.check.ts` into two budgets: `MAX_GUIDANCE_BYTES`
   (224 KiB) for Markdown, the SKILL.md and references an agent reads into

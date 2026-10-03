@@ -8,8 +8,8 @@ import type { SharedVersionLineMode } from "./types.ts";
 export type Impact = "none" | "patch" | "minor" | "major";
 export type BumpLevel = Exclude<Impact, "none">;
 
-// Field names and order match the future receipt field
-// versionDecision.versionLine, so evidence maps onto it one to one.
+// Field names and order match receipt v3's versionDecision.versionLine, so
+// receipt v2 evidence maps onto it one to one.
 export interface VersionLineDecision {
   members: string[];
   memberVersions: Record<string, string | null>;
@@ -222,7 +222,7 @@ export const selectLineVersion = (input: LineInput): LineSelection | null => {
   };
 };
 
-/** Formats the one evidence item a receipt carries for a line decision. */
+/** Formats the one evidence item a receipt v2 carries for a line decision. */
 export const versionLineEvidence = (decision: VersionLineDecision): string =>
   `versionLine ${JSON.stringify({
     members: decision.members,
@@ -281,29 +281,32 @@ export interface Refusal {
 
 /**
  * Validates exact current direction for one train without coercing it. The
- * second train of a release set passes the number its set already selected.
+ * second train of a release set passes the number its set already selected,
+ * which it must repeat as the identical string.
  */
 export const directionRefusal = (
   input: LineInput & { direction: string; setNumber?: string; train: string }
 ): Refusal | null => {
   const own = input.memberVersions[input.train] ?? null;
   const { sharedVersion } = sharedVersionOf(input.memberVersions);
-  const belowOwn = own !== null && compareVersions(input.direction, own) <= 0;
-  const belowLine =
-    sharedVersion !== null &&
-    compareVersions(input.direction, sharedVersion) <
-      (input.mode === "bump-shared" ? 1 : 0);
+  // memberVersions are read at the set's shared input target revision, so a
+  // member holding H released it before this set: bump-shared never reuses H.
+  const refused = (version: string): boolean =>
+    (own !== null && compareVersions(version, own) <= 0) ||
+    (sharedVersion !== null &&
+      compareVersions(version, sharedVersion) <
+        (input.mode === "bump-shared" ? 1 : 0));
   const offSet =
     input.setNumber !== undefined && input.direction !== input.setNumber;
-  const setNumber =
-    input.setNumber !== undefined && input.direction === input.setNumber;
-  if (!(belowOwn || offSet || (belowLine && !setNumber))) {
+  if (!(refused(input.direction) || offSet)) {
     return null;
   }
   const suggestion =
-    input.setNumber ?? selectLineVersion(input)?.selected ?? "none";
+    input.setNumber !== undefined && !refused(input.setNumber)
+      ? input.setNumber
+      : selectLineVersion(input)?.selected;
   return {
-    evidence: [`mode ${input.mode} selects ${suggestion}`],
+    evidence: [`mode ${input.mode} selects ${suggestion ?? "none"}`],
     reasonCode: "invalid-version-direction",
     requiredAction: "choose-version",
   };

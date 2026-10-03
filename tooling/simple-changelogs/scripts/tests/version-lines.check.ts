@@ -353,7 +353,7 @@ describe("shared version line selection", () => {
 });
 
 describe("shared version line evidence and verification", () => {
-  test("evidence carries exactly the future versionLine fields", () => {
+  test("receipt v2 evidence carries exactly the receipt v3 versionLine fields", () => {
     const result = released({
       impacts: { ios: "patch" },
       memberVersions: { android: "1.0.0", ios: "0.9.0", web: "1.0.0" },
@@ -398,7 +398,7 @@ describe("shared version line evidence and verification", () => {
     );
   });
 
-  test("bump-shared direction must pass the head unless it joins its release set", () => {
+  test("bump-shared direction always passes the head, even its release set's number", () => {
     const line = {
       impacts: { mobile: "patch" as const, web: "patch" as const },
       memberVersions: { mobile: "0.21.0", web: "0.21.1" },
@@ -411,12 +411,22 @@ describe("shared version line evidence and verification", () => {
     expect(
       directionRefusal({ ...line, direction: "0.21.2", train: "mobile" })
     ).toBeNull();
-    // After mobile shipped 0.21.2 in the set, web may still take that number.
+    // Every receipt in a set reads memberVersions at one input target, so a
+    // mobile holding 0.21.2 there released it before the set: web reusing it
+    // collides and must advance or start a new release set.
     expect(
       directionRefusal({
         ...line,
         direction: "0.21.2",
         memberVersions: { mobile: "0.21.2", web: "0.21.1" },
+        setNumber: "0.21.2",
+        train: "web",
+      })?.evidence
+    ).toEqual(["mode bump-shared selects 0.21.3"]);
+    expect(
+      directionRefusal({
+        ...line,
+        direction: "0.21.2",
         setNumber: "0.21.2",
         train: "web",
       })
@@ -429,6 +439,15 @@ describe("shared version line evidence and verification", () => {
         train: "web",
       })?.evidence
     ).toEqual(["mode bump-shared selects 0.21.2"]);
+    // One release set publishes one identical string: 0.22 is not 0.22.0.
+    expect(
+      directionRefusal({
+        ...line,
+        direction: "0.22",
+        setNumber: "0.22.0",
+        train: "web",
+      })?.evidence
+    ).toEqual(["mode bump-shared selects 0.22.0"]);
   });
 
   test("bump-shared finalization fails when another member already released the number", () => {
@@ -534,9 +553,17 @@ describe("shared version line guidance", () => {
       "**Same number everywhere**",
       "**One shared counter**",
       "desktop release-note destinations",
+      "receipt v3's `versionDecision.versionLine`",
+      "so request v1 never gets v3",
+      "echoes request v2's `releaseSetTrains` exactly",
+      "identical version string, never `1.0` beside `1.0.0`",
+      "decision digest also covers `mode`, `members`, `memberVersions`, and `sharedVersion`",
+      "or above `H` under `bump-shared`",
+      "advances or starts a new release set",
     ]) {
       expect(prose).toContain(rule);
     }
+    expect(prose).not.toContain("unless it is its release set's number");
     const userFacing = prose
       .slice(prose.indexOf("Ask once,"), prose.indexOf("Mark option 2"))
       .replace(SAVED_VALUE, "");

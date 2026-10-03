@@ -85,7 +85,7 @@ Read only the references needed for the current branch of work:
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
 | Apps sharing one version number (`sharedVersionLines`) | `references/shared-version-lines.md` |
-| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
+| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md`; request v2 also `references/shared-version-lines.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |

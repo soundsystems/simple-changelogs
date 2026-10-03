@@ -3,6 +3,16 @@
 ## Unreleased
 
 - **Version numbers**
+  - Apps released together now take exactly the same number, written the
+    same way everywhere: `1.0` beside `1.0.0` no longer counts as a match.
+    Under one shared counter, an app that releases after another app already
+    took the newest number moves on to the next number instead of reusing it.
+  - Release tools on Simple Changes 0.23.0 or later now receive the shared
+    number, and the list of apps released together, as structured fields.
+    Tools on older versions keep working exactly as before; nothing changes
+    for them.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T19:36:06-05:00" -->
+- **Version numbers**
   - Repositories on the full distribution that ship several apps from one
     codebase, such as web, iOS, Android, and desktop, can now keep their
     version numbers in sync. Setup finds the apps and asks one question with
