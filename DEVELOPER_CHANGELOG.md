@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Split the single 400 KiB per-distribution cap (`MAX_DISTRIBUTION_BYTES`) in
+  `tooling/distributions.check.ts` into two budgets: `MAX_GUIDANCE_BYTES`
+  (224 KiB) for Markdown, the SKILL.md and references an agent reads into
+  context, and `MAX_SUPPORT_BYTES` (256 KiB) for scripts, schemas, and JSON,
+  which run or validate but are not read and are mostly byte-synced copies
+  such as `setup.ts` in every distribution. Correctness code no longer
+  competes with guidance; after !64, full sat 353 bytes under the single cap.
+  Measured at the split: Markdown full 210,710 bytes, Web+CMS 188,652, Web
+  175,616, mobile 166,377, skill-maintainer 98,243, CMS-only 64,373; support
+  files Web+CMS 215,174, the other Markdown distributions about 198,600,
+  CMS-only 162,615. Lowering either budget below the current sizes fails the
+  check on the expected distribution (full for guidance, Web+CMS for support).
+  Trimming guidance stays preferred over raising the guidance budget.
+<!-- simple-changelogs-signature agent="claude-fable-5-1" at="2026-10-02T19:24:16-05:00" -->
 - Added `sharedVersionLines` to the full-distribution repository policy and
   bumped full guidance to 22 (`distribution-manifest.json`,
   `changelog-provider.json`, SKILL.md, and `GUIDANCE_VERSIONS.full`). The
