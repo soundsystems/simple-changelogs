@@ -216,11 +216,6 @@ const TEXT_EXTENSIONS = new Set([
   ".yml",
 ]);
 const IGNORED_DIRECTORIES = new Set([
-  ".git",
-  ".hg",
-  ".svn",
-  ".turbo",
-  ".vercel",
   "build",
   "coverage",
   "dist",
@@ -228,11 +223,15 @@ const IGNORED_DIRECTORIES = new Set([
   "target",
 ]);
 
-// A skills folder directly inside a hidden folder (`.agents/skills` and the
-// like) holds installed skill copies, not the product. The capped walk sorts
-// by name, so it would otherwise spend its budget there before apps/.
-const isInstalledSkillsDirectory = (parent: string, name: string): boolean =>
-  name === "skills" && basename(parent).startsWith(".");
+// Hidden directories hold version-control, cache, editor, and agent tool
+// state, such as installed skills, plans, rules, hooks, and launch settings,
+// whether or not Git tracks them. None of it is the product, and the capped
+// walk sorts hidden names first, so it skips them all except the hidden
+// directories setup reads as evidence: Storybook configuration
+// (DESIGN_SYSTEM_PATH).
+const HIDDEN_EVIDENCE_DIRECTORIES = new Set([".storybook"]);
+const isHiddenToolDirectory = (name: string): boolean =>
+  name.startsWith(".") && !HIDDEN_EVIDENCE_DIRECTORIES.has(name);
 
 type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
@@ -1441,7 +1440,7 @@ const walkTextFiles = async (
         const path = join(directory, entry.name);
         if (entry.isDirectory()) {
           return IGNORED_DIRECTORIES.has(entry.name) ||
-            isInstalledSkillsDirectory(directory, entry.name) ||
+            isHiddenToolDirectory(entry.name) ||
             isGitIgnored(path, true)
             ? []
             : await visit(path);

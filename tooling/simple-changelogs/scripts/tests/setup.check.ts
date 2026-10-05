@@ -830,6 +830,59 @@ describe("setup inspection", () => {
     });
   });
 
+  test("skips tracked tool folders so their plans cannot pose as destinations", async () => {
+    const { config, repo } = await fixture();
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
+    git("init", "-q");
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web-product",
+    });
+    // Tracked editor and agent state outside any skills folder, including a
+    // plan named for release notes and enough reports to exhaust the scan.
+    const toolFiles: [string, string][] = [
+      [".agents/react-doctor/report.md", "# Report\n"],
+      [".claude/launch.json", "{}\n"],
+      [".codex/config.toml", 'model = "default"\n'],
+      [".cursor/plans/v1.2_release_notes.plan.md", "# Release notes plan\n"],
+      [".cursor/rules/app.md", "# Rule\n"],
+      ["apps/mobile/.maestro/auth/login.yaml", "- assertVisible: session\n"],
+      ...Array.from({ length: 420 }, (_, index): [string, string] => [
+        `.tool-reports/report-${index}.md`,
+        "# Report\n",
+      ]),
+    ];
+    // Storybook configuration is the hidden folder setup reads as evidence.
+    const evidenceFiles: [string, string][] = [
+      [".storybook/main.ts", "export default {};\n"],
+    ];
+    await Promise.all(
+      [...toolFiles, ...evidenceFiles].map(async ([path, content]) => {
+        await mkdir(join(repo, path, ".."), { recursive: true });
+        await writeFile(join(repo, path), content, "utf8");
+      })
+    );
+    git("add", "-A");
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+      taskMode: "read",
+    });
+
+    expect(result.inventory.destinations).toEqual([]);
+    expect(result.inventory.cmsEvidence).toEqual([]);
+    expect(result.inventory.designSystemEvidence).toEqual([
+      "Repository-owned component library path: .storybook",
+    ]);
+    expect(result.inventory.scan).toEqual({
+      filesInspected: 2,
+      truncated: false,
+    });
+  });
+
   test("reads each workspace app's own manifest for surface evidence", async () => {
     const { config, repo } = await fixture();
     // A docs folder that sorts before apps/ fills the capped walk first.
