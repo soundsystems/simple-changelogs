@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `discover-local-consumers.ts` reports `superseded-install` only when
+  `.simple-changelogs-cms.json` exists, matching the production loop's
+  cleanup rule, and `production-loop.md` keeps the standalone install while
+  the sidecar is missing; `discover-local-consumers.check.ts` adds a case
+  without the sidecar. Found by GPT-6 Sol's review of soundsystems/simple-changes!80; the
+  skill and tooling stay byte-identical with Simple Changes.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T16:23:54-05:00" -->
 - `walkTextFiles` in `setup.ts` (all seven byte-identical copies) asks Git
   once for ignored untracked paths (`git -C <root> ls-files --others
   --ignored --exclude-standard --directory -z`, collapsed directories,

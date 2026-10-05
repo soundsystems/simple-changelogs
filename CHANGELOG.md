@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **publish-skill**
+  - `publish-skill` treats a standalone CMS changelog install as covered by
+    the Web and CMS package only once the repository's
+    `.simple-changelogs-cms.json` is in place, so it never removes the
+    standalone install before the combined package can run.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T16:23:54-05:00" -->
 - **Setup**
   - Setup's file scan now skips untracked files Git ignores, such as build
     output, caches, and tool run logs, using your `.gitignore` and any global
