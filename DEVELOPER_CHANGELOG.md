@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The contract linter's vendor-assumption check skips a backticked
+  `agents/<name>.yaml` path, because pin parity requires a fork's Current
+  Deltas table to name a changed agent interface file by its exact path; both
+  real forks had patched their own linters for it. Vendor names in prose and
+  unquoted paths still fail, and `contracts.check.ts` covers all three cases.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T13:14:01-05:00" -->
 - `check-fork-sync.sh --pin-parity <fork-SKILL.md> [upstream-repo]` (all five
   byte-identical copies) walks `git ls-tree -r <pin>:skills/<upstream>` and
   compares each blob id with `git hash-object --no-filters` of the fork's file
