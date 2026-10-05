@@ -55,7 +55,9 @@ gives a short reason when the delta is not obvious:
   many times as upstream repeats it.
 - `omit`: the fork intentionally leaves out this upstream file or, with a
   Section, one upstream heading of a `delta` file; name a repeated heading's
-  later occurrence as `Notes #2`.
+  later occurrence as `Notes #2` (a heading literally named `Notes #2` stays
+  a separate heading, and a file holding both spellings makes the row
+  ambiguous, which the check refuses).
 
 Pin parity never reads rows inside code fences, such as this example, and
 reports rows that no longer match the fork as stale. Correct or remove a stale

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Setup**
+  - In a repository with several apps, setup now also reads the package
+    files of the apps under `apps/`, so it recognizes your web and mobile
+    apps even when its file scan fills up before reaching them. React inside
+    a mobile app, at the root or under `apps/`, is no longer mistaken for a
+    web app unless the app also renders to the browser.
+- **Fork maintenance**
+  - Pin parity keeps a heading literally named `Caveats #2` apart from the
+    second `Caveats` heading, so a fork can no longer drop one and pass on a
+    look-alike.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T17:16:56-05:00" -->
 - **publish-skill**
   - `publish-skill` treats a standalone CMS changelog install as covered by
     the Web and CMS package only once the repository's

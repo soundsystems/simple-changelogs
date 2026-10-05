@@ -1689,6 +1689,70 @@ const probeEntries = async (root: string, path: string): Promise<Dirent[]> => {
   }
 };
 
+// Plain react beside a mobile framework is that app's renderer, not web
+// evidence, unless the app also renders to the DOM.
+const DOM_RENDERER_DEPENDENCIES = new Set(["react-dom", "react-native-web"]);
+const webDependencyNames = (names: string[]): string[] => {
+  const nativeOnly =
+    names.some((name) => MOBILE_DEPENDENCIES.has(name)) &&
+    !names.some((name) => DOM_RENDERER_DEPENDENCIES.has(name));
+  return names.filter(
+    (name) => WEB_DEPENDENCIES.has(name) && !(nativeOnly && name === "react")
+  );
+};
+
+// Each app directory under apps/ names its own framework dependencies, which
+// a monorepo's root manifest usually lacks and the capped walk may never
+// reach. Symlinked app directories and ignored names such as build/ are not
+// read.
+const workspaceAppDependencyEvidence = async (
+  root: string
+): Promise<{ mobile: string[]; web: string[] }> => {
+  const apps = (await probeEntries(root, "apps")).filter((entry) =>
+    entry.isDirectory()
+  );
+  const perApp = await Promise.all(
+    apps.map(async (entry) => {
+      const app = `apps/${entry.name}`;
+      const names = await readPackageDependencies(join(root, app));
+      return {
+        mobile: names
+          .filter((name) => MOBILE_DEPENDENCIES.has(name))
+          .map((name) => `Mobile application dependency: ${name} (${app})`),
+        web: webDependencyNames(names).map(
+          (name) => `Web application dependency: ${name} (${app})`
+        ),
+      };
+    })
+  );
+  return {
+    mobile: perApp.flatMap((app) => app.mobile),
+    web: perApp.flatMap((app) => app.web),
+  };
+};
+
+// Framework dependencies from the root manifest and every workspace app.
+const dependencyStructureEvidence = async (
+  root: string,
+  dependencies: string[]
+): Promise<{ mobile: string[]; web: string[] }> => {
+  const apps = await workspaceAppDependencyEvidence(root);
+  return {
+    mobile: [
+      ...dependencies
+        .filter((name) => MOBILE_DEPENDENCIES.has(name))
+        .map((name) => `Mobile application dependency: ${name}`),
+      ...apps.mobile,
+    ],
+    web: [
+      ...webDependencyNames(dependencies).map(
+        (name) => `Web application dependency: ${name}`
+      ),
+      ...apps.web,
+    ],
+  };
+};
+
 // Info.plist files at most three directories below ios/ or macos/.
 const infoPlists = async (
   root: string,
@@ -1796,15 +1860,15 @@ const inspectInventory = async (
   } catch {
     // package.json workspace evidence is optional.
   }
-  for (const dependency of dependencies) {
-    if (MOBILE_DEPENDENCIES.has(dependency)) {
-      mobileStructureEvidence.add(
-        `Mobile application dependency: ${dependency}`
-      );
-    }
-    if (WEB_DEPENDENCIES.has(dependency)) {
-      webStructureEvidence.add(`Web application dependency: ${dependency}`);
-    }
+  const dependencyEvidence = await dependencyStructureEvidence(
+    root,
+    dependencies
+  );
+  for (const item of dependencyEvidence.mobile) {
+    mobileStructureEvidence.add(item);
+  }
+  for (const item of dependencyEvidence.web) {
+    webStructureEvidence.add(item);
   }
   const fileEvidence = await Promise.all(
     files.map(async (path) => {
@@ -1951,7 +2015,7 @@ const inspectProjectEvidence = (
   dependencies: string[]
 ): string[] => {
   const evidence = new Set(componentStackEvidence(dependencies));
-  if (dependencies.some((name) => WEB_DEPENDENCIES.has(name))) {
+  if (webDependencyNames(dependencies).length > 0) {
     evidence.add("Package metadata indicates a web application");
   }
   if (dependencies.some((name) => MOBILE_DEPENDENCIES.has(name))) {
