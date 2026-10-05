@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Fork maintenance**
+  - The fork checker has a new `--pin-parity` mode that compares a fork with
+    the exact upstream version its pin names. It finds upstream content the
+    fork never received, including sections added before the pin that an
+    earlier sync skipped, so a pin can no longer claim a fork is more current
+    than it is.
+  - Forks list their intentional differences in a Current Deltas table in
+    `references/fork-maintenance.md`: a changed file, an upstream file the
+    fork leaves out, or one section a changed file leaves out. The check flags
+    rows that no longer match the fork, so the list stays accurate.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T12:42:15-05:00" -->
 - **Writing style**
   - New changelog entries and release-note lines no longer use em-dashes.
     They use commas, colons, periods, or parentheses, and a sentence that

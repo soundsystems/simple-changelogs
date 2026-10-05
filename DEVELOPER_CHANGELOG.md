@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- `check-fork-sync.sh --pin-parity <fork-SKILL.md> [upstream-repo]` (all five
+  byte-identical copies) walks `git ls-tree -r <pin>:skills/<upstream>` and
+  compares each blob id with `git hash-object --no-filters` of the fork's file
+  at the same path (upstream `SKILL.md` maps to the named fork file). Exit 0
+  is parity, 1 findings, 2 invalid input; the default drift mode and its
+  0/1/2/3 contract are unchanged.
+  - An awk parser reads the table under `## Current Deltas` (heading matched
+    case-insensitively; code fences, header, and delimiter rows skipped) into
+    `delta` and `omit` rows. An unknown kind, a delta row with a Section, or a
+    Section on a non-Markdown path exits 2.
+  - Declared-delta Markdown must keep every upstream heading below the title,
+    outside fences and at any level, unless an `omit` row names it, because
+    both real forks must declare `onboarding.md` whole and a whole-file
+    exemption would hide the sections they never received. Stale rows (path
+    not upstream at the pin, delta matching the pin, omitted file present,
+    omitted heading present or never upstream) fail.
+  - Dry runs on the forks' committed trees: hash (`e6f3050f`) has 19
+    undeclared files and secure (`1a8d6715`) 16. With every differing file
+    declared a delta, hash still lacks 6 upstream headings (4 in
+    `onboarding.md`, 1 each in `entry-classification.md` and
+    `major-releases.md`) and secure lacks 3 (`onboarding.md`).
+- `distributions.check.ts` fails when a `check-fork-sync.sh` copy differs from
+  the full distribution's, or a `fork-maintenance.md` differs from the full
+  copy beyond its distribution name; nothing compared these copies before.
+  `check-fork-sync.check.ts` adds seven pin-parity cases on one shared
+  upstream repository, and `manifest-coverage.check.ts` pins the documented
+  flag and table. No guidance bump: the mode is opt-in maintainer tooling that
+  touches no released history, policy field, or onboarding question.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T12:42:15-05:00" -->
 - Guidance advances to full 23, web 21, mobile 20, web+CMS 21,
   skill-maintainer 14, and CMS 6: `GUIDANCE_VERSIONS` and
   `CMS_GUIDANCE_VERSION` in `setup.ts` (re-synced into all seven
