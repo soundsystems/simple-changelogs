@@ -830,6 +830,183 @@ describe("setup inspection", () => {
     });
   });
 
+  test("skips tracked tool folders so their plans cannot pose as destinations", async () => {
+    const { config, repo } = await fixture();
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
+    git("init", "-q");
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web-product",
+    });
+    // Tracked editor and agent state outside any skills folder, including a
+    // plan named for release notes and enough reports to exhaust the scan.
+    const toolFiles: [string, string][] = [
+      [".agents/react-doctor/report.md", "# Report\n"],
+      [".claude/launch.json", "{}\n"],
+      [".codex/config.toml", 'model = "default"\n'],
+      [".cursor/plans/v1.2_release_notes.plan.md", "# Release notes plan\n"],
+      [".cursor/rules/app.md", "# Rule\n"],
+      ["apps/mobile/.maestro/auth/login.yaml", "- assertVisible: session\n"],
+      ...Array.from({ length: 420 }, (_, index): [string, string] => [
+        `.tool-reports/report-${index}.md`,
+        "# Report\n",
+      ]),
+    ];
+    // Storybook configuration is the hidden folder setup reads as evidence.
+    const evidenceFiles: [string, string][] = [
+      [".storybook/main.ts", "export default {};\n"],
+    ];
+    await Promise.all(
+      [...toolFiles, ...evidenceFiles].map(async ([path, content]) => {
+        await mkdir(join(repo, path, ".."), { recursive: true });
+        await writeFile(join(repo, path), content, "utf8");
+      })
+    );
+    git("add", "-A");
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+      taskMode: "read",
+    });
+
+    expect(result.inventory.destinations).toEqual([]);
+    expect(result.inventory.cmsEvidence).toEqual([]);
+    expect(result.inventory.designSystemEvidence).toEqual([
+      "Repository-owned component library path: .storybook",
+    ]);
+    expect(result.inventory.scan).toEqual({
+      filesInspected: 2,
+      truncated: false,
+    });
+  });
+
+  test("shares a truncated scan fairly within apps/ and within packages/", async () => {
+    const apps = await fixture();
+    await writeJson(join(apps.repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    // The first app alone exceeds the scan cap.
+    await mkdir(join(apps.repo, "apps", "mobile", "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(apps.repo, "apps", "mobile", "src", `screen-${index}.tsx`),
+          "export {};\n",
+          "utf8"
+        )
+      )
+    );
+    await Promise.all(
+      ["admin", "release-notes"].map(async (route) => {
+        const routeDirectory = join(apps.repo, "apps", "web", "app", route);
+        await mkdir(routeDirectory, { recursive: true });
+        await writeFile(
+          join(routeDirectory, "page.tsx"),
+          "export default function Page() {}\n",
+          "utf8"
+        );
+      })
+    );
+
+    const appsResult = await inspectRepository({
+      configDirectory: apps.config,
+      distribution: "full",
+      repo: apps.repo,
+    });
+
+    expect(appsResult.inventory.scan).toEqual({
+      filesInspected: 400,
+      truncated: true,
+    });
+    expect(appsResult.inventory.cmsEvidence).toContain(
+      "CMS path: apps/web/app/admin/page.tsx"
+    );
+    expect(appsResult.inventory.destinations).toEqual([
+      "apps/web/app/release-notes/page.tsx",
+    ]);
+    expect(appsResult.inventory.surfaceApplicability.cms).toBe("detected");
+
+    const packages = await fixture();
+    await writeJson(join(packages.repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["packages/*"],
+    });
+    await mkdir(join(packages.repo, "packages", "api", "src"), {
+      recursive: true,
+    });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(packages.repo, "packages", "api", "src", `route-${index}.ts`),
+          "export {};\n",
+          "utf8"
+        )
+      )
+    );
+    await mkdir(join(packages.repo, "packages", "ui", "src"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(packages.repo, "packages", "ui", "src", "button.tsx"),
+      "export const Button = () => null;\n",
+      "utf8"
+    );
+
+    const packagesResult = await inspectRepository({
+      configDirectory: packages.config,
+      distribution: "full",
+      repo: packages.repo,
+    });
+
+    expect(packagesResult.inventory.scan.truncated).toBe(true);
+    expect(packagesResult.inventory.designSystemEvidence).toEqual([
+      "Repository-owned component library path: packages/ui",
+    ]);
+  });
+
+  test("keeps apps/ ahead of packages/ when a truncated scan holds both", async () => {
+    // Pooling both parents let CLI and library packages displace real app
+    // destinations, so members share only within their own parent.
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["apps/*", "packages/*"],
+    });
+    await mkdir(join(repo, "apps", "a", "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(repo, "apps", "a", "src", `screen-${index}.tsx`),
+          "export {};\n",
+          "utf8"
+        )
+      )
+    );
+    const notesDirectory = join(repo, "packages", "cli", "src");
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      join(notesDirectory, "release-notes.ts"),
+      "export const releaseNotes = [];\n",
+      "utf8"
+    );
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.scan).toEqual({
+      filesInspected: 400,
+      truncated: true,
+    });
+    expect(result.inventory.destinations).toEqual([]);
+  });
+
   test("reads each workspace app's own manifest for surface evidence", async () => {
     const { config, repo } = await fixture();
     // A docs folder that sorts before apps/ fills the capped walk first.

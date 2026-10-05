@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+- Setup scan fairness, so the Thoronath changelog fork can retire its last two
+  `setup.ts` deltas:
+  - `setup.ts` (all seven byte-identical copies): the capped walk skips every
+    hidden directory at any depth except `.storybook`
+    (`HIDDEN_EVIDENCE_DIRECTORIES`, the only hidden location setup reads as
+    evidence), whether or not Git tracks it. This replaces
+    `isInstalledSkillsDirectory` and the `.git`, `.hg`, `.svn`, `.turbo`, and
+    `.vercel` entries in `IGNORED_DIRECTORIES`.
+  - Within each root `apps/` and `packages/` directory (`WORKSPACE_PARENTS`,
+    now shared with the version-train probe), `interleave` merges the
+    members' files round-robin, so any prefix the 400-file cap keeps holds an
+    equal share of every member and a small member leaves its unused share to
+    the others. The two parents and every other directory keep name order, so
+    `apps/` still comes before `packages/`. GPT-6 Sol's review flagged that the
+    first wording claimed fairness across both parents. Pooling `apps/` and
+    `packages/` into one budget was tried and rejected: on Hash it lost six
+    real destinations (the mobile What's New screens and the web changelog
+    and release-notes routes) to CLI files under `packages/`, and on Site
+    Secure it added five false destinations from `packages/`. Spreading the
+    budget over the whole repository likewise reached repo-local skill
+    folders. `setup.check.ts` pins that `apps/` keeps its priority.
+  - Site Secure's inspection now reaches `apps/web/app/admin` (178 admin
+    paths), finds its admin changelog and release-notes routes, and no longer
+    offers `.cursor/plans/...release_notes...plan.md` as a destination; Hash
+    gains its public `apps/web/app/release-notes` route. Both still stop at
+    the cap. A large non-hidden root folder that sorts before `apps/` still
+    takes budget first.
+  - `setup.check.ts` adds a tracked tool folder holding a release-notes plan
+    and truncated `apps/` and `packages/` workspaces; each fails on the old
+    code, and mutations removing the `.storybook` exception, the hidden skip,
+    or the split fail them.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T18:24:18-05:00" -->
 - Known limits from the last review, fixed:
   - `setup.ts` (all seven byte-identical copies) adds
     `dependencyStructureEvidence`, which reads the root manifest plus every
