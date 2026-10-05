@@ -577,6 +577,25 @@ const isEntryOnlyOutcome = (receipt: ChangelogReceipt): boolean => {
   );
 };
 
+const isResolvedPublicClassification = (receipt: ChangelogReceipt): boolean => {
+  const decision = receipt.versionDecision;
+  return (
+    decision !== null &&
+    oneOf(decision.boundary, RELEASE_BOUNDARIES) &&
+    decision.boundary !== "none" &&
+    oneOf(decision.bumpLevel, ["none", "patch", "minor", "major"]) &&
+    oneOf(decision.policyAction, ["ask", "automatic"]) &&
+    ["automatic", "explicit-direction", "repository-automation"].includes(
+      decision.resolution
+    ) &&
+    nonEmpty(decision.selectedVersion)
+  );
+};
+
+const hasClassifiedDecision = (receipt: ChangelogReceipt): boolean =>
+  (isEntryOnlyOutcome(receipt) && receipt.versionDecision !== null) ||
+  isResolvedPublicClassification(receipt);
+
 const receiptStatusErrors = (receipt: ChangelogReceipt): string[] => {
   const errors: string[] = [];
   const decision = receipt.versionDecision;
@@ -590,7 +609,10 @@ const receiptStatusErrors = (receipt: ChangelogReceipt): string[] => {
     errors,
     receipt.status !== "classified" ||
       (receipt.phase === "classify" &&
-        entryOnly &&
+        receipt.release === null &&
+        hasClassifiedDecision(receipt) &&
+        receipt.revisionLineage.reconciliationHeadRevision === null &&
+        receipt.revisionLineage.finalizedTargetRevision === null &&
         receipt.releaseImpact !== "none" &&
         receipt.paths.length === 0 &&
         receipt.reasonCode === null &&
@@ -726,6 +748,30 @@ export const validateChangelogReceipt = (
     if (shape.length > 0) {
       return { errors: shape };
     }
+  } else if (
+    receipt.status === "classified" &&
+    receipt.versionDecision !== null &&
+    receipt.versionDecision.boundary !== "none"
+  ) {
+    // Apply the closed structural contract to the newly supported public v2
+    // classification path while preserving unrelated legacy v2 behavior.
+    if (
+      !exactKeys(
+        receipt.versionDecision as unknown as Record<string, unknown>,
+        DECISION_KEYS.filter((key) => key !== "versionLine")
+      )
+    ) {
+      return { errors: ["versionDecision is invalid"] };
+    }
+    const shape = receiptShapeErrorsV3({
+      ...receipt,
+      releaseSetTrains: null,
+      schemaVersion: 3,
+      versionDecision: { ...receipt.versionDecision, versionLine: null },
+    });
+    if (shape.length > 0) {
+      return { errors: shape };
+    }
   }
   const errors = [
     ...receiptBaseErrors(receipt),
@@ -804,7 +850,10 @@ const statusShapeErrorsV3 = (receipt: ChangelogReceiptV3): string[] => {
       noPaths &&
       oneOf(receipt.releaseImpact, ["patch", "minor", "major"]) &&
       receipt.release === null &&
-      matchesDecision(decision, ENTRY_DECISION) &&
+      (matchesDecision(decision, ENTRY_DECISION) ||
+        isResolvedPublicClassification(receipt)) &&
+      lineage.reconciliationHeadRevision === null &&
+      lineage.finalizedTargetRevision === null &&
       noCodes &&
       receipt.reason === null,
     "decision-required":
