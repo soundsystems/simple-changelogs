@@ -1186,13 +1186,13 @@ describe("portable guidance consistency", () => {
     );
     expect(fullOnboarding).toContain("**App stores only**");
     expect(fullOnboarding).toContain(
-      "**Mobile app and app stores — no Web — Recommended"
+      "**Mobile app and app stores, no Web (Recommended"
     );
     expect(fullOnboarding).toContain(
-      "**Web and mobile — one tabbed Release Notes page**"
+      "**Web and mobile on one tabbed Release Notes page**"
     );
     expect(fullOnboarding).toContain(
-      "**Web and mobile — separate Release Notes pages**"
+      "**Web and mobile on separate Release Notes pages**"
     );
     expect(collapseWhitespace(fullOnboarding)).toContain(
       "The same Mobile feed remains available to the app and stores"
@@ -1211,7 +1211,7 @@ describe("portable guidance consistency", () => {
     const setup = collapseWhitespace(
       await readFile(join(SKILL_ROOT, "references", "setup.md"), "utf8")
     );
-    expect(setup).toContain("**Walk me through what changed —");
+    expect(setup).toContain("**Walk me through what changed (Recommended)**");
     expect(setup).toContain("**Keep my current settings and continue**");
     expect(setup).toContain("**View detailed release notes**");
   });

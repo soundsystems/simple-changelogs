@@ -124,16 +124,16 @@ backfilled, published, deployed, submitted, or exposed yet.
 Summarize concrete findings and the recommended path, then ask **How would you
 like to set up Simple Changelogs? Choose one:**
 
-1. **Use recommended setup — Recommended** — Apply evidence-backed safe defaults. When
-  released history exists, include the full backfill and ask last only whether
-  the user wants to defer or decline it. This is the one-answer path described
-  below.
-2. **Walk me through it** — Explain every main workflow, every relevant
+1. **Use recommended setup (Recommended)**: Apply evidence-backed safe
+  defaults. When released history exists, include the full backfill and ask
+  last only whether the user wants to defer or decline it. This is the
+  one-answer path described below.
+2. **Walk me through it**: Explain every main workflow, every relevant
   destination, and each preference in plain language, one at a time, before
   saving anything.
-3. **Customize** — Explain and ask only the unresolved questions below.
-4. **Use recommended setup for this run only** — Apply the choices to the current task
-  without writing policy; onboarding appears again next time.
+3. **Customize**: Explain and ask only the unresolved questions below.
+4. **Use recommended setup for this run only**: Apply the choices to the
+  current task without writing policy; onboarding appears again next time.
 
 The walkthrough first shows how ordinary edits, release preparation,
 destination synchronization, historical review, version decisions where
@@ -207,16 +207,16 @@ marked `not-detected` unless the user names it as planned.
 Ask project type only when selected distribution and repository evidence remain
 unresolved or conflicting. Ask **What kind of project is this? Choose one:**
 
-1. **Web product** — Public or customer-facing Web history; select `web`.
-2. **Mobile application** — Native app and established store destinations;
+1. **Web product**: Public or customer-facing Web history; select `web`.
+2. **Mobile application**: Native app and established store destinations;
    select `mobile`.
-3. **Web product with an internal CMS** — Public Web history plus protected
+3. **Web product with an internal CMS**: Public Web history plus protected
    operator history; select `web-cms`.
-4. **Agent skill or skill package** — Skill-user and maintainer history; select
+4. **Agent skill or skill package**: Skill-user and maintainer history; select
    `skill-repository`.
-5. **Multiple product surfaces** — Web, mobile, store, internal, or other
+5. **Multiple product surfaces**: Web, mobile, store, internal, or other
    destinations share this repository; select `full`.
-6. **Internal CMS only** — Protected operator history only; select the CMS-only
+6. **Internal CMS only**: Protected operator history only; select the CMS-only
    policy.
 
 Show only plausible choices and mark the evidence-backed one **Recommended**.
@@ -225,9 +225,9 @@ Never silently convert valid policy.
 Skip the history-audience question for CMS-only. Otherwise ask **Who needs a
 maintained history? Choose one:**
 
-1. **Customers and developers — Recommended** — Maintain `CHANGELOG.md` and
+1. **Customers and developers (Recommended)**: Maintain `CHANGELOG.md` and
    `DEVELOPER_CHANGELOG.md`; save `required`.
-2. **Customers only** — Maintain only `CHANGELOG.md`; save `optional` and keep
+2. **Customers only**: Maintain only `CHANGELOG.md`; save `optional` and keep
    technical context in commits and change-request descriptions.
 
 For a skill repository, label those choices **Skill users and maintainers** and
@@ -236,9 +236,9 @@ For a skill repository, label those choices **Skill users and maintainers** and
 For Markdown distributions, ask **Should raw changelog edits include hidden
 agent-and-time audit comments? Choose one:**
 
-1. **Include hidden comments — Recommended** — Save `agent-and-timestamp`.
+1. **Include hidden comments (Recommended)**: Save `agent-and-timestamp`.
    Rendered notes omit them; they are informational, not cryptographic proof.
-2. **Do not add comments** — Save `none` and preserve any comments already
+2. **Do not add comments**: Save `none` and preserve any comments already
    present.
 
 CMS-only has no raw-Markdown signature field.
@@ -297,14 +297,13 @@ development and review previews, only on the live production site, or in both
 places.** Then ask **Where should the complete release history live? Choose
 one:**
 
-1. **Add a Web Release Notes tab or section there** — use when the existing
+1. **Add a Web Release Notes tab or section there**: use when the existing
   destination can keep editorial posts and chronological release history
   clearly separated. Its visibility is chosen next.
-2. **Create a dedicated Web Release Notes page — Recommended for editorial
-   sites** — use when the existing
-  destination is primarily a blog, newsroom, announcement feed, or marketing
-  channel. Its visibility is chosen next.
-3. **Do not add a Web archive now** — keep the candidate unchanged and limit
+2. **Create a dedicated Web Release Notes page (Recommended for editorial
+  sites)**: use when the existing destination is primarily a blog, newsroom,
+  announcement feed, or marketing channel. Its visibility is chosen next.
+3. **Do not add a Web archive now**: keep the candidate unchanged and limit
   the task to canonical changelog work.
 
 For every approved Web archive, immediately ask **In which environments
@@ -318,19 +317,19 @@ should Release Notes be available? Choose one:**
 4. Disabled             HIDDEN        HIDDEN           HIDDEN
 ```
 
-1. **All environments — Current behavior** — Local developers, preview
+1. **All environments (Current behavior)**: Local developers, preview
    reviewers, and production visitors can open the Release Notes page; any
    selected navigation, manual summary, or automatic modal may also appear.
    Save `all-environments`.
-2. **Local and preview only — Recommended for marketing and client sites** —
+2. **Local and preview only (Recommended for marketing and client sites)**:
    Keep the page and any selected entry points or modal available throughout
    local development and recognized previews. In production, do not serve the
    route or expose navigation, manual links, summaries, or the modal. Save
    `non-production`.
-3. **Production deployments only** — Hide the page and every entry point in
+3. **Production deployments only**: Hide the page and every entry point in
    local development and previews; expose the selected Release Notes surfaces
    only in production. Save `production-only`.
-4. **Disabled everywhere** — Do not serve or link the Release Notes page and do
+4. **Disabled everywhere**: Do not serve or link the Release Notes page and do
    not render a summary or modal in any environment. Save `disabled`; canonical
    changelog generation and archive-data synchronization can still continue.
 
@@ -348,12 +347,12 @@ Only after visibility is understood, and only when the selected environments
 serve returning users, ask **How should people discover the latest release?
 Choose one:**
 
-1. **Automatic Release Notes modal — Recommended for product apps** — show only
+1. **Automatic Release Notes modal (Recommended for product apps)**: show only
   the latest qualifying highlights to eligible returning users in the selected
   environments and link to the full archive.
-2. **Manual Release Notes summary** — keep a compact summary reachable without
+2. **Manual Release Notes summary**: keep a compact summary reachable without
   automatic display in the selected environments.
-3. **Archive only — Recommended for marketing and client-review sites** — add
+3. **Archive only (Recommended for marketing and client-review sites)**: add
   no compact surface.
 
 The confirmed receipt must name the exact candidate classification, archive
@@ -378,13 +377,13 @@ evidence and let the user correct a false positive.
 When no established system is found, ask **Which component source should the
 release-notes surface use? Choose one:**
 
-1. **Use the recommendation — Recommended** — for React web projects, recommend shadcn/ui on
-  Base UI; when Radix primitives already exist, recommend shadcn/ui on Radix
-  without migrating the primitive layer; for mobile, recommend the app's
-  platform-native components.
-2. **Use another component library** — record the library named by the user and
+1. **Use the recommendation (Recommended)**: for React web projects,
+  recommend shadcn/ui on Base UI; when Radix primitives already exist,
+  recommend shadcn/ui on Radix without migrating the primitive layer; for
+  mobile, recommend the app's platform-native components.
+2. **Use another component library**: record the library named by the user and
   map the policy to the applicable project or platform component source.
-3. **Use minimal markup** — add no component dependency and follow the
+3. **Use minimal markup**: add no component dependency and follow the
   repository's existing CSS or native styling approach.
 
 Name every package the recommended option would add. A dependency is a product
@@ -402,11 +401,11 @@ Ask **Where should these reusable setup preferences apply? Choose one:**
 3. This run only     -> no preference file
 ```
 
-1. **This repository — Recommended for teams** — Commit visible project policy
+1. **This repository (Recommended for teams)**: Commit visible project policy
    beside the changelogs.
-2. **All my projects** — Also save only the portable solo-developer defaults
+2. **All my projects**: Also save only the portable solo-developer defaults
    listed below in a private global preferences file.
-3. **This run only** — Write no durable policy or preferences; ask again next
+3. **This run only**: Write no durable policy or preferences; ask again next
    time.
 
 Repository scope writes visible policy beside the histories. All-projects scope
@@ -441,7 +440,7 @@ this skill.
 
 Ask this after preference scope, and target the scope already chosen:
 
-- Repository scope offers the repository's own agent-instruction file —
+- Repository scope offers the repository's own agent-instruction file:
   `AGENTS.md`, `CLAUDE.md`, or a comparable always-loaded file.
 - All-projects scope offers the user's global agent-instruction file, the same
   audience as the global preferences above. A solo developer who keeps one
@@ -452,9 +451,9 @@ Ask this after preference scope, and target the scope already chosen:
 Ask **Should setup add the short changelog pointer to `[exact file]`? Choose
 one:**
 
-1. **Add the pointer — Recommended when this file is always loaded** — Add or
+1. **Add the pointer (Recommended when this file is always loaded)**: Add or
    update one concise pointer after confirmation.
-2. **Leave instructions unchanged** — Make no change to the instruction file.
+2. **Leave instructions unchanged**: Make no change to the instruction file.
 
 Name the exact file in the question and receipt. When the chosen scope has no
 such file, say so and move on rather than creating one.
@@ -467,7 +466,7 @@ does not serve.
 
 A global pointer must therefore stay distribution-neutral. It states that a
 repository's own changelog skill owns the decision, and names no distribution,
-path, route, or repository — the same constraint the global preferences carry.
+path, route, or repository (the same constraint the global preferences carry).
 Naming one distribution there would be wrong in any repository that uses a
 different one or a local fork.
 
@@ -480,8 +479,8 @@ place rather than appending a second one.
 
 ## Optional curated highlights
 
-Entries may optionally carry `highlights` — short advertised sentences derived
-from an entry's complete change list — and a `curation` accounting object that
+Entries may optionally carry `highlights` (short advertised sentences derived
+from an entry's complete change list) and a `curation` accounting object that
 the bundled validator checks so every change stays accounted for and breaking
 or security changes are never hidden. This needs no onboarding question and no
 policy field; mention it only when the owner asks how to feature selected
@@ -493,10 +492,10 @@ After every other unresolved onboarding choice, ask about released history
 last, immediately before the confirmation receipt. Ask **How should setup
 handle the released history already in this repository? Choose one:**
 
-1. **Review the complete history now — Recommended** — Start the comprehensive
+1. **Review the complete history now (Recommended)**: Start the comprehensive
    initial backfill as `partial`, then record `completed` only after verification.
-2. **Maybe later** — Save `deferred` and continue prospective changelog work.
-3. **Leave existing history alone** — Save `declined` and apply new guidance
+2. **Maybe later**: Save `deferred` and continue prospective changelog work.
+3. **Leave existing history alone**: Save `declined` and apply new guidance
    only to future work.
 
 Do not require a separate “Review it now” approval. With no released history,

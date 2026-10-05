@@ -25,7 +25,7 @@ curated section; never add a separate curation prompt.
   policy.
 - One rollup line ends the section: it summarizes the remainder in plain
   language and points at the full changelog (for example, "Plus N smaller
-  fixes and improvements — see CHANGELOG.md for the complete list.").
+  fixes and improvements. See CHANGELOG.md for the complete list.").
 
 ## Highlight budget
 

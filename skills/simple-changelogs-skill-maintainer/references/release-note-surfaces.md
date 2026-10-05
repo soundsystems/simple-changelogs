@@ -22,8 +22,8 @@ developer's unrelated checkout.
 
 When repository policy records `publicReleaseNotes: "curated"` and
 `RELEASE_NOTES.md` exists, apply this default layer mapping: the package's
-published release notes for adopters — a hosted release description or a
-registry or marketplace listing — render the curated layer; `CHANGELOG.md` and
+published release notes for adopters (a hosted release description or a
+registry or marketplace listing) render the curated layer; `CHANGELOG.md` and
 the read-only packaged notes remain the complete public record; and developer
 history is unchanged. This distribution owns no marketing page, archive page,
 or modal, so none appears in the mapping. There is no

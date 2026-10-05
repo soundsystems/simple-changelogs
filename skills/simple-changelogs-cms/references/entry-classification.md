@@ -44,6 +44,12 @@ Use a short outcome title, one plain-language summary, and a compact list of
 specific changes. Combine related commits into the capability or workflow an
 operator experiences. Keep technical names only when operators see or use them.
 
+Punctuate every operator entry you write with commas, colons, periods, or
+parentheses. When a sentence reaches for an em-dash, rewrite it for what it
+needs (a list, a definition, an aside, or two sentences) instead of swapping
+the character. Repository instructions that set a different house style take
+precedence, and released entries keep their wording.
+
 Use `kind: "release"` for an ordinary recorded release and `kind: "backfill"`
 for history reconstructed after the fact. A backfilled entry may still include
 a proven version. Do not change `kind` merely to make old work look newly

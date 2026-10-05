@@ -31,7 +31,7 @@ customer source and `DEVELOPER_CHANGELOG.md` is the technical source.
 
 When repository policy records `publicReleaseNotes: "curated"` and
 `RELEASE_NOTES.md` exists, apply this default layer mapping: compact in-app
-surfaces — automatic modals, sheets, and latest-release summaries — render the
+surfaces (automatic modals, sheets, and latest-release summaries) render the
 curated layer; App Store, Google Play, and testing-track "What's New" copy
 starts from the curated highlights and is trimmed to each store's length
 limit; a manually opened in-app archive renders the full changelog; and
@@ -196,8 +196,8 @@ version, build number when relevant, changelog section, in-app destination, and
 store metadata destination as updated, already aligned, intentionally skipped,
 or blocked.
 
-Give every reported record its identifier role — canonical release, public
-version, build number, or development version — and name its release train
+Give every reported record its identifier role (canonical release, public
+version, build number, or development version) and name its release train
 whenever more than one mobile application or platform train is involved.
 Distinguish records that agree with their canonical value from build and
 development identifiers that are related but intentionally different. Never

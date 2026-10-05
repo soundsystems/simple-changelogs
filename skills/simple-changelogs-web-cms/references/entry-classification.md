@@ -3,6 +3,12 @@
 Use this reference when deciding whether a change belongs in `CHANGELOG.md`,
 `DEVELOPER_CHANGELOG.md`, both, or neither.
 
+Punctuate every entry and release-note line you write with commas, colons,
+periods, or parentheses. When a sentence reaches for an em-dash, rewrite it for
+what it needs (a list, a definition, an aside, or two sentences) instead of
+swapping the character. Repository instructions that set a different house
+style take precedence, and released entries keep their wording.
+
 ## Contents
 
 - Pruning Rules

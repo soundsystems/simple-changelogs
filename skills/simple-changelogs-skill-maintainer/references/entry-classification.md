@@ -62,6 +62,12 @@ bullets remain allowed for several outcomes belonging to one named capability.
 For fixes, state the repaired result without blame or incident detail. For a
 breaking change, name the affected contract and the required migration.
 
+Punctuate every entry and release-note line you write with commas, colons,
+periods, or parentheses. When a sentence reaches for an em-dash, rewrite it for
+what it needs (a list, a definition, an aside, or two sentences) instead of
+swapping the character. Repository instructions that set a different house
+style take precedence, and released entries keep their wording.
+
 Compact packaged release notes select material public highlights. They do not
 inherit every durable changelog entry and never include developer-only notes or
 raw signature comments.

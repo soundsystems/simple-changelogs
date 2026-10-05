@@ -202,8 +202,8 @@ destination's audience, release identity, source, access state, and
 updated/aligned/skipped/blocked disposition. This distribution does not own
 mobile or store metadata.
 
-Give every reported record its identifier role — canonical release, public
-version, build number, or development version — and name its release train
+Give every reported record its identifier role (canonical release, public
+version, build number, or development version) and name its release train
 whenever more than one train is involved. A shared repository proves shared
 source ownership, not a shared release train, and two separately owned fields
 that currently hold the same string remain separately owned. Operator history
