@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Release handoff**
+  - When the release version is already settled, chosen automatically or by
+    your direction, the classification step now returns that exact version
+    instead of only a neutral result. Preparing and verifying the changelog
+    are still separate later steps, and a version that still needs your
+    answer is still returned as a decision for you.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T13:48:48-05:00" -->
 - **Fork maintenance**
   - The fork checker has a new `--pin-parity` mode that compares a fork with
     the exact upstream version its pin names. It finds upstream content the

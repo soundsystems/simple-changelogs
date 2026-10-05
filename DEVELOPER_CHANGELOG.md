@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Classify contract: a `classified` receipt may carry a resolved public
+  `versionDecision` (release-bearing boundary, `ask` or `automatic`
+  policy, `automatic`, `explicit-direction`, or `repository-automation`
+  resolution, non-empty `selectedVersion`) with `release: null`, no paths,
+  and null reconciliation and finalized revisions. `release-handoff.ts` adds
+  `isResolvedPublicClassification` for v2 and v3; the v2 path applies the
+  closed v3 shape to this new case only, leaving other v2 receipts as before.
+  - The receipt schema changes in all six distributions and the eval copy
+    (digest `7d3b3734...` in every `changelog-provider.json` and
+    `protocol-digest.check.ts`), byte-identical to Simple Changes'
+    copy. Five `release-handoff.md` copies document the `classified`
+    outcome; `protocol-schema-parity.check.ts` and
+    `release-handoff.check.ts` cover it (35 pass).
+  - Authored in a parallel session on `fix/classify-contract-20261005` and
+    folded into this shipment by merge. No guidance bump: the outcome is
+    provider protocol, not a user-facing setting.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T13:48:48-05:00" -->
 - The contract linter's vendor-assumption check skips a backticked
   `agents/<name>.yaml` path, because pin parity requires a fork's Current
   Deltas table to name a changed agent interface file by its exact path; both
