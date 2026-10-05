@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Setup scan fairness, so the Thoronath changelog fork can retire its last two
+  `setup.ts` deltas:
+  - `setup.ts` (all seven byte-identical copies): the capped walk skips every
+    hidden directory at any depth except `.storybook`
+    (`HIDDEN_EVIDENCE_DIRECTORIES`, the only hidden location setup reads as
+    evidence), whether or not Git tracks it. This replaces
+    `isInstalledSkillsDirectory` and the `.git`, `.hg`, `.svn`, `.turbo`, and
+    `.vercel` entries in `IGNORED_DIRECTORIES`.
+  - At the root `apps/` and `packages/` directories (`WORKSPACE_PARENTS`, now
+    shared with the version-train probe), `interleave` merges the members'
+    files round-robin, so any prefix the 400-file cap keeps holds an equal
+    share of every member and a small member leaves its unused share to the
+    others. Every other directory keeps name order; spreading the budget over
+    the whole repository instead reached repo-local skill folders and added
+    false destinations.
+  - Site Secure's inspection now reaches `apps/web/app/admin` (178 admin
+    paths), finds its admin changelog and release-notes routes, and no longer
+    offers `.cursor/plans/...release_notes...plan.md` as a destination; Hash
+    gains its public `apps/web/app/release-notes` route. Both still stop at
+    the cap. A large non-hidden root folder that sorts before `apps/` still
+    takes budget first.
+  - `setup.check.ts` adds a tracked tool folder holding a release-notes plan
+    and truncated `apps/` and `packages/` workspaces; each fails on the old
+    code, and mutations removing the `.storybook` exception, the hidden skip,
+    or the split fail them.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T18:24:18-05:00" -->
 - Known limits from the last review, fixed:
   - `setup.ts` (all seven byte-identical copies) adds
     `dependencyStructureEvidence`, which reads the root manifest plus every
