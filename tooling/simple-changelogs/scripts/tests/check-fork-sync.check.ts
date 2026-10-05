@@ -1,4 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+} from "bun:test";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
@@ -104,6 +111,100 @@ const check = (
     ["sh", helper, forkSkill, repository, ...(ref ? [ref] : [])],
     environment
   );
+
+const checkParity = (
+  repository: string,
+  forkSkill: string,
+  ...extra: string[]
+) =>
+  run(repository, [
+    "sh",
+    helper,
+    "--pin-parity",
+    forkSkill,
+    repository,
+    ...extra,
+  ]);
+
+const writeFiles = async (
+  root: string,
+  files: Record<string, string>
+): Promise<void> => {
+  await Promise.all(
+    Object.entries(files).map(async ([path, contents]) => {
+      const target = join(root, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, contents);
+    })
+  );
+};
+
+const UPSTREAM_FILES: Record<string, string> = {
+  "references/onboarding.md":
+    "# Onboarding\n\n## Explain before asking\n\nExplain each choice first.\n\n```md\n## Fenced example heading\n```\n\n## Final history question\n\nAsk last.\n",
+  "SKILL.md": "# Skill\n\n## Workflow\n\nUpstream workflow.\n",
+  "scripts/helper.sh": "#!/bin/sh\nexit 0\n",
+};
+
+// Pin parity only reads upstream, so one repository serves every parity test.
+// Its single commit is the pin, so the default drift check calls a fork
+// current even when the fork never received the pinned files.
+const createParityUpstream = async (): Promise<{
+  pin: string;
+  repository: string;
+  root: string;
+}> => {
+  const root = await mkdtemp(join(tmpdir(), "simple-changelogs-pin-parity-"));
+  const repository = join(root, "upstream");
+  await writeFiles(
+    join(repository, "skills", "simple-changelogs"),
+    UPSTREAM_FILES
+  );
+  git(repository, "init", "--initial-branch=main");
+  git(repository, "config", "user.name", "Fork Sync Test");
+  git(repository, "config", "user.email", "fork-sync@example.invalid");
+  git(repository, "add", "--all");
+  git(repository, "commit", "-m", "skill", "--no-gpg-sign", "--no-verify");
+  const pin = git(repository, "rev-parse", "--short=8", "HEAD");
+  return { pin, repository, root };
+};
+
+const createFork = async (
+  pin: string
+): Promise<{ forkDirectory: string; forkSkill: string }> => {
+  const forkDirectory = await mkdtemp(
+    join(tmpdir(), "simple-changelogs-fork-")
+  );
+  temporaryDirectories.push(forkDirectory);
+  await writeFiles(forkDirectory, {
+    ...UPSTREAM_FILES,
+    "SKILL.md": `# Project Skill\n\nForked from \`simple-changelogs\` @ \`${pin}\`. Project-specific deltas: audiences.\n\n## Workflow\n\nProject workflow.\n`,
+  });
+  return { forkDirectory, forkSkill: join(forkDirectory, "SKILL.md") };
+};
+
+// Every table starts with the fork's SKILL.md delta. The fenced example names
+// a file upstream never had, so a parser that read it would report it stale.
+const declareDeltas = (forkDirectory: string, ...rows: string[]) =>
+  writeFiles(forkDirectory, {
+    "references/fork-maintenance.md": [
+      "# Fork Maintenance",
+      "",
+      "## Current Deltas",
+      "",
+      "```md",
+      "| Kind | Path | Section | Reason |",
+      "| --- | --- | --- | --- |",
+      "| delta | `references/example.md` | | Never read |",
+      "```",
+      "",
+      "| Kind | Path | Section | Reason |",
+      "| --- | --- | --- | --- |",
+      "| delta | `SKILL.md` | | Project name and pin |",
+      ...rows,
+      "",
+    ].join("\n"),
+  });
 
 afterEach(async () => {
   await Promise.all(
@@ -273,5 +374,153 @@ exec ${JSON.stringify(gitPath)} "$@"
 
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("merge-base");
+  });
+});
+
+describe("pin parity", () => {
+  let upstream = { pin: "", repository: "", root: "" };
+
+  beforeAll(async () => {
+    upstream = await createParityUpstream();
+  });
+
+  afterAll(async () => {
+    await rm(upstream.root, { force: true, recursive: true });
+  });
+
+  test("passes a fork that matches its pin apart from declared deltas", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(fork.forkDirectory);
+
+    const result = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(
+      "fork matches upstream skills/simple-changelogs"
+    );
+    expect(result.stdout).toContain(
+      "1 declared delta(s) and 0 declared omission(s)"
+    );
+  });
+
+  test("fails undeclared drift in a file that predates the pin", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(fork.forkDirectory);
+    await writeFiles(fork.forkDirectory, {
+      "references/onboarding.md":
+        "# Onboarding\n\n## Final history question\n\nAsk last.\n",
+    });
+
+    const drift = check(upstream.repository, fork.forkSkill, "main");
+    const parity = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(drift.exitCode).toBe(0);
+    expect(drift.stdout).toContain("fork is current");
+    expect(parity.exitCode).toBe(1);
+    expect(parity.stdout).toContain("undeclared drift");
+    expect(parity.stdout).toContain("  references/onboarding.md\n");
+  });
+
+  test("passes a declared delta that keeps every upstream heading", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(
+      fork.forkDirectory,
+      "| delta | `references/onboarding.md` | | Project audiences |"
+    );
+    await writeFiles(fork.forkDirectory, {
+      "references/onboarding.md":
+        "# Onboarding\n\n## Explain before asking\n\nExplain each project choice.\n\n### Final history question\n\nAsk last.\n",
+    });
+
+    const result = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("2 declared delta(s)");
+  });
+
+  test("requires every upstream heading in a declared delta unless the section is omitted", async () => {
+    const fork = await createFork(upstream.pin);
+    const delta =
+      "| delta | `references/onboarding.md` | | Project audiences |";
+    await declareDeltas(fork.forkDirectory, delta);
+    await writeFiles(fork.forkDirectory, {
+      "references/onboarding.md":
+        "# Onboarding\n\n## Final history question\n\nAsk last.\n",
+    });
+    const missing = checkParity(upstream.repository, fork.forkSkill);
+    await declareDeltas(
+      fork.forkDirectory,
+      delta,
+      "| omit | `references/onboarding.md` | Explain before asking | Choices explain themselves |"
+    );
+    const omitted = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(missing.exitCode).toBe(1);
+    expect(missing.stdout).toContain(
+      "references/onboarding.md: Explain before asking"
+    );
+    expect(missing.stdout).not.toContain("Fenced example heading");
+    expect(omitted.exitCode).toBe(0);
+    expect(omitted.stdout).toContain("1 declared omission(s)");
+  });
+
+  test("passes a declared omission of an upstream file", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(fork.forkDirectory);
+    await rm(join(fork.forkDirectory, "scripts", "helper.sh"));
+    const missing = checkParity(upstream.repository, fork.forkSkill);
+    await declareDeltas(
+      fork.forkDirectory,
+      "| omit | `scripts/helper.sh` | | The fork needs no helper |"
+    );
+    const omitted = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(missing.exitCode).toBe(1);
+    expect(missing.stdout).toContain("missing upstream files");
+    expect(missing.stdout).toContain("  scripts/helper.sh\n");
+    expect(omitted.exitCode).toBe(0);
+    expect(omitted.stdout).toContain("1 declared omission(s)");
+  });
+
+  test("reports declarations that no longer match the fork as stale", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(
+      fork.forkDirectory,
+      "| delta | `scripts/helper.sh` | | Was customized |",
+      "| omit | `references/onboarding.md` | | Was left out |",
+      "| omit | `references/onboarding.md` | Final history question | Was dropped |",
+      "| omit | `references/retired.md` | | Removed upstream |"
+    );
+
+    const result = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("stale declarations");
+    expect(result.stdout).toContain("delta scripts/helper.sh: matches the pin");
+    expect(result.stdout).toContain(
+      "omit references/onboarding.md: the fork carries this file"
+    );
+    expect(result.stdout).toContain(
+      "omit references/onboarding.md: Final history question: the fork has this heading"
+    );
+    expect(result.stdout).toContain(
+      "omit references/retired.md: not an upstream file at the pin"
+    );
+  });
+
+  test("rejects malformed declarations and a ref argument", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(
+      fork.forkDirectory,
+      "| removed | `scripts/helper.sh` | | Typo |"
+    );
+
+    const malformed = checkParity(upstream.repository, fork.forkSkill);
+    const withRef = checkParity(upstream.repository, fork.forkSkill, "main");
+
+    expect(malformed.exitCode).toBe(2);
+    expect(malformed.stderr).toContain("unknown kind 'removed'");
+    expect(withRef.exitCode).toBe(2);
+    expect(withRef.stderr).toContain("--pin-parity");
   });
 });

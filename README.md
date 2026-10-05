@@ -479,6 +479,10 @@ skills/simple-changelogs/scripts/check-fork-sync.sh \
 ```
 
 Exit `0` means current, `1` behind, `2` invalid input, and `3` divergent.
+Put `--pin-parity` before the fork path, and drop the ref, to compare the fork
+with the pinned upstream files themselves: it also catches upstream content
+older than the pin that the fork never received, apart from the intentional
+deltas the fork lists in its `references/fork-maintenance.md`.
 Repo-local precedence is a documented convention, not a claim that every
 runtime loader deduplicates automatically.
 

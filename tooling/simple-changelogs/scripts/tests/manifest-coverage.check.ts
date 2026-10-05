@@ -1227,6 +1227,8 @@ describe("portable guidance consistency", () => {
     );
     expect(forkMaintenance).toContain("Use the bundled checker");
     expect(forkMaintenance).not.toContain("Without the script");
+    expect(forkMaintenance).toContain("check-fork-sync.sh --pin-parity");
+    expect(forkMaintenance).toContain("## Current Deltas");
   });
 
   test("documents all statuses and assertion families without overstating prompt deduplication", async () => {
