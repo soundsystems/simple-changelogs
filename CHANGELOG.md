@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **Writing style**
+  - New changelog entries and release-note lines no longer use em-dashes.
+    They use commas, colons, periods, or parentheses, and a sentence that
+    reaches for a dash is rewritten rather than having the character
+    swapped. A repository's documented house style still wins, and released
+    entries keep their wording.
+  - Setup and update questions now show each choice as
+    `**Choice (Recommended)**: consequence`. The choices and their defaults
+    are unchanged.
+  - Guidance moves to 23 (full), 21 (web and web+CMS), 20 (mobile), 14
+    (skill-maintainer), and 6 (CMS). The update notice needs no backfill.
+- **Choosing a distribution**
+  - Each distribution's description is shorter and opens with what it
+    maintains, then names the repository choice that selects it, so agents
+    read less to decide which distribution applies.
+- **publish-skill**
+  - `publish-skill` now runs only when you type `/publish-skill`; agents no
+    longer start a fork publication on their own. It is marked internal and
+    is no longer part of the public install instructions.
+  - It now also finds global skill installs under `~/.agents/skills`,
+    `~/.codex/skills`, `~/.claude/skills`, and `~/.cursor/skills`, and can
+    update each fork in its own agent when the host runs parallel agents. It
+    matches the copy that ships with Simple Changes.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T10:50:54-05:00" -->
 - **Version numbers**
   - Setup now finds every app in large repositories that hold several apps.
     It used to stop scanning early and could miss the web app, so the

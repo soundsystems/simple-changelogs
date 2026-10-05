@@ -2,6 +2,64 @@
 
 ## Unreleased
 
+- Guidance advances to full 23, web 21, mobile 20, web+CMS 21,
+  skill-maintainer 14, and CMS 6: `GUIDANCE_VERSIONS` and
+  `CMS_GUIDANCE_VERSION` in `setup.ts` (re-synced into all seven
+  byte-identical copies), each `SKILL.md` and `changelog-provider.json`, and
+  `distribution-manifest.json`. The web+CMS CMS track stays at 2. Each
+  `guidance-updates.md` gains a `kinds="behavior" backfill="not-needed"`
+  notice written by Claude Fable 5.1.
+  - Every `entry-classification.md`, plus the web+CMS
+    `cms-entry-classification.md`, gains a punctuation paragraph: commas,
+    colons, periods, or parentheses instead of em-dashes, documented house
+    style first, released entries untouched. The four product copies stay
+    byte-identical.
+  - 426 em-dashes across 32 reference files are rewritten by hand: paired
+    asides become parentheses and label separators become colons, so option
+    copy now reads `**Label (Recommended)**: consequence`. Historical
+    `guidance-updates.md` notices are untouched. `curation.md`'s rollup
+    sample is two sentences ("Plus N smaller fixes and improvements. See
+    CHANGELOG.md for the complete list."), and the `curation-query.check.ts`
+    input data follows; the parser ignores rollup prose.
+  - Version-pinned tests move with the bump: `setup.check.ts`,
+    `shared-version-lines.check.ts` (the Guidance 22 notice is now selected
+    by version, not by position), `web-production-release.check.ts`,
+    `manifest-coverage.check.ts` (four pinned option strings), and
+    `setup-transaction.check.ts`. Its "never lowers the other" test now
+    records main-track guidance 22, one ahead of the current 21, so it still
+    exercises a newer helper's value instead of silently matching current.
+- The six distribution descriptions are rewritten as context pointers
+  (2,627 to 1,859 characters): what each maintains first, one close negative
+  boundary paired with the selecting condition, synonym verbs collapsed, and
+  no colon-space in the unquoted YAML. On the trigger suite (Claude adapter,
+  `SIMPLE_CHANGELOGS_CLAUDE_MODEL=claude-fable-5-1`, run through the desktop
+  app's bundled Claude Code 2.1.286 because the 2.1.233 CLI on PATH predates
+  the model) the old descriptions passed 12 cases with 5 `unsupported`
+  (`CAPABILITY_ACTIVATION_TRACE_UNAVAILABLE`, sandboxed `bun` exit 133); the
+  new ones pass 17 of 17. One run each, so the 5 are not credited to the
+  wording.
+- `publish-skill` is user-invoked (`disable-model-invocation: true` paired
+  with `policy.allow_implicit_invocation: false` in `agents/openai.yaml`),
+  carries `metadata.internal: true`, and has a human-facing one-line
+  description. It is a three-way merge with the Simple Changes copy from
+  their shared base (`7a1bf07e` here, `6ae4f5c` there): global-root
+  discovery, symlink and physical install paths, parallel fork agents, and
+  the release-notes check arrive from Simple Changes, while
+  `superseded-install` stays. The production loop now uses the
+  `update-local-forks` helper only when the canonical package bundles one.
+  - `discover-local-consumers.check.ts` runs every spawn with an empty
+    fixture `HOME` (`isolatedEnv`) and `process.execPath`; global discovery
+    otherwise read this machine's real installs and broke the three
+    superseded-CMS tests. Skill and tooling trees are byte-identical across
+    both repositories, and the README drops the install block.
+- `distributions.check.ts` fails when `disable-model-invocation` and
+  `agents/openai.yaml` `policy.allow_implicit_invocation` disagree; removing
+  the publish-skill policy block reproduces the failure.
+- `.out-of-scope/` records three declined requests (rewording released
+  history, one repository per distribution, unrequested release-note
+  surfaces), each citing the commit that decided it; `CONTRIBUTING.md` points
+  to it.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T10:50:54-05:00" -->
 - Release-train detection for `inventory.versionTrains` no longer depends on
   the 400-file `walkTextFiles` cap, which in a large monorepo can stop before
   it reaches `apps/` and leave `versionTrains` empty, so the
