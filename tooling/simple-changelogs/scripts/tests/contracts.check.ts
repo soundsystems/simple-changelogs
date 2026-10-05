@@ -147,6 +147,35 @@ describe("evaluateContracts", () => {
     expect(await evaluateContracts(skillDirectory)).toEqual([]);
   });
 
+  test("ignores a Current Deltas agent interface path but not a bare one or vendor prose", async () => {
+    const skillDirectory = await createValidSkill();
+    const interfaceFile = `agents/${["open", "ai"].join("")}.yaml`;
+    const vendorFindings = async (contents: string) => {
+      await writeFixtureFile(
+        skillDirectory,
+        "references/fork-maintenance.md",
+        `# Fork Maintenance\n\n${contents}\n`
+      );
+      return (await evaluateContracts(skillDirectory)).filter(
+        (finding) => finding.code === "VENDOR_ASSUMPTION"
+      );
+    };
+
+    const declared = await vendorFindings(
+      `## Current Deltas\n\n| Kind | Path | Section | Reason |\n| --- | --- | --- | --- |\n| delta | \`${interfaceFile}\` | | Fork display name |`
+    );
+    const bare = await vendorFindings(`Edit ${interfaceFile} by hand.`);
+    const prose = await vendorFindings(`Run this fork with ${TEST_VENDOR}.`);
+
+    expect(declared).toHaveLength(0);
+    expect(bare.map((finding) => finding.path)).toEqual([
+      "references/fork-maintenance.md",
+    ]);
+    expect(prose.map((finding) => finding.path)).toEqual([
+      "references/fork-maintenance.md",
+    ]);
+  });
+
   test("rejects malformed frontmatter and directory/name drift", async () => {
     const skillDirectory = await createValidSkill();
     await writeFixtureFile(
