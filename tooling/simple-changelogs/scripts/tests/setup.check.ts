@@ -242,14 +242,14 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "optional",
-      currentVersion: 20,
+      currentVersion: 21,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
-        "Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section.",
         "A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories. Curated public release notes can now derive RELEASE_NOTES.md from the changelog.",
         "Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release.",
+        "New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence.",
       ],
       userPrompt:
         "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
@@ -276,6 +276,11 @@ describe("setup inspection", () => {
       backfillRecommendation: "optional",
       kinds: ["behavior"],
       version: 20,
+    });
+    expect(inspection.guidanceUpdate?.changes[5]).toMatchObject({
+      backfillRecommendation: "not-needed",
+      kinds: ["behavior"],
+      version: 21,
     });
 
     const rejected = await applySetup({
@@ -306,7 +311,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 20,
+      version: 21,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -1138,13 +1143,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(22);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(23);
 
     const distributionVersions = [
-      ["web", 20],
-      ["mobile", 19],
-      ["web-cms", 20],
-      ["skill-repository", 13],
+      ["web", 21],
+      ["mobile", 20],
+      ["web-cms", 21],
+      ["skill-repository", 14],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -1735,13 +1740,13 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 5,
+      currentVersion: 6,
       recordedVersion: 1,
     });
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 5,
+      version: 6,
     });
   });
 
@@ -2139,7 +2144,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 20 },
+      { backfillStatus: "completed", version: 21 },
       { backfillStatus: "completed", version: 1 }
     );
 
@@ -2184,7 +2189,7 @@ describe("post-onboarding update paths", () => {
     const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
     expect(repoPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 20,
+      version: 21,
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2204,7 +2209,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 20 },
+      { backfillStatus: "completed", version: 21 },
       { backfillStatus: "completed", version: 2 }
     );
 

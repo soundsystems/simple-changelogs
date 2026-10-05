@@ -89,3 +89,14 @@ never be omitted or rolled up. Entries without these fields are unchanged, and
 Existing released entries never gain highlights automatically. Backfilling
 curation for already-released history is optional, offered once, and derives
 only from the recorded changes.
+
+<!-- simple-changelogs-guidance-update version="6" kinds="behavior" backfill="not-needed" summary="New CMS operator entries now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence." -->
+## Guidance 6
+
+New operator entries written into `CMS_CHANGELOG.json` use commas, colons,
+periods, or parentheses instead of em-dashes; a sentence that would reach for
+one is rewritten rather than having the character swapped. A repository's
+documented house style still takes precedence. Setup and update questions now
+present each choice as `**Choice (Recommended)**: consequence`, with the
+choices and their defaults unchanged. Released entries keep their wording; no
+backfill is needed.

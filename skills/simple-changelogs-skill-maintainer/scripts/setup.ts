@@ -269,13 +269,13 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 22,
-  mobile: 19,
-  "skill-repository": 13,
-  web: 20,
-  "web-cms": 20,
+  full: 23,
+  mobile: 20,
+  "skill-repository": 14,
+  web: 21,
+  "web-cms": 21,
 } as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 5;
+const CMS_GUIDANCE_VERSION = 6;
 // The web-cms distribution records the CMS side of its policy on a separate
 // guidance track from the standalone CMS distribution.
 const WEB_CMS_CMS_GUIDANCE_VERSION = 2;

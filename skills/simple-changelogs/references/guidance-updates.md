@@ -436,3 +436,13 @@ Mobile's next release `1.0.0`; under `bump-shared`, every release takes the
 next number. Notes still follow each app's own impact. Where two or more such
 apps have no recorded answer, this update asks **Should your apps share
 version numbers?** once. Nothing is renumbered and no backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="23" kinds="behavior" backfill="not-needed" summary="New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence." -->
+## Guidance 23
+
+New changelog entries and release-note lines use commas, colons, periods, or
+parentheses instead of em-dashes; a sentence that would reach for one is
+rewritten rather than having the character swapped. A repository's documented
+house style still takes precedence. Setup and update questions now present each
+choice as `**Choice (Recommended)**: consequence`, with the choices and their
+defaults unchanged. Released entries keep their wording; no backfill is needed.

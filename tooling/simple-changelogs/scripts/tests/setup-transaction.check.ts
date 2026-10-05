@@ -78,7 +78,7 @@ const webCmsPolicies = async (
 const pendingWebCmsRepo = async () => {
   const config = await temporaryDirectory("config");
   const repo = await temporaryDirectory("repo");
-  await webCmsPolicies(repo, 20, 1);
+  await webCmsPolicies(repo, 21, 1);
   const acknowledge: ApplyOptions = {
     configDirectory: config,
     confirm: true,
@@ -341,7 +341,7 @@ describe("setup transaction rollback and recovery", () => {
   test("an interrupted onboarding is rolled back and completed", async () => {
     const config = await temporaryDirectory("config");
     const repo = await temporaryDirectory("repo");
-    await webCmsPolicies(repo, 20, 2);
+    await webCmsPolicies(repo, 21, 2);
     await rm(join(repo, CMS_POLICY));
     await writeJson(join(repo, MARKER), {
       pid: DEAD_PID,
@@ -431,9 +431,9 @@ describe("post-onboarding write guards", () => {
   test("acknowledging one guidance track never lowers the other", async () => {
     const config = await temporaryDirectory("config");
     const repo = await temporaryDirectory("repo");
-    // A newer helper already recorded main-track guidance 21; this helper's
-    // current main version is 20.
-    await webCmsPolicies(repo, 21, 1);
+    // A newer helper already recorded main-track guidance 22; this helper's
+    // current main version is 21.
+    await webCmsPolicies(repo, 22, 1);
 
     const result = await applySetup({
       configDirectory: config,
@@ -446,7 +446,7 @@ describe("post-onboarding write guards", () => {
     expect(result.status).toBe("configured");
     expect((await readJson(join(repo, POLICY))).guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 21,
+      version: 22,
     });
     expect((await readJson(join(repo, CMS_POLICY))).guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -487,7 +487,7 @@ describe("post-onboarding write guards", () => {
     const outcomes = await Promise.all(
       [0, 1].map(async (cmsVersion) => {
         const repo = await temporaryDirectory("repo");
-        await webCmsPolicies(repo, 20, cmsVersion);
+        await webCmsPolicies(repo, 21, cmsVersion);
         return inspectRepository({
           configDirectory: config,
           distribution: "web-cms",

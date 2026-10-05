@@ -75,7 +75,7 @@ const twoTrainRepo = async (webVersion = "6.7.0"): Promise<string> => {
 const fullPolicy = (extra: Record<string, unknown> = {}) => ({
   developerChangelog: "required",
   distribution: "full",
-  guidance: { backfillStatus: "not-applicable", version: 22 },
+  guidance: { backfillStatus: "not-applicable", version: 23 },
   mobileReleaseNotePlacement: "mobile-only",
   newReleaseNoteSurfaces: "ask",
   schemaVersion: 1,
@@ -415,14 +415,15 @@ describe("guidance 22 version-line notice", () => {
 
     expect(inspection.status).toBe("already-configured");
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 22,
+      currentVersion: 23,
       questions: ["shared-version-lines"],
       recordedVersion: 21,
       userPrompt: null,
     });
-    expect(inspection.guidanceUpdate?.changes.at(-1)?.summary).toContain(
-      "share one version number"
-    );
+    expect(
+      inspection.guidanceUpdate?.changes.find(({ version }) => version === 22)
+        ?.summary
+    ).toContain("share one version number");
   });
 
   test("leaves the question out for a single train, a recorded answer, or one shared train", async () => {
@@ -447,7 +448,7 @@ describe("guidance 22 version-line notice", () => {
     );
 
     for (const inspection of inspections) {
-      expect(inspection.guidanceUpdate?.currentVersion).toBe(22);
+      expect(inspection.guidanceUpdate?.currentVersion).toBe(23);
       expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
         false
       );
@@ -468,7 +469,7 @@ describe("guidance 22 version-line notice", () => {
       repo,
     });
 
-    expect(inspection.guidanceUpdate?.currentVersion).toBe(20);
+    expect(inspection.guidanceUpdate?.currentVersion).toBe(21);
     expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
       false
     );
@@ -506,7 +507,7 @@ describe("guidance 22 version-line notice", () => {
     expect(policy.sharedVersionLines).toEqual(catchUpLine());
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 22,
+      version: 23,
     });
     expect(after.guidanceUpdate).toBeNull();
   });

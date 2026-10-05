@@ -411,3 +411,14 @@ stable 12-hex id as highlighted, rolled up, or omitted. The validator rejects
 unknown or repeated ids and never lets a `**Breaking**` or `**Security**`
 change be omitted or rolled up. Other entries are unchanged; a backfill of
 released operator history is optional and derives only from recorded changes.
+
+<!-- simple-changelogs-guidance-update version="21" kinds="behavior" backfill="not-needed" summary="New changelog, release-note, and CMS operator entries now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence." -->
+## Guidance 21
+
+New changelog entries, release-note lines, and the separate CMS operator
+entries use commas, colons, periods, or parentheses instead of em-dashes; a
+sentence that would reach for one is rewritten rather than having the
+character swapped. A repository's documented house style still takes
+precedence. Setup and update questions now present each choice as
+`**Choice (Recommended)**: consequence`, with the choices and their defaults
+unchanged. Released entries keep their wording; no backfill is needed.

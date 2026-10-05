@@ -1,7 +1,7 @@
 {
   "distribution": "cms",
   "features": ["classify-prepare-verify", "guidance-update-notices"],
-  "guidanceVersion": 5,
+  "guidanceVersion": 6,
   "provider": "simple-changelogs",
   "receiptVersions": [2],
   "requestVersions": [1],

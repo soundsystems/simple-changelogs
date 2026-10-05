@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Use as the full cross-surface Simple Changelogs distribution when a repository spans web, mobile, store, internal, or other release-note destinations, or when no narrower distribution is selected. Create, update, backfill, classify, reconcile, or finalize customer and developer changelogs, release notes, metadata, versions, major releases, and prerelease trains. Do not use when the repository selects the CMS-only, web-only, mobile-only, web+CMS, or skill-repository distribution.
+description: Maintain changelogs and release notes across web, mobile, store, and internal destinations. Update customer and developer changelogs, classify entries, backfill history, choose versions, and finalize releases, majors, and prerelease trains. The default Simple Changelogs distribution unless the repository selects a narrower one.
 metadata:
   models: Claude Opus 5.5, Claude Fable 5.1
 ---
@@ -18,7 +18,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 22
+Current guidance version: 23
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

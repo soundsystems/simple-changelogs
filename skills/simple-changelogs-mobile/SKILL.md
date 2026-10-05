@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs-mobile
-description: Use only for a repository that explicitly selects the mobile-only Simple Changelogs distribution, including a repo-local installation of this sole changelog distro. Maintain customer and optional developer changelogs, mobile in-app release notes, and existing App Store or Google Play metadata. Do not use for web or CMS surfaces, skill-package release maintenance, or when another Simple Changelogs distribution owns the repository.
+description: Maintain changelogs and mobile release notes, including in-app notes and existing App Store or Google Play metadata. Update customer and developer changelogs and finalize mobile releases. Use when the repository selects the mobile-only Simple Changelogs distribution or installs it as its only changelog skill, not for web or CMS history.
 metadata:
   models: Claude Opus 5.5, Claude Fable 5.1
 ---
@@ -19,7 +19,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 19
+Current guidance version: 20
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
