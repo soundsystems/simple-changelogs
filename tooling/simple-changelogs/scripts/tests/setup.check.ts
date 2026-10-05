@@ -830,6 +830,83 @@ describe("setup inspection", () => {
     });
   });
 
+  test("reads each workspace app's own manifest for surface evidence", async () => {
+    const { config, repo } = await fixture();
+    // A docs folder that sorts before apps/ fills the capped walk first.
+    await mkdir(join(repo, "aaa-docs"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 420 }, (_, index) =>
+        writeFile(
+          join(repo, "aaa-docs", `page-${index}.md`),
+          "# Page\n",
+          "utf8"
+        )
+      )
+    );
+    await writeJson(join(repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    await mkdir(join(repo, "apps", "web"), { recursive: true });
+    await mkdir(join(repo, "apps", "mobile"), { recursive: true });
+    await writeJson(join(repo, "apps", "web", "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web",
+    });
+    await writeJson(join(repo, "apps", "mobile", "package.json"), {
+      dependencies: { expo: "55.0.0", react: "20.0.0" },
+      name: "mobile",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.scan.truncated).toBe(true);
+    expect(result.inventory.surfaceApplicability.web).toBe("detected");
+    expect(result.inventory.surfaceApplicability.mobile).toBe("detected");
+  });
+
+  test("does not read an Expo app's react as web evidence", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    await mkdir(join(repo, "apps", "mobile"), { recursive: true });
+    await writeJson(join(repo, "apps", "mobile", "package.json"), {
+      dependencies: { expo: "55.0.0", react: "20.0.0" },
+      name: "mobile",
+    });
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.surfaceApplicability.mobile).toBe("detected");
+    expect(result.inventory.surfaceApplicability.web).not.toBe("detected");
+
+    // A universal app that also renders to the DOM is web evidence.
+    await writeJson(join(repo, "apps", "mobile", "package.json"), {
+      dependencies: {
+        expo: "55.0.0",
+        react: "20.0.0",
+        "react-native-web": "1.0.0",
+      },
+      name: "mobile",
+    });
+    const universal = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+    expect(universal.inventory.surfaceApplicability.web).toBe("detected");
+  });
+
   test("separates editorial update candidates from release-note-named candidates", async () => {
     const { config, repo } = await fixture();
     await mkdir(join(repo, "src", "routes"), { recursive: true });
@@ -969,8 +1046,15 @@ describe("setup inspection", () => {
     expect(result.inventory.destinations).toContain(
       "apps/web/src/release-notes.tsx"
     );
+    // Root react beside expo is the mobile renderer; web comes from apps/web.
     expect(result.inventory.surfaceStructureEvidence.web).toContain(
+      "Web application path: apps/web/src/release-notes.tsx"
+    );
+    expect(result.inventory.surfaceStructureEvidence.web).not.toContain(
       "Web application dependency: react"
+    );
+    expect(result.detection.evidence).not.toContain(
+      "Package metadata indicates a web application"
     );
     expect(result.inventory.surfaceStructureEvidence.mobile).toContain(
       "Mobile application dependency: expo"

@@ -61,6 +61,14 @@ default_ref() {
 TAB=$(printf '\t')
 NL='
 '
+# Marks a generated repeat ("Notes #2") apart from a literal heading spelled
+# the same way, so neither can stand in for the other.
+REPEAT=$(printf '\001')
+
+# The readable name of a heading key: a generated repeat without its marker.
+heading_name() {
+  printf '%s' "$1" | tr -d "$REPEAT"
+}
 
 # Print each distinct Markdown heading below the title that sits outside code
 # fences, without its marks, so a fork may change a heading's level but not
@@ -81,9 +89,10 @@ headings() {
       if (fence == "" && line ~ /^##+[ \t]/) {
         sub(/^#+[ \t]+/, "", line)
         sub(/[ \t]+#*[ \t]*$/, "", line)
-        # A repeated heading counts once per occurrence: "Notes", "Notes #2".
+        # A repeated heading counts once per occurrence: "Notes", then a
+        # marked "Notes #2" that a literal "Notes #2" heading never matches.
         n = ++seen[line]
-        print (n == 1 ? line : line " #" n)
+        print (n == 1 ? line : "\001" line " #" n)
       }
     }
   '
@@ -243,10 +252,11 @@ ROWS
       case $FORK_HEADINGS in
         *"$NL$HEADING$NL"*) continue ;;
       esac
-      if declared omit "$FILE" "$HEADING"; then
+      NAME=$(heading_name "$HEADING")
+      if declared omit "$FILE" "$NAME"; then
         OMISSIONS=$((OMISSIONS + 1))
       else
-        SECTIONS=$SECTIONS"  $FILE: $HEADING$NL"
+        SECTIONS=$SECTIONS"  $FILE: $NAME$NL"
       fi
     done <<HEADINGS
 $UPSTREAM_HEADINGS
@@ -276,17 +286,26 @@ TREE
       continue
     fi
     UPSTREAM_HEADINGS=$NL$(git -C "$UPSTREAM_DIR" cat-file blob "$PIN_SHA:$SKILL_PATH/$ROW_PATH" | headings)$NL
+    # A row names exactly one heading: a literal heading, or a repeat such as
+    # the second "Notes". A file holding both spellings makes the row ambiguous.
+    KEY=
     case $UPSTREAM_HEADINGS in
-      *"$NL$SECTION$NL"*) ;;
-      *)
-        STALE=$STALE"  omit $ROW_PATH: $SECTION: no such upstream heading at the pin$NL"
-        continue
+      *"$NL$SECTION$NL"*) KEY=$SECTION ;;
+    esac
+    case $UPSTREAM_HEADINGS in
+      *"$NL$REPEAT$SECTION$NL"*)
+        [ -z "$KEY" ] || fail "omit $ROW_PATH: $SECTION names both a heading and a repeated heading at the pin; rename the heading"
+        KEY=$REPEAT$SECTION
         ;;
     esac
+    if [ -z "$KEY" ]; then
+      STALE=$STALE"  omit $ROW_PATH: $SECTION: no such upstream heading at the pin$NL"
+      continue
+    fi
     if [ "$STATE" != absent ]; then
       FORK_HEADINGS=$NL$(headings <"$(fork_path "$ROW_PATH")")$NL
       case $FORK_HEADINGS in
-        *"$NL$SECTION$NL"*) STALE=$STALE"  omit $ROW_PATH: $SECTION: the fork has this heading$NL" ;;
+        *"$NL$KEY$NL"*) STALE=$STALE"  omit $ROW_PATH: $SECTION: the fork has this heading$NL" ;;
       esac
     fi
   done <<ROWS

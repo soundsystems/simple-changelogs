@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Known limits from the last review, fixed:
+  - `setup.ts` (all seven byte-identical copies) adds
+    `dependencyStructureEvidence`, which reads the root manifest plus every
+    `apps/*/package.json` found by `probeEntries` (not `packages/*`, whose
+    UI libraries would read as apps; symlinked app directories and ignored
+    names such as `build/` are skipped). `webDependencyNames` drops plain
+    `react` beside a mobile framework unless `react-dom` or
+    `react-native-web` is also declared, for the root manifest too, so the
+    existing topology test now expects path evidence for its web app. The
+    detection summary's "Package metadata indicates a web application" uses
+    the same rule. Site Secure now reads
+    web, mobile, store, and CMS `detected` (web was `uncertain`), and Hash
+    moves web, mobile, and store from `uncertain` to `detected`; the
+    400-file scan still truncates there, but no longer decides those surfaces.
+    `setup.check.ts` adds a truncated monorepo case that fails on the old
+    code and an Expo-only case.
+  - `check-fork-sync.sh` (all five copies) marks a generated repeat with an
+    internal `\001` prefix, so a literal `Caveats #2` heading never satisfies
+    the second `Caveats`; reports and omit rows still use the readable
+    `Caveats #2`. An omit row resolves to exactly one heading key, and a file
+    holding both spellings fails as ambiguous (exit 2).
+    `check-fork-sync.check.ts` adds the look-alike, omitted-repeat, and
+    ambiguous cases, and `fork-maintenance.md` notes them. GPT-6 Sol's review
+    of the first version found the omit-row ambiguity (blocking) and the root
+    and wording gaps fixed here.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T17:16:56-05:00" -->
 - Fixes from GPT-6 Sol's exact-head review of soundsystems/simple-changelogs!68:
   - Blocking: `isResolvedPublicClassification` accepted `policyAction: "ask"`
     with an `automatic` or `repository-automation` resolution, so an

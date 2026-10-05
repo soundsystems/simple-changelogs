@@ -140,6 +140,8 @@ const writeFiles = async (
 };
 
 const UPSTREAM_FILES: Record<string, string> = {
+  "references/ambiguous.md":
+    "# Ambiguous\n\n## One\n\n### Caveats\n\n## Two\n\n### Caveats\n\n## Three\n\n### Caveats #2\n",
   "references/notes.md":
     "# Notes\n\n## Web\n\n### Caveats\n\nWeb caveats.\n\n## Mobile\n\n### Caveats\n\nMobile caveats.\n",
   "references/onboarding.md":
@@ -486,6 +488,47 @@ describe("pin parity", () => {
     expect(missing.stdout).toContain("references/notes.md: Caveats #2");
     expect(omitted.exitCode).toBe(0);
     expect(omitted.stdout).toContain("1 declared omission(s)");
+
+    // A literal "Caveats #2" heading never stands in for the second Caveats.
+    await declareDeltas(fork.forkDirectory, delta);
+    await writeFiles(fork.forkDirectory, {
+      "references/notes.md":
+        "# Notes\n\n## Web\n\n### Caveats\n\nProject web caveats.\n\n## Mobile\n\n### Caveats #2\n\nLookalike.\n",
+    });
+    const lookalike = checkParity(upstream.repository, fork.forkSkill);
+    expect(lookalike.exitCode).toBe(1);
+    expect(lookalike.stdout).toContain("references/notes.md: Caveats #2");
+
+    // The omit row names the repeat, so the fork's literal heading leaves it
+    // valid rather than stale.
+    await declareDeltas(
+      fork.forkDirectory,
+      delta,
+      "| omit | `references/notes.md` | Caveats #2 | Mobile has no caveats |"
+    );
+    const omittedRepeat = checkParity(upstream.repository, fork.forkSkill);
+    expect(omittedRepeat.exitCode).toBe(0);
+    expect(omittedRepeat.stdout).toContain("1 declared omission(s)");
+  });
+
+  test("refuses an omit row that names both a heading and a repeat", async () => {
+    const fork = await createFork(upstream.pin);
+    await declareDeltas(
+      fork.forkDirectory,
+      "| delta | `references/ambiguous.md` | | Project sections |",
+      "| omit | `references/ambiguous.md` | Caveats #2 | Which one? |"
+    );
+    await writeFiles(fork.forkDirectory, {
+      "references/ambiguous.md":
+        "# Ambiguous\n\n## One\n\n### Caveats\n\n## Two\n\n## Three\n",
+    });
+
+    const result = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain(
+      "names both a heading and a repeated heading"
+    );
   });
 
   test("passes a declared omission of an upstream file", async () => {
