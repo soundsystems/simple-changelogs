@@ -233,6 +233,11 @@ const HIDDEN_EVIDENCE_DIRECTORIES = new Set([".storybook"]);
 const isHiddenToolDirectory = (name: string): boolean =>
   name.startsWith(".") && !HIDDEN_EVIDENCE_DIRECTORIES.has(name);
 
+// Workspace members live in these root directories. Setup reads apps/*
+// manifests, probes apps/* and packages/* for version owners, and gives each
+// member an equal share of the capped walk.
+const WORKSPACE_PARENTS = ["apps", "packages"];
+
 type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 type Distribution = (typeof DISTRIBUTIONS)[number];
@@ -1415,10 +1420,31 @@ const gitIgnoredPaths = async (root: string): Promise<Set<string>> => {
   }
 };
 
+// Takes each list's next item in turn, so any prefix the cap keeps holds an
+// equal share of every list, and a shorter list leaves its unused share to the
+// others.
+const interleave = (lists: string[][], cap: number): string[] => {
+  const merged: string[] = [];
+  for (let index = 0; merged.length < cap; index += 1) {
+    const round = lists.flatMap((list) => list.slice(index, index + 1));
+    if (round.length === 0) {
+      break;
+    }
+    merged.push(...round);
+  }
+  return merged.slice(0, cap);
+};
+
+// Walks name order, except that each workspace member gets an equal share of
+// the budget left when the walk reaches its parent, so one large app cannot
+// hide another app's evidence.
 const walkTextFiles = async (
   root: string,
   limit = 400
 ): Promise<TextFileScan> => {
+  const workspaceParents = new Set(
+    WORKSPACE_PARENTS.map((parent) => join(root, parent))
+  );
   const ignored = await gitIgnoredPaths(root);
   const isGitIgnored = (path: string, directory: boolean): boolean => {
     if (ignored.size === 0) {
@@ -1453,7 +1479,9 @@ const walkTextFiles = async (
         return textFile ? [path] : [];
       })
     );
-    return nested.flat().slice(0, limit + 1);
+    return workspaceParents.has(directory)
+      ? interleave(nested, limit + 1)
+      : nested.flat().slice(0, limit + 1);
   };
   const discovered = await visit(root);
   return {
@@ -1770,7 +1798,7 @@ const infoPlists = async (
   return found.flat();
 };
 
-// The walk's order (each directory sorted), so a train's first owner holds.
+// Name order within each directory, so a train's first owner holds.
 const walkOrder = (left: string, right: string): number => {
   const a = left.split("/");
   const b = right.split("/");
@@ -1784,7 +1812,7 @@ const versionTrainsIn = async (
   root: string
 ): Promise<Pick<Inventory, "versionTrains">> => {
   const packages = await Promise.all(
-    ["apps", "packages"].map(async (parent) =>
+    WORKSPACE_PARENTS.map(async (parent) =>
       (await probeEntries(root, parent)).flatMap((entry) =>
         entry.isDirectory() ? [`${parent}/${entry.name}/`] : []
       )

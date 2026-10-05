@@ -883,6 +883,91 @@ describe("setup inspection", () => {
     });
   });
 
+  test("shares a truncated scan fairly across workspace apps and packages", async () => {
+    const apps = await fixture();
+    await writeJson(join(apps.repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["apps/*"],
+    });
+    // The first app alone exceeds the scan cap.
+    await mkdir(join(apps.repo, "apps", "mobile", "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(apps.repo, "apps", "mobile", "src", `screen-${index}.tsx`),
+          "export {};\n",
+          "utf8"
+        )
+      )
+    );
+    await Promise.all(
+      ["admin", "release-notes"].map(async (route) => {
+        const routeDirectory = join(apps.repo, "apps", "web", "app", route);
+        await mkdir(routeDirectory, { recursive: true });
+        await writeFile(
+          join(routeDirectory, "page.tsx"),
+          "export default function Page() {}\n",
+          "utf8"
+        );
+      })
+    );
+
+    const appsResult = await inspectRepository({
+      configDirectory: apps.config,
+      distribution: "full",
+      repo: apps.repo,
+    });
+
+    expect(appsResult.inventory.scan).toEqual({
+      filesInspected: 400,
+      truncated: true,
+    });
+    expect(appsResult.inventory.cmsEvidence).toContain(
+      "CMS path: apps/web/app/admin/page.tsx"
+    );
+    expect(appsResult.inventory.destinations).toEqual([
+      "apps/web/app/release-notes/page.tsx",
+    ]);
+    expect(appsResult.inventory.surfaceApplicability.cms).toBe("detected");
+
+    const packages = await fixture();
+    await writeJson(join(packages.repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["packages/*"],
+    });
+    await mkdir(join(packages.repo, "packages", "api", "src"), {
+      recursive: true,
+    });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(packages.repo, "packages", "api", "src", `route-${index}.ts`),
+          "export {};\n",
+          "utf8"
+        )
+      )
+    );
+    await mkdir(join(packages.repo, "packages", "ui", "src"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(packages.repo, "packages", "ui", "src", "button.tsx"),
+      "export const Button = () => null;\n",
+      "utf8"
+    );
+
+    const packagesResult = await inspectRepository({
+      configDirectory: packages.config,
+      distribution: "full",
+      repo: packages.repo,
+    });
+
+    expect(packagesResult.inventory.scan.truncated).toBe(true);
+    expect(packagesResult.inventory.designSystemEvidence).toEqual([
+      "Repository-owned component library path: packages/ui",
+    ]);
+  });
+
   test("reads each workspace app's own manifest for surface evidence", async () => {
     const { config, repo } = await fixture();
     // A docs folder that sorts before apps/ fills the capped walk first.
