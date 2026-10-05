@@ -48,6 +48,7 @@ describe("publish-skill package design", () => {
 
     for (const installRoot of [
       ".agents/skills",
+      ".codex/skills",
       ".claude/skills",
       ".cursor/skills",
     ]) {
@@ -101,6 +102,27 @@ describe("publish-skill package design", () => {
     expect(mergeVerification).toContain("baseline existence alone is also not");
     expect(mergeVerification).toContain(
       "informational rather than outstanding"
+    );
+  });
+
+  test("fans fork repositories out to isolated agents when the host can", () => {
+    expect(skill).toContain("run one agent per fork repository concurrently");
+    expect(productionLoop).toContain("### Parallel fork agents");
+    expect(productionLoop).toContain(
+      "Assign one agent per repository, not per fork directory"
+    );
+    expect(productionLoop).toContain("process the forks one at a time");
+    expect(productionLoop).toContain(
+      "baseline yourself before starting any agent"
+    );
+    expect(productionLoop).toContain(
+      "Wait for all fork agents to finish; one failure must not cancel the others"
+    );
+    expect(productionLoop).toContain(
+      "Ownership Gate: continue only from an independent remote-default worktree"
+    );
+    expect(productionLoop.replace(/\s+/g, " ")).toContain(
+      "Delegation never lets you push or merge work the agent could not."
     );
   });
 

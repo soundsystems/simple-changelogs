@@ -273,6 +273,7 @@ for (const {
     continue;
   }
   const metadata = YAML.parse(frontmatter) as {
+    "disable-model-invocation"?: unknown;
     description?: unknown;
     name?: unknown;
   };
@@ -294,6 +295,23 @@ for (const {
     );
   } else {
     descriptions.set(metadata.description, directoryName);
+  }
+
+  // A user-invoked skill must be user-invoked in every harness: Claude Code's
+  // disable-model-invocation and Codex's agents/openai.yaml policy move together.
+  const openaiPath = join(directory, "agents", "openai.yaml");
+  if (existsSync(openaiPath)) {
+    const openai = YAML.parse(readFileSync(openaiPath, "utf8")) as {
+      policy?: { allow_implicit_invocation?: unknown };
+    } | null;
+    const claudeUserInvoked = metadata["disable-model-invocation"] === true;
+    const codexUserInvoked =
+      openai?.policy?.allow_implicit_invocation === false;
+    if (claudeUserInvoked !== codexUserInvoked) {
+      failures.push(
+        `skills/${directoryName}: disable-model-invocation and agents/openai.yaml policy.allow_implicit_invocation disagree`
+      );
+    }
   }
 
   for (const match of source.matchAll(LOCAL_ROUTE_PATTERN)) {

@@ -1,6 +1,9 @@
 ---
 name: publish-skill
-description: Publish a canonical skill-package update through upstream validation, default-branch merge, downstream fork synchronization and guidance backfills, concurrent Skills CLI reinstallation across every discovered local consumer, merge-request verification, and final remote-state cleanup. Use when asked to run or rerun a skill production loop, propagate a skill update across maintained forks, discover or update local skill installs, validate that a complete skill and its references install correctly, update consumer skill locks, or prove that all related changes reached each repository's default branch.
+metadata:
+  internal: true
+description: Publish a canonical skill update through every maintained fork and discovered local install, then prove each change reached its default branch.
+disable-model-invocation: true
 ---
 
 # Publish Skill
@@ -19,7 +22,9 @@ repositories:
 - the canonical repository, skill directory, remote, and default branch;
 - each downstream fork repository, fork path, local adaptations, and checks;
 - every local consumer with an exact-source lock entry or matching installed
-  package, including validation-only and lock-only consumers;
+  package, including validation-only and lock-only consumers. Per-user global
+  roots under `~/.agents/skills`, `~/.codex/skills`, `~/.claude/skills`, and
+  `~/.cursor/skills` are discovered automatically;
 - the provider CLI, merge policy, and repository-native validation commands.
 
 Do not ask for values that repository evidence resolves. Ask one concise
@@ -71,7 +76,11 @@ Read [references/production-loop.md](references/production-loop.md), then:
    linter as applicable.
 2. Update the canonical repository's customer and developer histories only as
    its changelog policy requires. Use the release-note model and attribution
-   rules required by repository instructions.
+   rules required by repository instructions. When `.simple-changelogs.json`
+   delegates that work to Simple Changelogs, hand it off there instead of
+   authoring entries by hand, and before committing run
+   `simple-changes release-notes --check` so the package version, customer
+   history, and developer history agree.
 3. Commit, push, open the canonical MR or PR, re-read its rendered description,
    wait for required checks, merge it, and fetch the remote default branch.
 4. Freeze the canonical **merged default-branch commit** as the downstream
@@ -79,7 +88,9 @@ Read [references/production-loop.md](references/production-loop.md), then:
 5. Synchronize each maintained fork independently. Port applicable upstream
    changes, preserve documented local deltas, update the provenance pin, run
    the fork's tests and native checks, and perform any guidance-version history
-   audit required by the fork's changelog policy.
+   audit required by the fork's changelog policy. When the host can start
+   isolated agents, run one agent per fork repository concurrently as
+   described in the production loop's parallel fork agents section.
 6. Open, verify, and merge every downstream MR or PR. Focused changes may use
    separate MRs or PRs; all required work still has to reach the default branch.
 7. Run
@@ -97,18 +108,10 @@ Read [references/production-loop.md](references/production-loop.md), then:
    when available, and apply its declared retention mode. Preserve maintained
    installs, remove temporary validation-only installs, and leave intentional
    pins unchanged with an explicit report.
-10. Reconcile distribution topology before reinstalling narrower packages. A
-   repository whose valid `.simple-changelogs.json` selects `web-cms` uses that
-   combined package for both public Web and protected CMS workflows;
-   `.simple-changelogs-cms.json` is its CMS-side policy, not evidence that the
-   standalone CMS skill must also be installed. Remove a discovered standalone
-   `simple-changelogs-cms` package and lock when the matching Web+CMS package is
-   present, unless repository instructions explicitly require both packages as
-   independently maintained consumers.
-11. Repair a stale lock or remove a stale duplicate only when its identity,
-   intended retention mode, and obsolescence are proven. Never remove a
-   distinct skill merely because its name is similar.
-12. Open, verify, and merge one consumer MR or PR per changed repository. Fetch
+10. Repair a stale lock or remove a stale duplicate only when its identity,
+    intended retention mode, and obsolescence are proven. Never remove a
+    distinct skill merely because its name is similar.
+11. Open, verify, and merge one consumer MR or PR per changed repository. Fetch
     every target default branch and prove the expected pins, policy versions,
     lock hashes, and retained files exist there.
 
