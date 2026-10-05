@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { type Dirent, existsSync } from "node:fs";
 import {
@@ -26,6 +27,7 @@ import {
   resolve,
   sep,
 } from "node:path";
+import { promisify } from "node:util";
 
 const BACKFILL_STATUSES = [
   "not-applicable",
@@ -1383,10 +1385,49 @@ interface TextFileScan {
   truncated: boolean;
 }
 
+const execFileAsync = promisify(execFile);
+
+// Paths Git ignores (untracked build, cache, and tool output) are not the
+// product. Git lists them once, with ignored directories collapsed to one
+// "dir/" entry, so the capped walk never spends its budget inside them.
+// Outside a Git work tree, or when Git is unavailable, nothing extra is
+// skipped.
+const gitIgnoredPaths = async (root: string): Promise<Set<string>> => {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      [
+        "-C",
+        root,
+        "ls-files",
+        "--others",
+        "--ignored",
+        "--exclude-standard",
+        "--directory",
+        "-z",
+      ],
+      { maxBuffer: 16 * 1024 * 1024, timeout: 10_000 }
+    );
+    return new Set(
+      stdout.split("\0").filter((item) => item !== "" && item !== "./")
+    );
+  } catch {
+    return new Set();
+  }
+};
+
 const walkTextFiles = async (
   root: string,
   limit = 400
 ): Promise<TextFileScan> => {
+  const ignored = await gitIgnoredPaths(root);
+  const isGitIgnored = (path: string, directory: boolean): boolean => {
+    if (ignored.size === 0) {
+      return false;
+    }
+    const gitPath = relative(root, path).split(sep).join("/");
+    return ignored.has(directory ? `${gitPath}/` : gitPath);
+  };
   const visit = async (directory: string): Promise<string[]> => {
     let entries: Dirent[];
     try {
@@ -1400,12 +1441,14 @@ const walkTextFiles = async (
         const path = join(directory, entry.name);
         if (entry.isDirectory()) {
           return IGNORED_DIRECTORIES.has(entry.name) ||
-            isInstalledSkillsDirectory(directory, entry.name)
+            isInstalledSkillsDirectory(directory, entry.name) ||
+            isGitIgnored(path, true)
             ? []
             : await visit(path);
         }
         const textFile =
           entry.isFile() &&
+          !isGitIgnored(path, false) &&
           (TEXT_EXTENSIONS.has(extname(entry.name).toLowerCase()) ||
             entry.name === "SKILL.md");
         return textFile ? [path] : [];

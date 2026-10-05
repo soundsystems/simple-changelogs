@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- `walkTextFiles` in `setup.ts` (all seven byte-identical copies) asks Git
+  once for ignored untracked paths (`git -C <root> ls-files --others
+  --ignored --exclude-standard --directory -z`, collapsed directories,
+  10-second timeout) and skips them. Outside a Git work tree, or on any Git
+  failure, the set is empty and the walk is unchanged. Tracked files inside an
+  ignored folder are still inspected, because Git lists those folders file by
+  file. `setup.check.ts` adds a case that fails on the previous walk.
+  Boundaries, from GPT-6 Astra's review: an ignored scan root (Git reports
+  `./`) keeps the full walk, because the folder being inspected is the
+  product; a separate repository inside an ignored folder is skipped with it,
+  as nested worktree checkouts should be; and a submodule's own ignored output
+  is not filtered, as before.
+  - Measured on Site Secure: the scan no longer spends its budget in ignored
+    `.next-docs` (375 files) and `.thoronath-cli` (7,642) output, and mobile
+    and store now read `detected`, but the scan still truncates: 358 of the
+    400 files go to `apps/mobile`, which sorts before `apps/web`, so web
+    stays `uncertain`. That is the depth-first walk under one global cap,
+    not ignore handling; Site Secure keeps its `addProductAppEvidence` fork
+    delta until the walk is breadth-first or `apps/*` package metadata
+    feeds surface evidence.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T15:22:01-05:00" -->
 - Two fixes upstreamed from the Hash and Site Secure changelog forks, which
   had carried them as deltas. The `setup.ts` walk (all seven byte-identical
   copies) skips a `skills` folder directly inside a hidden folder

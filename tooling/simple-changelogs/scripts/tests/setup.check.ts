@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   cp,
@@ -787,6 +788,46 @@ describe("setup inspection", () => {
 
     expect(result.inventory.scan.truncated).toBe(false);
     expect(result.inventory.scan.filesInspected).toBeLessThan(10);
+  });
+
+  test("skips Git-ignored output so it cannot exhaust the scan", async () => {
+    const { config, repo } = await fixture();
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", repo, ...args], { stdio: "ignore" });
+    git("init", "-q");
+    await writeFile(join(repo, ".gitignore"), "generated/\nvendor/\n", "utf8");
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web-product",
+    });
+    await mkdir(join(repo, "generated"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(repo, "generated", `page-${index}.md`),
+          "# Page\n",
+          "utf8"
+        )
+      )
+    );
+    // A file tracked inside an ignored folder is still part of the product.
+    await mkdir(join(repo, "vendor"), { recursive: true });
+    await writeFile(join(repo, "vendor", "kept.md"), "# Kept\n", "utf8");
+    await writeFile(join(repo, "vendor", "ignored.md"), "# Ignored\n", "utf8");
+    git("add", "-f", "vendor/kept.md");
+    await mkdir(join(repo, "src"), { recursive: true });
+    await writeFile(join(repo, "src", "index.ts"), "export {};\n", "utf8");
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.scan).toEqual({
+      filesInspected: 3,
+      truncated: false,
+    });
   });
 
   test("separates editorial update candidates from release-note-named candidates", async () => {

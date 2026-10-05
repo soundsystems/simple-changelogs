@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Setup**
+  - Setup's file scan now skips untracked files Git ignores, such as build
+    output, caches, and tool run logs, using your `.gitignore` and any global
+    or repository-local ignore rules. In large repositories those folders
+    could fill the scan before it reached your apps. Files tracked in the
+    repository are still read, even inside an ignored folder.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T15:22:01-05:00" -->
 - **Setup and history checks**
   - Setup no longer reads installed agent skills, such as those in
     `.agents/skills` or `.claude/skills`, as part of your product. In a
