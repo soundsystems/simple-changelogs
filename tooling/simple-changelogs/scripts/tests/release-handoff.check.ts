@@ -102,10 +102,26 @@ describe("release handoff protocol", () => {
         supportedReceiptVersions: [1, 2, 3],
       }).value;
       expect(validateChangelogReceipt(input, delegated).errors).toEqual([]);
+      // An ask policy resolves only by the user's explicit direction.
+      expect(
+        validateChangelogReceipt(
+          {
+            ...input,
+            versionDecision: {
+              ...input.versionDecision,
+              policyAction: "ask",
+              resolution: "explicit-direction",
+            },
+          },
+          delegated
+        ).errors
+      ).toEqual([]);
       for (const override of [
         { selectedVersion: null },
         { resolution: "approval-required" },
         { releaseTrain: "ios" },
+        { policyAction: "ask", resolution: "automatic" },
+        { policyAction: "ask", resolution: "repository-automation" },
       ]) {
         expect(
           validateChangelogReceipt(

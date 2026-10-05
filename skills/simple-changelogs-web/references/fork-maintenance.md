@@ -51,9 +51,11 @@ gives a short reason when the delta is not obvious:
 ```
 
 - `delta`: the fork intentionally changes this file. Pin parity skips its
-  content but still requires every upstream heading in it, at any level.
+  content but still requires every upstream heading in it, at any level, as
+  many times as upstream repeats it.
 - `omit`: the fork intentionally leaves out this upstream file or, with a
-  Section, one upstream heading of a `delta` file.
+  Section, one upstream heading of a `delta` file; name a repeated heading's
+  later occurrence as `Notes #2`.
 
 Pin parity never reads rows inside code fences, such as this example, and
 reports rows that no longer match the fork as stale. Correct or remove a stale

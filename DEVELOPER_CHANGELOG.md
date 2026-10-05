@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Fixes from GPT-6 Sol's exact-head review of soundsystems/simple-changelogs!68:
+  - Blocking: `isResolvedPublicClassification` accepted `policyAction: "ask"`
+    with an `automatic` or `repository-automation` resolution, so an
+    ask-policy repository could reach preparation without a version decision.
+    An ask policy now resolves only by `explicit-direction`; only an
+    automatic policy may resolve by itself or through repository automation.
+    The shared receipt schema is unchanged, so it stays byte-identical with
+    Simple Changes; `release-handoff.check.ts` rejects both forbidden pairs.
+  - Pin parity counted a repeated heading once, so a fork that dropped one of
+    two `Caveats` sections under different parents passed. `headings()` in
+    every `check-fork-sync.sh` copy now emits each later occurrence as
+    `Caveats #2`, an `omit` row can name it, and `fork-maintenance.md`
+    documents both; `check-fork-sync.check.ts` adds the case.
+  - The public pin-parity entry now says it checks files and headings, not
+    the text beneath a declared delta's headings.
+  - Each fix has a case that fails when the fix is removed. Known limit from
+    the re-review: a heading literally named `Caveats #2` is indistinguishable
+    from the generated second `Caveats`.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T16:56:36-05:00" -->
 - `discover-local-consumers.ts` reports `superseded-install` only when
   `.simple-changelogs-cms.json` exists, matching the production loop's
   cleanup rule, and `production-loop.md` keeps the standalone install while

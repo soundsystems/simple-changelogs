@@ -33,10 +33,11 @@
 <!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T13:48:48-05:00" -->
 - **Fork maintenance**
   - The fork checker has a new `--pin-parity` mode that compares a fork with
-    the exact upstream version its pin names. It finds upstream content the
-    fork never received, including sections added before the pin that an
-    earlier sync skipped, so a pin can no longer claim a fork is more current
-    than it is.
+    the exact upstream version its pin names. It finds upstream files and
+    section headings the fork never received, including sections added
+    before the pin that an earlier sync skipped, so a pin can no longer claim
+    a fork has every upstream file and section. In a file the fork changes on
+    purpose it checks the headings, not the text beneath them.
   - Forks list their intentional differences in a Current Deltas table in
     `references/fork-maintenance.md`: a changed file, an upstream file the
     fork leaves out, or one section a changed file leaves out. The check flags

@@ -140,6 +140,8 @@ const writeFiles = async (
 };
 
 const UPSTREAM_FILES: Record<string, string> = {
+  "references/notes.md":
+    "# Notes\n\n## Web\n\n### Caveats\n\nWeb caveats.\n\n## Mobile\n\n### Caveats\n\nMobile caveats.\n",
   "references/onboarding.md":
     "# Onboarding\n\n## Explain before asking\n\nExplain each choice first.\n\n```md\n## Fenced example heading\n```\n\n## Final history question\n\nAsk last.\n",
   "SKILL.md": "# Skill\n\n## Workflow\n\nUpstream workflow.\n",
@@ -460,6 +462,28 @@ describe("pin parity", () => {
       "references/onboarding.md: Explain before asking"
     );
     expect(missing.stdout).not.toContain("Fenced example heading");
+    expect(omitted.exitCode).toBe(0);
+    expect(omitted.stdout).toContain("1 declared omission(s)");
+  });
+
+  test("counts a repeated upstream heading once per occurrence", async () => {
+    const fork = await createFork(upstream.pin);
+    const delta = "| delta | `references/notes.md` | | Project caveats |";
+    await declareDeltas(fork.forkDirectory, delta);
+    await writeFiles(fork.forkDirectory, {
+      "references/notes.md":
+        "# Notes\n\n## Web\n\n### Caveats\n\nProject web caveats.\n\n## Mobile\n\nMobile has none.\n",
+    });
+    const missing = checkParity(upstream.repository, fork.forkSkill);
+    await declareDeltas(
+      fork.forkDirectory,
+      delta,
+      "| omit | `references/notes.md` | Caveats #2 | Mobile has no caveats |"
+    );
+    const omitted = checkParity(upstream.repository, fork.forkSkill);
+
+    expect(missing.exitCode).toBe(1);
+    expect(missing.stdout).toContain("references/notes.md: Caveats #2");
     expect(omitted.exitCode).toBe(0);
     expect(omitted.stdout).toContain("1 declared omission(s)");
   });

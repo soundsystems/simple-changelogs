@@ -585,9 +585,13 @@ const isResolvedPublicClassification = (receipt: ChangelogReceipt): boolean => {
     decision.boundary !== "none" &&
     oneOf(decision.bumpLevel, ["none", "patch", "minor", "major"]) &&
     oneOf(decision.policyAction, ["ask", "automatic"]) &&
-    ["automatic", "explicit-direction", "repository-automation"].includes(
-      decision.resolution
-    ) &&
+    // An ask policy resolves only by explicit direction; only an automatic
+    // policy may resolve by itself or through repository automation.
+    (decision.resolution === "explicit-direction" ||
+      (decision.policyAction === "automatic" &&
+        ["automatic", "repository-automation"].includes(
+          decision.resolution
+        ))) &&
     nonEmpty(decision.selectedVersion)
   );
 };

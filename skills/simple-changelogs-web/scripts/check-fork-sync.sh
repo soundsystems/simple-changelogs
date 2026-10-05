@@ -81,7 +81,9 @@ headings() {
       if (fence == "" && line ~ /^##+[ \t]/) {
         sub(/^#+[ \t]+/, "", line)
         sub(/[ \t]+#*[ \t]*$/, "", line)
-        if (!seen[line]++) print line
+        # A repeated heading counts once per occurrence: "Notes", "Notes #2".
+        n = ++seen[line]
+        print (n == 1 ? line : line " #" n)
       }
     }
   '
