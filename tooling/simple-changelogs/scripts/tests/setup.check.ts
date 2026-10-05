@@ -883,7 +883,7 @@ describe("setup inspection", () => {
     });
   });
 
-  test("shares a truncated scan fairly across workspace apps and packages", async () => {
+  test("shares a truncated scan fairly within apps/ and within packages/", async () => {
     const apps = await fixture();
     await writeJson(join(apps.repo, "package.json"), {
       name: "monorepo",
@@ -966,6 +966,45 @@ describe("setup inspection", () => {
     expect(packagesResult.inventory.designSystemEvidence).toEqual([
       "Repository-owned component library path: packages/ui",
     ]);
+  });
+
+  test("keeps apps/ ahead of packages/ when a truncated scan holds both", async () => {
+    // Pooling both parents let CLI and library packages displace real app
+    // destinations, so members share only within their own parent.
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      name: "monorepo",
+      workspaces: ["apps/*", "packages/*"],
+    });
+    await mkdir(join(repo, "apps", "a", "src"), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 450 }, (_, index) =>
+        writeFile(
+          join(repo, "apps", "a", "src", `screen-${index}.tsx`),
+          "export {};\n",
+          "utf8"
+        )
+      )
+    );
+    const notesDirectory = join(repo, "packages", "cli", "src");
+    await mkdir(notesDirectory, { recursive: true });
+    await writeFile(
+      join(notesDirectory, "release-notes.ts"),
+      "export const releaseNotes = [];\n",
+      "utf8"
+    );
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.scan).toEqual({
+      filesInspected: 400,
+      truncated: true,
+    });
+    expect(result.inventory.destinations).toEqual([]);
   });
 
   test("reads each workspace app's own manifest for surface evidence", async () => {

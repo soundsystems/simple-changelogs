@@ -8,9 +8,10 @@
     repository tracks them. A saved plan whose name mentioned release notes
     could be suggested as a release-notes page, and those folders used up
     setup's file scan before it reached your apps.
-  - In a repository with several apps or packages, setup now gives each one an
-    equal share of its file scan, so it also finds admin areas and
-    release-notes pages in apps that sort later by name.
+  - In a repository with several apps, setup now splits its file scan evenly
+    across the apps in `apps/`, and likewise across the packages in
+    `packages/`, so it also finds admin areas and release-notes pages in apps
+    that sort later by name.
 <!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T18:24:18-05:00" -->
 - **Setup**
   - In a repository with several apps, setup now also reads the package

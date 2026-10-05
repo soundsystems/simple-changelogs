@@ -10,13 +10,19 @@
     evidence), whether or not Git tracks it. This replaces
     `isInstalledSkillsDirectory` and the `.git`, `.hg`, `.svn`, `.turbo`, and
     `.vercel` entries in `IGNORED_DIRECTORIES`.
-  - At the root `apps/` and `packages/` directories (`WORKSPACE_PARENTS`, now
-    shared with the version-train probe), `interleave` merges the members'
-    files round-robin, so any prefix the 400-file cap keeps holds an equal
-    share of every member and a small member leaves its unused share to the
-    others. Every other directory keeps name order; spreading the budget over
-    the whole repository instead reached repo-local skill folders and added
-    false destinations.
+  - Within each root `apps/` and `packages/` directory (`WORKSPACE_PARENTS`,
+    now shared with the version-train probe), `interleave` merges the
+    members' files round-robin, so any prefix the 400-file cap keeps holds an
+    equal share of every member and a small member leaves its unused share to
+    the others. The two parents and every other directory keep name order, so
+    `apps/` still comes before `packages/`. GPT-6 Sol's review flagged that the
+    first wording claimed fairness across both parents. Pooling `apps/` and
+    `packages/` into one budget was tried and rejected: on Hash it lost six
+    real destinations (the mobile What's New screens and the web changelog
+    and release-notes routes) to CLI files under `packages/`, and on Site
+    Secure it added five false destinations from `packages/`. Spreading the
+    budget over the whole repository likewise reached repo-local skill
+    folders. `setup.check.ts` pins that `apps/` keeps its priority.
   - Site Secure's inspection now reaches `apps/web/app/admin` (178 admin
     paths), finds its admin changelog and release-notes routes, and no longer
     offers `.cursor/plans/...release_notes...plan.md` as a destination; Hash
