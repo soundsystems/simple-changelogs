@@ -86,6 +86,31 @@ describe("changelog-parse on this repository's real histories", () => {
       DAY_PATTERN
     );
   });
+
+  test("accepts date-only and bare-meridiem legacy signatures", () => {
+    const parsed = parseChangelog(
+      [
+        "# Changelog",
+        "",
+        "## 1.0.0 - 2026-06-02",
+        "",
+        "- Dated entry",
+        "<!-- Agent: Old Agent | 06/01/2026 -->",
+        "- Meridiem entry",
+        "<!-- Agent: Old Agent | 06/02/2026 PM -->",
+        "- Undated entry",
+        "<!-- Agent: Old Agent | yesterday -->",
+        "",
+      ].join("\n"),
+      "CHANGELOG.md"
+    );
+    expect(parsed.legacySignatureCount).toBe(2);
+    expect(parsed.malformedSignatures).toHaveLength(1);
+    const signed = nth(parsed.releases, 0).entries.map(
+      (entry) => entry.signature?.at
+    );
+    expect(signed.slice(0, 2)).toEqual(["06/01/2026", "06/02/2026 PM"]);
+  });
 });
 
 describe("query CLI against this repository", () => {

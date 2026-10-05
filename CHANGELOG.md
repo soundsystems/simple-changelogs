@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Setup and history checks**
+  - Setup no longer reads installed agent skills, such as those in
+    `.agents/skills` or `.claude/skills`, as part of your product. In a
+    repository with many installed skills, those files filled setup's file
+    scan before it reached your apps, so it could miss them.
+  - History checks now accept older `<!-- Agent: ... -->` signatures that
+    give only a date, or a date and AM or PM. They were reported as malformed,
+    so `query.ts check` failed on histories that used them.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T14:46:49-05:00" -->
 - **Release handoff**
   - When the release version is already settled, chosen automatically or by
     your direction, the classification step now returns that exact version

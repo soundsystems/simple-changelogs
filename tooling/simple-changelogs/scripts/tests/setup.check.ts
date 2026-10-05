@@ -760,6 +760,35 @@ describe("setup inspection", () => {
     );
   });
 
+  test("skips installed agent skills so they cannot exhaust the scan", async () => {
+    const { config, repo } = await fixture();
+    await writeJson(join(repo, "package.json"), {
+      dependencies: { next: "16.0.0", react: "20.0.0" },
+      name: "web-product",
+    });
+    await Promise.all(
+      [".agents", ".claude", ".codex", ".cursor"].map(async (harness) => {
+        const rules = join(repo, harness, "skills", "vendored", "rules");
+        await mkdir(rules, { recursive: true });
+        await writeFile(join(rules, "..", "SKILL.md"), "# Vendored\n", "utf8");
+        await Promise.all(
+          Array.from({ length: 120 }, (_, index) =>
+            writeFile(join(rules, `rule-${index}.md`), "# Rule\n", "utf8")
+          )
+        );
+      })
+    );
+
+    const result = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+
+    expect(result.inventory.scan.truncated).toBe(false);
+    expect(result.inventory.scan.filesInspected).toBeLessThan(10);
+  });
+
   test("separates editorial update candidates from release-note-named candidates", async () => {
     const { config, repo } = await fixture();
     await mkdir(join(repo, "src", "routes"), { recursive: true });

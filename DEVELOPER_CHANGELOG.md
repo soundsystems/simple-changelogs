@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Two fixes upstreamed from the Hash and Site Secure changelog forks, which
+  had carried them as deltas. The `setup.ts` walk (all seven byte-identical
+  copies) skips a `skills` folder directly inside a hidden folder
+  (`isInstalledSkillsDirectory`): the 400-file walk sorts by name, so
+  installed skill copies were inspected before `apps/`. Site Secure has
+  listed the harness folders by name since `acd6a174`; upstream matches the
+  layout instead, because the distribution contract rejects vendor names in
+  core files. Site Secure still truncates, on gitignored `.next-docs` and
+  `.thoronath-cli` output, so its own app probe stays a fork delta. The
+  legacy signature pattern in every `changelog-parse.ts` makes the time
+  optional and accepts a bare meridiem (the union of the two forks' patches).
+  `setup.check.ts` and `query.check.ts` each add a case that fails on the
+  previous code. Both forks can drop these deltas at their next re-pin.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T14:46:49-05:00" -->
 - Classify contract: a `classified` receipt may carry a resolved public
   `versionDecision` (release-bearing boundary, `ask` or `automatic`
   policy, `automatic`, `explicit-direction`, or `repository-automation`

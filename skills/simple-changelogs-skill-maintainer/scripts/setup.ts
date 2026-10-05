@@ -226,6 +226,12 @@ const IGNORED_DIRECTORIES = new Set([
   "target",
 ]);
 
+// A skills folder directly inside a hidden folder (`.agents/skills` and the
+// like) holds installed skill copies, not the product. The capped walk sorts
+// by name, so it would otherwise spend its budget there before apps/.
+const isInstalledSkillsDirectory = (parent: string, name: string): boolean =>
+  name === "skills" && basename(parent).startsWith(".");
+
 type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 type Distribution = (typeof DISTRIBUTIONS)[number];
@@ -1393,7 +1399,10 @@ const walkTextFiles = async (
       entries.map(async (entry): Promise<string[]> => {
         const path = join(directory, entry.name);
         if (entry.isDirectory()) {
-          return IGNORED_DIRECTORIES.has(entry.name) ? [] : await visit(path);
+          return IGNORED_DIRECTORIES.has(entry.name) ||
+            isInstalledSkillsDirectory(directory, entry.name)
+            ? []
+            : await visit(path);
         }
         const textFile =
           entry.isFile() &&
