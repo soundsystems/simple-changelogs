@@ -100,6 +100,10 @@ const typedValid = (root: Schema, schema: Schema, value: unknown): boolean => {
   );
 };
 
+const anyOfValid = (root: Schema, schema: Schema, value: unknown): boolean =>
+  !Array.isArray(schema.anyOf) ||
+  schema.anyOf.some((branch) => valid(root, branch as Schema, value));
+
 function valid(root: Schema, schema: Schema, value: unknown): boolean {
   if (typeof schema.$ref === "string") {
     let target: unknown = root;
@@ -119,8 +123,8 @@ function valid(root: Schema, schema: Schema, value: unknown): boolean {
       return false;
     }
   }
-  if (Array.isArray(schema.anyOf)) {
-    return schema.anyOf.some((branch) => valid(root, branch as Schema, value));
+  if (!anyOfValid(root, schema, value)) {
+    return false;
   }
   if ("const" in schema && !same(schema.const, value)) {
     return false;
@@ -273,6 +277,14 @@ const V2_RECEIPTS: Record<string, Json> = {
     versionDecision: null,
   }),
   classified: receiptV2(entry("classified")),
+  "classified-public": receiptV2({
+    ...entry("classified"),
+    versionDecision: decision({
+      policyAction: "automatic",
+      resolution: "automatic",
+      selectedVersion: "1.0.0",
+    }),
+  }),
   "decision-required": receiptV2(),
   "entry-prepared": receiptV2(entry("prepared")),
   "entry-verified": receiptV2(entry("verified")),
@@ -431,10 +443,11 @@ const cases = (
       [`${name}: base`, base] as [string, unknown],
       ...mutations(name, base),
     ].map(([label, value]) => ({
-      // Request v2 and receipt v3 are this change's versions.
+      // Public classification is repaired in receipt v2 as well as v3.
       current:
         isRecord(value) &&
-        (value.schemaVersion === 3 ||
+        (label.startsWith("classified-public:") ||
+          value.schemaVersion === 3 ||
           (value.schemaVersion === 2 && "supportedReceiptVersions" in value)),
       label,
       ours: ours(validate, value),
@@ -459,8 +472,9 @@ const receiptCases = cases(
 );
 const all = [...requestCases, ...receiptCases];
 
-// Request v1 and receipt v2 keep their original checks byte for byte, and
-// those never were a full schema validator: these are the fields where the
+// Apart from classified lineage and resolved public classification, request v1
+// and receipt v2 retain their original checks. Those never were a full schema
+// validator: these are the fields where the
 // corpus finds the schema refusing an input they accept, with case counts.
 // Request v2 and receipt v3 have none.
 const LEGACY_GAPS: Record<string, number> = {
@@ -474,13 +488,13 @@ const LEGACY_GAPS: Record<string, number> = {
   "receipt v2: release.version": 9,
   "receipt v2: releaseImpact": 77,
   "receipt v2: releaseSetId": 56,
-  "receipt v2: revisionLineage": 4,
+  "receipt v2: revisionLineage": 3,
   "receipt v2: revisionLineage.extra": 8,
-  "receipt v2: revisionLineage.finalizedTargetRevision": 66,
+  "receipt v2: revisionLineage.finalizedTargetRevision": 55,
   "receipt v2: revisionLineage.inputTargetRevision": 96,
-  "receipt v2: revisionLineage.reconciliationHeadRevision": 68,
+  "receipt v2: revisionLineage.reconciliationHeadRevision": 57,
   "receipt v2: transactionId": 64,
-  "receipt v2: versionDecision": 3,
+  "receipt v2: versionDecision": 2,
   "receipt v2: versionDecision.boundary": 36,
   "receipt v2: versionDecision.bumpLevel": 36,
   "receipt v2: versionDecision.currentVersion": 56,
@@ -494,12 +508,18 @@ const LEGACY_GAPS: Record<string, number> = {
   "request v1: approvedDecisionDigest": 2,
   "request v1: approvedVersion": 3,
 };
-// Canonical-JSON SHA-256 of every request v1 and receipt v2 case's outcome
-// and messages, as origin/main's validator produced them before receipt v3.
-const LEGACY_RESULTS_DIGEST =
-  "9822bd2da1d3479acde6adb90231715953b891d9c100e448eef18b2572fd49a6";
+// The unchanged subset was independently computed from origin/main's validator.
+// Classified outcomes now reject a missing neutral decision or missing and
+// prepared/finalized lineage; their
+// deliberate stricter behavior is pinned separately.
+const LEGACY_UNCHANGED_RESULTS_DIGEST =
+  "0600b695e7f0d12078ecf56b61f4d889644a3ea7ba094bf87bfbc87b8d89d2da";
+const CLASSIFIED_RESULTS_DIGEST =
+  "fdf9391a4c433dc9ecb1d7df8b28fcfbe4fc727f7129f31cbde2617375036e9e";
 
-const legacy = all.filter(({ current }) => !current);
+const legacy = all.filter(
+  ({ current, label }) => !(current || label.includes("classified-public:"))
+);
 const gapSummary = (): Record<string, number> => {
   const summary: Record<string, number> = {};
   for (const { label, ours: result, schema } of legacy) {
@@ -516,7 +536,9 @@ const gapSummary = (): Record<string, number> => {
 describe("protocol schema parity (Simple Changes 0.23.0)", () => {
   test("every base fixture is accepted by both the schema and the validator", () => {
     const bases = all.filter(({ label }) => label.endsWith(": base"));
-    expect(bases.length).toBe(Object.keys(REQUESTS).length + 16);
+    expect(bases.length).toBe(
+      Object.keys(REQUESTS).length + Object.keys(V2_RECEIPTS).length * 2
+    );
     expect(
       bases
         .filter(
@@ -553,17 +575,30 @@ describe("protocol schema parity (Simple Changes 0.23.0)", () => {
     ).toEqual([]);
   });
 
-  test("request v1 and receipt v2 results are unchanged, with their gaps pinned", () => {
+  test("pins unchanged legacy results separately from the stricter classified lineage", () => {
     expect(legacy.length).toBeGreaterThan(3000);
     expect(gapSummary()).toEqual(LEGACY_GAPS);
     expect(
       digestCanonicalJson(
-        legacy.map(({ label, ours: result }) => [
-          label,
-          result.outcome,
-          result.errors,
-        ])
+        legacy
+          .filter(({ label }) => !label.startsWith("classified:"))
+          .map(({ label, ours: result }) => [
+            label,
+            result.outcome,
+            result.errors,
+          ])
       )
-    ).toBe(LEGACY_RESULTS_DIGEST);
+    ).toBe(LEGACY_UNCHANGED_RESULTS_DIGEST);
+    expect(
+      digestCanonicalJson(
+        legacy
+          .filter(({ label }) => label.startsWith("classified:"))
+          .map(({ label, ours: result }) => [
+            label,
+            result.outcome,
+            result.errors,
+          ])
+      )
+    ).toBe(CLASSIFIED_RESULTS_DIGEST);
   });
 });

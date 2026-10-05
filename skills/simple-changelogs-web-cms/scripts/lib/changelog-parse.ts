@@ -74,8 +74,9 @@ const TRAILING_BLANK_LINES_PATTERN = /\s+$/;
 const LINE_SPLIT_PATTERN = /\r\n|\r|\n/;
 const CANONICAL_SIGNATURE_LINE_PATTERN =
   /^\s*<!--\s*simple-changelogs-signature\s+agent="([^"]*)"\s+at="([^"]*)"\s*-->\s*$/;
+// Legacy signatures may carry a date only, or a date and a bare meridiem.
 const LEGACY_SIGNATURE_LINE_PATTERN =
-  /^\s*<!--\s*Agent:\s*(.+?)\s*\|\s*(\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}\s*[AP]M(?:\s+[A-Za-z]{2,5})?)\s*-->\s*$/;
+  /^\s*<!--\s*Agent:\s*(.+?)\s*\|\s*(\d{2}\/\d{2}\/\d{4}(?:\s+\d{1,2}:\d{2}\s*[AP]M(?:\s+[A-Za-z]{2,5})?|\s+[AP]M)?)\s*-->\s*$/;
 const SIGNATURE_LIKE_LINE_PATTERN =
   /^\s*<!--(?:(?=.*simple-changelogs-signature)|\s*Agent:)/;
 const ISO_DATE_PREFIX_PATTERN = /^(\d{4}-\d{2}-\d{2})/;

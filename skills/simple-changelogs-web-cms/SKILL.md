@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs-web-cms
-description: Use only for a repository that explicitly selects the combined web-plus-CMS Simple Changelogs distribution. Maintain public customer and optional developer changelogs, established public web release notes, and a separate authenticated CMS operator history. Do not use for mobile/store notes, skill-package release maintenance, or when another Simple Changelogs distribution owns the repository.
+description: Maintain public web changelogs and release notes plus a separate authenticated CMS operator history. Update customer, developer, and operator entries and finalize web releases. Use when the repository selects the web-plus-CMS Simple Changelogs distribution, not for mobile or store history.
 metadata:
   models: Claude Opus 5.5, Claude Fable 5.1
 ---
@@ -20,7 +20,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 20
+Current guidance version: 21
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

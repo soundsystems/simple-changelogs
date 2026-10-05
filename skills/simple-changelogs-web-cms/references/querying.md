@@ -16,15 +16,15 @@ bun skills/simple-changelogs-web-cms/scripts/query.ts check
 
 Subcommands:
 
-- `releases` — one row per release section: heading, version, date, and entry
-  count.
-- `show <version|date|unreleased>` — every entry of one release. Bare versions
+- `releases`: one row per release section (heading, version, date, and entry
+  count).
+- `show <version|date|unreleased>`: every entry of one release. Bare versions
   resolve (`1.4` and `v1.4.0` match `1.4.0`); ambiguous selectors fail with
   the candidate list instead of guessing.
-- `entries` — a flat entry list filtered by `--since`/`--until` (release date,
+- `entries`: a flat entry list filtered by `--since`/`--until` (release date,
   falling back to the entry's signature timestamp for `Unreleased` work),
   `--group` for `- **Group**:` bullets, `--agent`, and `--grep`.
-- `check` — structure lint: unrecognized or ambiguous release headings,
+- `check`: structure lint for unrecognized or ambiguous release headings,
   duplicate `Unreleased` headings, malformed signature comments, unclosed code
   fences or HTML comments, and unindented or ordered-list lines that are not
   entries. One empty `Unreleased` heading is valid; a missing or non-leading

@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { type Dirent, existsSync } from "node:fs";
 import {
@@ -26,6 +27,7 @@ import {
   resolve,
   sep,
 } from "node:path";
+import { promisify } from "node:util";
 
 const BACKFILL_STATUSES = [
   "not-applicable",
@@ -226,6 +228,12 @@ const IGNORED_DIRECTORIES = new Set([
   "target",
 ]);
 
+// A skills folder directly inside a hidden folder (`.agents/skills` and the
+// like) holds installed skill copies, not the product. The capped walk sorts
+// by name, so it would otherwise spend its budget there before apps/.
+const isInstalledSkillsDirectory = (parent: string, name: string): boolean =>
+  name === "skills" && basename(parent).startsWith(".");
+
 type BackfillStatus = (typeof BACKFILL_STATUSES)[number];
 type DeveloperChangelogPolicy = (typeof DEVELOPER_CHANGELOG_POLICIES)[number];
 type Distribution = (typeof DISTRIBUTIONS)[number];
@@ -269,13 +277,13 @@ type SetupStatus =
   | "run-only";
 
 const GUIDANCE_VERSIONS = {
-  full: 22,
-  mobile: 19,
-  "skill-repository": 13,
-  web: 20,
-  "web-cms": 20,
+  full: 23,
+  mobile: 20,
+  "skill-repository": 14,
+  web: 21,
+  "web-cms": 21,
 } as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 5;
+const CMS_GUIDANCE_VERSION = 6;
 // The web-cms distribution records the CMS side of its policy on a separate
 // guidance track from the standalone CMS distribution.
 const WEB_CMS_CMS_GUIDANCE_VERSION = 2;
@@ -1377,10 +1385,49 @@ interface TextFileScan {
   truncated: boolean;
 }
 
+const execFileAsync = promisify(execFile);
+
+// Paths Git ignores (untracked build, cache, and tool output) are not the
+// product. Git lists them once, with ignored directories collapsed to one
+// "dir/" entry, so the capped walk never spends its budget inside them.
+// Outside a Git work tree, or when Git is unavailable, nothing extra is
+// skipped.
+const gitIgnoredPaths = async (root: string): Promise<Set<string>> => {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      [
+        "-C",
+        root,
+        "ls-files",
+        "--others",
+        "--ignored",
+        "--exclude-standard",
+        "--directory",
+        "-z",
+      ],
+      { maxBuffer: 16 * 1024 * 1024, timeout: 10_000 }
+    );
+    return new Set(
+      stdout.split("\0").filter((item) => item !== "" && item !== "./")
+    );
+  } catch {
+    return new Set();
+  }
+};
+
 const walkTextFiles = async (
   root: string,
   limit = 400
 ): Promise<TextFileScan> => {
+  const ignored = await gitIgnoredPaths(root);
+  const isGitIgnored = (path: string, directory: boolean): boolean => {
+    if (ignored.size === 0) {
+      return false;
+    }
+    const gitPath = relative(root, path).split(sep).join("/");
+    return ignored.has(directory ? `${gitPath}/` : gitPath);
+  };
   const visit = async (directory: string): Promise<string[]> => {
     let entries: Dirent[];
     try {
@@ -1393,10 +1440,15 @@ const walkTextFiles = async (
       entries.map(async (entry): Promise<string[]> => {
         const path = join(directory, entry.name);
         if (entry.isDirectory()) {
-          return IGNORED_DIRECTORIES.has(entry.name) ? [] : await visit(path);
+          return IGNORED_DIRECTORIES.has(entry.name) ||
+            isInstalledSkillsDirectory(directory, entry.name) ||
+            isGitIgnored(path, true)
+            ? []
+            : await visit(path);
         }
         const textFile =
           entry.isFile() &&
+          !isGitIgnored(path, false) &&
           (TEXT_EXTENSIONS.has(extname(entry.name).toLowerCase()) ||
             entry.name === "SKILL.md");
         return textFile ? [path] : [];

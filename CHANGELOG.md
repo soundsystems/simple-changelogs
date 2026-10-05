@@ -2,6 +2,71 @@
 
 ## Unreleased
 
+- **publish-skill**
+  - `publish-skill` treats a standalone CMS changelog install as covered by
+    the Web and CMS package only once the repository's
+    `.simple-changelogs-cms.json` is in place, so it never removes the
+    standalone install before the combined package can run.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T16:23:54-05:00" -->
+- **Setup**
+  - Setup's file scan now skips untracked files Git ignores, such as build
+    output, caches, and tool run logs, using your `.gitignore` and any global
+    or repository-local ignore rules. In large repositories those folders
+    could fill the scan before it reached your apps. Files tracked in the
+    repository are still read, even inside an ignored folder.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T15:22:01-05:00" -->
+- **Setup and history checks**
+  - Setup no longer reads installed agent skills, such as those in
+    `.agents/skills` or `.claude/skills`, as part of your product. In a
+    repository with many installed skills, those files filled setup's file
+    scan before it reached your apps, so it could miss them.
+  - History checks now accept older `<!-- Agent: ... -->` signatures that
+    give only a date, or a date and AM or PM. They were reported as malformed,
+    so `query.ts check` failed on histories that used them.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T14:46:49-05:00" -->
+- **Release handoff**
+  - When the release version is already settled, chosen automatically or by
+    your direction, the classification step now returns that exact version
+    instead of only a neutral result. Preparing and verifying the changelog
+    are still separate later steps, and a version that still needs your
+    answer is still returned as a decision for you.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T13:48:48-05:00" -->
+- **Fork maintenance**
+  - The fork checker has a new `--pin-parity` mode that compares a fork with
+    the exact upstream version its pin names. It finds upstream files and
+    section headings the fork never received, including sections added
+    before the pin that an earlier sync skipped, so a pin can no longer claim
+    a fork has every upstream file and section. In a file the fork changes on
+    purpose it checks the headings, not the text beneath them.
+  - Forks list their intentional differences in a Current Deltas table in
+    `references/fork-maintenance.md`: a changed file, an upstream file the
+    fork leaves out, or one section a changed file leaves out. The check flags
+    rows that no longer match the fork, so the list stays accurate.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T12:42:15-05:00" -->
+- **Writing style**
+  - New changelog entries and release-note lines no longer use em-dashes.
+    They use commas, colons, periods, or parentheses, and a sentence that
+    reaches for a dash is rewritten rather than having the character
+    swapped. A repository's documented house style still wins, and released
+    entries keep their wording.
+  - Setup and update questions now show each choice as
+    `**Choice (Recommended)**: consequence`. The choices and their defaults
+    are unchanged.
+  - Guidance moves to 23 (full), 21 (web and web+CMS), 20 (mobile), 14
+    (skill-maintainer), and 6 (CMS). The update notice needs no backfill.
+- **Choosing a distribution**
+  - Each distribution's description is shorter and opens with what it
+    maintains, then names the repository choice that selects it, so agents
+    read less to decide which distribution applies.
+- **publish-skill**
+  - `publish-skill` now runs only when you type `/publish-skill`; agents no
+    longer start a fork publication on their own. It is marked internal and
+    is no longer part of the public install instructions.
+  - It now also finds global skill installs under `~/.agents/skills`,
+    `~/.codex/skills`, `~/.claude/skills`, and `~/.cursor/skills`, and can
+    update each fork in its own agent when the host runs parallel agents. It
+    matches the copy that ships with Simple Changes.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-05T10:50:54-05:00" -->
 - **Version numbers**
   - Setup now finds every app in large repositories that hold several apps.
     It used to stop scanning early and could miss the web app, so the

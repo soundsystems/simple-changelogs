@@ -263,13 +263,13 @@ the source, while the selected value controls its destinations:
 - `store-only` means **App stores only**. Prepare concise storefront or
   testing-track update copy without rendering mobile-specific history in an
   in-app or Web release-notes surface.
-- `mobile-only` means **Mobile app and app stores — no Web**. It omits
+- `mobile-only` means **Mobile app and app stores, no Web**. It omits
   mobile-specific entries from Web changelog destinations.
-- `web-tabs` means **Web and mobile — one tabbed Release Notes page**. Separate
+- `web-tabs` means **Web and mobile on one tabbed Release Notes page**. Separate
   Web and Mobile feeds render under labeled tabs at one Web destination. The
   Mobile tab consumes the Mobile feed; it does not make mobile-only entries
   part of the Web feed.
-- `web-page` means **Web and mobile — separate Release Notes pages**. The Web
+- `web-page` means **Web and mobile on separate Release Notes pages**. The Web
   feed stays at the normal Web changelog and the Mobile feed also appears on a
   separate linked Web page.
 

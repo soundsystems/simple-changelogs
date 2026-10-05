@@ -18,6 +18,10 @@ const script = resolve(
   import.meta.dir,
   "../../../../skills/publish-skill/scripts/discover-local-consumers.ts"
 );
+const bun = process.execPath;
+// Discovery also scans global skill roots under HOME, so every run gets an
+// empty fixture HOME; otherwise real installs on this machine leak in.
+const isolatedEnv = { ...process.env, HOME: join(fixtureRoot, "empty-home") };
 
 interface ConsumerSummary {
   repositoryRoot: string;
@@ -36,7 +40,7 @@ const install = async (repository: string, skill: string): Promise<void> => {
 
 const installAt = async (
   repository: string,
-  agentRoot: ".agents" | ".claude",
+  agentRoot: ".agents" | ".claude" | ".codex",
   skill: string
 ): Promise<void> => {
   const directory = join(repository, agentRoot, "skills", skill);
@@ -122,7 +126,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -133,7 +137,7 @@ describe("discover-local-consumers", () => {
         fixtureRoot,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -157,7 +161,7 @@ describe("discover-local-consumers", () => {
 
   test("ignores other sources and unrequested installed skill names", () => {
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -168,7 +172,7 @@ describe("discover-local-consumers", () => {
         fixtureRoot,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -186,7 +190,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -197,7 +201,7 @@ describe("discover-local-consumers", () => {
         repository,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -225,7 +229,7 @@ describe("discover-local-consumers", () => {
     );
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -236,7 +240,7 @@ describe("discover-local-consumers", () => {
         repository,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -272,7 +276,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -283,7 +287,7 @@ describe("discover-local-consumers", () => {
         repository,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -320,7 +324,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -333,7 +337,7 @@ describe("discover-local-consumers", () => {
         repository,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -347,6 +351,39 @@ describe("discover-local-consumers", () => {
         skill: "simple-changelogs-web-cms",
         state: "installed",
       },
+    ]);
+  });
+
+  test("keeps standalone CMS while the CMS policy sidecar is missing", async () => {
+    const repository = join(fixtureRoot, "web-cms-without-sidecar");
+    await Promise.all([
+      writeJson(join(repository, ".simple-changelogs.json"), webCmsPolicy),
+      writeJson(join(repository, "skills-lock.json"), combinedLocks()),
+      install(repository, "simple-changelogs-cms"),
+      install(repository, "simple-changelogs-web-cms"),
+    ]);
+
+    const result = spawnSync(
+      bun,
+      [
+        script,
+        "--source",
+        "soundsystems/simple-changelogs",
+        "--skill",
+        "simple-changelogs-cms",
+        "--skill",
+        "simple-changelogs-web-cms",
+        "--root",
+        repository,
+        "--json",
+      ],
+      { encoding: "utf8", env: isolatedEnv }
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout).consumers).toMatchObject([
+      { skill: "simple-changelogs-cms", state: "installed" },
+      { skill: "simple-changelogs-web-cms", state: "installed" },
     ]);
   });
 
@@ -370,7 +407,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -385,7 +422,7 @@ describe("discover-local-consumers", () => {
         lockOnlyCombined,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -434,7 +471,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -447,7 +484,7 @@ describe("discover-local-consumers", () => {
         repository,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -492,7 +529,7 @@ describe("discover-local-consumers", () => {
     ]);
 
     const result = spawnSync(
-      "bun",
+      bun,
       [
         script,
         "--source",
@@ -509,7 +546,7 @@ describe("discover-local-consumers", () => {
         webCmsRepository,
         "--json",
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8", env: isolatedEnv }
     );
 
     expect(result.status).toBe(0);
@@ -518,5 +555,55 @@ describe("discover-local-consumers", () => {
         (consumer: { state: string }) => consumer.state === "superseded-install"
       )
     ).toBe(false);
+  });
+
+  test("automatically discovers global installs and deduplicates aliases", async () => {
+    const home = join(fixtureRoot, "global-home");
+    await installAt(home, ".agents", "example-skill");
+    await mkdir(join(home, ".codex", "skills"), { recursive: true });
+    await symlink(
+      "../../.agents/skills/example-skill",
+      join(home, ".codex", "skills", "example-skill")
+    );
+
+    const result = spawnSync(
+      bun,
+      [
+        script,
+        "--source",
+        "soundsystems/example",
+        "--skill",
+        "example-skill",
+        "--root",
+        home,
+        "--json",
+      ],
+      { encoding: "utf8", env: { ...process.env, HOME: home } }
+    );
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout) as {
+      consumers: Array<{
+        installationCount: number;
+        installPaths: string[];
+        repositoryRoot: string;
+        state: string;
+        symlinkPaths: string[];
+      }>;
+      globalSearchRoots: string[];
+    };
+    expect(output.globalSearchRoots).toContain(join(home, ".agents", "skills"));
+    expect(
+      output.consumers.find((consumer) => consumer.repositoryRoot === home)
+    ).toMatchObject({
+      installationCount: 1,
+      installPaths: [
+        join(home, ".agents", "skills", "example-skill"),
+        join(home, ".codex", "skills", "example-skill"),
+      ],
+      repositoryRoot: home,
+      state: "unlocked-install",
+      symlinkPaths: [join(home, ".codex", "skills", "example-skill")],
+    });
   });
 });

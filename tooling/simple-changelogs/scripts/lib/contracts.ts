@@ -658,6 +658,12 @@ const isVendorAdapterPath = (path: string): boolean =>
   path.startsWith("scripts/adapters/") ||
   path === "scripts/tests/adapters.check.ts";
 
+// A fork's Current Deltas table names a changed agent interface file, such as
+// `agents/<vendor>.yaml`, by its exact path for pin parity. That code span
+// assumes no vendor, so the vendor check skips it; vendor names in prose and
+// unquoted paths still fail.
+const AGENT_INTERFACE_PATH_PATTERN = /`agents\/[\w.-]+\.ya?ml`/g;
+
 // Skill loaders may scan installed directories recursively, so the package
 // must expose exactly one discoverable SKILL.md: the root skill itself.
 // Evaluation fixtures store theirs as SKILL.fixture.md instead.
@@ -711,10 +717,9 @@ const checkVendorAssumptions = (
           !isVendorAdapterPath(entry.path)
       )
       .map((entry) => {
-        const source = (entry.text ?? "").replace(
-          CANONICAL_SIGNATURE_PATTERN,
-          " "
-        );
+        const source = (entry.text ?? "")
+          .replace(CANONICAL_SIGNATURE_PATTERN, " ")
+          .replace(AGENT_INTERFACE_PATH_PATTERN, " ");
         return patterns.some((pattern) => pattern.test(source))
           ? finding(
               "VENDOR_ASSUMPTION",

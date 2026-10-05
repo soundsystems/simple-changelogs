@@ -94,8 +94,8 @@ version or change release, publication, deployment, or store authority.
 - `full`: the default. Public release-note surfaces render the complete
   customer changelog; no curated file is maintained.
 - `curated`: a derived `RELEASE_NOTES.md` at the repository root carries a
-  short curated section per release — one-sentence highlights within the
-  budget plus one rollup line — generated from `CHANGELOG.md` at each release
+  short curated section per release (one-sentence highlights within the
+  budget plus one rollup line) generated from `CHANGELOG.md` at each release
   boundary. `references/curation.md` owns the derivation, coverage, and
   provenance rules. Breaking changes and security notices are never omitted or
   rolled up.
@@ -194,14 +194,14 @@ each release train numbers itself; `[]` records that choice. Lines follow
 - `store-only` (**App stores only**): prepare mobile-specific update notes only
   for established App Store, Google Play, testing-track, or repository-owned
   store metadata destinations; do not add an in-app or Web history surface.
-- `mobile-only` (**Mobile app and app stores — no Web**): keep mobile-specific
+- `mobile-only` (**Mobile app and app stores, no Web**): keep mobile-specific
   history off the Web while retaining it for established in-app, App Store,
   Google Play, testing-track, or other mobile destinations.
-- `web-tabs` (**Web and mobile — one tabbed Release Notes page**): expose the
+- `web-tabs` (**Web and mobile on one tabbed Release Notes page**): expose the
   independently scoped Web and Mobile histories under clearly labeled tabs at
   one Web destination while the same Mobile feed remains available to mobile
   and store destinations.
-- `web-page` (**Web and mobile — separate Release Notes pages**): keep the
+- `web-page` (**Web and mobile on separate Release Notes pages**): keep the
   normal Web history at its established destination, expose the independently
   scoped Mobile history on a separate linked Web page, and retain the same
   Mobile feed for mobile and store destinations.
@@ -281,8 +281,8 @@ For authorized setup:
    wants to defer or decline. Confirmation accepts `partial` and starts the
    audit without a separate “Review it now” approval.
 5. Ask where people should be able to read mobile-specific release notes.
-   Present **App stores only**, **Mobile app and app stores — no Web**, **Web
-   and mobile — one tabbed Release Notes page**, and **Web and mobile —
+   Present **App stores only**, **Mobile app and app stores, no Web**, **Web
+   and mobile on one tabbed Release Notes page**, and **Web and mobile on
    separate Release Notes pages**; show `store-only`, `mobile-only`,
    `web-tabs`, and `web-page` only as stored receipt values. Explain that
    `store-only` omits an in-app history while the other choices retain
@@ -327,7 +327,7 @@ not an internal guidance checkpoint:
 >
 > Your saved settings and released history have not been changed.
 
-Offer **Walk me through what changed — Recommended**, **Keep my current
+Offer **Walk me through what changed (Recommended)**, **Keep my current
 settings and continue**, and **View detailed release notes**. Never recommend
 skipping the explanation. A walkthrough explains every new ability first, then
 names affected settings, proposed defaults, concrete examples, consequences,

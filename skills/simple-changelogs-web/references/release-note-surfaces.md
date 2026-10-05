@@ -206,8 +206,8 @@ During release work, include each established web destination in the version
 map with its source, audience, version or date, and disposition. Do not change a
 web package version merely because another package ships.
 
-Give every reported record its identifier role — canonical release, public
-version, build number, or development version — and name its release train
+Give every reported record its identifier role (canonical release, public
+version, build number, or development version) and name its release train
 whenever more than one web application or package train is involved. A shared
 repository proves shared source ownership, not a shared release train, and two
 separately owned fields that currently hold the same string remain separately

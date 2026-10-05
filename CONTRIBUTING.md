@@ -5,7 +5,9 @@ Development happens at <https://gitlab.com/soundsystems/simple-changelogs>;
 the GitHub mirror is read-only, so open issues and merge requests on GitLab.
 
 1. Open an issue for behavior-contract changes so distribution-neutral behavior
-   can be discussed before a distribution depends on it.
+   can be discussed before a distribution depends on it. Check `.out-of-scope/`
+   first: it records requests already declined and why, so a proposal to
+   reverse one should answer the recorded reason.
 2. Install dependencies with `bun install`.
 3. Keep normative workflow rules in one canonical reference. Link to them from
    distribution notes instead of copying them.

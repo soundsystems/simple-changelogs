@@ -2,6 +2,7 @@
 
 import { type Dirent, existsSync } from "node:fs";
 import { lstat, readdir, readFile, realpath } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 
 const ignoredDirectories = new Set([
@@ -15,6 +16,7 @@ const ignoredDirectories = new Set([
 ]);
 const installRoots = [
   [".agents", "skills"],
+  [".codex", "skills"],
   [".claude", "skills"],
   [".cursor", "skills"],
 ] as const;
@@ -35,17 +37,17 @@ interface LockFile {
 }
 
 interface Candidate {
-  computedHash?: string;
+  computedHash?: string | undefined;
   installIdentities: Set<string>;
   installPaths: Set<string>;
   lockPath?: string;
   physicalInstallPaths: Set<string>;
-  ref?: string;
+  ref?: string | undefined;
   repositoryRoot: string;
   skill: string;
-  skillPath?: string;
+  skillPath?: string | undefined;
   source: string;
-  sourceType?: string;
+  sourceType?: string | undefined;
   symlinkPaths: Set<string>;
 }
 
@@ -233,6 +235,9 @@ const options = parseOptions();
 const candidates = new Map<string, Candidate>();
 const diagnostics: string[] = [];
 const lockedSources = new Map<string, string | undefined>();
+const globalSearchRoots = installRoots.map((segments) =>
+  join(homedir(), ...segments)
+);
 
 const collectLockCandidates = async (path: string): Promise<void> => {
   let lock: LockFile;
@@ -284,6 +289,41 @@ const collectLockCandidates = async (path: string): Promise<void> => {
   );
 };
 
+const collectInstalledCandidate = async (path: string): Promise<void> => {
+  const skill = basename(path);
+  if (!(options.skills.has(skill) && existsSync(join(path, "SKILL.md")))) {
+    return;
+  }
+  const skillsDirectory = dirname(path);
+  const agentDirectory = dirname(skillsDirectory);
+  const owner = basename(agentDirectory);
+  if (
+    basename(skillsDirectory) !== "skills" ||
+    ![".agents", ".codex", ".claude", ".cursor"].includes(owner)
+  ) {
+    return;
+  }
+  const repositoryRoot = dirname(agentDirectory);
+  const key = keyFor(repositoryRoot, skill);
+  const lockedSource = lockedSources.get(key);
+  if (lockedSource && !sourcesMatch(lockedSource, options.source)) {
+    return;
+  }
+  const candidate =
+    candidates.get(key) ??
+    ({
+      installIdentities: new Set<string>(),
+      installPaths: new Set<string>(),
+      physicalInstallPaths: new Set<string>(),
+      repositoryRoot,
+      skill,
+      source: options.source,
+      symlinkPaths: new Set<string>(),
+    } satisfies Candidate);
+  await recordInstallPath(candidate, path);
+  candidates.set(key, candidate);
+};
+
 await Promise.all(
   options.roots.map((root) =>
     walk(
@@ -307,41 +347,10 @@ if (options.skills.size > 0) {
       walk(
         root,
         async (path, directory) => {
-          if (!(directory && options.skills.has(basename(path)))) {
+          if (!directory) {
             return;
           }
-          const skill = basename(path);
-          if (!existsSync(join(path, "SKILL.md"))) {
-            return;
-          }
-          const skillsDirectory = dirname(path);
-          const agentDirectory = dirname(skillsDirectory);
-          const owner = basename(agentDirectory);
-          if (
-            basename(skillsDirectory) !== "skills" ||
-            ![".agents", ".claude", ".cursor"].includes(owner)
-          ) {
-            return;
-          }
-          const repositoryRoot = dirname(agentDirectory);
-          const key = keyFor(repositoryRoot, skill);
-          const lockedSource = lockedSources.get(key);
-          if (lockedSource && !sourcesMatch(lockedSource, options.source)) {
-            return;
-          }
-          const candidate =
-            candidates.get(key) ??
-            ({
-              installIdentities: new Set<string>(),
-              installPaths: new Set<string>(),
-              physicalInstallPaths: new Set<string>(),
-              repositoryRoot,
-              skill,
-              source: options.source,
-              symlinkPaths: new Set<string>(),
-            } satisfies Candidate);
-          await recordInstallPath(candidate, path);
-          candidates.set(key, candidate);
+          await collectInstalledCandidate(path);
         },
         root,
         0,
@@ -349,6 +358,12 @@ if (options.skills.size > 0) {
       )
     )
   );
+  await globalSearchRoots
+    .flatMap((root) => [...options.skills].map((skill) => join(root, skill)))
+    .reduce(
+      (previous, path) => previous.then(() => collectInstalledCandidate(path)),
+      Promise.resolve()
+    );
 }
 
 const discoveredConsumers: Consumer[] = [...candidates.values()]
@@ -451,7 +466,13 @@ const consumers: Consumer[] = await Promise.all(
         candidate.physicalInstallPaths.length > 0 &&
         sourcesMatch(candidate.source, consumer.source)
     );
-    if (distribution !== "web-cms" || !combinedSkill) {
+    // The combined package still needs the CMS policy sidecar; without it the
+    // standalone install is not yet redundant.
+    if (
+      distribution !== "web-cms" ||
+      !combinedSkill ||
+      !existsSync(join(consumer.repositoryRoot, ".simple-changelogs-cms.json"))
+    ) {
       return consumer;
     }
     return {
@@ -468,6 +489,7 @@ if (options.json) {
       {
         consumers,
         diagnostics,
+        globalSearchRoots,
         searchRoots: options.roots,
         skills: [...options.skills].sort(compareText),
         source: options.source,

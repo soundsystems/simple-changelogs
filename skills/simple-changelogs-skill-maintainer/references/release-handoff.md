@@ -74,9 +74,15 @@ Return one closed receipt for the train:
 
 - `not-applicable` for `none`;
 - `decision-required` for `ask`, with the exact suggestion only when enabled;
-- an automatically or explicitly selected exact version ready for `prepare`;
+- `classified` for an automatically or explicitly selected exact public version ready for `prepare`;
 - `blocked` for `unknown`, ambiguous ownership, stale evidence, invalid exact
   direction, malformed contracts, or protocol incompatibility.
+
+A resolved public `classified` receipt carries the exact version decision, with
+`release: null`, no paths, and null reconciliation/finalized revision lineage.
+It proves classification only; preparation and verification remain later phases.
+Unresolved public direction stays `decision-required`. Neutral entry-only
+classification keeps boundary `none` and carries no public version.
 
 Normal version approval is `decision-required`, never `blocked`. Branch only
 on `reasonCode` and `requiredAction`, not human-readable `reason`.

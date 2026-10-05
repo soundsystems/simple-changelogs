@@ -77,6 +77,96 @@ const decisionRequired = () => ({
 });
 
 describe("release handoff protocol", () => {
+  test("validates resolved public classification without claiming preparation in receipt v2 and v3", () => {
+    for (const version of [2, 3] as const) {
+      const input = {
+        ...decisionRequired(),
+        reason: null,
+        reasonCode: null,
+        requiredAction: null,
+        schemaVersion: version,
+        status: "classified",
+        ...(version === 3 ? { releaseSetTrains: null } : {}),
+        versionDecision: {
+          ...decisionRequired().versionDecision,
+          policyAction: "automatic",
+          resolution: "automatic",
+          selectedVersion: "0.10.0",
+          ...(version === 3 ? { versionLine: null } : {}),
+        },
+      };
+      const delegated = validateChangelogRequest({
+        ...request(),
+        releaseSetTrains: null,
+        schemaVersion: 2,
+        supportedReceiptVersions: [1, 2, 3],
+      }).value;
+      expect(validateChangelogReceipt(input, delegated).errors).toEqual([]);
+      // An ask policy resolves only by the user's explicit direction.
+      expect(
+        validateChangelogReceipt(
+          {
+            ...input,
+            versionDecision: {
+              ...input.versionDecision,
+              policyAction: "ask",
+              resolution: "explicit-direction",
+            },
+          },
+          delegated
+        ).errors
+      ).toEqual([]);
+      for (const override of [
+        { selectedVersion: null },
+        { resolution: "approval-required" },
+        { releaseTrain: "ios" },
+        { policyAction: "ask", resolution: "automatic" },
+        { policyAction: "ask", resolution: "repository-automation" },
+      ]) {
+        expect(
+          validateChangelogReceipt(
+            {
+              ...input,
+              versionDecision: { ...input.versionDecision, ...override },
+            },
+            delegated
+          ).errors.length
+        ).toBeGreaterThan(0);
+      }
+      expect(
+        validateChangelogReceipt(
+          {
+            ...input,
+            revisionLineage: {
+              ...input.revisionLineage,
+              reconciliationHeadRevision: revision,
+            },
+          },
+          delegated
+        ).errors.length
+      ).toBeGreaterThan(0);
+      expect(
+        validateChangelogReceipt(
+          {
+            ...input,
+            release: {
+              date: "2026-08-10",
+              targetContainedUnreleased: "prepared",
+              version: "0.10.0",
+            },
+          },
+          delegated
+        ).errors.length
+      ).toBeGreaterThan(0);
+    }
+    expect(
+      validateChangelogReceipt(
+        decisionRequired(),
+        validateChangelogRequest(request()).value
+      ).errors
+    ).toEqual([]);
+  });
+
   test("canonicalizes object keys and produces stable policy and decision digests", () => {
     expect(canonicalJson({ a: [true, "x"], z: 1 })).toBe(
       '{"a":[true,"x"],"z":1}'

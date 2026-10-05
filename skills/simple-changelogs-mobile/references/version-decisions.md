@@ -168,7 +168,7 @@ mirrors, its build and development identifiers, and its destinations.
 
 When multiple public version owners exist, the relationship stays ambiguous
 after that inspection, and the current write depends on the answer, ask exactly
-one question — shared, independent, or mixed — and record it. Recommend
+one question (shared, independent, or mixed) and record it. Recommend
 independent only when separate product or store cadences exist with no shared
 release mechanism; recommend shared when one release mechanism is evident but
 its version ownership is undocumented. While the answer is outstanding, leave

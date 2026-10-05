@@ -124,11 +124,11 @@ with every detected train, and ask about membership only when 3+ are detected
 and evidence suggests some should stay separate. Ask once, **Should your apps
 share version numbers? Choose one:**
 
-1. **Separate numbers per app** — Each app counts its own releases, the most
+1. **Separate numbers per app**: Each app counts its own releases, the most
    common choice. Save `[]`.
-2. **Same number everywhere** — An app that is behind catches up: Web ships
+2. **Same number everywhere**: An app that is behind catches up: Web ships
    1.0, so the next Mobile release is 1.0. Save a `catch-up` line.
-3. **One shared counter** — Every release gets the next number, and apps that
+3. **One shared counter**: Every release gets the next number, and apps that
    did not ship skip it. Save a `bump-shared` line.
 
 Mark option 2 **Recommended** when detected versions already match or the

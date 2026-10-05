@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs-skill-maintainer
-description: Use only inside a repository that develops or distributes agent skills and explicitly selects this Simple Changelogs distribution. Maintain the skill package's public and developer changelogs, release-note copy, guidance-version explanations, fork provenance, and installable package boundaries without app, CMS, mobile, or store-release workflows. Do not use in ordinary product repositories or alongside another changelog-owning distribution for the same task.
+description: Maintain changelogs and release notes for agent-skill packages, including guidance-version explanations, fork provenance, and installable package boundaries. Use when a skill repository selects the skill-repository Simple Changelogs distribution, not for product apps, CMS, mobile, or store releases.
 metadata:
   models: Claude Opus 5.5, Claude Fable 5.1
 ---
@@ -22,7 +22,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 13
+Current guidance version: 14
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

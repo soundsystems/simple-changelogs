@@ -20,10 +20,12 @@ lists choices. The table below provides the same selection guide.
 | `simple-changelogs-web-cms` | Public web history and a separate authenticated CMS operator history in one repository | Mobile/store destinations |
 | `simple-changelogs-skill-maintainer` | Skill-development repositories: changelogs, packaged notes, guidance versions, fork provenance, and installable package boundaries | Product-app, CMS, mobile, and store workflows |
 
-`publish-skill` is separate production tooling for synchronizing a
-canonical skill through maintained forks and a real Skills CLI consumer
-installation. It does not claim changelog ownership and may be installed beside
-one distribution.
+`publish-skill` is maintainer tooling for synchronizing a canonical skill
+through maintained forks and a real Skills CLI consumer installation. It is
+marked internal, so it is not part of the public package, and it does not claim
+changelog ownership. It is user-invoked: run it by name (`/publish-skill`),
+because agents do not start a publication across forks on their own. The same
+workflow ships in Simple Changes; change both copies together.
 
 The distributions live in one repository because Skills CLI selects
 self-contained skill directories. Separate repositories are unnecessary unless
@@ -189,18 +191,6 @@ Install a branch or tag with an explicit Git ref:
 bunx skills add https://github.com/soundsystems/simple-changelogs.git#<branch-or-tag> \
   --skill simple-changelogs
 ```
-
-Install the non-owning fork publication workflow independently or alongside the
-selected distro:
-
-```sh
-bunx skills add https://github.com/soundsystems/simple-changelogs \
-  --skill publish-skill
-```
-
-Install `publish-skill` project-locally from this repository. Other skill
-families may ship their own adaptation under the same name; the copy selected
-from the repository being published is authoritative for that production run.
 
 Do not install both `simple-changelogs-web` and `simple-changelogs-cms` to model
 one repository. Select `simple-changelogs-web-cms`; it owns the combined policy
@@ -489,6 +479,10 @@ skills/simple-changelogs/scripts/check-fork-sync.sh \
 ```
 
 Exit `0` means current, `1` behind, `2` invalid input, and `3` divergent.
+Put `--pin-parity` before the fork path, and drop the ref, to compare the fork
+with the pinned upstream files themselves: it also catches upstream content
+older than the pin that the fork never received, apart from the intentional
+deltas the fork lists in its `references/fork-maintenance.md`.
 Repo-local precedence is a documented convention, not a claim that every
 runtime loader deduplicates automatically.
 
@@ -506,7 +500,8 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 - `skills/simple-changelogs-web-cms/` — combined public-web and protected-CMS
   runtime distribution.
 - `skills/simple-changelogs-skill-maintainer/` — lean distribution for repositories that develop or distribute skills.
-- `skills/publish-skill/` — optional production propagation workflow.
+- `skills/publish-skill/` — maintainer-internal, user-invoked production
+  propagation workflow; change it together with the Simple Changes copy.
 - `tooling/simple-changelogs/` — full contract and behavior harness, fixtures,
   schemas, tests, and Codex, Claude Code, Hermes, Cursor, and Grok adapters.
 - `tooling/simple-changelogs-cms/` — CMS fixtures and contributor tests.

@@ -102,7 +102,7 @@ nothing.
 When policy records older guidance, inspection exposes a `guidanceUpdate`.
 Present **Simple Changelogs has recently been updated**, show up to three short
 practical effects, and state that saved settings and released operator history
-have not changed. Offer **Walk me through what changed — Recommended**, **Keep
+have not changed. Offer **Walk me through what changed (Recommended)**, **Keep
 my current settings and continue**, and **View detailed release notes**. The
 walkthrough explains every new ability, affected setting, proposed default,
 example, consequence, and access or safety boundary before any decision.

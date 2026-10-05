@@ -86,8 +86,8 @@ other remote authority.
 - `full`: the default. Public release-note surfaces render the complete
   customer changelog; no curated file is maintained.
 - `curated`: a derived `RELEASE_NOTES.md` at the repository root carries a
-  short curated section per release — one-sentence highlights within the
-  budget plus one rollup line — generated from `CHANGELOG.md` at each release
+  short curated section per release (one-sentence highlights within the
+  budget plus one rollup line) generated from `CHANGELOG.md` at each release
   boundary. `references/curation.md` owns the derivation, coverage, and
   provenance rules. Breaking changes and security notices are never omitted or
   rolled up.
@@ -250,7 +250,7 @@ not an internal guidance checkpoint:
 >
 > Your saved settings and released history have not been changed.
 
-Offer **Walk me through what changed — Recommended**, **Keep my current
+Offer **Walk me through what changed (Recommended)**, **Keep my current
 settings and continue**, and **View detailed release notes**. Never recommend
 skipping the explanation. A walkthrough explains every new ability first, then
 names affected settings, proposed defaults, concrete examples, consequences,

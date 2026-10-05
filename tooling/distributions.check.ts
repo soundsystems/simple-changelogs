@@ -273,6 +273,7 @@ for (const {
     continue;
   }
   const metadata = YAML.parse(frontmatter) as {
+    "disable-model-invocation"?: unknown;
     description?: unknown;
     name?: unknown;
   };
@@ -294,6 +295,23 @@ for (const {
     );
   } else {
     descriptions.set(metadata.description, directoryName);
+  }
+
+  // A user-invoked skill must be user-invoked in every harness: Claude Code's
+  // disable-model-invocation and Codex's agents/openai.yaml policy move together.
+  const openaiPath = join(directory, "agents", "openai.yaml");
+  if (existsSync(openaiPath)) {
+    const openai = YAML.parse(readFileSync(openaiPath, "utf8")) as {
+      policy?: { allow_implicit_invocation?: unknown };
+    } | null;
+    const claudeUserInvoked = metadata["disable-model-invocation"] === true;
+    const codexUserInvoked =
+      openai?.policy?.allow_implicit_invocation === false;
+    if (claudeUserInvoked !== codexUserInvoked) {
+      failures.push(
+        `skills/${directoryName}: disable-model-invocation and agents/openai.yaml policy.allow_implicit_invocation disagree`
+      );
+    }
   }
 
   for (const match of source.matchAll(LOCAL_ROUTE_PATTERN)) {
@@ -1256,6 +1274,50 @@ for (const [canonical, copy] of [
     readFileSync(join(skillsRoot, canonical), "utf8")
   ) {
     failures.push(`skills/${copy} diverges from skills/${canonical}`);
+  }
+}
+
+// Every bundled fork checker is a byte-identical copy of the full
+// distribution's, which check-fork-sync.check.ts exercises, and every
+// fork-maintenance reference matches the full copy apart from the
+// distribution's own name in its pin example and checker paths.
+const FORK_CHECKER = "scripts/check-fork-sync.sh";
+const FORK_MAINTENANCE = "references/fork-maintenance.md";
+const withoutDistributionName = (source: string, name: string): string =>
+  source
+    .replaceAll(`\`${name}\``, "`<distribution>`")
+    .replaceAll(`/${name}\``, "/<distribution>`")
+    .replaceAll(`/${name}/`, "/<distribution>/");
+const canonicalForkChecker = readFileSync(
+  join(skillsRoot, "simple-changelogs", FORK_CHECKER),
+  "utf8"
+);
+const canonicalForkMaintenance = withoutDistributionName(
+  readFileSync(join(skillsRoot, "simple-changelogs", FORK_MAINTENANCE), "utf8"),
+  "simple-changelogs"
+);
+for (const { directory, directoryName, entries } of distributionSnapshots) {
+  if (!entries.some((entry) => entry.path === FORK_CHECKER)) {
+    continue;
+  }
+  if (
+    readFileSync(join(directory, FORK_CHECKER), "utf8") !== canonicalForkChecker
+  ) {
+    failures.push(
+      `skills/${directoryName}/${FORK_CHECKER} diverges from skills/simple-changelogs/${FORK_CHECKER}`
+    );
+  }
+  const maintenancePath = join(directory, FORK_MAINTENANCE);
+  if (
+    !existsSync(maintenancePath) ||
+    withoutDistributionName(
+      readFileSync(maintenancePath, "utf8"),
+      directoryName
+    ) !== canonicalForkMaintenance
+  ) {
+    failures.push(
+      `skills/${directoryName}/${FORK_MAINTENANCE} diverges from the full copy beyond its distribution name`
+    );
   }
 }
 

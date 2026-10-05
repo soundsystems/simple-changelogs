@@ -109,7 +109,7 @@ const releaseNotes = (minorComment: string, patchComment?: string): string =>
     "- Save your favorite filters",
     "- **Breaking**: the legacy API is gone",
     "",
-    "Plus 2 smaller changes — see CHANGELOG.md for the complete list.",
+    "Plus 2 smaller changes. See CHANGELOG.md for the complete list.",
     "",
     minorComment,
     "",
@@ -117,7 +117,7 @@ const releaseNotes = (minorComment: string, patchComment?: string): string =>
       ? [
           "## 2.0.1 - 2026-07-10",
           "",
-          "Plus 2 smaller fixes — see CHANGELOG.md for the complete list.",
+          "Plus 2 smaller fixes. See CHANGELOG.md for the complete list.",
           "",
           patchComment,
           "",

@@ -391,3 +391,13 @@ changelogs; removing it let the next merge prepend into the newest release.
 `query.ts check` flags a duplicate or non-leading `Unreleased`. An optional
 audit restores a missing empty heading and reports entries the newest release
 absorbed; moving them needs separate authority.
+
+<!-- simple-changelogs-guidance-update version="21" kinds="behavior" backfill="not-needed" summary="New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence." -->
+## Guidance 21
+
+New changelog entries and release-note lines use commas, colons, periods, or
+parentheses instead of em-dashes; a sentence that would reach for one is
+rewritten rather than having the character swapped. A repository's documented
+house style still takes precedence. Setup and update questions now present each
+choice as `**Choice (Recommended)**: consequence`, with the choices and their
+defaults unchanged. Released entries keep their wording; no backfill is needed.
