@@ -25,9 +25,16 @@ create an exception; untouched released history remains intact.
 ## Validation and limits
 
 Package contracts verify routing, portable paths, declarations, and guidance
-checkpoints. Behavioral fixtures cover first-draft ownership, later extension,
-new artifacts, and Android copy limits. A model adapter is required to run those
-behavior cases; package validation alone does not prove their outputs.
+checkpoints, including byte-identical full and mobile testing references.
+Behavioral fixtures cover first-draft ownership during ordinary finalization,
+later extension, new artifacts and identity collisions, TestFlight and Android
+copy limits, external audiences, locale isolation, and authorized publication
+readback. Their assertions are mechanical: paths and suffixes, recorded
+identity, the exact baseline HEAD, required sections and limits, literal
+strings, saved versus published copy, and Git state. Whether steps, expected
+outcomes, and status wording are good is judged by model-graded or manual
+review, not by regex. A model adapter is required to run those behavior cases;
+package validation alone does not prove their outputs.
 
 Guidance does not install credentials, submit a build, send tester messages,
 promote a track, or independently publish metadata. Finalized notes may remain

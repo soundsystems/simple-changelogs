@@ -1,0 +1,1 @@
+Ouvrez Catalogue, changez rapidement les filtres, puis touchez Tout effacer. La dernière sélection doit s'afficher et aucun filtre ne doit rester actif.

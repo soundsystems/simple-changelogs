@@ -128,6 +128,7 @@ are:
 - `path.exists` and `path.absent`;
 - `file.changed` and `file.unchanged`;
 - `text.match` and `text.notMatch`;
+- `text.includesFile`;
 - `json.path`;
 - `repo.state` and `git.changedPaths`;
 - `report.status`, `report.decision`, `report.authorization`,
@@ -143,10 +144,21 @@ may assert `path`, `version`, `role`, `identifierRole`, `field`, and
 
 Manifest assertions never execute caller-supplied commands. Git inspection and
 other subprocess checks use evaluator-owned argument arrays only.
+`file.changed`, `file.unchanged`, `repo.state` cleanliness, and
+`git.changedPaths` compare the workspace with the runner's baseline commit, so
+a change the agent commits still counts as a change.
 
 Paths are workspace-relative. Text expectations are regular expressions.
-`json.path` combines a relative file and JSON pointer with `#`. Command
-assertions use explicit argument arrays and never a shell string.
+`text.includesFile` names a second workspace file whose text, ignoring line
+wrapping and surrounding whitespace, must appear in the target. A text target
+of `path#pattern` evaluates only the bodies of Markdown sections whose heading
+line, including its `#`s, matches the pattern, joined by blank lines; each body
+drops surrounding blank lines and trailing spaces, tabs, and line breaks but
+keeps indentation. A section ends at the next heading of the same or a higher
+level, headings in fenced code are ignored, and a missing section fails the
+assertion. `json.path`
+combines a relative file and JSON pointer with `#`. Command assertions use
+explicit argument arrays and never a shell string.
 
 The manifest schemas reject unknown fixed fields. Use `skip` only for a
 documented temporary limitation; canonical coverage tests normally require
@@ -180,6 +192,13 @@ cases to remain runnable.
 New normative skill behavior is protected only after a structured case or a
 deterministic contract assertion covers it. Keep prose examples here minimal so
 the manifest remains the canonical behavior catalog.
+
+Keep text assertions mechanical: paths, identity fields, exact values, required
+sections, length limits, literal strings, and file equality. Do not encode
+negation, paraphrase, or other prose semantics in a regular expression. Where
+quality matters, such as whether a step states its expected outcome or a status
+line is honest, assert only that the section or line exists and is non-empty,
+and leave the judgment to model-graded or manual review.
 
 ## Credentials and Smoke Tests
 

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Mobile testing notes**
+  - TestFlight What to Test copy is checked against the limit its destination
+    enforces before it is called ready. Longer instructions stay in the full
+    checklist, and a build for external testers is never handed off without
+    its What to Test copy.
+  - Saved testing notes are refined only when they belong to the same build
+    artifact. A different local, simulator, or ad hoc build that shares a
+    version and build number gets its own record instead of replacing another
+    build's notes.
+  - These refinements are part of guidance 24 (full) and 21 (mobile), with no
+    new questions or historical rewrite.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-06T13:29:30-05:00" -->
+
 - **Mobile testing and store notes**
   - The agent finalizing a beta or test build now prepares practical tester
     instructions immediately and saves them with that exact build. You or

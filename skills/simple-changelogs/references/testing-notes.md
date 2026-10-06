@@ -30,18 +30,20 @@ If no convention exists, use this Markdown default in the target repository:
 `docs/testing-notes/<app>/<platform>/<public-version>-<build-id>/<locale>.md`.
 Resolve components from evidence; `build-id` is Android `versionCode` or iOS
 build number. Record app/package or bundle identifier, public version, exact
-artifact/build identity, source commit when known, locale, and group or track.
-Mark missing evidence explicitly.
+artifact/build identity and kind (such as ad hoc or simulator), source commit
+when known, locale, and group or track. Mark missing evidence explicitly.
 
 Keep full checklist and platform copy in labeled sections. Record prepared or
 published status and established remote identity as prose, adding no policy
 fields or provider integration. Local edits alone are not publication.
 
-- Same build: refine its note, preserve useful additions, and record the edit.
-  Wording changes need no rebuild.
+- Same artifact (no recorded identity value differs): refine its note,
+  preserve useful additions, and record the edit. Wording changes need no
+  rebuild.
 - New code/artifact: create a new record carrying relevant unresolved regression
-  checks with origin and status. Preserve the old record; old results do not
-  establish verification of the new artifact.
+  checks with origin and status, adding the next unused build suffix (such as
+  `3.2.0-145-2`) when its path is taken. Never overwrite another artifact's
+  record; old results do not establish verification of the new artifact.
 - Same artifact changing tracks: reuse relevant checks, reclassify audience,
   platform, track, locale, and access, and keep distinct destination sections.
   Promotion needs its own authority.
@@ -80,8 +82,15 @@ describes test information; its
 [internal tester guidance](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
 binds localized What to Test to a selected build, available to every group with
 access. Keep copy safe for that entire audience. App-level beta descriptions
-are a separate field. Use existing upload/locale conventions and retain the full
-checklist when destination copy needs trimming.
+are a separate field. Use existing upload/locale conventions.
+
+[External testing](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/)
+requires What to Test for the selected build; never hand off an external build
+without it. Apple documents no numeric limit; check each locale against its
+destination's enforced limit: repository or upload-tool rules, App Store
+Connect validation, or an authorized write's result. Over-limit copy is not
+ready: trim it, keeping the full checklist. Without a confirmed limit, report
+the copy as prepared, limit unverified.
 
 ## Android internal, closed, and open testing
 

@@ -248,6 +248,39 @@ describe("fixture workspaces", () => {
       }
     }
   });
+
+  test("keeps the baseline commit stable under inherited Git identity and hash variables", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const clean = await createFixtureWorkspace(fixturesRoot, "base");
+    const inheriting = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(clean);
+    temporaryPaths.add(inheriting);
+    const expected = await initializeFixtureGit(clean);
+    const inherited = new Map([
+      ["GIT_AUTHOR_EMAIL", "host-author@example.invalid"],
+      ["GIT_AUTHOR_NAME", "Host Author"],
+      ["GIT_COMMITTER_EMAIL", "host-committer@example.invalid"],
+      ["GIT_COMMITTER_NAME", "Host Committer"],
+      ["GIT_DEFAULT_HASH", "sha256"],
+    ]);
+    const previous = new Map(
+      [...inherited.keys()].map((key) => [key, process.env[key]])
+    );
+    for (const [key, value] of inherited) {
+      process.env[key] = value;
+    }
+    try {
+      expect(await initializeFixtureGit(inheriting)).toBe(expected);
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) {
+          Reflect.deleteProperty(process.env, key);
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
 });
 
 describe("assertion evaluation", () => {
@@ -313,6 +346,209 @@ describe("assertion evaluation", () => {
 
     expect(results).toHaveLength(assertions.length);
     expect(results.filter((result) => !result.passed)).toEqual([]);
+  });
+
+  test("counts an edit that is staged and then undone only in the working tree", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+    const readme = join(workspace, "README.md");
+    const original = await readFile(readme, "utf8");
+    await writeFile(readme, "altered\n");
+    const stage = spawnSync(["git", "add", "README.md"], {
+      cwd: workspace,
+      env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" },
+    });
+    expect(stage.exitCode).toBe(0);
+    await writeFile(readme, original);
+
+    const results = await evaluateAssertions(
+      [
+        { expected: true, kind: "file.unchanged", target: "README.md" },
+        { expected: { clean: true }, kind: "repo.state" },
+      ],
+      { response: completedResponse(), workspace }
+    );
+
+    expect(results.map((result) => result.passed)).toEqual([false, false]);
+  });
+
+  test("counts committed changes against the runner's baseline", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+    await writeFile(join(workspace, "README.md"), "altered\n");
+    await writeFile(join(workspace, "notes.md"), "new\n");
+    const commit = spawnSync(
+      [
+        "git",
+        "-c",
+        "commit.gpgSign=false",
+        "-c",
+        `core.hooksPath=${process.platform === "win32" ? "NUL" : "/dev/null"}`,
+        "commit",
+        "--all",
+        "--quiet",
+        "--no-verify",
+        "--message",
+        "agent commit",
+      ],
+      {
+        cwd: workspace,
+        env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" },
+      }
+    );
+    expect(commit.exitCode).toBe(0);
+
+    const results = await evaluateAssertions(
+      [
+        { expected: true, kind: "file.changed", target: "README.md" },
+        { expected: true, kind: "file.unchanged", target: "README.md" },
+        { expected: true, kind: "file.changed", target: "notes.md" },
+        { expected: { clean: true }, kind: "repo.state" },
+      ],
+      { response: completedResponse(), workspace }
+    );
+
+    expect(results.map((result) => result.passed)).toEqual([
+      true,
+      false,
+      true,
+      false,
+    ]);
+  });
+
+  test("checks that a target includes another file's text", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+    await Promise.all([
+      writeFile(
+        join(workspace, "record.md"),
+        "## Copy\n\nOpen Catalog and\nexpect the latest   selection.\n"
+      ),
+      writeFile(
+        join(workspace, "published.txt"),
+        "Open Catalog and expect the latest selection.\n"
+      ),
+      writeFile(join(workspace, "other.txt"), "Expect every filter to stay.\n"),
+      writeFile(join(workspace, "blank.txt"), " \n"),
+    ]);
+
+    const results = await evaluateAssertions(
+      ["published.txt", "other.txt", "blank.txt", "missing.txt", "../x"].map(
+        (expected): EvalAssertion => ({
+          expected,
+          kind: "text.includesFile",
+          target: "record.md",
+        })
+      ),
+      { response: completedResponse(), workspace }
+    );
+
+    expect(results.map((result) => result.passed)).toEqual([
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(results[4]?.message).toMatch(UNSAFE_ASSERTION_PATTERN);
+  });
+
+  test("evaluates text assertions against matching Markdown sections", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+    await initializeFixtureGit(workspace);
+    await Promise.all([
+      writeFile(
+        join(workspace, "record.md"),
+        [
+          "# What to Test",
+          "",
+          "## Full checklist",
+          "",
+          "Open Catalog.",
+          "",
+          "### Carried checks",
+          "",
+          "Nested detail.",
+          "",
+          "```md",
+          "## Fenced",
+          "```",
+          "",
+          "~~~~md",
+          "```",
+          "## Tilde fenced",
+          "~~~",
+          "~~~~",
+          "",
+          "```md",
+          "```suffix",
+          "## Suffix fenced",
+          "```",
+          "",
+          "## TestFlight copy",
+          "",
+          "  Open Catalog and",
+          "expect the latest selection.  ",
+          "",
+        ].join("\n")
+      ),
+      writeFile(
+        join(workspace, "published.txt"),
+        "Open Catalog and expect the latest selection.\n"
+      ),
+    ]);
+    const section = (
+      kind: "text.match" | "text.notMatch",
+      heading: string,
+      expected: string
+    ): EvalAssertion => ({ expected, kind, target: `record.md#${heading}` });
+
+    const results = await evaluateAssertions(
+      [
+        section(
+          "text.match",
+          "^## TestFlight",
+          "^  Open[\\s\\S]*selection\\.$"
+        ),
+        section("text.match", "^#{2,3} .*checklist", "Nested detail"),
+        section("text.match", "^#{2,3} .*checklist", "## Fenced"),
+        section("text.notMatch", "^## TestFlight", "Nested detail"),
+        {
+          expected: "published.txt",
+          kind: "text.includesFile",
+          target: "record.md#^## TestFlight",
+        },
+        section("text.match", "^## Fenced", "."),
+        section("text.match", "^## Tilde fenced", "."),
+        section("text.match", "^## Suffix fenced", "."),
+        section("text.match", "^## Missing", "."),
+        section("text.notMatch", "^## Missing", "."),
+        section("text.match", "[", "."),
+      ],
+      { response: completedResponse(), workspace }
+    );
+
+    expect(results.map((result) => result.passed)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 
   test("rejects unsafe paths and unsupported assertions", async () => {

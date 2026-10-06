@@ -101,9 +101,10 @@ encode an uncertain or independently versioned relationship.
 - For a finalized test build, the checklist and platform copy exist in the
   repository, identify the exact app, platform, source revision, artifact, and
   locale/track when applicable, and describe steps plus expected results.
-- Later note edits preserve relevant existing checks; changed artifacts get
-  separate notes. Play testing-track copy fits its current per-language limit
-  while the complete checklist remains available for the tester handoff.
+- Later note edits preserve relevant checks and touch only matching-identity
+  records; changed artifacts get separate notes. TestFlight and Play testing
+  copy fit enforced limits, or an unconfirmed limit is reported, while the
+  complete checklist stays available for the tester handoff.
 - Authorized publication was read back from the matching build or track and
   locale. Local-only preparation is reported as local, and tester instructions
   were not silently promoted into public storefront copy.

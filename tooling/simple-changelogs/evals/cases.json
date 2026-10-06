@@ -3438,6 +3438,24 @@
       ]
     },
     {
+      "id": "trigger-positive-mobile-build-finalization",
+      "suite": "trigger",
+      "fixture": "mobile-test-build",
+      "tags": ["trigger", "positive", "surfaces", "mobile"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Finalize iOS 3.2.0 build 145 for internal TestFlight testing; the release owner will distribute it.",
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "behavior-test-build-finalizer-owns-notes",
       "suite": "behavior",
       "fixture": "mobile-test-build",
@@ -3445,7 +3463,7 @@
       "activationMode": "explicit",
       "turns": [
         {
-          "prompt": "Prepare the testing-note handoff for simulated finalized iOS 3.2.0 build 145. Follow the README convention and inspect the changed Catalog and Cart behavior. The same public version has prior build 144 notes. Write actionable TestFlight copy and the reusable full checklist now, carry forward relevant checks, and bind the new record to workspace HEAD. Do not defer writing to the distributor. No provider writes or physical-device results are authorized.",
+          "prompt": "Finalize simulated iOS 3.2.0 build 145, built from workspace HEAD, for internal TestFlight testing. The release owner distributes it later. Only local preparation is authorized: no uploads, provider writes, messages, or device runs.",
           "assertions": [
             {
               "kind": "path.exists",
@@ -3454,38 +3472,63 @@
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\S"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
               "expected": "Catalog"
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
-              "expected": "Cart"
-            },
-            {
-              "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
               "expected": "Clear all"
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
-              "expected": "[Ee]xpect|[Ss]hould|[Cc]onfirm"
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\bCart\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\b144\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "(?i:larger[- ]text|large[- ]text|text size|dynamic type)"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md#^#{2,3} (?!.*(?i:checklist)).*(?i:testflight|what to test)",
+              "expected": "^[ \\t\\r\\n]*(?=[^ \\t\\r\\n])[\\s\\S]{1,1500}$"
             },
             {
               "kind": "text.match",
               "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
-              "expected": "145"
+              "expected": "com\\.example\\.catalog"
             },
             {
               "kind": "text.match",
               "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
-              "expected": "[0-9a-f]{40}"
+              "expected": "3\\.2\\.0"
             },
             {
               "kind": "text.match",
               "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
-              "expected": "[Ll]ocal|[Pp]repared|[Uu]npublished"
+              "expected": "\\b145\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "2a601e8"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "(?:^|\\n)[ \\t]*(?:[-*+][ \\t]+)?(?:\\*\\*)?(?i:status)(?:\\*\\*)?[ \\t]*:(?:\\*\\*)?[ \\t]*\\S"
             },
             {
               "kind": "file.unchanged",
@@ -3533,33 +3576,38 @@
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
               "expected": "Catalog"
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
               "expected": "Clear all"
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
-              "expected": "[Ll]arger text|[Ll]arge.text|[Tt]ext size"
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\bCart\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "(?i:larger[- ]text|large[- ]text|text size|dynamic type)"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "(?i:refresh)"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md#^#{2,3} (?!.*(?i:checklist)).*(?i:testflight|what to test)",
+              "expected": "^[ \\t\\r\\n]*(?=[^ \\t\\r\\n])[\\s\\S]{1,1500}$"
             },
             {
               "kind": "text.match",
               "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
-              "expected": "Cart"
-            },
-            {
-              "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
-              "expected": "[Rr]efresh"
-            },
-            {
-              "kind": "text.match",
-              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
-              "expected": "[Vv]isible|[Rr]emain|[Kk]eep|[Ss]tay"
+              "expected": "(?i:source (?:revision|commit)[^\\n]{0,60}(?:unavailable|unknown|not recorded))"
             },
             {
               "kind": "path.absent",
@@ -3607,23 +3655,48 @@
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\S"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
               "expected": "Catalog"
             },
             {
               "kind": "text.match",
-              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
-              "expected": "Cart"
-            },
-            {
-              "kind": "text.match",
-              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
               "expected": "Clear all"
             },
             {
               "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\bCart\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\b144\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "(?i:larger[- ]text|large[- ]text|text size|dynamic type)"
+            },
+            {
+              "kind": "text.match",
               "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
-              "expected": "211"
+              "expected": "com\\.example\\.catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "3\\.2\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "\\b211\\b"
             },
             {
               "kind": "text.match",
@@ -3633,7 +3706,17 @@
             {
               "kind": "text.match",
               "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
-              "expected": "com\\.example\\.catalog"
+              "expected": "en-US"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "2a601e8"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "(?:^|\\n)[ \\t]*(?:[-*+][ \\t]+)?(?:\\*\\*)?(?i:status)(?:\\*\\*)?[ \\t]*:(?:\\*\\*)?[ \\t]*\\S"
             },
             {
               "kind": "text.match",
@@ -3658,7 +3741,7 @@
             {
               "kind": "text.notMatch",
               "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
-              "expected": "[Rr]ate us|[Bb]uy now|[Tt]est everything|[Rr]eport issues"
+              "expected": "(?i:rate us|buy now|test everything|report issues|send feedback|let us know|leave a review|please)"
             },
             {
               "kind": "file.unchanged",
@@ -3688,6 +3771,244 @@
             {
               "kind": "text.notMatch",
               "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
+              "expected": "—"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-test-build-artifact-collision",
+      "suite": "behavior",
+      "fixture": "mobile-test-build-fallback",
+      "tags": ["surfaces", "mobile", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize the local ad hoc iOS 3.2.0 build 145, built from workspace HEAD, for internal testers. The release owner distributes it later. Only local preparation is authorized: no uploads, provider writes, messages, or device runs.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\S"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "Catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "Clear all"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\bCart\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "com\\.example\\.catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "\\b145\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "3\\.2\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "(?i:ad[ -]hoc)"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "cb1a299"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "(?:^|\\n)[ \\t]*(?:[-*+][ \\t]+)?(?:\\*\\*)?(?i:status)(?:\\*\\*)?[ \\t]*:(?:\\*\\*)?[ \\t]*\\S"
+            },
+            {
+              "kind": "path.absent",
+              "target": "remote/testflight/3.2.0/145",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": "remote/testflight/3.2.0/146/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "remote/testflight/3.2.0/146/fr-FR.txt",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145-2/en-US.md",
+              "expected": "—"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-test-build-external-publication-readback",
+      "suite": "behavior",
+      "fixture": "mobile-test-build-fallback",
+      "tags": ["surfaces", "mobile", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Finalize iOS 3.2.0 build 146, uploaded from workspace HEAD, for the external TestFlight group Beta Customers. You are authorized to publish its en-US What to Test through the repository's TestFlight script and read it back. Do not upload builds, submit for review, invite or message testers, or change other locales.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\S"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "Catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "Clear all"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md#^#{2,3} (?!.*(?i:testflight|what to test)).*(?i:checklist)",
+              "expected": "\\bCart\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md#^#{2,3} (?!.*(?i:checklist)).*(?i:testflight|what to test)",
+              "expected": "^[ \\t\\r\\n]*(?=[^ \\t\\r\\n])[\\s\\S]{1,1500}$"
+            },
+            {
+              "kind": "text.includesFile",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md#^#{2,3} (?!.*(?i:checklist)).*(?i:testflight|what to test)",
+              "expected": "remote/testflight/3.2.0/146/en-US.txt"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "com\\.example\\.catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "\\b146\\b"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "3\\.2\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "cb1a299"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "(?:^|\\n)[ \\t]*(?:[-*+][ \\t]+)?(?:\\*\\*)?(?i:status)(?:\\*\\*)?[ \\t]*:(?:\\*\\*)?[ \\t]*\\S"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "(?i:beta customers|external)"
+            },
+            {
+              "kind": "text.match",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "(?i:read[ -]?back)"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "(?i:internal\\.example|catalog-qa-editor|catalog-qa-viewer|qa-accounts)"
+            },
+            {
+              "kind": "path.exists",
+              "target": "remote/testflight/3.2.0/146/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "remote/testflight/3.2.0/146/en-US.txt",
+              "expected": "^[\\s\\S]{1,1501}$"
+            },
+            {
+              "kind": "text.match",
+              "target": "remote/testflight/3.2.0/146/en-US.txt",
+              "expected": "Catalog"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "remote/testflight/3.2.0/146/en-US.txt",
+              "expected": "(?i:internal\\.example|catalog-qa-editor|catalog-qa-viewer|qa-accounts)"
+            },
+            {
+              "kind": "text.match",
+              "target": "remote/testflight/activity.log",
+              "expected": "publish 3\\.2\\.0 146 en-US\\n(?:[^\\n]*\\n)*?read 3\\.2\\.0 146 en-US\\n(?:(?!publish 3\\.2\\.0 146 en-US\\n)[^\\n]*\\n)*$"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "remote/testflight/activity.log",
+              "expected": "(?:^|\\n)publish (?!3\\.2\\.0 146 en-US\\n)"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "remote/testflight/3.2.0/146/fr-FR.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-145/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "path.absent",
+              "target": "remote/testflight/3.2.0/145",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "docs/testing-notes/catalog/ios/3.2.0-146/en-US.md",
+              "expected": "—"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "remote/testflight/3.2.0/146/en-US.txt",
               "expected": "—"
             }
           ]

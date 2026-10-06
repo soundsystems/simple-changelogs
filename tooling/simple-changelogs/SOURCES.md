@@ -20,6 +20,8 @@ distributions unless requested. This removes the former house-style exception.
   storefront highlight rules without first-draft ownership or practical steps.
   No private agent's live output is attributed as evidence.
 - [Apple TestFlight overview](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/): test information and tester feedback.
+- [Apple external testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/): What to Test is entered when a build is added to an external group.
+- [App Store Connect API BetaBuildLocalization](https://developer.apple.com/documentation/appstoreconnectapi/betabuildlocalization): per-build, per-locale `whatsNew`. As of October 6, 2026, neither it nor the TestFlight help pages state a numeric What to Test limit, so guidance defers to the limit the destination enforces.
 - [Play release preparation](https://support.google.com/googleplay/android-developer/answer/9859348?hl=en): track-specific notes, content policy, and 500 Unicode characters per language.
 - [Play testing setup](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en): internal, closed, and open tracks plus established feedback channels.
 - [Play track API](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.tracks): releaseNotes, versionCodes, track identity, and localization.

@@ -166,8 +166,30 @@
           "required": ["kind", "target", "expected"],
           "properties": {
             "kind": { "enum": ["text.match", "text.notMatch"] },
-            "target": { "type": "string", "minLength": 1 },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Workspace path, or path#pattern to evaluate only the Markdown sections whose heading line matches pattern."
+            },
             "expected": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "expected"],
+          "properties": {
+            "kind": { "const": "text.includesFile" },
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Workspace path, or path#pattern to search only the Markdown sections whose heading line matches pattern."
+            },
+            "expected": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Workspace path whose whitespace-normalized text must appear in target."
+            }
           }
         },
         {

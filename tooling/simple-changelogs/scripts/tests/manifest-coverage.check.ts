@@ -67,6 +67,7 @@ const FIXTURE_IDS = new Set([
   "minimal-git",
   "mobile-monorepo",
   "mobile-test-build",
+  "mobile-test-build-fallback",
   "multi-surface-monorepo",
   "next-major",
   "python-prerelease",
@@ -112,6 +113,7 @@ const ASSERTION_KINDS = new Set([
   "report.status",
   "report.verification",
   "report.versionMap",
+  "text.includesFile",
   "text.match",
   "text.notMatch",
 ]);
@@ -126,6 +128,7 @@ const TRIGGER_CASE_IDS = new Set([
   "trigger-positive-release-finalization",
   "trigger-positive-release-note-surface",
   "trigger-positive-mobile-test-build-notes",
+  "trigger-positive-mobile-build-finalization",
   "trigger-positive-review",
   "trigger-negative-commit-message",
   "trigger-negative-component-review",
@@ -141,6 +144,8 @@ const BEHAVIOR_CASE_IDS = new Set([
   "behavior-test-build-finalizer-owns-notes",
   "behavior-test-build-extend-existing-notes",
   "behavior-play-test-build-full-and-compact-notes",
+  "behavior-test-build-artifact-collision",
+  "behavior-test-build-external-publication-readback",
   "behavior-clone-sensitive-public-detail",
   "behavior-comprehensive-initial-backfill",
   "behavior-customer-visible-feature",
@@ -257,8 +262,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(77);
-    expect(new Set(ids).size).toBe(77);
+    expect(ids).toHaveLength(80);
+    expect(new Set(ids).size).toBe(80);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

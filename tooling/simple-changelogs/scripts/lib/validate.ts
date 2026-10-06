@@ -357,6 +357,7 @@ const expectedByAssertionKind: Record<AssertionKind, Validator> = {
   "report.status": enumOf(RUNNER_STATUSES),
   "report.verification": verificationExpectation,
   "report.versionMap": versionMapExpectation,
+  "text.includesFile": nonEmptyString,
   "text.match": nonEmptyString,
   "text.notMatch": nonEmptyString,
 };
@@ -367,6 +368,7 @@ const targetedAssertionKinds = new Set<AssertionKind>([
   "json.path",
   "path.absent",
   "path.exists",
+  "text.includesFile",
   "text.match",
   "text.notMatch",
 ]);
