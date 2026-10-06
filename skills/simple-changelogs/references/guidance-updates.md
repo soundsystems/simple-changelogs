@@ -456,6 +456,8 @@ can refine or append those notes; a new build receives its own record carrying
 forward relevant unresolved regression checks. TestFlight copy binds to the
 app/build/locale, while Android copy binds to package/versionCodes/track/language.
 The full checklist retains actions; compact Play copy describes changed flows.
+TestFlight copy must fit its destination's limit and is required for external
+testing; a record never overwrites another artifact's.
 
 Production storefront guidance separately covers App Store What's New metadata
 for the exact app/version/platform/locale, localizable and required after the
