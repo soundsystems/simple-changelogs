@@ -1277,6 +1277,21 @@ for (const [canonical, copy] of [
   }
 }
 
+// Full and mobile ship one tester-instruction reference; nothing else would
+// catch an edit applied to only one copy.
+const TESTING_NOTES = "references/testing-notes.md";
+if (
+  readFileSync(
+    join(skillsRoot, "simple-changelogs-mobile", TESTING_NOTES),
+    "utf8"
+  ) !==
+  readFileSync(join(skillsRoot, "simple-changelogs", TESTING_NOTES), "utf8")
+) {
+  failures.push(
+    `skills/simple-changelogs-mobile/${TESTING_NOTES} diverges from skills/simple-changelogs/${TESTING_NOTES}`
+  );
+}
+
 // Every bundled fork checker is a byte-identical copy of the full
 // distribution's, which check-fork-sync.check.ts exercises, and every
 // fork-maintenance reference matches the full copy apart from the
