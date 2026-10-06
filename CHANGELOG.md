@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **Mobile testing and store notes**
+  - The agent finalizing a beta or test build now prepares practical tester
+    instructions immediately and saves them with that exact build. You or
+    another release owner can refine the same notes; a new build carries
+    forward relevant checks that still need testing.
+  - TestFlight What to Test instructions and Android internal, closed, and
+    open testing guidance stay separate from production announcements. Android
+    preparation includes a reusable checklist plus descriptive Play track copy
+    within the 500 Unicode character limit per language.
+  - Production store guidance now covers Apple's localized What's New field,
+    required after the first version and limited to 4,000 characters, plus
+    Google's localized production release notes. Copy describes useful changes
+    in plain paragraphs or simple bullets. Publishing needs authorization
+    covering those metadata updates, credentials, and an editable destination.
+    Authorized updates use the existing workflow with exact-destination
+    readback; saved local copy is reported as prepared.
+- **Writing style**
+  - New or edited release notes, mobile or otherwise, now use no em dashes
+    unless you explicitly request them. A repository house style no longer
+    creates an exception; existing released wording stays intact.
+  - Guidance advances to 24 (full), 21 (mobile), 22 (web and web+CMS), 15
+    (skill-maintainer), and 7 (CMS), without new questions or a historical rewrite.
+<!-- simple-changelogs-signature agent="GPT-6.1 Sol high" at="2026-10-06T16:25:43+00:00" -->
+
 - **Setup**
   - Setup no longer reads your editor and AI tool folders, such as saved
     plans, rules, and hooks, as part of your product, even when your

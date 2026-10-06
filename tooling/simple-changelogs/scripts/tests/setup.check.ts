@@ -243,14 +243,14 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "optional",
-      currentVersion: 21,
+      currentVersion: 22,
       headline: "Simple Changelogs has recently been updated.",
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
-        "A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories. Curated public release notes can now derive RELEASE_NOTES.md from the changelog.",
         "Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release.",
         "New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence.",
+        "New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception.",
       ],
       userPrompt:
         "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
@@ -312,7 +312,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 21,
+      version: 22,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -1474,13 +1474,13 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(23);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(24);
 
     const distributionVersions = [
-      ["web", 21],
-      ["mobile", 20],
-      ["web-cms", 21],
-      ["skill-repository", 14],
+      ["web", 22],
+      ["mobile", 21],
+      ["web-cms", 22],
+      ["skill-repository", 15],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -2071,13 +2071,13 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 6,
+      currentVersion: 7,
       recordedVersion: 1,
     });
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 6,
+      version: 7,
     });
   });
 
@@ -2475,7 +2475,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 21 },
+      { backfillStatus: "completed", version: 22 },
       { backfillStatus: "completed", version: 1 }
     );
 
@@ -2520,7 +2520,7 @@ describe("post-onboarding update paths", () => {
     const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
     expect(repoPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 21,
+      version: 22,
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2540,7 +2540,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 21 },
+      { backfillStatus: "completed", version: 22 },
       { backfillStatus: "completed", version: 2 }
     );
 

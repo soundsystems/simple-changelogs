@@ -111,6 +111,16 @@ encode an uncertain or independently versioned relationship.
 
 ## Release-Note Destinations
 
+- For a finalized test build, the checklist and platform copy exist in the
+  repository, identify the exact app, platform, source revision, artifact, and
+  locale/track when applicable, and describe steps plus expected results.
+- Later note edits preserve relevant existing checks; changed artifacts get
+  separate notes. Play testing-track copy fits its current per-language limit
+  while the complete checklist remains available for the tester handoff.
+- Authorized publication was read back from the matching build or track and
+  locale. Local-only preparation is reported as local, and tester instructions
+  were not silently promoted into public storefront copy.
+
 - Every contextual action permitted by `releaseNoteLinks: when-useful` has a
   stable target in the same release and is reachable by the note's eligible
   audience.

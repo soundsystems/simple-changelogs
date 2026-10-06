@@ -66,6 +66,7 @@ const FIXTURE_IDS = new Set([
   "initial-major",
   "minimal-git",
   "mobile-monorepo",
+  "mobile-test-build",
   "multi-surface-monorepo",
   "next-major",
   "python-prerelease",
@@ -124,6 +125,7 @@ const TRIGGER_CASE_IDS = new Set([
   "trigger-positive-migration-classification",
   "trigger-positive-release-finalization",
   "trigger-positive-release-note-surface",
+  "trigger-positive-mobile-test-build-notes",
   "trigger-positive-review",
   "trigger-negative-commit-message",
   "trigger-negative-component-review",
@@ -136,6 +138,9 @@ const TRIGGER_CASE_IDS = new Set([
 ]);
 
 const BEHAVIOR_CASE_IDS = new Set([
+  "behavior-test-build-finalizer-owns-notes",
+  "behavior-test-build-extend-existing-notes",
+  "behavior-play-test-build-full-and-compact-notes",
   "behavior-clone-sensitive-public-detail",
   "behavior-comprehensive-initial-backfill",
   "behavior-customer-visible-feature",
@@ -252,8 +257,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(73);
-    expect(new Set(ids).size).toBe(73);
+    expect(ids).toHaveLength(77);
+    expect(new Set(ids).size).toBe(77);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -1251,5 +1256,47 @@ describe("portable guidance consistency", () => {
       RECORDED_DISPOSITION_PHRASE
     );
     expect(guidanceUpdates).toContain("an unanswered prompt records nothing");
+  });
+});
+
+describe("release-note punctuation boundaries", () => {
+  test("keeps every routed classification reference aligned with the user-only exception", async () => {
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-mobile",
+      "simple-changelogs-web",
+      "simple-changelogs-web-cms",
+      "simple-changelogs-cms",
+      "simple-changelogs-skill-maintainer",
+    ];
+    await Promise.all(
+      distributions.map(async (distribution) => {
+        const root = join(SKILL_ROOT, "..", distribution);
+        const skill = await readFile(join(root, "SKILL.md"), "utf8");
+        const references = new Set(
+          skill.match(/references\/(?:cms-)?entry-classification\.md/gu)
+        );
+        expect(references.size).toBeGreaterThan(0);
+        await Promise.all(
+          [...references].map(async (reference) => {
+            const text = collapseWhitespace(
+              await readFile(join(root, reference), "utf8")
+            );
+            expect(text).toContain("unless the user explicitly requests it");
+            expect(text).toContain(
+              "Repository house style alone does not create an exception"
+            );
+            expect(text).not.toContain(
+              "Repository instructions that set a different house style take precedence"
+            );
+          })
+        );
+        if (distribution === "simple-changelogs-web-cms") {
+          expect(references.has("references/cms-entry-classification.md")).toBe(
+            true
+          );
+        }
+      })
+    );
   });
 });

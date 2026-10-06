@@ -415,7 +415,7 @@ describe("guidance 22 version-line notice", () => {
 
     expect(inspection.status).toBe("already-configured");
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 23,
+      currentVersion: 24,
       questions: ["shared-version-lines"],
       recordedVersion: 21,
       userPrompt: null,
@@ -448,7 +448,7 @@ describe("guidance 22 version-line notice", () => {
     );
 
     for (const inspection of inspections) {
-      expect(inspection.guidanceUpdate?.currentVersion).toBe(23);
+      expect(inspection.guidanceUpdate?.currentVersion).toBe(24);
       expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
         false
       );
@@ -469,7 +469,7 @@ describe("guidance 22 version-line notice", () => {
       repo,
     });
 
-    expect(inspection.guidanceUpdate?.currentVersion).toBe(21);
+    expect(inspection.guidanceUpdate?.currentVersion).toBe(22);
     expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
       false
     );
@@ -507,7 +507,7 @@ describe("guidance 22 version-line notice", () => {
     expect(policy.sharedVersionLines).toEqual(catchUpLine());
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 23,
+      version: 24,
     });
     expect(after.guidanceUpdate).toBeNull();
   });

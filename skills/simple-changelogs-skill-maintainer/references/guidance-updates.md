@@ -249,3 +249,13 @@ character swapped. A repository's documented house style still takes
 precedence. Setup and update questions now present each choice as
 `**Choice (Recommended)**: consequence`, with the choices and their defaults
 unchanged. Released entries keep their wording; no backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="15" kinds="behavior" backfill="not-needed" summary="New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception." -->
+## Guidance 15
+
+Skill changelogs and packaged release-note copy now use no em dashes in new or
+edited copy unless the user explicitly requests them. Rewrite the sentence with
+commas, colons, periods, or parentheses as appropriate; do not merely swap the
+character. Repository house style no longer supplies an exception. Released
+history stays unchanged. This update asks no new policy questions and needs no
+backfill.

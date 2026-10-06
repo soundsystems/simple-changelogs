@@ -62,11 +62,11 @@ bullets remain allowed for several outcomes belonging to one named capability.
 For fixes, state the repaired result without blame or incident detail. For a
 breaking change, name the affected contract and the required migration.
 
-Punctuate every entry and release-note line you write with commas, colons,
-periods, or parentheses. When a sentence reaches for an em-dash, rewrite it for
-what it needs (a list, a definition, an aside, or two sentences) instead of
-swapping the character. Repository instructions that set a different house
-style take precedence, and released entries keep their wording.
+Never use an em dash in newly authored or edited release notes, changelog
+entries, tester instructions, store update notes, or operator notes unless the
+user explicitly requests it. Rewrite with commas, colons, periods, parentheses,
+or separate sentences. Repository house style alone does not create an
+exception. Preserve untouched released history.
 
 Compact packaged release notes select material public highlights. They do not
 inherit every durable changelog entry and never include developer-only notes or

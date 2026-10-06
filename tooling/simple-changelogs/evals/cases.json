@@ -3418,6 +3418,281 @@
           "prompt": "Release the pending Web changes."
         }
       ]
+    },
+    {
+      "id": "trigger-positive-mobile-test-build-notes",
+      "suite": "trigger",
+      "fixture": "mobile-test-build",
+      "tags": ["trigger", "positive", "surfaces", "mobile"],
+      "activationMode": "discover",
+      "turns": [
+        {
+          "prompt": "Finalize the testing-note handoff for this TestFlight build, writing What to Test now so the release owner can refine it later.",
+          "assertions": [
+            {
+              "kind": "activation",
+              "expected": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-test-build-finalizer-owns-notes",
+      "suite": "behavior",
+      "fixture": "mobile-test-build",
+      "tags": ["surfaces", "mobile", "wording", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Prepare the testing-note handoff for simulated finalized iOS 3.2.0 build 145. Follow the README convention and inspect the changed Catalog and Cart behavior. The same public version has prior build 144 notes. Write actionable TestFlight copy and the reusable full checklist now, carry forward relevant checks, and bind the new record to workspace HEAD. Do not defer writing to the distributor. No provider writes or physical-device results are authorized.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "Catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "Cart"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "Clear all"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "[Ee]xpect|[Ss]hould|[Cc]onfirm"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "145"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "[0-9a-f]{40}"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "[Ll]ocal|[Pp]repared|[Uu]npublished"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/store/ios/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/store/android/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": "—"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-test-build-extend-existing-notes",
+      "suite": "behavior",
+      "fixture": "mobile-test-build",
+      "tags": ["surfaces", "mobile", "wording", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "The same iOS 3.2.0 build 144 now needs a clearer checklist. Keep its Catalog filter, Clear all and larger-text checks. Add a Cart refresh check describing where to go, what to do and how loaded content should behave while refreshing. Refine the existing note in place and keep the existing source-evidence gap honest; do not create a new build or rewrite public release notes. This is local note editing only.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "Catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "Clear all"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "[Ll]arger text|[Ll]arge.text|[Tt]ext size"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "Cart"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "[Rr]efresh"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "[Vv]isible|[Rr]emain|[Kk]eep|[Ss]tay"
+            },
+            {
+              "kind": "path.absent",
+              "target": "apps/mobile/testing/ios/3.2.0-145/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/store/ios/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/store/android/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": "—"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-play-test-build-full-and-compact-notes",
+      "suite": "behavior",
+      "fixture": "mobile-test-build",
+      "tags": ["surfaces", "mobile", "wording", "lifecycle"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Prepare the reusable full Android test checklist for simulated finalized public version 3.2.0, versionCode 211, package com.example.catalog, internal track, en-US. Use the README build-bound convention. Cover Catalog rapid filters, Clear all and Cart refresh with actions and expected results, and carry forward relevant unresolved layout checks. Save the separate compact Play releaseNotes copy at apps/mobile/testing/android/3.2.0-211/play-en-US.txt: at most 500 Unicode characters describing changed flows, without solicitation or promotional text. State the access gap for the full checklist because this fixture has no tester-accessible destination. No uploads, rollout, messaging, production-note edits or claimed device passes.",
+          "assertions": [
+            {
+              "kind": "path.exists",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "Catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "Cart"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "Clear all"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "211"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "internal"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "com\\.example\\.catalog"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "[Aa]ccess|[Dd]estination|[Cc]hannel"
+            },
+            {
+              "kind": "path.exists",
+              "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
+              "expected": "^[\\s\\S]{1,500}$"
+            },
+            {
+              "kind": "text.match",
+              "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
+              "expected": "[Ff]ilter|[Cc]atalog"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
+              "expected": "[Rr]ate us|[Bb]uy now|[Tt]est everything|[Rr]eport issues"
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/testing/ios/3.2.0-144/en-US.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/store/ios/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/store/android/en-US.txt",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/testing/android/3.2.0-211/en-US.md",
+              "expected": "—"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "apps/mobile/testing/android/3.2.0-211/play-en-US.txt",
+              "expected": "—"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

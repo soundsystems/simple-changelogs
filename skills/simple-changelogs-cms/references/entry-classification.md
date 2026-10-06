@@ -44,11 +44,11 @@ Use a short outcome title, one plain-language summary, and a compact list of
 specific changes. Combine related commits into the capability or workflow an
 operator experiences. Keep technical names only when operators see or use them.
 
-Punctuate every operator entry you write with commas, colons, periods, or
-parentheses. When a sentence reaches for an em-dash, rewrite it for what it
-needs (a list, a definition, an aside, or two sentences) instead of swapping
-the character. Repository instructions that set a different house style take
-precedence, and released entries keep their wording.
+Never use an em dash in newly authored or edited release notes, changelog
+entries, tester instructions, store update notes, or operator notes unless the
+user explicitly requests it. Rewrite with commas, colons, periods, parentheses,
+or separate sentences. Repository house style alone does not create an
+exception. Preserve untouched released history.
 
 Use `kind: "release"` for an ordinary recorded release and `kind: "backfill"`
 for history reconstructed after the fact. A backfilled entry may still include

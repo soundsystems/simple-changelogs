@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- Full and mobile guidance share a portable `references/testing-notes.md`:
+  the build-finalizing agent owns immediate checklist preparation and durable
+  exact-build persistence using established repository paths, with a documented
+  Markdown fallback. Wording changes refine the same build; new artifacts retain
+  relevant unresolved checks in a new record without inheriting passed results.
+  TestFlight targets app/build/locale; Play targets package/versionCodes/track/
+  language and receives descriptive releaseNotes within 500 Unicode characters
+  per language, while detailed actions stay in the reusable checklist. Existing
+  authorized tester destinations may expose the full instructions.
+- Production store guidance targets App Store app-version/platform/locale
+  metadata and Play package/versionCodes/production-track/language records.
+  Apple's What's New field is localizable, capped at 4,000 characters, and
+  required for updates after the initial version. Play's releaseNotes retain
+  the 500 Unicode character limit per language, console language-tag blocks
+  versus API language/text entries, and restrictions on promotion and soliciting
+  actions. Plain paragraphs or simple bullets are house style, not a vendor
+  template or a Markdown-rendering promise. Current source tables, destination
+  validation, and editability/review state govern actual submission. Metadata
+  writes covered by current-task or saved authorization require exact-destination
+  readback in the same finalization task; preparation
+  adds no build, submission, promotion, provider integration, or policy fields.
+- All six distributions require new or edited release notes and changelog
+  entries to contain no em dashes unless explicitly requested by the user,
+  including tester, production store, in-app, public, internal, CMS, and packaged
+  copy. The prior repository-house-style exception no longer applies to edits;
+  released history and existing signatures are preserved. Checkpoints advance
+  to full 24, mobile 21, web 22, web+CMS 22, skill-maintainer 15, and CMS 7,
+  with no backfill or new onboarding questions. The identical full/mobile tester
+  references add contents lists for navigation.
+<!-- simple-changelogs-signature agent="GPT-6.1 Sol high" at="2026-10-06T16:25:43+00:00" -->
+
 - Setup scan fairness, so the Thoronath changelog fork can retire its last two
   `setup.ts` deltas:
   - `setup.ts` (all seven byte-identical copies): the capped walk skips every
