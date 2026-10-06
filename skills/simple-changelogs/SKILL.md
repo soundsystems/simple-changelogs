@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs
-description: Maintain changelogs and release notes across web, mobile, store, and internal destinations. Update customer and developer changelogs, classify entries, backfill history, choose versions, and finalize releases, majors, and prerelease trains. The default Simple Changelogs distribution unless the repository selects a narrower one.
+description: Maintain changelogs and release notes across web, mobile, store, and internal destinations. Update histories, choose versions, finalize releases, and prepare reusable What to Test instructions when finalizing mobile test builds. The default Simple Changelogs distribution unless the repository selects a narrower one.
 metadata:
   models: Claude Opus 5.5, Claude Fable 5.1
 ---
@@ -18,7 +18,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 23
+Current guidance version: 24
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -89,11 +89,17 @@ Read only the references needed for the current branch of work:
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |
+| Finalizing a mobile test build, TestFlight What to Test, Play testing-track copy, or extending an existing tester checklist | `references/testing-notes.md` |
 | Presentation and defect checks after an exact product surface is authorized | `references/surface-design.md` |
 | Final checks and repository-native automation | `references/automation-verification.md` |
 | Fork provenance, selection convention, or upstream drift | `references/fork-maintenance.md` |
 
 ## Core Workflow
+
+When preparing or finalizing a mobile test build, prepare its testing notes in
+the same task using `references/testing-notes.md`. The build finalizer owns the
+first draft; a later distributor reuses and refines it. Preparing these notes
+does not itself cut a public release or authorize a build, upload, or rollout.
 
 For release-bearing work (a release, a merge into a release-bearing target, a
 production deployment, or a delegated `prepare` or `verify`), copy steps 1–6
@@ -148,10 +154,17 @@ step 3 otherwise. Never tick a failed step.
 ### 6. Hand Off
 
 State the customer-changelog decision, developer-changelog decision, release
-state, checks run, and any authorization or credential still needed. When
+state, checks run, and any authorization or credential still needed. For test
+builds, name the saved checklist and platform-copy paths, exact artifact scope,
+and whether the remote notes were read back or remain prepared locally. When
 released metadata was examined, identify each relevant source and its outcome.
 
 ## Non-Negotiable Boundaries
+
+All new and edited release copy must avoid em dashes unless the user explicitly
+requests them. This applies to every destination. Repository house style cannot
+waive this rule; preserve untouched released history. See
+`references/entry-classification.md` for punctuation guidance.
 
 Do not rewrite released history merely because newer guidance would word it
 differently. Historical audits and meaning-changing edits follow

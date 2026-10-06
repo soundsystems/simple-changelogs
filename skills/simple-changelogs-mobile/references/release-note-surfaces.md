@@ -32,7 +32,7 @@ customer source and `DEVELOPER_CHANGELOG.md` is the technical source.
 When repository policy records `publicReleaseNotes: "curated"` and
 `RELEASE_NOTES.md` exists, apply this default layer mapping: compact in-app
 surfaces (automatic modals, sheets, and latest-release summaries) render the
-curated layer; App Store, Google Play, and testing-track "What's New" copy
+curated layer; public App Store and Google Play "What's New" copy
 starts from the curated highlights and is trimmed to each store's length
 limit; a manually opened in-app archive renders the full changelog; and
 internal surfaces are unchanged. There is no
@@ -129,6 +129,10 @@ repeat unrelated product behavior.
 
 ## Content budget
 
+For a mobile test build or testing track, use `references/testing-notes.md`:
+the finalizer prepares practical tester instructions and any platform copy.
+Public storefront copy follows the rules below and has a separate audience.
+
 After explicit user approval identifies the exact in-app archive or compact
 sheet, read `references/surface-design.md` before product implementation. That
 reference owns native component choice, presentation, seeding, and UI-defect
@@ -152,6 +156,32 @@ Store notes are short, plain, and mobile-scoped:
   style requires it.
 - Respect repository or store length limits and locale ownership.
 - Do not turn baseline defect repair into promotional copy.
+
+### Apple and Google public update fields
+
+Prepare separate plain-text copy for each affected platform and locale. Short
+paragraphs or simple bullets are a portable house style, not a required store
+template; omit raw Markdown, HTML, attribution comments, and test instructions.
+
+| Destination | Current limit and format | Publication identity |
+| --- | --- | --- |
+| Apple App Store, What's New in this Version | 4,000 characters per localization. Describe specific features, improvements, and fixes. The field is unavailable for the first version and required for subsequent updates. | App, platform, public app version, and locale; use app-version metadata, not TestFlight build notes or App Review instructions. |
+| Google Play production, What's new in this release? | 500 Unicode characters per language. Describe changes without promotional content or requests for user actions. Play Console places language tags on separate lines around each translation; API `releaseNotes` uses language/text entries without those tags. | Package, production track, release versionCodes, and locale; the release name alone does not identify the artifact. |
+
+Verify current limits and the destination's editability/review state against
+[Apple's version properties](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/),
+[Apple's editable properties](https://developer.apple.com/help/app-store-connect/reference/app-information/required-localizable-and-editable-properties/),
+[Play release preparation](https://support.google.com/googleplay/android-developer/answer/9859348?hl=en),
+and the [Play track API](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.tracks)
+when publishing. Preparing copy does not submit a version, commit a Play edit,
+change a rollout, or promote a testing artifact. Use existing submission tools
+only within the authorized release scope, preserve unrelated translations and
+release settings, then read back the saved text and matching identity. Report
+saved metadata, review/submission state, and observed storefront publication
+separately; metadata readback alone does not prove a public release is live.
+
+When a tested artifact is promoted to production, rewrite its public update
+copy for ordinary users. Do not copy the tester checklist into the store page.
 
 When `majorReleaseNaming` is `named`, a reviewed stable-major title such as
 `A New Foundation` is presentation only. It may

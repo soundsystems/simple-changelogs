@@ -66,6 +66,7 @@ const FIXTURE_IDS = new Set([
   "initial-major",
   "minimal-git",
   "mobile-monorepo",
+  "mobile-test-build",
   "multi-surface-monorepo",
   "next-major",
   "python-prerelease",
@@ -124,6 +125,7 @@ const TRIGGER_CASE_IDS = new Set([
   "trigger-positive-migration-classification",
   "trigger-positive-release-finalization",
   "trigger-positive-release-note-surface",
+  "trigger-positive-mobile-test-build-notes",
   "trigger-positive-review",
   "trigger-negative-commit-message",
   "trigger-negative-component-review",
@@ -136,6 +138,9 @@ const TRIGGER_CASE_IDS = new Set([
 ]);
 
 const BEHAVIOR_CASE_IDS = new Set([
+  "behavior-test-build-finalizer-owns-notes",
+  "behavior-test-build-extend-existing-notes",
+  "behavior-play-test-build-full-and-compact-notes",
   "behavior-clone-sensitive-public-detail",
   "behavior-comprehensive-initial-backfill",
   "behavior-customer-visible-feature",
@@ -252,8 +257,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(73);
-    expect(new Set(ids).size).toBe(73);
+    expect(ids).toHaveLength(77);
+    expect(new Set(ids).size).toBe(77);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

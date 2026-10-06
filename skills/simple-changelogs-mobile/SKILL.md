@@ -1,6 +1,6 @@
 ---
 name: simple-changelogs-mobile
-description: Maintain changelogs and mobile release notes, including in-app notes and existing App Store or Google Play metadata. Update customer and developer changelogs and finalize mobile releases. Use when the repository selects the mobile-only Simple Changelogs distribution or installs it as its only changelog skill, not for web or CMS history.
+description: Maintain mobile changelogs, in-app notes, and App Store or Google Play metadata. Finalize mobile releases and prepare reusable What to Test instructions for TestFlight and Play test builds. Use when the repository selects the mobile-only Simple Changelogs distribution or installs it as its only changelog skill, not for web or CMS history.
 metadata:
   models: Claude Opus 5.5, Claude Fable 5.1
 ---
@@ -19,7 +19,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 20
+Current guidance version: 21
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -79,11 +79,17 @@ release flow, source of truth, or store boundary.
 | Stable majors and prerelease trains | `references/major-releases.md` |
 | Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Mobile/store destination scoping and long-form release notes | `references/release-note-surfaces.md` |
+| Finalizing a test build, TestFlight What to Test, Play testing-track copy, or extending an existing tester checklist | `references/testing-notes.md` |
 | Presentation and defect checks after an exact in-app surface is authorized | `references/surface-design.md` |
 | Final repository-native checks | `references/automation-verification.md` |
 | Repository-specific forks | `references/fork-maintenance.md` |
 
 ## Core workflow
+
+When preparing or finalizing a mobile test build, prepare its testing notes in
+the same task using `references/testing-notes.md`. The build finalizer owns the
+first draft; a later distributor reuses and refines it. Preparing these notes
+does not itself cut a public release or authorize a build, upload, or rollout.
 
 For release-bearing work (a release, a merge into a release-bearing target, a
 public deployment, or a delegated `prepare` or `verify`), copy steps 1–6 into
@@ -105,9 +111,16 @@ changelog edits skip the checklist.
    pass, returning to step 4 for a release-boundary failure and to step 3
    otherwise. Never tick a failed step.
 6. Hand off customer/developer decisions, store and in-app dispositions,
-   version alignment, checks, and any submission authority still needed.
+   version alignment, checks, and any submission authority still needed. For
+   test builds, name the saved checklist and platform-copy paths, exact artifact
+   scope, and whether remote notes were read back or remain prepared locally.
 
 ## Boundaries
+
+All new and edited release copy must avoid em dashes unless the user explicitly
+requests them. This applies to every destination. Repository house style cannot
+waive this rule; preserve untouched released history. See
+`references/entry-classification.md` for punctuation guidance.
 
 - Do not create or update public web release pages, web modals, CMS operator
   histories, or web navigation.

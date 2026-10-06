@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Example Catalog",
+    "version": "3.2.0",
+    "ios": {
+      "bundleIdentifier": "com.example.catalog"
+    },
+    "android": {
+      "package": "com.example.catalog"
+    }
+  }
+}

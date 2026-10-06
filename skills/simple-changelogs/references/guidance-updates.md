@@ -446,3 +446,30 @@ rewritten rather than having the character swapped. A repository's documented
 house style still takes precedence. Setup and update questions now present each
 choice as `**Choice (Recommended)**: consequence`, with the choices and their
 defaults unchanged. Released entries keep their wording; no backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="24" kinds="behavior" backfill="not-needed" summary="Mobile test builds now include saved reusable tester instructions, and production App Store and Google Play notes have explicit field, locale, length, and publication rules; new or edited notes use no em dashes unless explicitly requested." -->
+## Guidance 24
+
+The agent finalizing a mobile beta or test build now prepares practical tester
+instructions immediately and saves them with the exact build. Release owners
+can refine or append those notes; a new build receives its own record carrying
+forward relevant unresolved regression checks. TestFlight copy binds to the
+app/build/locale, while Android copy binds to package/versionCodes/track/language.
+The full checklist retains actions; compact Play copy describes changed flows.
+
+Production storefront guidance separately covers App Store What's New metadata
+for the exact app/version/platform/locale, localizable and required after the
+first version within 4,000 characters, and Play production-track release notes
+within 500 Unicode characters per language. Plain paragraphs or simple bullets
+are house style, not a vendor template. Tester steps are never promoted verbatim.
+
+New or edited release notes and changelog entries across every destination use
+no em dashes unless the user explicitly requests them. Repository house style
+does not override this rule. Rewrite the sentence with appropriate punctuation.
+
+Preparation remains separate from remote publication. Authorized writes need
+credentials, an editable destination in its current review state, and exact
+text/status readback. Current platform source tables and validation own limits.
+This update grants no build, upload, submission, promotion, or messaging
+authority. It asks no new policy questions, changes no saved settings, and
+rewrites no released history.

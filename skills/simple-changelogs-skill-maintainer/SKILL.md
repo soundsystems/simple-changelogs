@@ -22,7 +22,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 14
+Current guidance version: 15
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -117,6 +117,11 @@ skip the checklist.
    provenance, checks, and any publish authority still needed.
 
 ## Boundaries
+
+All new and edited release copy must avoid em dashes unless the user explicitly
+requests them. This applies to every destination. Repository house style cannot
+waive this rule; preserve untouched released history. See
+`references/entry-classification.md` for punctuation guidance.
 
 - Do not create product-app routes, modals, screens, CMS history, mobile/store
   notes, or app release metadata.
