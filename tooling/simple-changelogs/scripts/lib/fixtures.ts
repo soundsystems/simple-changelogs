@@ -20,7 +20,16 @@ const FIXTURE_SKILL_FILENAME = "SKILL.fixture.md";
 const WORKSPACE_SKILL_FILENAME = "SKILL.md";
 const PATH_SEPARATOR_PATTERN = /[\\/]/u;
 const ARRAY_INDEX_PATTERN = /^(?:0|[1-9]\d*)$/u;
+const WHITESPACE_RUN_PATTERN = /\s+/gu;
+const LINE_BREAK_PATTERN = /\r?\n/u;
+const LEADING_BLANK_LINES_PATTERN = /^(?:[ \t]*\n)+/u;
+const TRAILING_WHITESPACE_PATTERN = /[ \t\r\n]+$/u;
+const MARKDOWN_HEADING_PATTERN = /^(#{1,6})[ \t]/u;
+const MARKDOWN_FENCE_PATTERN = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u;
+const BLANK_PATTERN = /^[ \t]*$/u;
 const DETERMINISTIC_GIT_DATE = "2000-01-01T00:00:00+00:00";
+const FIXTURE_GIT_NAME = "Simple Changelogs Eval";
+const FIXTURE_GIT_EMAIL = "eval@simple-changelogs.invalid";
 const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 const MAX_COMMAND_TIMEOUT_MS = 2_147_483_647;
 const OUTPUT_DRAIN_GRACE_MS = 250;
@@ -28,6 +37,9 @@ const PROCESS_EXIT_GRACE_MS = 1000;
 const USE_POSIX_PROCESS_GROUP = process.platform !== "win32";
 const NULL_DEVICE = process.platform === "win32" ? "NUL" : "/dev/null";
 const ownedWorkspaces = new Map<string, { device: number; inode: number }>();
+// Baseline commit per initialized workspace. Change assertions compare with it,
+// so a change the agent commits still counts as a change.
+const baselineCommits = new Map<string, string>();
 
 const compareText = (left: string, right: string): number => {
   if (left < right) {
@@ -348,6 +360,7 @@ const createGitEnvironment = (
       [
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
         "GIT_COMMON_DIR",
+        "GIT_DEFAULT_HASH",
         "GIT_DIR",
         "GIT_INDEX_FILE",
         "GIT_NAMESPACE",
@@ -422,12 +435,8 @@ export const initializeFixtureGit = async (
   workspace: string
 ): Promise<string> => {
   await runGit(workspace, ["init", "--initial-branch=main", "--template="]);
-  await runGit(workspace, ["config", "user.name", "Simple Changelogs Eval"]);
-  await runGit(workspace, [
-    "config",
-    "user.email",
-    "eval@simple-changelogs.invalid",
-  ]);
+  await runGit(workspace, ["config", "user.name", FIXTURE_GIT_NAME]);
+  await runGit(workspace, ["config", "user.email", FIXTURE_GIT_EMAIL]);
   await runGit(workspace, ["add", "--all"]);
   await runGit(
     workspace,
@@ -442,12 +451,20 @@ export const initializeFixtureGit = async (
       "-m",
       "eval fixture baseline",
     ],
+    // Identity variables override Git config, so pin them with the dates to
+    // keep the baseline commit, and any case that asserts it, deterministic.
     {
       GIT_AUTHOR_DATE: DETERMINISTIC_GIT_DATE,
+      GIT_AUTHOR_EMAIL: FIXTURE_GIT_EMAIL,
+      GIT_AUTHOR_NAME: FIXTURE_GIT_NAME,
       GIT_COMMITTER_DATE: DETERMINISTIC_GIT_DATE,
+      GIT_COMMITTER_EMAIL: FIXTURE_GIT_EMAIL,
+      GIT_COMMITTER_NAME: FIXTURE_GIT_NAME,
     }
   );
-  return runGit(workspace, ["rev-parse", "HEAD"]);
+  const baseline = await runGit(workspace, ["rev-parse", "HEAD"]);
+  baselineCommits.set(workspace, baseline);
+  return baseline;
 };
 
 const safeWorkspacePath = async (
@@ -505,7 +522,37 @@ const safeWorkspacePath = async (
   return { path: current, relative: segments.join("/") };
 };
 
+const gitPathList = async (
+  workspace: string,
+  args: string[]
+): Promise<string[]> => {
+  const result = await runCommand(["git", ...args], workspace, {
+    env: createGitEnvironment(),
+  });
+  if (result.timedOut || result.exitCode !== 0) {
+    throw new Error(`git ${args[0]} failed: ${result.stderr.trim()}`);
+  }
+  return result.stdout.split("\0").filter((path) => path.length > 0);
+};
+
 const changedPaths = async (workspace: string): Promise<string[]> => {
+  const baseline = baselineCommits.get(workspace);
+  if (baseline) {
+    // Working tree and index both count, so an edit that is staged and then
+    // undone only in the working tree still shows as a change.
+    const diff = ["diff", "--name-only", "--no-renames", "-z"];
+    const lists = await Promise.all([
+      gitPathList(workspace, [...diff, baseline, "--"]),
+      gitPathList(workspace, [...diff, "--cached", baseline, "--"]),
+      gitPathList(workspace, [
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+        "-z",
+      ]),
+    ]);
+    return [...new Set(lists.flat())].sort(compareText);
+  }
   const result = await runCommand(
     ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
     workspace,
@@ -827,11 +874,87 @@ const readAssertionFile = async (
   }
 };
 
+// Joins the bodies of every Markdown section whose heading line (including its
+// leading #s) matches `heading`. A section runs to the next heading of the same
+// or a higher level; headings inside fenced code are ignored, and a fence
+// closes only on the same character repeated at least as many times with
+// nothing but spaces or tabs after it, as in CommonMark.
+const markdownSections = (text: string, heading: RegExp): string[] => {
+  const sections: string[][] = [];
+  let current: string[] | undefined;
+  let level = 0;
+  let fence: string | undefined;
+  for (const line of text.split(LINE_BREAK_PATTERN)) {
+    const hashes = fence ? undefined : MARKDOWN_HEADING_PATTERN.exec(line)?.[1];
+    const [, marker, rest = ""] = MARKDOWN_FENCE_PATTERN.exec(line) ?? [];
+    if (marker && !fence) {
+      fence = marker;
+    } else if (
+      marker &&
+      fence &&
+      marker[0] === fence[0] &&
+      marker.length >= fence.length &&
+      BLANK_PATTERN.test(rest)
+    ) {
+      fence = undefined;
+    }
+    if (current && hashes && hashes.length <= level) {
+      current = undefined;
+    }
+    if (current) {
+      current.push(line);
+    } else if (hashes && heading.test(line)) {
+      current = [];
+      level = hashes.length;
+      sections.push(current);
+    }
+  }
+  // Drop surrounding blank lines and trailing ASCII whitespace but keep the
+  // first line's indentation, which list structure depends on.
+  return sections.map((lines) =>
+    lines
+      .join("\n")
+      .replace(LEADING_BLANK_LINES_PATTERN, "")
+      .replace(TRAILING_WHITESPACE_PATTERN, "")
+  );
+};
+
+// A text target of `path#heading` evaluates the bodies of the matching Markdown
+// sections, joined by blank lines, instead of the whole file.
+const readAssertionText = async (
+  assertion: EvalAssertion,
+  context: AssertionContext
+): Promise<{ error: AssertionResult } | { text: string }> => {
+  const separator = assertion.target?.indexOf("#") ?? -1;
+  if (!assertion.target || separator < 0) {
+    return readAssertionFile(assertion, context);
+  }
+  const path = assertion.target.slice(0, separator);
+  const source = assertion.target.slice(separator + 1);
+  const file = await readAssertionFile({ ...assertion, target: path }, context);
+  if ("error" in file) {
+    return { error: fail(assertion, file.error.message) };
+  }
+  let heading: RegExp;
+  try {
+    heading = new RegExp(source, "u");
+  } catch {
+    return { error: fail(assertion, "Invalid section heading pattern") };
+  }
+  const sections = markdownSections(file.text, heading);
+  if (source.length === 0 || sections.length === 0) {
+    return {
+      error: fail(assertion, `No section heading matches ${source} in ${path}`),
+    };
+  }
+  return { text: sections.join("\n\n") };
+};
+
 const evaluateTextAssertion = async (
   assertion: EvalAssertion,
   context: AssertionContext
 ): Promise<AssertionResult> => {
-  const file = await readAssertionFile(assertion, context);
+  const file = await readAssertionText(assertion, context);
   if ("error" in file) {
     return file.error;
   }
@@ -845,6 +968,42 @@ const evaluateTextAssertion = async (
   return matched === expectedMatch
     ? pass(assertion, "Text pattern state matched")
     : fail(assertion, "Text pattern state did not match");
+};
+
+const normalizeWhitespace = (text: string): string =>
+  text.trim().replace(WHITESPACE_RUN_PATTERN, " ");
+
+// Passes when the target contains the expected file's text, ignoring line
+// wrapping and surrounding whitespace, so a saved record can be checked
+// against the copy a destination actually holds.
+const evaluateIncludesFileAssertion = async (
+  assertion: EvalAssertion,
+  context: AssertionContext
+): Promise<AssertionResult> => {
+  if (typeof assertion.expected !== "string") {
+    return fail(assertion, "text.includesFile requires an expected path");
+  }
+  const container = await readAssertionText(assertion, context);
+  if ("error" in container) {
+    return container.error;
+  }
+  const source = await readAssertionFile(
+    { ...assertion, target: assertion.expected },
+    context
+  );
+  if ("error" in source) {
+    return fail(assertion, source.error.message);
+  }
+  const needle = normalizeWhitespace(source.text);
+  if (needle.length === 0) {
+    return fail(assertion, `${assertion.expected} is empty`);
+  }
+  return normalizeWhitespace(container.text).includes(needle)
+    ? pass(assertion, `${assertion.target} includes ${assertion.expected}`)
+    : fail(
+        assertion,
+        `${assertion.target} does not include ${assertion.expected}`
+      );
 };
 
 const evaluateJsonAssertion = async (
@@ -1055,6 +1214,9 @@ const evaluateAssertion = (
   if (assertion.kind === "text.match" || assertion.kind === "text.notMatch") {
     return evaluateTextAssertion(assertion, context);
   }
+  if (assertion.kind === "text.includesFile") {
+    return evaluateIncludesFileAssertion(assertion, context);
+  }
   if (assertion.kind === "json.path") {
     return evaluateJsonAssertion(assertion, context);
   }
@@ -1107,6 +1269,7 @@ export const cleanupFixtureWorkspace = async (
     const code = isRecord(error) ? error.code : undefined;
     if (code === "ENOENT") {
       ownedWorkspaces.delete(workspace);
+      baselineCommits.delete(workspace);
       return;
     }
     throw new Error(`Unable to inspect fixture workspace ${workspace}`, {
@@ -1136,4 +1299,5 @@ export const cleanupFixtureWorkspace = async (
     await rm(workspace, { force: true, recursive: true });
   }
   ownedWorkspaces.delete(workspace);
+  baselineCommits.delete(workspace);
 };

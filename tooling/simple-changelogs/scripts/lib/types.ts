@@ -112,6 +112,7 @@ export const ASSERTION_KINDS = [
   "report.status",
   "report.verification",
   "report.versionMap",
+  "text.includesFile",
   "text.match",
   "text.notMatch",
 ] as const;
