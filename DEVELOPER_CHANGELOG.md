@@ -2,6 +2,74 @@
 
 ## Unreleased
 
+- Post-merge audit fixes for the mobile testing notes amend guidance 24 (full)
+  and 21 (mobile) in place. The checkpoints stay: that guidance merged earlier
+  the same day, is still Unreleased, and gains no question, setting, or
+  backfill, as with the earlier same-day amendment of an unreleased entry.
+  - `references/testing-notes.md` (byte-identical in full and mobile): Apple's
+    TestFlight help and the App Store Connect `BetaBuildLocalization` reference
+    state no numeric What to Test (`whatsNew`) limit, so none is asserted. Each
+    locale is checked against its destination's enforced limit (a repository
+    or upload-tool rule, App Store Connect validation, or an authorized
+    write's result); over-limit copy is trimmed with the full checklist kept,
+    and an unconfirmed limit is reported. External testing requires What to
+    Test for the selected build (Apple's "Invite external testers"), so an
+    external build is never handed off without it.
+  - Records add artifact kind to their identity and are refined only when no
+    recorded identity value differs. A different artifact whose path is taken
+    gets the next unused build suffix (`3.2.0-145-2`) and never overwrites the
+    existing record.
+  - `automation-verification.md` and the guidance 24/21 entries in
+    `guidance-updates.md` carry the same rules; `SOURCES.md` cites the
+    external-tester page and the missing numeric limit. The new prose was
+    tightened to keep full Markdown under its guidance budget (229,364 of
+    229,376 bytes) rather than raising the cap.
+  - Evals: `behavior-test-build-finalizer-owns-notes` now asks only for
+    ordinary build finalization, and
+    `trigger-positive-mobile-build-finalization` checks discovery without a
+    notes request. The testing-note cases assert mechanics only: record paths
+    and the collision suffix, recorded identity (app, version, build, artifact
+    kind), the fixture's actual baseline HEAD (`2a601e8`) instead of any
+    40-hex string, separate non-empty full checklist and TestFlight sections
+    (one heading cannot serve both), TestFlight copy within the fixture's
+    1,500-character upload limit, a carried-forward check that names build 144
+    and larger text, each changed flow named in the checklist, a non-empty
+    Status line, Play copy within 500 characters and free of a short list of
+    solicitation phrases, and no em dash. The new `mobile-test-build-fallback`
+    fixture backs `behavior-test-build-artifact-collision` (suffixed record,
+    prior simulator record and remote state untouched) and
+    `behavior-test-build-external-publication-readback`: publish and read back
+    through a synthetic script that trims the copy and counts its characters
+    the same way under any locale, no later unread publish, no publish outside
+    en-US build 146, a saved TestFlight section that includes the published
+    text, fr-FR untouched, and none of the fixture's internal-only markers
+    (internal URL, QA role names, account file) in the record or published
+    copy. Whether steps, expected outcomes, and status wording are good is
+    left to model-graded or manual review, as `SPEC.md` and `EVAL.md` now
+    state. `testing-notes-cases.check.ts` pins both fixture baselines and runs
+    each case's assertions against usable and failing outputs. The manifest
+    grows from 77 to 80 cases, and the `mobile-test-build` README now names
+    `apps/mobile/src/screens.ts` and the Status-line convention.
+  - Eval harness: a `text.includesFile` assertion passes when the target
+    contains another workspace file's text, ignoring wrapping and surrounding
+    whitespace. A text target of `path#pattern` evaluates only the Markdown
+    sections whose heading line matches (without surrounding blank lines,
+    indentation kept), through the next heading of the same or a higher level
+    and ignoring headings in fenced code (closed only by a bare matching
+    delimiter). Change assertions (`file.changed`, `file.unchanged`,
+    `repo.state`, and `git.changedPaths`) now compare the working tree and
+    index with the runner's baseline commit instead of `git status`, so a
+    change the agent commits or stages still counts. Schema, validator,
+    evaluator, `EVAL.md`, and `fixtures.check.ts` change together. Fixture
+    baselines now pin author and committer names and emails alongside the
+    dates and ignore an inherited `GIT_DEFAULT_HASH`, because those
+    environment variables override Git config and would change the baseline
+    commit that cases assert.
+  - `distributions.check.ts` fails when the full and mobile
+    `references/testing-notes.md` copies differ; nothing enforced their byte
+    identity before.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-06T13:29:30-05:00" -->
+
 - Full and mobile guidance share a portable `references/testing-notes.md`:
   the build-finalizing agent owns immediate checklist preparation and durable
   exact-build persistence using established repository paths, with a documented
