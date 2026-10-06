@@ -4,7 +4,7 @@
   "defaultFinish": "ship",
   "guidance": {
     "disposition": "accepted",
-    "version": 25
+    "version": 26
   },
   "handoffTiming": "automatic",
   "productionDeploy": "ask",
