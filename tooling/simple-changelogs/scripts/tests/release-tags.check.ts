@@ -693,6 +693,249 @@ describe("release-tag detection", () => {
     );
   });
 
+  test("release trains add a root product and published packages, never a workspace root or private library", async () => {
+    const product = await gitRepository();
+    await Promise.all([
+      writeJson(product, "package.json", {
+        dependencies: { next: "16.0.0" },
+        name: "lantern",
+        private: true,
+        version: "1.4.0",
+      }),
+      writeJson(product, "apps/mobile/app.json", {
+        expo: { version: "2.0.0" },
+      }),
+      writeJson(product, "packages/sdk/package.json", {
+        name: "@acme/sdk",
+        version: "1.2.0",
+      }),
+      writeJson(product, "packages/ui/package.json", {
+        name: "@acme/ui",
+        private: true,
+        version: "0.1.0",
+      }),
+      writeJson(product, "packages/config/package.json", { name: "config" }),
+    ]);
+    const workspace = await gitRepository();
+    await Promise.all([
+      writeJson(workspace, "package.json", {
+        name: "acme",
+        private: true,
+        version: "0.0.0",
+        workspaces: ["packages/*"],
+      }),
+      writeJson(workspace, "packages/sdk/package.json", {
+        name: "@acme/sdk",
+        version: "1.2.0",
+      }),
+      writeJson(workspace, "packages/cli/package.json", { version: "2.0.0" }),
+    ]);
+    const pnpm = await gitRepository();
+    await Promise.all([
+      writeJson(pnpm, "package.json", { name: "acme", version: "0.0.0" }),
+      writeText(pnpm, "pnpm-workspace.yaml", "packages:\n  - packages/*\n"),
+      writeJson(pnpm, "packages/sdk/package.json", {
+        name: "@acme/sdk",
+        version: "1.2.0",
+      }),
+    ]);
+
+    const [full, web, workspaceTags, pnpmTags] = await Promise.all([
+      inspect(product),
+      inspect(product, "web"),
+      inspect(workspace, "web"),
+      inspect(pnpm, "web"),
+    ]);
+    const sorted = (trains?: string[]) => [...(trains ?? [])].sort();
+
+    expect(sorted(full.releaseTags?.trains)).toEqual([
+      "@acme/sdk",
+      "lantern",
+      "mobile",
+    ]);
+    expect(full.releaseTags?.recommended).toEqual({
+      "@acme/sdk": "@acme/sdk@{version}",
+      lantern: "lantern@{version}",
+      mobile: "mobile@{version}",
+    });
+    // Shared version lines still relate apps only.
+    expect(full.inventory.versionTrains).toEqual([
+      { path: "apps/mobile/app.json", train: "mobile", version: "2.0.0" },
+    ]);
+    expect(web.releaseTags?.trains).toEqual(full.releaseTags?.trains);
+    expect(sorted(workspaceTags.releaseTags?.trains)).toEqual([
+      "@acme/sdk",
+      "cli",
+    ]);
+    expect(pnpmTags.releaseTags?.trains).toEqual(["@acme/sdk"]);
+    expect(pnpmTags.releaseTags?.recommended).toBe("v{version}");
+  });
+
+  test("a root product beside root app owners stays one train", async () => {
+    const expo = await gitRepository();
+    await Promise.all([
+      writeJson(expo, "package.json", { name: "trail", version: "3.0.0" }),
+      writeJson(expo, "app.json", { expo: { version: "3.0.0" } }),
+    ]);
+    const native = await gitRepository();
+    await Promise.all([
+      writeJson(native, "package.json", { name: "trail", version: "3.0.0" }),
+      writeText(
+        native,
+        "android/app/build.gradle",
+        'android {\n  defaultConfig {\n    versionName "3.0.0"\n  }\n}\n'
+      ),
+    ]);
+    const alone = await gitRepository();
+    await writeJson(alone, "package.json", {
+      name: "lantern",
+      version: "1.0.0",
+    });
+
+    const [expoTags, nativeTags, aloneTags] = await Promise.all(
+      [expo, native, alone].map(
+        async (repo) => (await inspect(repo)).releaseTags
+      )
+    );
+
+    expect(expoTags?.trains).toEqual(["mobile"]);
+    expect(nativeTags?.trains).toEqual(["android"]);
+    expect(aloneTags?.trains).toEqual(["lantern"]);
+    for (const releaseTags of [expoTags, nativeTags, aloneTags]) {
+      expect(releaseTags?.recommended).toBe("v{version}");
+    }
+  });
+
+  test("a root product's own history is the root changelog, less other trains' headings", async () => {
+    // Lantern released only 1.0.0; Mobile 2.0.0 is not Lantern's release, so
+    // Lantern's one tag is still its convention.
+    const repo = await gitRepository(["lantern-release-1.0.0", "mobile-2.0.0"]);
+    await Promise.all([
+      writeJson(repo, "package.json", { name: "lantern", version: "1.2.0" }),
+      writeJson(repo, "apps/mobile/app.json", { expo: { version: "2.0.0" } }),
+      writeText(
+        repo,
+        "CHANGELOG.md",
+        changelog("Mobile 2.0.0 - 2026-09-10", "1.0.0 - 2026-09-01")
+      ),
+    ]);
+
+    expect((await inspect(repo)).releaseTags?.recommended).toEqual({
+      lantern: "lantern-release-{version}",
+      mobile: "mobile-{version}",
+    });
+  });
+
+  test("shared version lines keep one tag per train", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.0.0" }),
+      writeJson(repo, "apps/mobile/app.json", { expo: { version: "1.0.0" } }),
+      writeJson(repo, "packages/sdk/package.json", {
+        name: "@acme/sdk",
+        version: "4.0.0",
+      }),
+    ]);
+
+    const inspection = await inspect(repo);
+    const result = await onboard(repo, {
+      sharedVersionLines: [{ mode: "catch-up", trains: ["mobile", "web"] }],
+    });
+    const policy = await readJson(join(repo, ".simple-changelogs.json"));
+
+    expect(inspection.unresolvedQuestions).toContain("shared-version-lines");
+    expect(
+      inspection.inventory.versionTrains?.map(({ train }) => train)
+    ).toEqual(["mobile", "web"]);
+    expect(result.status).toBe("configured");
+    expect(policy.sharedVersionLines).toEqual([
+      { mode: "catch-up", trains: ["mobile", "web"] },
+    ]);
+    expect(policy.releaseTags).toEqual({
+      "@acme/sdk": "@acme/sdk@{version}",
+      mobile: "mobile@{version}",
+      web: "web@{version}",
+    });
+  });
+
+  test("a recommended setup never stores a setting classify refuses", async () => {
+    type Layout = Record<string, unknown>;
+    const layouts: [Layout, Partial<ApplyOptions>][] = [
+      [{ "package.json": { name: "lantern", version: "1.0.0" } }, {}],
+      [
+        {
+          "apps/mobile/app.json": { expo: { version: "2.0.0" } },
+          "package.json": { name: "lantern", version: "1.0.0" },
+        },
+        {},
+      ],
+      [
+        {
+          "package.json": { private: true, workspaces: ["packages/*"] },
+          "packages/cli/package.json": { name: "acme-cli", version: "1.0.0" },
+          "packages/sdk/package.json": { name: "@acme/sdk", version: "1.0.0" },
+        },
+        {},
+      ],
+      [
+        {
+          "apps/mobile/app.json": { expo: { version: "1.0.0" } },
+          "apps/web/package.json": { version: "1.0.0" },
+        },
+        { crossSurfaceVersioning: "shared" },
+      ],
+      [
+        {
+          "apps/mobile/app.json": { expo: { version: "1.0.0" } },
+          "apps/web/package.json": { version: "1.0.0" },
+        },
+        {
+          sharedVersionLines: [
+            { mode: "bump-shared", trains: ["mobile", "web"] },
+          ],
+        },
+      ],
+    ];
+    const outcomes = await Promise.all(
+      layouts.map(async ([files, options]) => {
+        const repo = await gitRepository();
+        await Promise.all(
+          Object.entries(files).map(([path, value]) =>
+            writeJson(repo, path, value)
+          )
+        );
+        const result = await onboard(repo, options);
+        const policy = await readJson(join(repo, ".simple-changelogs.json"));
+        const { releaseTags } = await inspect(repo);
+        // Classify counts the trains inspection reports, folded to one when
+        // the surfaces are shared.
+        const trains =
+          policy.crossSurfaceVersioning === "shared"
+            ? ["web"]
+            : (releaseTags?.trains ?? []);
+        return {
+          decisions: (trains.length > 0 ? trains : ["default"]).map((train) =>
+            releaseTagFor({
+              displayName: "Acme",
+              publicTrains: trains.length,
+              setting: policy.releaseTags as ReleaseTagsSetting,
+              train,
+              version: "1.0.0",
+            })
+          ),
+          status: result.status,
+        };
+      })
+    );
+
+    for (const { decisions, status } of outcomes) {
+      expect(status).toBe("configured");
+      for (const decision of decisions) {
+        expect(Object.hasOwn(decision, "reasonCode")).toBe(false);
+      }
+    }
+  });
+
   test("recommends none when release tooling already creates tags", async () => {
     const cases: [string, Record<string, string>][] = [
       [

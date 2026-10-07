@@ -176,6 +176,8 @@ const MOBILE_APP_PATH = /^(?:apps?\/mobile|ios|android)(?:\/|$)/u;
 const STORE_METADATA_PATH =
   /(?:^|\/)(?:fastlane\/metadata|metadata\/.+(?:changelogs?|release.?notes?)|eas\.json$|app\.json$|app\.config\.(?:cjs|js|mjs|ts)$)/u;
 const WORKSPACE_APP_PATH = /(?:^|\/)apps\/([^/]+)(?:\/|$)/u;
+const WORKSPACE_PACKAGE_PATH = /^packages\/([^/]+)\//u;
+const WORKSPACE_MEMBER_DIRECTORY = /^(?:apps|packages)\/[^/]+/u;
 const COMPONENT_CONFIG_FILE = "components.json";
 const SWIFT_SOURCE_PATH = /\.swift$/u;
 const SWIFT_UI_CONTENT = /\bSwiftUI\b/u;
@@ -1803,16 +1805,45 @@ const collectFileEvidence = (
 };
 
 // Release-train version owners; a "$(...)" build variable reads as null.
+// A version owner, and whether only release tags count it: a root product
+// that is not a workspace root, or a published packages/* package, releases
+// on its own but never joins a shared version line.
+interface VersionOwner extends VersionTrain {
+  releaseOnly: boolean;
+}
+
+// The train a root or packages/* package.json releases as, or undefined when
+// it releases nothing: a workspace root, or a private or unversioned library.
+const releaseOnlyTrainFor = (
+  lower: string,
+  manifest: Record<string, unknown>
+): string | undefined => {
+  const member = WORKSPACE_PACKAGE_PATH.exec(lower)?.[1];
+  const ownName =
+    typeof manifest.name === "string" && manifest.name ? manifest.name : null;
+  if (dirname(lower) === ".") {
+    return Object.hasOwn(manifest, "workspaces")
+      ? undefined
+      : (ownName ?? "root");
+  }
+  return member &&
+    dirname(lower) === `packages/${member}` &&
+    manifest.private !== true
+    ? (ownName ?? member)
+    : undefined;
+};
+
 const versionOwnerFor = (
   path: string,
   content: string
-): VersionTrain | undefined => {
+): VersionOwner | undefined => {
   const lower = path.toLowerCase();
   const name = basename(lower);
   const app = WORKSPACE_APP_PATH.exec(lower)?.[1];
   const native = NATIVE_OWNER.exec(lower)?.[1];
   let train = native;
   let raw: unknown;
+  let releaseOnly = false;
   try {
     if (native) {
       raw = (name === "info.plist" ? PLIST_VERSION : GRADLE_VERSION).exec(
@@ -1824,6 +1855,13 @@ const versionOwnerFor = (
     } else if (name === "package.json" && dirname(lower) === `apps/${app}`) {
       train = app;
       raw = JSON.parse(content).version;
+    } else if (name === "package.json") {
+      const manifest = JSON.parse(content);
+      train = isRecord(manifest)
+        ? releaseOnlyTrainFor(lower, manifest)
+        : undefined;
+      raw = manifest?.version;
+      releaseOnly = true;
     } else if (name === "tauri.conf.json") {
       const config = JSON.parse(content);
       train = "desktop";
@@ -1835,25 +1873,41 @@ const versionOwnerFor = (
   if (!train || typeof raw !== "string") {
     return;
   }
-  return { path, train, version: raw.includes("$") ? null : raw };
+  return {
+    path,
+    releaseOnly,
+    train,
+    version: raw.includes("$") ? null : raw,
+  };
 };
 
 const ownerPrefix = (path: string): string =>
   dirname(path) === "." ? "" : `${dirname(path)}/`;
 
-// package.json beside another owner, or native files in an Expo app, mirror.
-const versionTrainsFrom = (owners: VersionTrain[]): VersionTrain[] => {
+// The apps/* or packages/* member a path sits in, or "" at the root.
+const memberOf = (path: string): string =>
+  WORKSPACE_MEMBER_DIRECTORY.exec(path.toLowerCase())?.[0] ?? "";
+
+// package.json beside another owner in its own member, or native files in an
+// Expo app, mirror.
+const versionTrainsFrom = (owners: VersionOwner[]): VersionTrain[] => {
   const trains: VersionTrain[] = [];
   for (const owner of owners) {
     const mirror = owners.some((other) =>
       owner.path.endsWith("package.json")
-        ? other !== owner && other.path.startsWith(ownerPrefix(owner.path))
+        ? other !== owner &&
+          other.path.startsWith(ownerPrefix(owner.path)) &&
+          memberOf(other.path) === memberOf(owner.path)
         : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
           other.path.endsWith("app.json") &&
           owner.path.startsWith(ownerPrefix(other.path))
     );
     if (!(mirror || trains.some(({ train }) => train === owner.train))) {
-      trains.push(owner);
+      trains.push({
+        path: owner.path,
+        train: owner.train,
+        version: owner.version,
+      });
     }
   }
   return trains;
@@ -1975,10 +2029,13 @@ const walkOrder = (left: string, right: string): number => {
 };
 
 // Probes known owner spots in the root, apps/*, and packages/*, past the
-// capped walk; only apps/*/package.json owns a version, as before.
-const versionTrainsIn = async (
+// capped walk. App trains, where only apps/*/package.json owns a version, are
+// what shared version lines relate; release trains add a root product that is
+// not a workspace root and each published packages/* package, and are what
+// release tags name, at setup and at classify.
+const versionOwnersIn = async (
   root: string
-): Promise<Pick<Inventory, "versionTrains">> => {
+): Promise<{ apps: VersionTrain[]; releases: VersionTrain[] }> => {
   const packages = await Promise.all(
     WORKSPACE_PARENTS.map(async (parent) =>
       (await probeEntries(root, parent)).flatMap((entry) =>
@@ -2001,8 +2058,17 @@ const versionTrainsIn = async (
         versionOwnerFor(path, await readSmallText(join(root, path)))
       )
   );
+  const found = owners.flatMap((owner) => owner ?? []);
+  // A pnpm workspace root is a container, not a product.
+  const workspaceRoot = existsSync(join(root, "pnpm-workspace.yaml"));
   return {
-    versionTrains: versionTrainsFrom(owners.flatMap((owner) => owner ?? [])),
+    apps: versionTrainsFrom(found.filter(({ releaseOnly }) => !releaseOnly)),
+    releases: versionTrainsFrom(
+      found.filter(
+        ({ path, releaseOnly }) =>
+          !(workspaceRoot && releaseOnly && path === "package.json")
+      )
+    ),
   };
 };
 
@@ -2352,7 +2418,7 @@ const tagTriggeredCi = async (
 };
 
 // Versions each release train has released: its own changelog's newest
-// headings and root headings that name the train.
+// headings and the root headings that belong to it.
 // The train a root heading names: the most specific train name it contains
 // as a word, so `web-admin 2.0.0` never counts toward `web`.
 const headingTrain = (text: string, names: string[]): string | undefined =>
@@ -2382,9 +2448,15 @@ const trainVersions = async (
       )
     )
   ).flat();
-  const named = rootHeadings.filter(
-    ({ text }) => headingTrain(text, names) === train.train
-  );
+  // A root product's own history is the root changelog, less headings that
+  // name another train; any other train counts root headings naming it.
+  const rootLevel = dirname(train.path) === ".";
+  const named = rootHeadings.filter(({ text }) => {
+    const owner = headingTrain(text, names);
+    return rootLevel
+      ? owner === undefined || owner === train.train
+      : owner === train.train;
+  });
   const released = [
     ...new Set(
       [...own, ...named].flatMap(({ version }) => (version ? [version] : []))
@@ -2464,16 +2536,6 @@ const defaultTrainTemplates = (
   );
   return releaseTagsErrors(map).length === 0 ? map : null;
 };
-
-// Full inventories already list version trains; every other versioned
-// distribution probes the same owners for release tags only.
-const detectedTrains = async (
-  installed: Distribution | "cms",
-  root: string,
-  inventory: Inventory
-): Promise<VersionTrain[]> =>
-  (installed === "full" ? inventory : await versionTrainsIn(root))
-    .versionTrains ?? [];
 
 // Trains that `crossSurfaceVersioning` "shared" mirrors are one release
 // train, so they take one tag.
@@ -2596,15 +2658,14 @@ const inspectReleaseTags = async (
 const inspectInventory = async (
   root: string,
   dependencies: string[],
-  withTrains = false
+  versionTrains?: VersionTrain[]
 ): Promise<Inventory> => {
   const publicPath = join(root, "CHANGELOG.md");
   const developerPath = join(root, "DEVELOPER_CHANGELOG.md");
-  const [publicReleases, developerReleases, scan, trains] = await Promise.all([
+  const [publicReleases, developerReleases, scan] = await Promise.all([
     countReleasedHeadings(publicPath),
     countReleasedHeadings(developerPath),
     walkTextFiles(root),
-    withTrains && versionTrainsIn(root),
   ]);
   const { files } = scan;
   const developerHistoryEvidence: string[] = [];
@@ -2770,7 +2831,7 @@ const inspectInventory = async (
       workspace: applicabilityFor(surfaceStructureEvidence.workspace),
     },
     surfaceStructureEvidence,
-    ...trains,
+    ...(versionTrains && { versionTrains }),
   };
 };
 
@@ -3203,6 +3264,13 @@ export const inspectRepository = async (
   const installed = options.distribution ?? distributionFromInstall();
   const taskMode = options.taskMode ?? "write";
   const dependencies = await readPackageDependencies(root);
+  // Only full inventories list app trains; every versioned distribution
+  // names release tags from the release trains. CMS history has no release,
+  // so it has neither.
+  const owners =
+    installed === "cms"
+      ? { apps: undefined, releases: null }
+      : await versionOwnersIn(root);
   const [policy, cmsPolicy, globalPreferences, inventory, capabilities] =
     await Promise.all([
       readState(join(root, POLICY_FILENAME), validateRepoPolicy),
@@ -3211,7 +3279,11 @@ export const inspectRepository = async (
         resolveGlobalPreferencesPath(options.configDirectory),
         validateGlobalPreferences
       ),
-      inspectInventory(root, dependencies, installed === "full"),
+      inspectInventory(
+        root,
+        dependencies,
+        installed === "full" ? owners.apps : undefined
+      ),
       capabilitiesFor(installed),
     ]);
   const projectEvidence = inspectProjectEvidence(root, inventory, dependencies);
@@ -3226,15 +3298,9 @@ export const inspectRepository = async (
   const hasMalformedState =
     relevantPolicy.state === "malformed" ||
     (installed === "web-cms" && cmsPolicy.state === "malformed");
-  // CMS history has no release, so it has no tag to name.
   const releaseTags =
-    installed === "cms"
-      ? null
-      : await inspectReleaseTags(
-          root,
-          await detectedTrains(installed, root, inventory),
-          policy.value
-        );
+    owners.releases &&
+    (await inspectReleaseTags(root, owners.releases, policy.value));
   const recommendation = recommendationFor(
     installed,
     inventory,
@@ -3639,8 +3705,7 @@ const curationBudgetSelectionFrom = (
 // recommendation, recomputed when this setup records the trains as one.
 const recommendedReleaseTags = async (
   options: ApplyOptions,
-  inspect: SetupResult,
-  installed: Distribution | "cms"
+  inspect: SetupResult
 ): Promise<ReleaseTagsSetting | undefined> => {
   if (!inspect.releaseTags) {
     return;
@@ -3655,7 +3720,9 @@ const recommendedReleaseTags = async (
   return (
     await inspectReleaseTags(
       inspect.repository,
-      await detectedTrains(installed, inspect.repository, inspect.inventory),
+      (
+        await versionOwnersIn(inspect.repository)
+      ).releases,
       inspect.policy?.value,
       options.crossSurfaceVersioning
     )
@@ -4798,7 +4865,7 @@ export const applySetup = async (
     options,
     inspect,
     installed,
-    await recommendedReleaseTags(options, inspect, installed)
+    await recommendedReleaseTags(options, inspect)
   );
   const errors = selectionErrors(options, inspect, selection, installed);
   if (errors.length > 0) {
