@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-10-07
+
+- **Releases**
+  - Simple Changelogs releases now have version numbers, starting with 0.1.0.
+    One release covers every distribution and is tagged with its version, such
+    as `v0.1.0`, so you can install or report an exact release. Guidance
+    numbers stay separate behavior checkpoints for each distribution.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-06T23:49:02-05:00" -->
+
 - **Mobile testing notes**
   - TestFlight What to Test copy is checked against the limit its destination
     enforces before it is called ready. Longer instructions stay in the full

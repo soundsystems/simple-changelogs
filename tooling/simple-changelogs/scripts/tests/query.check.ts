@@ -62,9 +62,21 @@ describe("changelog-parse on this repository's real histories", () => {
     expect(parsed.unrecognizedHeadings).toHaveLength(0);
     expect(parsed.malformedSignatures).toHaveLength(0);
     expect(parsed.releases.length).toBeGreaterThanOrEqual(10);
-    const pending = nth(parsed.releases, 0);
-    expect(pending.unreleased).toBe(true);
-    expect(pending.entries.length).toBeGreaterThan(0);
+    // Unreleased leads even when a release cut has just emptied it.
+    const [pending, ...released] = parsed.releases;
+    expect(pending?.unreleased).toBe(true);
+    expect(released.every((release) => release.entries.length > 0)).toBe(true);
+    // Version headings start at 0.1.0; earlier dated headings stay as written.
+    expect(
+      released.some(
+        (release) => release.version !== null && release.date !== null
+      )
+    ).toBe(true);
+    expect(
+      released.some(
+        (release) => release.version === null && release.date !== null
+      )
+    ).toBe(true);
   });
 
   test("recognizes the legacy signature dialect in the developer history", async () => {
@@ -130,7 +142,7 @@ describe("query CLI against this repository", () => {
     expect(payload.releases.every((row) => row.entryCount >= 0)).toBe(true);
   });
 
-  test("show unreleased returns the pending customer entries", async () => {
+  test("show unreleased returns the pending customer section", async () => {
     const result = await runQuery([
       "show",
       "unreleased",
@@ -144,7 +156,26 @@ describe("query CLI against this repository", () => {
     const payload = JSON.parse(result.stdout) as {
       release: { entries: unknown[]; unreleased: boolean };
     };
+    // A release cut leaves the section empty, so only its shape is stable.
     expect(payload.release.unreleased).toBe(true);
+    expect(Array.isArray(payload.release.entries)).toBe(true);
+  });
+
+  test("show resolves the first version heading above dated history", async () => {
+    const result = await runQuery([
+      "show",
+      "0.1.0",
+      "--log",
+      "customer",
+      "--repo",
+      repositoryRoot,
+      "--json",
+    ]);
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      release: { entries: unknown[]; version: string | null };
+    };
+    expect(payload.release.version).toBe("0.1.0");
     expect(payload.release.entries.length).toBeGreaterThan(0);
   });
 

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-10-07
+
+- Releases are numbered from 0.1.0. The root `package.json` `version` is the
+  family version, release headings use `<version> - <date>`, and the release
+  merge commit is tagged `v<version>`. Sections dated `2026-07-30` and earlier
+  stay as written; `query.ts check` already reads both heading forms, and the
+  real-history query tests now accept an empty `Unreleased` after a cut.
+  Version choices still follow the recorded `publicVersioning` (ask for patch,
+  minor, and major). Guidance checkpoints in each `SKILL.md`,
+  `changelog-provider.json`, and `distribution-manifest.json` are unchanged and
+  do not carry the family version: the provider marker's capability schema is
+  closed and owned by Simple Changes, and the manifest records checkpoints only.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-06T23:49:02-05:00" -->
+
 - Post-merge audit fixes for the mobile testing notes amend guidance 24 (full)
   and 21 (mobile) in place. The checkpoints stay: that guidance merged earlier
   the same day, is still Unreleased, and gains no question, setting, or
