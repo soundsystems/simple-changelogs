@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.1.0 - 2026-10-06
+## 0.1.0 - 2026-10-07
 
 - **Releases**
   - Simple Changelogs releases now have version numbers, starting with 0.1.0.
