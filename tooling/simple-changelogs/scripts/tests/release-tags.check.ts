@@ -594,6 +594,41 @@ describe("release-tag detection", () => {
     });
   });
 
+  test("credits a root heading to the most specific train it names", async () => {
+    const repo = await gitRepository(["web-release-1.0.0", "web-admin-2.0.0"]);
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.1.0" }),
+      writeJson(repo, "apps/web-admin/package.json", { version: "2.1.0" }),
+      writeText(
+        repo,
+        "CHANGELOG.md",
+        changelog("Web 1.0.0 - 2026-09-01", "Web-Admin 2.0.0 - 2026-09-02")
+      ),
+    ]);
+
+    expect((await inspect(repo)).releaseTags?.recommended).toEqual({
+      web: "web-release-{version}",
+      "web-admin": "web-admin-{version}",
+    });
+  });
+
+  test("never drops a train whose name cannot form a template", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.0.0" }),
+      writeJson(repo, "apps/\u00fcber/package.json", { version: "1.0.0" }),
+    ]);
+
+    const { releaseTags } = await inspect(repo);
+
+    expect([...(releaseTags?.trains ?? [])].sort()).toEqual([
+      "web",
+      "\u00fcber",
+    ]);
+    expect(releaseTags?.recommended).toBe("none");
+    expect(releaseTags?.reason).toContain("chosen by hand");
+  });
+
   test("never recommends default per-train styles that could collide", async () => {
     const repo = await gitRepository();
     await Promise.all([
@@ -1114,6 +1149,51 @@ describe("release tags in the guidance-update notice", () => {
     expect(await readFile(join(repo, ".simple-changelogs.json"), "utf8")).toBe(
       before
     );
+  });
+
+  test("a relationship change rechecks a stored single template", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.0.0" }),
+      writeJson(repo, "apps/mobile/app.json", { expo: { version: "1.0.0" } }),
+      writeJson(
+        repo,
+        ".simple-changelogs.json",
+        policyFor("full", 25, {
+          crossSurfaceVersioning: "shared",
+          releaseTags: "v{version}",
+        })
+      ),
+    ]);
+    const before = await readFile(
+      join(repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const update = async (extra: Partial<ApplyOptions>) =>
+      applySetup({
+        configDirectory: await temporaryDirectory("config"),
+        confirm: true,
+        crossSurfaceVersioning: "independent",
+        distribution: "full",
+        repo,
+        ...extra,
+      });
+
+    const blocked = await update({});
+    const unchanged = await readFile(
+      join(repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const mapped = await update({
+      releaseTags: { mobile: "mobile@{version}", web: "web@{version}" },
+    });
+
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain(
+      "one template per release train"
+    );
+    expect(unchanged).toBe(before);
+    expect(mapped.status).toBe("configured");
   });
 
   test("saves an answer with the disposition, and no answer records nothing", async () => {

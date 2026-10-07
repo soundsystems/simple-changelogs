@@ -2292,7 +2292,9 @@ const runsOnTagPush = (content: string): boolean => {
 
 // GitLab jobs run on a tag push through `only: tags` (or `only: refs: tags`)
 // or a rule whose `if` tests a set CI_COMMIT_TAG; a script that merely prints
-// the variable, or a rule excluding tags, does not count.
+// the variable, or a rule excluding tags, does not count. This is evidence for
+// the question only, not a pipeline evaluator: Simple Changes inventories
+// every tag-triggered effect at release time.
 const GITLAB_TAG_RULE = /\$\{?CI_COMMIT_TAG\b/u;
 const GITLAB_NEGATED_TAG =
   /!\s*\$\{?CI_COMMIT_TAG|\$\{?CI_COMMIT_TAG\}?\s*==\s*(?:null|""|'')/u;
@@ -2351,10 +2353,23 @@ const tagTriggeredCi = async (
 
 // Versions each release train has released: its own changelog's newest
 // headings and root headings that name the train.
+// The train a root heading names: the most specific train name it contains
+// as a word, so `web-admin 2.0.0` never counts toward `web`.
+const headingTrain = (text: string, names: string[]): string | undefined =>
+  names
+    .filter((name) =>
+      new RegExp(
+        `(?<![a-z0-9])${name.replace(REGEX_SYNTAX, "\\$&")}(?![a-z0-9])`,
+        "u"
+      ).test(text)
+    )
+    .sort((left, right) => right.length - left.length)[0];
+
 const trainVersions = async (
   root: string,
   train: VersionTrain,
-  rootHeadings: ReleasedHeading[]
+  rootHeadings: ReleasedHeading[],
+  names: string[]
 ): Promise<string[]> => {
   const member = WORKSPACE_MEMBER.exec(train.path)?.[1];
   const directories = [...new Set([dirname(train.path), member])].filter(
@@ -2367,11 +2382,9 @@ const trainVersions = async (
       )
     )
   ).flat();
-  const name = new RegExp(
-    `(?<![a-z0-9])${train.train.replace(REGEX_SYNTAX, "\\$&")}(?![a-z0-9])`,
-    "u"
+  const named = rootHeadings.filter(
+    ({ text }) => headingTrain(text, names) === train.train
   );
-  const named = rootHeadings.filter(({ text }) => name.test(text));
   const released = [
     ...new Set(
       [...own, ...named].flatMap(({ version }) => (version ? [version] : []))
@@ -2397,12 +2410,21 @@ const trainConventions = async (
   const found = new Map<string, string>();
   const conventions = await Promise.all(
     trains.map(async (train) =>
-      tagConvention(tags, await trainVersions(root, train, rootHeadings), {
-        name: train.train,
-        others: trains
-          .map(({ train: other }) => other)
-          .filter((other) => other !== train.train),
-      })
+      tagConvention(
+        tags,
+        await trainVersions(
+          root,
+          train,
+          rootHeadings,
+          trains.map(({ train: name }) => name)
+        ),
+        {
+          name: train.train,
+          others: trains
+            .map(({ train: other }) => other)
+            .filter((other) => other !== train.train),
+        }
+      )
     )
   );
   trains.forEach(({ train }, index) => {
@@ -2432,18 +2454,15 @@ const trainConventions = async (
   return map;
 };
 
-// `<train>@{version}` for every train whose name makes a valid template;
-// null when none does or two could name one tag.
+// `<train>@{version}` for every train; null when a train name cannot form a
+// template or two could name one tag, so no train silently loses its tag.
 const defaultTrainTemplates = (
   trains: VersionTrain[]
 ): Record<string, string> | null => {
-  const templates = trains
-    .map(({ train }) => [train, `${train}@${VERSION_PLACEHOLDER}`])
-    .filter(([, template]) => releaseTagTemplateProblem(template) === null);
-  const map = Object.fromEntries(templates);
-  return templates.length > 0 && releaseTagsErrors(map).length === 0
-    ? map
-    : null;
+  const map = Object.fromEntries(
+    trains.map(({ train }) => [train, `${train}@${VERSION_PLACEHOLDER}`])
+  );
+  return releaseTagsErrors(map).length === 0 ? map : null;
 };
 
 // Full inventories already list version trains; every other versioned
@@ -4631,16 +4650,44 @@ const sharedVersionLineApplyErrors = (
   return errors;
 };
 
+// One template with two or more public trains could name one tag twice.
+const oneTemplateErrors = (
+  setting: ReleaseTagsSetting | undefined,
+  inspect: SetupResult,
+  relationship: CrossSurfaceVersioning | undefined
+): string[] => {
+  const trains = publicTrains(
+    inspect.releaseTags ? inspect.releaseTags.trains : [],
+    relationship
+  );
+  return typeof setting === "string" &&
+    setting !== NO_RELEASE_TAGS &&
+    trains.length >= 2
+    ? [
+        `releaseTags needs one template per release train (${trains.join(", ")}), such as {"${trains[0]}":"${trains[0]}@{version}"}, so two trains never name one tag.`,
+      ]
+    : [];
+};
+
 // The tag setting is repository-only and names releases, so CMS history,
 // run-only setup, and one template shared by several trains never store it.
+// A guidance disposition keeps the stored crossSurfaceVersioning, and a
+// relationship change rechecks the stored setting.
 const releaseTagsApplyErrors = (
   options: ApplyOptions,
   inspect: SetupResult,
   installed: Distribution | "cms"
 ): string[] => {
-  const setting = options.releaseTags;
-  if (setting === undefined) {
-    return [];
+  const supplied = options.releaseTags;
+  const stored = inspect.policy?.value;
+  const relationship =
+    options.guidanceBackfill === undefined
+      ? (options.crossSurfaceVersioning ?? stored?.crossSurfaceVersioning)
+      : stored?.crossSurfaceVersioning;
+  if (supplied === undefined) {
+    return relationship === stored?.crossSurfaceVersioning
+      ? []
+      : oneTemplateErrors(stored?.releaseTags, inspect, relationship);
   }
   if (installed === "cms") {
     return [
@@ -4650,28 +4697,10 @@ const releaseTagsApplyErrors = (
   if (options.scope === "run-only") {
     return ["Release tags are a repository setting and are never run-only."];
   }
-  const errors = releaseTagsErrors(setting);
-  const detected = inspect.releaseTags ? inspect.releaseTags.trains : [];
-  // Validate against the relationship this apply stores: a guidance
-  // disposition keeps the stored one.
-  const stored = inspect.policy?.value?.crossSurfaceVersioning;
-  const trains = publicTrains(
-    detected,
-    options.guidanceBackfill === undefined
-      ? (options.crossSurfaceVersioning ?? stored)
-      : stored
-  );
-  if (
-    errors.length === 0 &&
-    typeof setting === "string" &&
-    setting !== NO_RELEASE_TAGS &&
-    trains.length >= 2
-  ) {
-    errors.push(
-      `releaseTags needs one template per release train (${trains.join(", ")}), such as {"${trains[0]}":"${trains[0]}@{version}"}, so two trains never name one tag.`
-    );
-  }
-  return errors;
+  const errors = releaseTagsErrors(supplied);
+  return errors.length > 0
+    ? errors
+    : oneTemplateErrors(supplied, inspect, relationship);
 };
 
 export const applySetup = async (
