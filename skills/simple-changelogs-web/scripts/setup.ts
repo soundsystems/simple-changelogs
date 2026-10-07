@@ -2038,8 +2038,6 @@ const CARGO_RELEASE_METADATA =
 const FASTLANE_TAG = /\badd_git_tag\b/u;
 const WORKFLOW_TAG_TOOL =
   /\b(semantic-release|release-please|goreleaser|changesets\/action)\b/u;
-const GITLAB_TAG_TRIGGER =
-  /\$\{?CI_COMMIT_TAG\b|^\s*only\s*:\s*\[?\s*tags\b|^\s*-\s*tags\s*$/mu;
 const REGEX_SYNTAX = /[.*+?^${}()|[\]\\/]/gu;
 const YAML_FILE = /\.ya?ml$/u;
 const WORKSPACE_MEMBER = /^((?:apps|packages)\/[^/]+)\//u;
@@ -2106,6 +2104,13 @@ const tagPrefixes = (
 
 // A prefix naming two or more released versions, or the only one, is a
 // convention; the most matches wins, then the one naming the newest version.
+// The train a prefix names: the longest train name it contains, so
+// `web-admin-release-` belongs to `web-admin`, not `web`.
+const trainNamedBy = (prefix: string, names: string[]): string | undefined =>
+  names
+    .filter((name) => prefix.toLowerCase().includes(name))
+    .sort((left, right) => right.length - left.length)[0];
+
 // For one of several trains, a prefix naming another train is never its
 // style, and one naming this train outranks the rest.
 const tagConvention = (
@@ -2114,26 +2119,25 @@ const tagConvention = (
   train?: { name: string; others: string[] }
 ): { examples: string[]; prefix: string } | null => {
   let best: { examples: string[]; prefix: string } | null = null;
+  const owner = (prefix: string) =>
+    train && trainNamedBy(prefix, [train.name, ...train.others]);
   const rank = ({ examples, prefix }: { examples: string[]; prefix: string }) =>
     [
-      Number(train !== undefined && prefix.toLowerCase().includes(train.name)),
+      Number(train !== undefined && owner(prefix) === train.name),
       examples.length,
       Number(examples.includes(`${prefix}${versions[0]}`)),
     ] as const;
   for (const [prefix, examples] of tagPrefixes(tags, versions)) {
-    const lower = prefix.toLowerCase();
-    const foreign =
-      train !== undefined &&
-      !lower.includes(train.name) &&
-      train.others.some((other) => lower.includes(other));
+    const named = owner(prefix);
+    const foreign = named !== undefined && named !== train?.name;
     const counts = examples.length >= 2 || versions.length === 1;
     const candidate = { examples, prefix };
-    const [named, count, newest] = rank(candidate);
-    const [bestNamed, bestCount, bestNewest] = best ? rank(best) : [-1, 0, 0];
+    const [ours, count, newest] = rank(candidate);
+    const [bestOurs, bestCount, bestNewest] = best ? rank(best) : [-1, 0, 0];
     const better =
-      named === bestNamed
+      ours === bestOurs
         ? count > bestCount || (count === bestCount && newest > bestNewest)
-        : named > bestNamed;
+        : ours > bestOurs;
     if (counts && !foreign && better) {
       best = candidate;
     }
@@ -2275,11 +2279,61 @@ const runsOnTagPush = (content: string): boolean => {
   if (!(events.includes("push") && isRecord(push))) {
     return events.includes("push");
   }
+  if (Object.hasOwn(push, "tags-ignore")) {
+    // `**` ignores every tag; narrower patterns still let some tags run.
+    const ignored = push["tags-ignore"];
+    return !(Array.isArray(ignored) ? ignored : [ignored]).includes("**");
+  }
   return (
     Object.hasOwn(push, "tags") ||
-    Object.hasOwn(push, "tags-ignore") ||
     !(Object.hasOwn(push, "branches") || Object.hasOwn(push, "branches-ignore"))
   );
+};
+
+// GitLab jobs run on a tag push through `only: tags` (or `only: refs: tags`)
+// or a rule whose `if` tests a set CI_COMMIT_TAG; a script that merely prints
+// the variable, or a rule excluding tags, does not count.
+const GITLAB_TAG_RULE = /\$\{?CI_COMMIT_TAG\b/u;
+const GITLAB_NEGATED_TAG =
+  /!\s*\$\{?CI_COMMIT_TAG|\$\{?CI_COMMIT_TAG\}?\s*==\s*(?:null|""|'')/u;
+
+const gitlabTagTrigger = (value: unknown): boolean => {
+  if (Array.isArray(value)) {
+    return value.some(gitlabTagTrigger);
+  }
+  if (!isRecord(value)) {
+    return false;
+  }
+  const { only, rules } = value;
+  const refs = isRecord(only) ? only.refs : only;
+  if (Array.isArray(refs) ? refs.includes("tags") : refs === "tags") {
+    return true;
+  }
+  if (
+    Array.isArray(rules) &&
+    rules.some(
+      (rule) =>
+        isRecord(rule) &&
+        rule.when !== "never" &&
+        typeof rule.if === "string" &&
+        GITLAB_TAG_RULE.test(rule.if) &&
+        !GITLAB_NEGATED_TAG.test(rule.if)
+    )
+  ) {
+    return true;
+  }
+  return Object.entries(value).some(
+    ([key, child]) =>
+      key !== "only" && key !== "rules" && gitlabTagTrigger(child)
+  );
+};
+
+const gitlabRunsOnTagPush = (content: string): boolean => {
+  try {
+    return gitlabTagTrigger(YAML.parse(content));
+  } catch {
+    return false;
+  }
 };
 
 const tagTriggeredCi = async (
@@ -2289,9 +2343,7 @@ const tagTriggeredCi = async (
   const triggered = [...workflows]
     .filter(([, content]) => runsOnTagPush(content))
     .map(([path]) => path);
-  if (
-    GITLAB_TAG_TRIGGER.test(await readSmallText(join(root, ".gitlab-ci.yml")))
-  ) {
+  if (gitlabRunsOnTagPush(await readSmallText(join(root, ".gitlab-ci.yml")))) {
     triggered.push(".gitlab-ci.yml");
   }
   return triggered.sort((left, right) => left.localeCompare(right, "en"));
@@ -2380,13 +2432,18 @@ const trainConventions = async (
   return map;
 };
 
+// `<train>@{version}` for every train whose name makes a valid template;
+// null when none does or two could name one tag.
 const defaultTrainTemplates = (
   trains: VersionTrain[]
 ): Record<string, string> | null => {
   const templates = trains
     .map(({ train }) => [train, `${train}@${VERSION_PLACEHOLDER}`])
     .filter(([, template]) => releaseTagTemplateProblem(template) === null);
-  return templates.length > 0 ? Object.fromEntries(templates) : null;
+  const map = Object.fromEntries(templates);
+  return templates.length > 0 && releaseTagsErrors(map).length === 0
+    ? map
+    : null;
 };
 
 // Full inventories already list version trains; every other versioned
@@ -2431,13 +2488,16 @@ const recommendReleaseTags = (
   if (convention !== null) {
     return { reason: null, recommended: convention };
   }
-  return {
-    reason: null,
-    recommended:
-      trains.length >= 2
-        ? (defaultTrainTemplates(trains) ?? NO_RELEASE_TAGS)
-        : `v${VERSION_PLACEHOLDER}`,
-  };
+  if (trains.length < 2) {
+    return { reason: null, recommended: `v${VERSION_PLACEHOLDER}` };
+  }
+  const map = defaultTrainTemplates(trains);
+  return map
+    ? { reason: null, recommended: map }
+    : {
+        reason: "these release trains need tag styles chosen by hand",
+        recommended: NO_RELEASE_TAGS,
+      };
 };
 
 /** Inspects release-tag evidence and recommends a `releaseTags` value. */
@@ -4592,10 +4652,14 @@ const releaseTagsApplyErrors = (
   }
   const errors = releaseTagsErrors(setting);
   const detected = inspect.releaseTags ? inspect.releaseTags.trains : [];
+  // Validate against the relationship this apply stores: a guidance
+  // disposition keeps the stored one.
+  const stored = inspect.policy?.value?.crossSurfaceVersioning;
   const trains = publicTrains(
     detected,
-    options.crossSurfaceVersioning ??
-      inspect.policy?.value?.crossSurfaceVersioning
+    options.guidanceBackfill === undefined
+      ? (options.crossSurfaceVersioning ?? stored)
+      : stored
   );
   if (
     errors.length === 0 &&
@@ -4829,7 +4893,11 @@ export const parseCli = (argv: string[]): ParsedCli => {
   // `none`, one template, or a JSON object of per-train templates.
   let releaseTags: ReleaseTagsSetting | undefined =
     values.get("--release-tags");
-  if (releaseTags?.trimStart().startsWith("{")) {
+  // A template such as `{version}` also starts with a brace.
+  if (
+    releaseTags?.trimStart().startsWith("{") &&
+    releaseTagTemplateProblem(releaseTags) !== null
+  ) {
     try {
       releaseTags = JSON.parse(releaseTags) as ReleaseTagsSetting;
     } catch (error) {

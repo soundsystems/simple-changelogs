@@ -345,6 +345,9 @@ describe("releaseTags setting", () => {
       parseCli(["apply", "--release-tags", '{"web":"web@{version}"}']).options
         .releaseTags
     ).toEqual({ web: "web@{version}" });
+    expect(
+      parseCli(["apply", "--release-tags", "{version}"]).options.releaseTags
+    ).toBe("{version}");
     expect(() => parseCli(["apply", "--release-tags", "{web"])).toThrow(
       "--release-tags must be none"
     );
@@ -567,6 +570,48 @@ describe("release-tag detection", () => {
     });
   });
 
+  test("credits a prefix to the most specific train name it contains", async () => {
+    const repo = await gitRepository([
+      "web-admin-release-1.0.0",
+      "web-admin-release-1.1.0",
+      "web-release-1.0.0",
+      "web-release-1.1.0",
+    ]);
+    await Promise.all(
+      ["web", "web-admin"].flatMap((app) => [
+        writeJson(repo, `apps/${app}/package.json`, { version: "1.1.0" }),
+        writeText(
+          repo,
+          `apps/${app}/CHANGELOG.md`,
+          changelog("1.1.0", "1.0.0")
+        ),
+      ])
+    );
+
+    expect((await inspect(repo)).releaseTags?.recommended).toEqual({
+      web: "web-release-{version}",
+      "web-admin": "web-admin-release-{version}",
+    });
+  });
+
+  test("never recommends default per-train styles that could collide", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.0.0" }),
+      writeJson(repo, "apps/web@next/package.json", { version: "2.0.0" }),
+    ]);
+
+    const inspection = await inspect(repo);
+    const configured = await onboard(repo);
+
+    expect(inspection.releaseTags?.recommended).toBe("none");
+    expect(inspection.releaseTags?.reason).toContain("chosen by hand");
+    expect(configured.status).toBe("configured");
+    expect(
+      (await readJson(join(repo, ".simple-changelogs.json"))).releaseTags
+    ).toBe("none");
+  });
+
   test("counts an owner's version only when no release heading names the train", async () => {
     const repo = await gitRepository([
       "web-release-1.0.0",
@@ -713,8 +758,18 @@ describe("release-tag detection", () => {
       writeText(repo, ".github/workflows/broken.yml", "on: [push\n"),
       writeText(
         repo,
+        ".github/workflows/no-tags.yml",
+        "on:\n  push:\n    tags-ignore: ['**']\n"
+      ),
+      writeText(
+        repo,
+        ".github/workflows/some-tags.yml",
+        "on:\n  push:\n    branches: [main]\n    tags-ignore: ['nightly-*']\n"
+      ),
+      writeText(
+        repo,
         ".gitlab-ci.yml",
-        "deploy:\n  script: echo $CI_COMMIT_TAG\n"
+        "deploy:\n  rules:\n    - if: $CI_COMMIT_TAG =~ /^v/\n  script: echo deploy\n"
       ),
     ]);
 
@@ -725,9 +780,38 @@ describe("release-tag detection", () => {
       ".github/workflows/any-push.yaml",
       ".github/workflows/create.yml",
       ".github/workflows/release.yml",
+      ".github/workflows/some-tags.yml",
       ".gitlab-ci.yml",
     ]);
     expect(releaseTags?.recommended).toBe("v{version}");
+  });
+
+  test("reads GitLab tag triggers from only and rules, not from scripts", async () => {
+    const pipelines: [string, boolean][] = [
+      ["build:\n  only: [tags]\n  script: make\n", true],
+      ["build:\n  only:\n    refs: [tags, main]\n  script: make\n", true],
+      ["workflow:\n  rules:\n    - if: $CI_COMMIT_TAG\n", true],
+      ["build:\n  except: [tags]\n  script: make\n", false],
+      [
+        "build:\n  rules:\n    - if: $CI_COMMIT_BRANCH\n  script: echo $CI_COMMIT_TAG\n",
+        false,
+      ],
+      [
+        "build:\n  rules:\n    - if: $CI_COMMIT_TAG == null\n    - if: $CI_COMMIT_TAG\n      when: never\n  script: make\n",
+        false,
+      ],
+    ];
+    const results = await Promise.all(
+      pipelines.map(async ([pipeline]) => {
+        const repo = await gitRepository();
+        await writeText(repo, ".gitlab-ci.yml", pipeline);
+        return (await inspect(repo, "web")).releaseTags?.ciTriggers;
+      })
+    );
+
+    expect(results).toEqual(
+      pipelines.map(([, triggered]) => (triggered ? [".gitlab-ci.yml"] : []))
+    );
   });
 
   test("CMS-only inspection has no release tags", async () => {
@@ -994,6 +1078,41 @@ describe("release tags in the guidance-update notice", () => {
     });
     expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
       false
+    );
+  });
+
+  test("checks one template against the relationship the disposition keeps", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.0.0" }),
+      writeJson(repo, "apps/mobile/app.json", { expo: { version: "1.0.0" } }),
+      writeJson(
+        repo,
+        ".simple-changelogs.json",
+        policyFor("full", 24, { crossSurfaceVersioning: "independent" })
+      ),
+    ]);
+    const before = await readFile(
+      join(repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+
+    // A guidance disposition saves no crossSurfaceVersioning, so a supplied
+    // "shared" cannot make one template valid for two independent trains.
+    const result = await applySetup({
+      configDirectory: await temporaryDirectory("config"),
+      confirm: true,
+      crossSurfaceVersioning: "shared",
+      distribution: "full",
+      guidanceBackfill: "not-applicable",
+      releaseTags: "v{version}",
+      repo,
+    });
+
+    expect(result.status).toBe("blocked");
+    expect(result.errors.join(" ")).toContain("one template per release train");
+    expect(await readFile(join(repo, ".simple-changelogs.json"), "utf8")).toBe(
+      before
     );
   });
 
