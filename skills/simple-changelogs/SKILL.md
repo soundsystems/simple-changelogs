@@ -18,7 +18,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 24
+Current guidance version: 25
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -52,7 +52,8 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
   review, continuing with the current settings, or opening the detailed release
   notes. A walkthrough explains every new ability, affected setting,
   proposed default, example, consequence, and safety boundary before any
-  decision. Ask any listed `questions` once during that review. Ask about a
+  decision. Ask any listed `questions` once with the notice; no answer records
+  nothing. Ask about a
   historical backfill only afterward and only when `userPrompt` is non-null;
   never run one automatically. Record the one-time disposition with
   `apply --guidance-backfill <status> --confirm`.
@@ -85,7 +86,7 @@ Read only the references needed for the current branch of work:
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
 | SemVer, version choice, or metadata alignment | `references/version-decisions.md` |
 | Apps sharing one version number (`sharedVersionLines`) | `references/shared-version-lines.md` |
-| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md`; request v2 also `references/shared-version-lines.md` |
+| Delegated release classification, preparation, verification, release tags, capability negotiation, or receipts | `references/release-handoff.md`; request v2 or v3 also `references/shared-version-lines.md` |
 | `1.0.0`, later major versions, prerelease trains, or major-release synthesis | `references/major-releases.md` |
 | Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Existing release-note sync, long-form expert archives, destination scoping, or authorized product surfaces | `references/release-note-surfaces.md` |
@@ -194,9 +195,10 @@ A repository-local fork is preferred by project convention when both local and
 global copies are discoverable. Never claim the runtime loader enforces that
 choice; use repository instructions when explicit selection is necessary.
 
-Do not create tags, hosted releases, deployments, screenshots, or unrelated
-product implementation unless the current request separately authorizes that
-work.
+Name each release's tag in its receipt, but never create or push a tag; Simple
+Changes does. Do not create hosted releases, deployments, screenshots, or
+unrelated product implementation unless the current request separately
+authorizes that work.
 
 ## Completion Standard
 

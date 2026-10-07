@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  type ReleaseTagsSetting,
+  releaseTagNameProblem,
+  releaseTagsErrors,
+} from "../setup.ts";
 import { SHARED_VERSION_LINE_MODES, type SharedVersionLine } from "./types.ts";
 import {
   type VersionLineDecision,
@@ -62,6 +67,32 @@ const REASON_ACTIONS = {
 } as const;
 const REVISION_PATTERN = /^[0-9a-f]{40,64}$/u;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/u;
+// Receipt v4 release tags, mirrored from the Simple Changes 0.27.0 schema:
+// Git's ref characters for the name, and one line of 1 to 200 characters
+// for the message.
+const TAG_NAME_EXCLUDED = new Set("~^:?*[\\");
+const VERSION_BOUNDARY_PATTERN = /[0-9.]$/u;
+// The receipt versions each request version may advertise.
+const RECEIPTS_BY_REQUEST: Record<1 | 2 | 3, readonly number[]> = {
+  1: [1, 2],
+  2: [1, 2, 3],
+  3: [1, 2, 3, 4],
+};
+
+const isControl = (character: string, space: boolean): boolean => {
+  const code = character.codePointAt(0) ?? 0;
+  return code < 0x20 || code === 0x7f || (space && code === 0x20);
+};
+const tagNameShape = (name: string): boolean =>
+  name !== "" &&
+  ![...name].some(
+    (character) =>
+      isControl(character, true) || TAG_NAME_EXCLUDED.has(character)
+  );
+const tagMessageShape = (message: string): boolean =>
+  message.length >= 1 &&
+  [...message].length <= 200 &&
+  ![...message].some((character) => isControl(character, false));
 // Receipt v3 shapes, mirrored from the Simple Changes 0.23.0 schemas.
 const STABLE_VERSION = /^([0-9]+(?:\.[0-9]+){0,2})(?:\+[0-9A-Za-z.-]+)?$/u;
 const PATH_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$)).+$/u;
@@ -138,7 +169,20 @@ export interface ChangelogRequestV2
   supportedReceiptVersions: (1 | 2 | 3)[];
 }
 
-export type ChangelogRequest = ChangelogRequestV1 | ChangelogRequestV2;
+// Request v3 is request v2 that may also advertise receipt v4.
+export interface ChangelogRequestV3
+  extends Omit<
+    ChangelogRequestV2,
+    "schemaVersion" | "supportedReceiptVersions"
+  > {
+  schemaVersion: 3;
+  supportedReceiptVersions: (1 | 2 | 3 | 4)[];
+}
+
+export type ChangelogRequest =
+  | ChangelogRequestV1
+  | ChangelogRequestV2
+  | ChangelogRequestV3;
 
 export interface VersionDecisionV2 {
   boundary: Boundary;
@@ -198,7 +242,27 @@ export interface ChangelogReceiptV3
   versionDecision: VersionDecisionV3 | null;
 }
 
-export type ChangelogReceipt = ChangelogReceiptV2 | ChangelogReceiptV3;
+export interface ReleaseTag {
+  message: string;
+  name: string;
+}
+
+// Receipt v4 is receipt v3 whose release record also names its tag.
+export interface ChangelogReceiptV4
+  extends Omit<ChangelogReceiptV3, "release" | "schemaVersion"> {
+  release:
+    | (NonNullable<ChangelogReceiptV2["release"]> & { tag: ReleaseTag | null })
+    | null;
+  schemaVersion: 4;
+}
+
+// Receipts that echo the release set and carry the version line.
+export type LineCarryingReceipt = ChangelogReceiptV3 | ChangelogReceiptV4;
+
+export type ChangelogReceipt =
+  | ChangelogReceiptV2
+  | ChangelogReceiptV3
+  | ChangelogReceiptV4;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -300,6 +364,14 @@ export const canonicalJson = (value: unknown): string => {
 export const digestCanonicalJson = (value: unknown): string =>
   createHash("sha256").update(canonicalJson(value)).digest("hex");
 
+// As in the schema, only schemaVersion 2 or 3 selects request v2 or v3; any
+// other value is checked, unchanged, as request v1. Request v3 is request v2
+// that may also advertise receipt v4.
+const requestVersionOf = (value: unknown): 1 | 2 | 3 => {
+  const version = isRecord(value) ? value.schemaVersion : undefined;
+  return version === 2 || version === 3 ? version : 1;
+};
+
 export const validateChangelogRequest = (
   value: unknown
 ): { errors: string[]; value?: ChangelogRequest } => {
@@ -322,9 +394,8 @@ export const validateChangelogRequest = (
   // Informational fields the schema allows but does not require. They are
   // shape-checked when present and otherwise ignored.
   const optionalKeys = ["attempt", "environment"];
-  // As in the schema, only schemaVersion 2 selects request v2; any other
-  // value is checked, unchanged, as request v1.
-  const v2 = isRecord(value) && value.schemaVersion === 2;
+  const requestVersion = requestVersionOf(value);
+  const v2 = requestVersion !== 1;
   if (
     !(
       isRecord(value) &&
@@ -406,8 +477,8 @@ export const validateChangelogRequest = (
   requireCondition(
     errors,
     receiptVersions.length > 0 &&
-      receiptVersions.every(
-        (item) => item === 1 || item === 2 || (v2 && item === 3)
+      receiptVersions.every((item) =>
+        RECEIPTS_BY_REQUEST[requestVersion].includes(item as number)
       ) &&
       new Set(receiptVersions).size === receiptVersions.length,
     "supportedReceiptVersions is invalid"
@@ -481,10 +552,19 @@ const requestV2Errors = (value: Record<string, unknown>): string[] => {
   return errors;
 };
 
+const carriesLine = (
+  receipt: ChangelogReceipt
+): receipt is LineCarryingReceipt =>
+  receipt.schemaVersion === 3 || receipt.schemaVersion === 4;
+
 const receiptBaseErrors = (value: ChangelogReceipt): string[] => {
   const errors: string[] = [];
   if (
-    !(value.schemaVersion === 2 || value.schemaVersion === 3) ||
+    !(
+      value.schemaVersion === 2 ||
+      value.schemaVersion === 3 ||
+      value.schemaVersion === 4
+    ) ||
     value.provider !== "simple-changelogs"
   ) {
     errors.push("receipt identity is invalid");
@@ -533,12 +613,11 @@ const receiptRequestErrors = (
   const entryOnly = request.boundary === "none";
   // An entry-only receipt may omit its version decision entirely; a public
   // boundary must name the train and boundary it decided. As in Simple
-  // Changes, a blocked receipt v3 may also omit it (an ambiguous owner names
-  // no train); receipt v2 keeps its original binding.
+  // Changes, a blocked receipt v3 or v4 may also omit it (an ambiguous owner
+  // names no train); receipt v2 keeps its original binding.
   const decisionMatches =
     decision === null
-      ? entryOnly ||
-        (receipt.schemaVersion === 3 && receipt.status === "blocked")
+      ? entryOnly || (carriesLine(receipt) && receipt.status === "blocked")
       : decision.releaseTrain === request.releaseTrain &&
         decision.boundary === request.boundary;
   const matches =
@@ -696,9 +775,10 @@ const receiptStatusErrors = (receipt: ChangelogReceipt): string[] => {
 };
 
 /**
- * Validates a receipt v2 or v3, optionally against its exact request. Receipt
- * v3 also gets every structural rule of its schema and the Simple Changes
- * 0.23.0 line and binding rules, including the prior receipt when given.
+ * Validates a receipt v2, v3, or v4, optionally against its exact request.
+ * Receipts v3 and v4 also get every structural rule of their schema and the
+ * Simple Changes 0.23.0 line and binding rules, including the prior receipt
+ * when given; receipt v4 adds the Simple Changes 0.27.0 release-tag rules.
  */
 export const validateChangelogReceipt = (
   value: unknown,
@@ -708,7 +788,6 @@ export const validateChangelogReceipt = (
   if (!isRecord(value)) {
     return { errors: ["receipt must be an object"] };
   }
-  const v3 = value.schemaVersion === 3;
   const expected = [
     "schemaVersion",
     "provider",
@@ -731,7 +810,14 @@ export const validateChangelogReceipt = (
     "requiredAction",
     "reason",
   ];
-  if (!exactKeys(value, v3 ? [...expected, "releaseSetTrains"] : expected)) {
+  if (
+    !exactKeys(
+      value,
+      carriesLine(value as unknown as ChangelogReceipt)
+        ? [...expected, "releaseSetTrains"]
+        : expected
+    )
+  ) {
     return { errors: ["receipt has missing or unknown fields"] };
   }
   if (
@@ -747,7 +833,7 @@ export const validateChangelogReceipt = (
     return { errors: ["receipt contains malformed structured fields"] };
   }
   const receipt = value as unknown as ChangelogReceipt;
-  if (receipt.schemaVersion === 3) {
+  if (carriesLine(receipt)) {
     const shape = receiptShapeErrorsV3(receipt);
     if (shape.length > 0) {
       return { errors: shape };
@@ -781,11 +867,78 @@ export const validateChangelogReceipt = (
     ...receiptBaseErrors(receipt),
     ...receiptRequestErrors(receipt, request),
     ...receiptStatusErrors(receipt),
-    ...(receipt.schemaVersion === 3
-      ? receiptRulesV3(receipt, request, prior)
-      : []),
+    ...(carriesLine(receipt) ? receiptRulesV3(receipt, request, prior) : []),
   ];
   return errors.length > 0 ? { errors } : { errors, value: receipt };
+};
+
+// The tag a receipt's release names: a v4 release's tag, or null for a
+// release from an earlier receipt version, which cannot name one.
+const releaseTagOf = (receipt: unknown): ReleaseTag | null => {
+  if (!isRecord(receipt) || receipt.schemaVersion !== 4) {
+    return null;
+  }
+  const { release } = receipt;
+  return isRecord(release) && isRecord(release.tag)
+    ? (release.tag as unknown as ReleaseTag)
+    : null;
+};
+
+const sameTag = (left: ReleaseTag | null, right: ReleaseTag | null): boolean =>
+  left === null || right === null
+    ? left === right
+    : left.name === right.name && left.message === right.message;
+
+const releaseTagNameBindingProblem = (
+  name: string,
+  version: string
+): string | null => {
+  const problem = releaseTagNameProblem(name);
+  if (problem) {
+    return `release tag ${name} ${problem}`;
+  }
+  const prefix = name.slice(0, name.length - version.length);
+  return name.endsWith(version) &&
+    (prefix === "" || !VERSION_BOUNDARY_PATTERN.test(prefix))
+    ? null
+    : `release tag ${name} must be ${version} or end with it after a character other than a digit or .`;
+};
+
+const releaseTagMessageProblem = (
+  message: string,
+  version: string
+): string | null => {
+  const displayName = message.slice(0, -(version.length + 1));
+  return tagMessageShape(message) &&
+    message.endsWith(` ${version}`) &&
+    displayName !== "" &&
+    displayName.trim() === displayName
+    ? null
+    : `release tag message must be one line of at most 200 characters, "<display name> ${version}"`;
+};
+
+/**
+ * Why a release tag cannot name `version`, or null. The name must pass Git's
+ * ref-name rules and a leading `-` check, and equal the version or end with it
+ * after a character other than a digit or `.`, so `v11.2.0` never passes for
+ * `1.2.0`. The message is one line, `<display name> <version>`.
+ */
+export const releaseTagProblem = (
+  tag: ReleaseTag,
+  version: string
+): string | null =>
+  releaseTagNameBindingProblem(tag.name, version) ??
+  releaseTagMessageProblem(tag.message, version);
+
+// Receipt v4: a named tag is bound to the release version.
+// priorReceiptErrors keeps it unchanged after prepare.
+const releaseTagErrors = (receipt: LineCarryingReceipt): string[] => {
+  const tag = releaseTagOf(receipt);
+  const problem =
+    tag && receipt.release
+      ? releaseTagProblem(tag, receipt.release.version)
+      : null;
+  return problem ? [problem] : [];
 };
 
 const matchesDecision = (
@@ -826,17 +979,33 @@ const decisionShape = (decision: unknown): boolean =>
     decision.selectedVersion,
   ].every((version) => nullable(version, nonEmpty));
 
-const releaseShape = (release: unknown): boolean =>
+// A receipt v4 release also carries `tag`: null, or a closed name and message.
+const tagShape = (tag: unknown): boolean =>
+  tag === null ||
+  (isRecord(tag) &&
+    exactKeys(tag, ["name", "message"]) &&
+    typeof tag.name === "string" &&
+    tagNameShape(tag.name) &&
+    typeof tag.message === "string" &&
+    tagMessageShape(tag.message));
+
+const releaseShape = (release: unknown, withTag: boolean): boolean =>
   isRecord(release) &&
-  exactKeys(release, ["version", "date", "targetContainedUnreleased"]) &&
+  exactKeys(
+    release,
+    withTag
+      ? ["version", "date", "targetContainedUnreleased", "tag"]
+      : ["version", "date", "targetContainedUnreleased"]
+  ) &&
   nonEmpty(release.version) &&
   typeof release.date === "string" &&
   DATE_PATTERN.test(release.date) &&
-  oneOf(release.targetContainedUnreleased, ["prepared", "integrated"]);
+  oneOf(release.targetContainedUnreleased, ["prepared", "integrated"]) &&
+  (!withTag || tagShape(release.tag));
 
-// The status conditions of the receipt v3 schema, which receipt v2 is not
-// held to here.
-const statusShapeErrorsV3 = (receipt: ChangelogReceiptV3): string[] => {
+// The status conditions of the receipt v3 and v4 schemas, which receipt v2 is
+// not held to here.
+const statusShapeErrorsV3 = (receipt: LineCarryingReceipt): string[] => {
   const decision = receipt.versionDecision;
   const lineage = receipt.revisionLineage;
   const noCodes =
@@ -909,7 +1078,7 @@ const statusShapeErrorsV3 = (receipt: ChangelogReceiptV3): string[] => {
   return errors;
 };
 
-const receiptShapeErrorsV3 = (receipt: ChangelogReceiptV3): string[] => {
+const receiptShapeErrorsV3 = (receipt: LineCarryingReceipt): string[] => {
   const errors: string[] = [];
   const lineage = receipt.revisionLineage as unknown as Record<string, unknown>;
   const decision = receipt.versionDecision as unknown;
@@ -970,7 +1139,8 @@ const receiptShapeErrorsV3 = (receipt: ChangelogReceiptV3): string[] => {
   );
   requireCondition(
     errors,
-    receipt.release === null || releaseShape(receipt.release),
+    receipt.release === null ||
+      releaseShape(receipt.release, receipt.schemaVersion === 4),
     "release is invalid"
   );
   requireCondition(
@@ -1040,7 +1210,7 @@ export const sameLineState = (
 
 // The version a receipt proposes: the suggestion while approval is pending,
 // the selection once made, and none for blocked or not-applicable receipts.
-const proposedVersion = (receipt: ChangelogReceiptV3): string | null => {
+const proposedVersion = (receipt: LineCarryingReceipt): string | null => {
   const decision = receipt.versionDecision;
   if (receipt.status === "decision-required") {
     return decision?.suggestedVersion ?? null;
@@ -1050,7 +1220,7 @@ const proposedVersion = (receipt: ChangelogReceiptV3): string | null => {
     : null;
 };
 
-const versionLineErrors = (receipt: ChangelogReceiptV3): string[] => {
+const versionLineErrors = (receipt: LineCarryingReceipt): string[] => {
   const decision = receipt.versionDecision;
   const line = decision?.versionLine;
   if (!(decision && line)) {
@@ -1118,8 +1288,44 @@ const versionLineErrors = (receipt: ChangelogReceiptV3): string[] => {
   return errors;
 };
 
+// Bindings to the prior receipt: one line state under one decision digest,
+// and, once a prior v4 receipt carried the release, exactly the same tag (or
+// none when the prior named none) in every later receipt that carries it; a
+// v3 receipt names none.
+const priorReceiptErrors = (
+  receipt: LineCarryingReceipt,
+  prior: unknown
+): string[] => {
+  if (!isRecord(prior)) {
+    return [];
+  }
+  const errors: string[] = [];
+  const priorLine =
+    (prior.schemaVersion === 3 || prior.schemaVersion === 4) &&
+    prior.decisionDigest === receipt.decisionDigest &&
+    isRecord(prior.versionDecision)
+      ? ((prior.versionDecision.versionLine as VersionLine | null) ?? null)
+      : undefined;
+  requireCondition(
+    errors,
+    priorLine === undefined ||
+      sameLineState(priorLine, receipt.versionDecision?.versionLine ?? null),
+    "the line state changed under the same decisionDigest"
+  );
+  requireCondition(
+    errors,
+    !(
+      prior.schemaVersion === 4 &&
+      isRecord(prior.release) &&
+      receipt.release !== null
+    ) || sameTag(releaseTagOf(prior), releaseTagOf(receipt)),
+    "the release tag changed after prepare"
+  );
+  return errors;
+};
+
 const receiptRulesV3 = (
-  receipt: ChangelogReceiptV3,
+  receipt: LineCarryingReceipt,
   request?: ChangelogRequest,
   prior?: unknown
 ): string[] => {
@@ -1131,28 +1337,21 @@ const receiptRulesV3 = (
       receipt.release.version === decision?.selectedVersion,
     "release version must be the selected version"
   );
-  errors.push(...versionLineErrors(receipt));
-  const priorLine =
-    isRecord(prior) &&
-    prior.schemaVersion === 3 &&
-    prior.decisionDigest === receipt.decisionDigest &&
-    isRecord(prior.versionDecision)
-      ? ((prior.versionDecision.versionLine as VersionLine | null) ?? null)
-      : undefined;
-  requireCondition(
-    errors,
-    priorLine === undefined ||
-      sameLineState(priorLine, decision?.versionLine ?? null),
-    "the line state changed under the same decisionDigest"
+  errors.push(
+    ...versionLineErrors(receipt),
+    ...releaseTagErrors(receipt),
+    ...priorReceiptErrors(receipt, prior)
   );
   if (!request) {
     return errors;
   }
-  const trains = request.schemaVersion === 2 ? request.releaseSetTrains : null;
+  const trains = request.schemaVersion === 1 ? null : request.releaseSetTrains;
   requireCondition(
     errors,
-    (request.supportedReceiptVersions as number[]).includes(3),
-    "the request did not advertise receipt v3"
+    (request.supportedReceiptVersions as number[]).includes(
+      receipt.schemaVersion
+    ),
+    `the request did not advertise receipt v${receipt.schemaVersion}`
   );
   requireCondition(
     errors,
@@ -1191,10 +1390,15 @@ const receiptRulesV3 = (
   return errors;
 };
 
+// The receipt versions each distribution writes: full writes receipt v3 with
+// its version line, and the other versioned distributions skip it.
+export const FULL_RECEIPT_VERSIONS = [1, 2, 3, 4] as const;
+export const NARROW_RECEIPT_VERSIONS = [1, 2, 4] as const;
+
 /** The highest receipt version the request and this provider both support. */
 export const receiptVersionFor = (
   request: ChangelogRequest,
-  provided: readonly number[] = [1, 2, 3]
+  provided: readonly number[] = FULL_RECEIPT_VERSIONS
 ): number | null =>
   Math.max(
     ...(request.supportedReceiptVersions as number[]).filter((version) =>
@@ -1204,29 +1408,37 @@ export const receiptVersionFor = (
   ) || null;
 
 /**
- * Shapes a receipt v2 body for its request. Receipt v3 echoes the request's
- * releaseSetTrains and carries the line in versionDecision.versionLine;
- * receipt v2 keeps the line as one `versionLine {...}` evidence item. A
- * request v1 never advertises v3, so it always gets receipt v2 or below.
+ * Shapes a receipt v2 body for its request. Receipts v3 and v4 echo the
+ * request's releaseSetTrains and carry the line in
+ * versionDecision.versionLine; receipt v4's release also names its tag (null
+ * for no tag); receipt v2 keeps the line as one `versionLine {...}` evidence
+ * item. A request v1 never advertises v3 or v4, so it always gets receipt v2
+ * or below.
  */
 export const shapeReceipt = (
   request: ChangelogRequest,
   receipt: ChangelogReceiptV2,
-  line: VersionLine | null
+  line: VersionLine | null,
+  {
+    provided = FULL_RECEIPT_VERSIONS,
+    tag = null,
+  }: { provided?: readonly number[]; tag?: ReleaseTag | null } = {}
 ): ChangelogReceipt => {
-  const version = receiptVersionFor(request);
-  if (version === 3) {
-    const { versionDecision, ...rest } = receipt;
-    return {
+  const version = receiptVersionFor(request, provided);
+  if (version === 3 || version === 4) {
+    const { release, versionDecision, ...rest } = receipt;
+    const lined = {
       ...rest,
       releaseSetTrains:
-        request.schemaVersion === 2 ? request.releaseSetTrains : null,
-      schemaVersion: 3,
+        request.schemaVersion === 1 ? null : request.releaseSetTrains,
       versionDecision: versionDecision && {
         ...versionDecision,
         versionLine: line,
       },
     };
+    return version === 4
+      ? { ...lined, release: release && { ...release, tag }, schemaVersion: 4 }
+      : { ...lined, release, schemaVersion: 3 };
   }
   if (version !== 2) {
     throw new Error("Receipt v1 is a legacy shape this model does not write");
@@ -1234,6 +1446,99 @@ export const shapeReceipt = (
   return line
     ? { ...receipt, evidence: [...receipt.evidence, versionLineEvidence(line)] }
     : receipt;
+};
+
+// The release-tag setting resolved for one train: its template, "none" when
+// the setting is "none" or leaves the train unlisted, and undefined when the
+// policy has no releaseTags field.
+export const releaseTagTemplateFor = (
+  setting: ReleaseTagsSetting | undefined,
+  train: string
+): string | undefined => {
+  if (setting === undefined || typeof setting === "string") {
+    return setting;
+  }
+  return Object.hasOwn(setting, train) ? setting[train] : "none";
+};
+
+export type ReleaseTagDecision =
+  | { tag: ReleaseTag | null }
+  | {
+      reason: string;
+      reasonCode: "invalid-version-direction" | "malformed-policy";
+      requiredAction: "choose-version" | "repair-policy";
+    };
+
+/**
+ * Names one release's tag at classify and prepare: the train's template
+ * prefix plus the exact version, with the message `<display name> <version>`.
+ * A single template on a repository with two or more public trains, or an
+ * invalid setting, blocks with `malformed-policy`; a name Git would refuse,
+ * or one a local tag on another commit already holds, blocks with
+ * `invalid-version-direction`.
+ */
+export const releaseTagFor = ({
+  displayName,
+  publicTrains,
+  setting,
+  target = null,
+  taken = null,
+  train,
+  version,
+}: {
+  displayName: string;
+  publicTrains: number;
+  setting: ReleaseTagsSetting | undefined;
+  target?: string | null;
+  taken?: string | null;
+  train: string;
+  version: string;
+}): ReleaseTagDecision => {
+  const malformed = (reason: string): ReleaseTagDecision => ({
+    reason,
+    reasonCode: "malformed-policy",
+    requiredAction: "repair-policy",
+  });
+  const refused = (reason: string): ReleaseTagDecision => ({
+    reason,
+    reasonCode: "invalid-version-direction",
+    requiredAction: "choose-version",
+  });
+  if (setting === undefined) {
+    return { tag: null };
+  }
+  const errors = releaseTagsErrors(setting);
+  if (errors.length > 0) {
+    return malformed(errors.join("; "));
+  }
+  if (typeof setting === "string" && setting !== "none" && publicTrains >= 2) {
+    return malformed(
+      `One releaseTags template cannot name ${publicTrains} release trains; record one per train.`
+    );
+  }
+  const template = releaseTagTemplateFor(setting, train);
+  if (template === undefined || template === "none") {
+    return { tag: null };
+  }
+  const tag = {
+    message: `${displayName} ${version}`,
+    name: template.slice(0, -"{version}".length) + version,
+  };
+  const problem = releaseTagNameBindingProblem(tag.name, version);
+  if (problem) {
+    return refused(problem);
+  }
+  // The display name is the agent's choice, never the owner's: shorten it.
+  const messageProblem = releaseTagMessageProblem(tag.message, version);
+  if (messageProblem) {
+    throw new Error(messageProblem);
+  }
+  if (taken !== null && taken !== target) {
+    return refused(
+      `Tag ${tag.name} already exists on another commit, so ${version} was already released.`
+    );
+  }
+  return { tag };
 };
 
 export interface ReleaseSetConsistency {
@@ -1246,7 +1551,7 @@ export interface ReleaseSetConsistency {
 const lineKey = (line: VersionLine): string => line.members.join("\0");
 
 // Each train belongs to at most one line, which its own receipt carries.
-const lineMembershipErrors = (receipts: ChangelogReceiptV3[]): string[] => {
+const lineMembershipErrors = (receipts: LineCarryingReceipt[]): string[] => {
   const errors: string[] = [];
   const claims = new Map<string, string>();
   for (const receipt of receipts) {
@@ -1277,23 +1582,46 @@ const lineMembershipErrors = (receipts: ChangelogReceiptV3[]): string[] => {
   return errors;
 };
 
+// Two trains never name one release tag; prefix-free templates already
+// prevent it, and this is the cheap backstop.
+const releaseSetTagErrors = (receipts: LineCarryingReceipt[]): string[] => {
+  const errors: string[] = [];
+  const claims = new Map<string, string>();
+  for (const receipt of receipts) {
+    const tag = releaseTagOf(receipt);
+    if (tag) {
+      const train =
+        receipt.versionDecision?.releaseTrain ?? receipt.transactionId;
+      const other = claims.get(tag.name);
+      requireCondition(
+        errors,
+        other === undefined || other === train,
+        `${other} and ${train} both name release tag ${tag.name}; each train needs its own`
+      );
+      claims.set(tag.name, train);
+    }
+  }
+  return errors;
+};
+
 /**
- * Checks the v3 receipts of one release set together, as Simple Changes
- * `validate-changelog-release-set` does: one set, input target, and train
- * list; one receipt per train; each train on at most one line; and per line
- * one state and one identical version string. Trains without a receipt yet
- * are reported, not refused: a release set is non-atomic.
+ * Checks the v3 and v4 receipts of one release set together, as Simple
+ * Changes `validate-changelog-release-set` does: one set, input target, and
+ * train list; one receipt per train; each train on at most one line; per line
+ * one state and one identical version string; and never one tag for two
+ * trains. Trains without a receipt yet are reported, not refused: a release
+ * set is non-atomic.
  */
 export const validateChangelogReleaseSet = (
   values: unknown[]
 ): { errors: string[]; value?: ReleaseSetConsistency } => {
-  const receipts: ChangelogReceiptV3[] = [];
+  const receipts: LineCarryingReceipt[] = [];
   for (const value of values) {
     const result = validateChangelogReceipt(value);
-    if (result.value?.schemaVersion !== 3) {
+    if (!(result.value && carriesLine(result.value))) {
       return {
         errors: [
-          "a release-set check needs valid v3 receipts",
+          "a release-set check needs valid v3 or v4 receipts",
           ...result.errors,
         ],
       };
@@ -1357,7 +1685,10 @@ export const validateChangelogReleaseSet = (
     );
     known.selectedVersion ??= decision.selectedVersion;
   }
-  errors.push(...lineMembershipErrors(receipts));
+  errors.push(
+    ...lineMembershipErrors(receipts),
+    ...releaseSetTagErrors(receipts)
+  );
   return errors.length > 0
     ? { errors }
     : {
@@ -1375,22 +1706,27 @@ export const validateChangelogReleaseSet = (
 };
 
 // Resolved shared version lines join the digest only when there is at least
-// one, so every digest without a line is unchanged.
+// one, and the train's resolved release-tag template (`none` included) only
+// when the policy records releaseTags, so every earlier digest is unchanged.
 export const effectivePolicyDigest = ({
+  releaseTags,
   sharedVersionLines,
   ...input
 }: {
   automationOwner: string | null;
   policy: unknown;
+  releaseTags?: string;
   releaseTrain: string;
   sharedVersionLines?: SharedVersionLine[];
   source: string;
   versionConvention: string;
   versionOwner: string;
 }): string =>
-  digestCanonicalJson(
-    sharedVersionLines?.length ? { ...input, sharedVersionLines } : input
-  );
+  digestCanonicalJson({
+    ...input,
+    ...(releaseTags !== undefined && { releaseTags }),
+    ...(sharedVersionLines?.length && { sharedVersionLines }),
+  });
 
 // On a line, the decision digest covers the line state (mode, members,
 // memberVersions, and sharedVersion) but not the outcome; without a line it

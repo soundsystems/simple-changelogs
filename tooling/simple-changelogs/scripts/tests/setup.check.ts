@@ -243,14 +243,15 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "optional",
-      currentVersion: 22,
+      currentVersion: 25,
       headline: "Simple Changelogs has recently been updated.",
+      questions: ["release-tags"],
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
-        "Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release.",
         "New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence.",
         "New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception.",
+        "Each release can now get a Git tag: Simple Changelogs names it in the release receipt, and Simple Changes 0.27.0 or later creates and pushes it. This update asks once how releases should be tagged.",
       ],
       userPrompt:
         "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
@@ -312,8 +313,9 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 22,
+      version: 25,
     });
+    expect(Object.hasOwn(policy, "releaseTags")).toBe(false);
     expect(after.guidanceUpdate).toBeNull();
   });
 
@@ -602,6 +604,7 @@ describe("setup inspection", () => {
       "release-note-surface-offer",
       "release-note-surface-components",
       "major-release-naming",
+      "release-tags",
       "preference-scope",
       "released-history-audit",
     ]);
@@ -1435,6 +1438,7 @@ describe("setup application", () => {
       questions: [
         { id: "major-release-naming", required: true },
         { id: "public-version-actions", required: true },
+        { id: "release-tags", required: true },
       ],
       resolvedPolicy: {
         major: "automatic",
@@ -1444,6 +1448,7 @@ describe("setup application", () => {
       resolvedPreferences: {
         majorReleaseNaming: "named",
         releaseNoteGrouping: "product-areas",
+        releaseTags: "v{version}",
       },
     });
     expect(result.publicVersioning?.effective.patch).toBe("ask");
@@ -1474,13 +1479,15 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(24);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(25);
+    expect(fullPolicy.releaseTags).toBe("v{version}");
 
+    // Every distribution shares one guidance number.
     const distributionVersions = [
-      ["web", 22],
-      ["mobile", 21],
-      ["web-cms", 22],
-      ["skill-repository", 15],
+      ["web", 25],
+      ["mobile", 25],
+      ["web-cms", 25],
+      ["skill-repository", 25],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -2071,14 +2078,19 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 7,
+      currentVersion: 25,
       recordedVersion: 1,
     });
+    // CMS history has no release, so the notice never asks about tags.
+    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
+      false
+    );
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 7,
+      version: 25,
     });
+    expect(Object.hasOwn(policy, "releaseTags")).toBe(false);
   });
 
   test("distribution conflicts stop before writing", async () => {
@@ -2475,7 +2487,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 22 },
+      { backfillStatus: "completed", version: 25 },
       { backfillStatus: "completed", version: 1 }
     );
 
@@ -2490,6 +2502,10 @@ describe("post-onboarding update paths", () => {
       currentVersion: 2,
       recordedVersion: 1,
     });
+    // The main track is current, so the release-tag question is not asked.
+    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
+      false
+    );
     expect(inspection.guidanceUpdate?.changes).toEqual([
       {
         backfillRecommendation: "optional",
@@ -2520,7 +2536,7 @@ describe("post-onboarding update paths", () => {
     const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
     expect(repoPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 22,
+      version: 25,
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2540,7 +2556,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 22 },
+      { backfillStatus: "completed", version: 25 },
       { backfillStatus: "completed", version: 2 }
     );
 

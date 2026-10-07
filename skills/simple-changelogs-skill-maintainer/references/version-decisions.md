@@ -25,6 +25,10 @@ but grants no publication, tag, or hosted-release authority. `unknown` always
 blocks. Exact valid current direction wins. Public prereleases use the same
 gate; unpublished development identifiers do not.
 
+When `releaseTags` is set, a tag in its style counts as a released version,
+and a version whose tag name a local tag on another commit already holds is
+never selected: block with `invalid-version-direction` and `choose-version`.
+
 ## Version map
 
 For release-bearing work, report each relevant source:

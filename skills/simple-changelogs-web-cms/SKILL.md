@@ -20,7 +20,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 22
+Current guidance version: 25
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -53,7 +53,8 @@ Before write-capable work, run the bundled `scripts/setup.ts` inspection helper:
   review, continuing with the current settings, or opening the detailed release
   notes. A walkthrough explains every new ability, affected setting,
   proposed default, example, consequence, and safety boundary before any
-  decision. Ask about a historical backfill only afterward and only when
+  decision. Ask any listed `questions` once with the notice; no answer records
+  nothing. Ask about a historical backfill only afterward and only when
   `userPrompt` is non-null; never run one automatically. Record the one-time
   disposition with `apply --guidance-backfill <status> --confirm`.
 - Inspect and validate both policy files when present.
@@ -80,7 +81,7 @@ access, release, source-of-truth, or surface rules.
 | Public history reconstruction | `references/backfill.md` |
 | Release boundaries and reconciliation | `references/release-lifecycle.md` |
 | Versions and metadata | `references/version-decisions.md` |
-| Delegated release classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
+| Delegated release classification, preparation, verification, release tags, capability negotiation, or receipts | `references/release-handoff.md` |
 | Stable majors and prereleases | `references/major-releases.md` |
 | Curated public release notes (`RELEASE_NOTES.md`) under a curated policy | `references/curation.md` |
 | Public web/CMS destination scoping and long-form web notes | `references/release-note-surfaces.md` |
@@ -137,7 +138,9 @@ waive this rule; preserve untouched released history. See
   notification without explicit current authority or documented policy.
 - Do not create or update mobile/store notes or submission metadata.
 - Do not mutate an installed skill to remember repository decisions.
-- Do not create tags, hosted releases, deployments, or unrelated product work.
+- Name each release's tag in its receipt, but never create or push a tag;
+  Simple Changes does. Do not create hosted releases, deployments, or unrelated
+  product work.
 
 ## Completion standard
 

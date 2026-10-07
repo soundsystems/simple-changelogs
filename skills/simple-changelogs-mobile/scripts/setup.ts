@@ -280,14 +280,9 @@ type SetupStatus =
   | "ready"
   | "run-only";
 
-const GUIDANCE_VERSIONS = {
-  full: 24,
-  mobile: 21,
-  "skill-repository": 15,
-  web: 22,
-  "web-cms": 22,
-} as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 7;
+// Every distribution shares one guidance number, and each family release is
+// numbered 0.<guidance>.<patch>, so a distribution may jump straight to it.
+const GUIDANCE_VERSION = 25;
 // The web-cms distribution records the CMS side of its policy on a separate
 // guidance track from the standalone CMS distribution.
 const WEB_CMS_CMS_GUIDANCE_VERSION = 2;
@@ -306,11 +301,16 @@ const DISTRIBUTION_DIRECTORIES = {
 // guidance bump.
 const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
 const SHARED_VERSION_LINES_GUIDANCE = 22;
+const RELEASE_TAGS_GUIDANCE = 25;
 
 export interface CurationBudget {
   max: number;
   min: number;
 }
+
+// `"none"`, one `<prefix>{version}` template, or one template (or `"none"`)
+// per release train.
+export type ReleaseTagsSetting = string | Record<string, string>;
 
 interface RepoPolicy {
   crossSurfaceVersioning?: CrossSurfaceVersioning;
@@ -330,6 +330,7 @@ interface RepoPolicy {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   schemaVersion: 1;
   sharedVersionLines?: SharedVersionLine[];
   signatures: SignaturePolicy;
@@ -430,6 +431,7 @@ interface Selection {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   sharedVersionLines?: SharedVersionLine[];
@@ -447,6 +449,7 @@ type OptionalSelectionKeys =
   | "releaseNoteEnvironmentScope"
   | "releaseNoteGrouping"
   | "releaseNoteLinks"
+  | "releaseTags"
   | "sharedVersionLines";
 
 type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
@@ -479,6 +482,7 @@ export interface SetupResult {
   policy: StateRecord<RepoPolicy> | null;
   publicVersioning: PublicVersioningResolution | null;
   recommendation: Recommendation;
+  releaseTags: ReleaseTagsInspection | null;
   repository: string;
   schemaVersion: 1;
   selection: Selection;
@@ -488,6 +492,21 @@ export interface SetupResult {
   writeCapable: boolean;
   writes: WriteRecord[];
 }
+
+// Read-only evidence for the release-tag question: local tags (never
+// fetched), tag-creating tooling, CI that runs on tag pushes, and date-only
+// release headings, with the value a confirmed setup stores by default.
+export interface ReleaseTagsInspection {
+  ciTriggers: string[];
+  convention: ReleaseTagsSetting | null;
+  evidence: string[];
+  reason: string | null;
+  recommended: ReleaseTagsSetting;
+  stored: ReleaseTagsSetting | null;
+  tooling: string[];
+}
+
+type GuidanceQuestion = "release-tags" | "shared-version-lines";
 
 export interface GuidanceUpdateNotice {
   actions: ("walkthrough" | "continue" | "view-release-notes")[];
@@ -500,7 +519,7 @@ export interface GuidanceUpdateNotice {
   }[];
   currentVersion: number;
   headline: "Simple Changelogs has recently been updated.";
-  questions?: ["shared-version-lines"];
+  questions?: GuidanceQuestion[];
   recordedVersion: number;
   releaseNotesOffer: string;
   releaseNotesPath: string;
@@ -517,13 +536,15 @@ export interface OnboardingContribution {
     id:
       | "major-release-naming"
       | "public-version-actions"
-      | "public-version-suggestions";
+      | "public-version-suggestions"
+      | "release-tags";
     required: boolean;
   }[];
   resolvedPolicy: PublicVersioningPolicy;
   resolvedPreferences: {
     majorReleaseNaming: MajorReleaseNamingPolicy;
     releaseNoteGrouping: ReleaseNoteGroupingPolicy;
+    releaseTags: ReleaseTagsSetting;
   };
   summary: string;
 }
@@ -552,8 +573,8 @@ export interface IntegrationCapabilities {
   features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2, 3] | [1, 2] | [2];
-  requestVersions: [1, 2] | [1];
+  receiptVersions: [1, 2, 3, 4] | [1, 2, 4] | [2];
+  requestVersions: [1, 2, 3] | [1, 3] | [1];
   schemaDigests: {
     changelogReceipt: string;
     changelogRequest: string;
@@ -593,6 +614,7 @@ export interface ApplyOptions extends InspectOptions {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   sharedVersionLines?: SharedVersionLine[];
@@ -771,16 +793,26 @@ const integrationCapabilitiesFor = async (
     readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
     readFile(capabilitySchemaPath("changelog-receipt.schema.json"), "utf8"),
   ]);
-  // Only full writes request v2's receipt v3 with its version line.
-  const full = installed === "full";
-  const receiptVersions: [1, 2] | [2] = installed === "cms" ? [2] : [1, 2];
+  // Only full writes request v2's receipt v3 with its version line. Request
+  // v3 and receipt v4 name the release tag; the other versioned distributions
+  // skip request v2 and receipt v3, so a controller before Simple Changes
+  // 0.27.0 still negotiates request v1 and receipt v2 with them. CMS history
+  // has no release to tag.
+  let versions: Pick<
+    IntegrationCapabilities,
+    "receiptVersions" | "requestVersions"
+  > = { receiptVersions: [1, 2, 4], requestVersions: [1, 3] };
+  if (installed === "full") {
+    versions = { receiptVersions: [1, 2, 3, 4], requestVersions: [1, 2, 3] };
+  } else if (installed === "cms") {
+    versions = { receiptVersions: [2], requestVersions: [1] };
+  }
   return {
     distribution: installed,
     features: integrationFeaturesFor(installed),
-    guidanceVersion: currentGuidanceVersionFor(installed),
+    guidanceVersion: GUIDANCE_VERSION,
     provider: "simple-changelogs",
-    receiptVersions: full ? [1, 2, 3] : receiptVersions,
-    requestVersions: full ? [1, 2] : [1],
+    ...versions,
     schemaDigests: {
       changelogReceipt: digestSchema(receiptSchema),
       changelogRequest: digestSchema(requestSchema),
@@ -797,9 +829,6 @@ const capabilitiesFor = (
 export const providerMarkerFor = (
   installed: Distribution | "cms"
 ): Promise<IntegrationCapabilities> => integrationCapabilitiesFor(installed);
-
-const currentGuidanceVersionFor = (installed: Distribution | "cms"): number =>
-  installed === "cms" ? CMS_GUIDANCE_VERSION : GUIDANCE_VERSIONS[installed];
 
 const guidanceReleaseNotesPath = (installed: Distribution | "cms"): string => {
   const packageRoot = resolve(import.meta.dir, "..");
@@ -879,7 +908,7 @@ const guidanceUpdateNoticeFor = async (
   const tracks = [
     {
       cmsTrack: false,
-      current: currentGuidanceVersionFor(installed),
+      current: GUIDANCE_VERSION,
       recorded: policy.guidance.version,
     },
     {
@@ -1004,6 +1033,138 @@ const sharedVersionLineErrors = (value: Record<string, unknown>): string[] => {
   return errors;
 };
 
+// Release tags: a template is a literal prefix plus the exact public version,
+// so the version alone decides the name and two trains with prefix-free
+// prefixes can never expand to the same tag.
+const VERSION_PLACEHOLDER = "{version}";
+const NO_RELEASE_TAGS = "none";
+const RELEASE_TAG_PREFIX = /^[A-Za-z0-9._+/@-]*$/u;
+const VERSION_BOUNDARY = /[0-9.]$/u;
+// Git refuses spaces, control characters, and these in any ref name.
+const REF_FORBIDDEN_CHARACTERS = new Set("~^:?*[\\");
+// A sample public version for checking what a template expands to.
+const SAMPLE_TAG_VERSION = "1.2.0";
+
+/**
+ * Why Git would refuse `refs/tags/<name>`, matching `git check-ref-format`,
+ * plus a leading `-` so a name never reads as a command-line option. Null
+ * when the name is acceptable.
+ */
+export const releaseTagNameProblem = (name: string): string | null => {
+  if (name === "") {
+    return "is empty";
+  }
+  if (name.startsWith("-")) {
+    return "must not start with -";
+  }
+  if (
+    [...name].some(
+      (character) =>
+        (character.codePointAt(0) ?? 0) <= 0x20 ||
+        character === "\u007f" ||
+        REF_FORBIDDEN_CHARACTERS.has(character)
+    )
+  ) {
+    return "contains a space, control character, or one of ~ ^ : ? * [ \\";
+  }
+  if (name.startsWith("/") || name.endsWith("/")) {
+    return "must not start or end with /";
+  }
+  if (name.endsWith(".")) {
+    return "must not end with .";
+  }
+  for (const sequence of ["..", "@{", "//"]) {
+    if (name.includes(sequence)) {
+      return `must not contain ${sequence}`;
+    }
+  }
+  if (
+    name
+      .split("/")
+      .some(
+        (component) => component.startsWith(".") || component.endsWith(".lock")
+      )
+  ) {
+    return "must not have a component that starts with . or ends with .lock";
+  }
+  return null;
+};
+
+/** Why a `<prefix>{version}` template is unusable, or null when it is valid. */
+export const releaseTagTemplateProblem = (template: unknown): string | null => {
+  if (typeof template !== "string") {
+    return "must be a string";
+  }
+  if (
+    template.split(VERSION_PLACEHOLDER).length !== 2 ||
+    !template.endsWith(VERSION_PLACEHOLDER)
+  ) {
+    return `must contain ${VERSION_PLACEHOLDER} exactly once, at the end`;
+  }
+  const prefix = template.slice(0, -VERSION_PLACEHOLDER.length);
+  if (!RELEASE_TAG_PREFIX.test(prefix)) {
+    return "may put only letters, digits, and . _ - + / @ before {version}";
+  }
+  if (VERSION_BOUNDARY.test(prefix)) {
+    return "must not put a digit or . directly before {version}";
+  }
+  const problem = releaseTagNameProblem(prefix + SAMPLE_TAG_VERSION);
+  return problem ? `expands to a tag name that ${problem}` : null;
+};
+
+const releaseTagPrefix = (template: string): string =>
+  template.slice(0, -VERSION_PLACEHOLDER.length);
+
+/**
+ * Validates a `releaseTags` setting: absent, `"none"`, one template, or a
+ * non-empty map of release trains to templates or `"none"` whose prefixes
+ * are prefix-free, so no two trains can ever name one tag.
+ */
+export const releaseTagsErrors = (
+  value: unknown,
+  field = "releaseTags"
+): string[] => {
+  // Absent means no tags, like "none".
+  if (value === undefined || value === NO_RELEASE_TAGS) {
+    return [];
+  }
+  if (typeof value === "string") {
+    const problem = releaseTagTemplateProblem(value);
+    return problem ? [`${field} ${problem}`] : [];
+  }
+  if (!isRecord(value) || Object.keys(value).length === 0) {
+    return [
+      `${field} must be "none", a "<prefix>{version}" template, or a map of release trains to templates`,
+    ];
+  }
+  const errors: string[] = [];
+  const prefixes: [string, string][] = [];
+  for (const [train, template] of Object.entries(value)) {
+    if (train.trim() === "") {
+      errors.push(`${field} needs a release-train name for every template`);
+    }
+    if (template === NO_RELEASE_TAGS) {
+      continue;
+    }
+    const problem = releaseTagTemplateProblem(template);
+    if (problem) {
+      errors.push(`${field}.${train} ${problem}`);
+    } else {
+      prefixes.push([train, releaseTagPrefix(template as string)]);
+    }
+  }
+  prefixes.forEach(([train, prefix], index) => {
+    for (const [other, otherPrefix] of prefixes.slice(index + 1)) {
+      if (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix)) {
+        errors.push(
+          `${field}.${train} and ${field}.${other} could name one tag; no prefix may equal or begin another`
+        );
+      }
+    }
+  });
+  return errors;
+};
+
 const validateRepoPolicy = (
   value: unknown
 ): { errors: string[]; value?: RepoPolicy } => {
@@ -1031,6 +1192,7 @@ const validateRepoPolicy = (
           "releaseNoteEnvironmentScope",
           "releaseNoteGrouping",
           "releaseNoteLinks",
+          "releaseTags",
           "sharedVersionLines",
         ]
       )
@@ -1106,6 +1268,7 @@ const validateRepoPolicy = (
     value.releaseNoteLinks,
     RELEASE_NOTE_LINK_POLICIES
   );
+  errors.push(...releaseTagsErrors(value.releaseTags));
   if (
     value.mobileReleaseNotePlacement !== undefined &&
     !oneOf(value.mobileReleaseNotePlacement, MOBILE_RELEASE_NOTE_PLACEMENTS)
@@ -1838,6 +2001,446 @@ const versionTrainsIn = async (
   };
 };
 
+// Release-tag evidence. Only the newest released versions count, a tag's
+// suffix must be one of them exactly, and nothing is fetched.
+const NEWEST_RELEASES = 10;
+const HEADING_VERSION =
+  /(?<![0-9A-Za-z.])v?(\d+(?:\.\d+){1,3}(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z.-]+)?)(?![0-9A-Za-z])/u;
+const HEADING_DATE = /(?<!\d)\d{4}-\d{2}-\d{2}(?!\d)/u;
+const TAG_TOOLING_DEPENDENCIES = new Set([
+  "semantic-release",
+  "release-please",
+  "@changesets/cli",
+  "lerna",
+  "release-it",
+  "standard-version",
+  "np",
+]);
+// Root configuration files of release tooling that creates Git tags.
+const TAG_TOOLING_FILES: [RegExp, string][] = [
+  [/^(?:\.releaserc(?:\.\w+)?|release\.config\.[cm]?js)$/u, "semantic-release"],
+  [/^\.?release-please-(?:config|manifest)\.json$/u, "release-please"],
+  [/^lerna\.json$/u, "lerna"],
+  [/^\.release-it\.\w+$/u, "release-it"],
+  [/^\.versionrc(?:\.\w+)?$/u, "standard-version"],
+  [/^\.?goreleaser\.ya?ml$/u, "goreleaser"],
+  [/^release\.toml$/u, "cargo-release"],
+];
+const VERSION_SCRIPT =
+  /\b(?:npm|pnpm|yarn)\s+version\b|\bbun\s+pm\s+version\b/u;
+const CARGO_RELEASE_METADATA =
+  /^\[(?:package|workspace)\.metadata\.release\]/mu;
+const FASTLANE_TAG = /\badd_git_tag\b/u;
+const WORKFLOW_TAG_TOOL =
+  /\b(semantic-release|release-please|goreleaser|changesets\/action)\b/u;
+const GITHUB_TAG_TRIGGER =
+  /^\s*tags(?:-ignore)?\s*:|refs\/tags\/|github\.ref_type/mu;
+const GITLAB_TAG_TRIGGER =
+  /\$\{?CI_COMMIT_TAG\b|^\s*only\s*:\s*\[?\s*tags\b|^\s*-\s*tags\s*$/mu;
+const REGEX_SYNTAX = /[.*+?^${}()|[\]\\/]/gu;
+const YAML_FILE = /\.ya?ml$/u;
+const WORKSPACE_MEMBER = /^((?:apps|packages)\/[^/]+)\//u;
+const EVIDENCE_SOURCE = / \(.*$/u;
+
+interface ReleasedHeading {
+  date: string | null;
+  text: string;
+  version: string | null;
+}
+
+const newestReleasedHeadings = async (
+  path: string
+): Promise<ReleasedHeading[]> => {
+  let content = "";
+  try {
+    content = await readFile(path, "utf8");
+  } catch {
+    return [];
+  }
+  return [...content.matchAll(RELEASE_HEADING)]
+    .slice(0, NEWEST_RELEASES)
+    .map(([line]) => ({
+      date: HEADING_DATE.exec(line)?.[0] ?? null,
+      text: line.toLowerCase(),
+      version:
+        HEADING_VERSION.exec(line.replace(HEADING_DATE, " "))?.[1] ?? null,
+    }));
+};
+
+const localTagNames = async (root: string): Promise<string[] | null> => {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", root, "for-each-ref", "--format=%(refname:strip=2)", "refs/tags"],
+      { maxBuffer: 16 * 1024 * 1024, timeout: 10_000 }
+    );
+    return stdout.split("\n").filter(Boolean);
+  } catch {
+    return null;
+  }
+};
+
+// The prefix a tag puts before one of the versions, kept only when it is a
+// valid template prefix, so `v11.2.0` never reads as `v1` plus `1.2.0`.
+const tagPrefixes = (
+  tags: string[],
+  versions: string[]
+): Map<string, string[]> => {
+  const matches = new Map<string, string[]>();
+  for (const tag of tags) {
+    for (const version of versions) {
+      const prefix = tag.slice(0, tag.length - version.length);
+      if (
+        tag.endsWith(version) &&
+        releaseTagTemplateProblem(prefix + VERSION_PLACEHOLDER) === null
+      ) {
+        matches.set(prefix, [...(matches.get(prefix) ?? []), tag]);
+      }
+    }
+  }
+  return matches;
+};
+
+// A prefix naming two or more released versions, or the only one, is a
+// convention; the most matches wins, then the one naming the newest version.
+const tagConvention = (
+  tags: string[],
+  versions: string[]
+): { examples: string[]; prefix: string } | null => {
+  let best: { examples: string[]; prefix: string } | null = null;
+  for (const [prefix, examples] of tagPrefixes(tags, versions)) {
+    const counts = examples.length >= 2 || versions.length === 1;
+    const better =
+      !best ||
+      examples.length > best.examples.length ||
+      (examples.length === best.examples.length &&
+        examples.includes(`${prefix}${versions[0]}`) &&
+        !best.examples.includes(`${best.prefix}${versions[0]}`));
+    if (counts && better) {
+      best = { examples, prefix };
+    }
+  }
+  return best;
+};
+
+const readJsonRecord = async (
+  path: string
+): Promise<Record<string, unknown> | null> => {
+  try {
+    const value = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return isRecord(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const workspaceMembers = async (root: string): Promise<string[]> => [
+  "",
+  ...(
+    await Promise.all(
+      WORKSPACE_PARENTS.map(async (parent) =>
+        (
+          await probeEntries(root, parent)
+        ).flatMap((entry) =>
+          entry.isDirectory() ? [`${parent}/${entry.name}/`] : []
+        )
+      )
+    )
+  ).flat(),
+];
+
+// Release tooling that creates Git tags itself, from manifests, scripts,
+// configuration files, Fastlane, and CI workflow steps.
+const tagToolingEvidence = async (
+  root: string,
+  members: string[],
+  workflows: Map<string, string>
+): Promise<string[]> => {
+  const found = new Set<string>();
+  await Promise.all(
+    members.map(async (member) => {
+      const manifest = await readJsonRecord(join(root, member, "package.json"));
+      const manifestPath = `${member}package.json`;
+      for (const name of dependencyNames(manifest)) {
+        if (TAG_TOOLING_DEPENDENCIES.has(name)) {
+          found.add(`${name} (${manifestPath})`);
+        }
+      }
+      const scripts = isRecord(manifest?.scripts) ? manifest.scripts : {};
+      if (
+        Object.values(scripts).some(
+          (script) => typeof script === "string" && VERSION_SCRIPT.test(script)
+        )
+      ) {
+        found.add(`a version script (${manifestPath})`);
+      }
+      const fastfiles = ["fastlane", "ios/fastlane", "android/fastlane"].map(
+        (directory) => `${member}${directory}/Fastfile`
+      );
+      const tagging = await Promise.all(
+        fastfiles.map(async (path) =>
+          FASTLANE_TAG.test(await readSmallText(join(root, path))) ? [path] : []
+        )
+      );
+      for (const path of tagging.flat()) {
+        found.add(`Fastlane add_git_tag (${path})`);
+      }
+    })
+  );
+  for (const { name } of await probeEntries(root, "")) {
+    const tool = TAG_TOOLING_FILES.find(([file]) => file.test(name))?.[1];
+    if (tool) {
+      found.add(`${tool} (${name})`);
+    }
+  }
+  if (existsSync(join(root, ".changeset"))) {
+    found.add("@changesets/cli (.changeset)");
+  }
+  if (
+    CARGO_RELEASE_METADATA.test(await readSmallText(join(root, "Cargo.toml")))
+  ) {
+    found.add("cargo-release (Cargo.toml)");
+  }
+  for (const [path, content] of workflows) {
+    const tool = WORKFLOW_TAG_TOOL.exec(content)?.[1];
+    if (tool) {
+      found.add(
+        `${tool === "changesets/action" ? "@changesets/cli" : tool} (${path})`
+      );
+    }
+  }
+  return [...found].sort();
+};
+
+const ciWorkflows = async (root: string): Promise<Map<string, string>> => {
+  const workflows = new Map<string, string>();
+  const directory = ".github/workflows";
+  const entries = await probeEntries(root, directory);
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && YAML_FILE.test(entry.name))
+      .map(async (entry) => {
+        const path = `${directory}/${entry.name}`;
+        workflows.set(path, await readSmallText(join(root, path)));
+      })
+  );
+  return workflows;
+};
+
+const tagTriggeredCi = async (
+  root: string,
+  workflows: Map<string, string>
+): Promise<string[]> => {
+  const triggered = [...workflows]
+    .filter(([, content]) => GITHUB_TAG_TRIGGER.test(content))
+    .map(([path]) => path);
+  if (
+    GITLAB_TAG_TRIGGER.test(await readSmallText(join(root, ".gitlab-ci.yml")))
+  ) {
+    triggered.push(".gitlab-ci.yml");
+  }
+  return triggered.sort((left, right) => left.localeCompare(right, "en"));
+};
+
+// Versions each release train has released: its owner's version, its own
+// changelog's newest headings, and root headings that name the train.
+const trainVersions = async (
+  root: string,
+  train: VersionTrain,
+  rootHeadings: ReleasedHeading[]
+): Promise<string[]> => {
+  const member = WORKSPACE_MEMBER.exec(train.path)?.[1];
+  const directories = [...new Set([dirname(train.path), member])].filter(
+    (directory): directory is string => Boolean(directory) && directory !== "."
+  );
+  const own = (
+    await Promise.all(
+      directories.map((directory) =>
+        newestReleasedHeadings(join(root, directory, "CHANGELOG.md"))
+      )
+    )
+  ).flat();
+  const name = new RegExp(
+    `(?<![a-z0-9])${train.train.replace(REGEX_SYNTAX, "\\$&")}(?![a-z0-9])`,
+    "u"
+  );
+  const named = rootHeadings.filter(({ text }) => name.test(text));
+  return [
+    ...new Set([
+      ...(train.version && PUBLIC_VERSION.test(train.version)
+        ? [train.version]
+        : []),
+      ...[...own, ...named].flatMap(({ version }) =>
+        version ? [version] : []
+      ),
+    ]),
+  ];
+};
+
+// One convention per train; trains whose conventions could collide, and
+// trains without one, take `<train>@{version}` when that stays prefix-free.
+const trainConventions = async (
+  root: string,
+  trains: VersionTrain[],
+  tags: string[],
+  rootHeadings: ReleasedHeading[],
+  evidence: string[]
+): Promise<Record<string, string> | null> => {
+  const found = new Map<string, string>();
+  const conventions = await Promise.all(
+    trains.map(async (train) =>
+      tagConvention(tags, await trainVersions(root, train, rootHeadings))
+    )
+  );
+  trains.forEach(({ train }, index) => {
+    const convention = conventions[index];
+    if (convention) {
+      found.set(train, convention.prefix);
+      evidence.push(
+        `${train} tags follow ${convention.prefix}${VERSION_PLACEHOLDER}: ${convention.examples.slice(0, 3).join(", ")}`
+      );
+    }
+  });
+  if (found.size === 0) {
+    return null;
+  }
+  const map = Object.fromEntries(
+    trains.map(({ train }) => [
+      train,
+      `${found.get(train) ?? `${train}@`}${VERSION_PLACEHOLDER}`,
+    ])
+  );
+  if (releaseTagsErrors(map).length > 0) {
+    evidence.push(
+      "Existing tag styles could make two trains name one tag, so each train needs its own style"
+    );
+    return null;
+  }
+  return map;
+};
+
+const defaultTrainTemplates = (
+  trains: VersionTrain[]
+): Record<string, string> | null => {
+  const templates = trains
+    .map(({ train }) => [train, `${train}@${VERSION_PLACEHOLDER}`])
+    .filter(([, template]) => releaseTagTemplateProblem(template) === null);
+  return templates.length > 0 ? Object.fromEntries(templates) : null;
+};
+
+const releaseTrainsFor = (
+  inventory: Inventory,
+  crossSurfaceVersioning: CrossSurfaceVersioning | undefined
+): VersionTrain[] =>
+  crossSurfaceVersioning === "shared" ? [] : (inventory.versionTrains ?? []);
+
+// Tooling that already tags, then date-only headings, recommend `"none"`;
+// otherwise a detected convention, one template per train for 2+ public
+// trains, or `"v{version}"`.
+const recommendReleaseTags = (
+  tooling: string[],
+  dateOnly: boolean,
+  convention: ReleaseTagsSetting | null,
+  trains: VersionTrain[]
+): Pick<ReleaseTagsInspection, "reason" | "recommended"> => {
+  if (tooling[0]) {
+    return {
+      reason: `${tooling[0].replace(EVIDENCE_SOURCE, "")} already creates this repository's tags`,
+      recommended: NO_RELEASE_TAGS,
+    };
+  }
+  if (dateOnly) {
+    return {
+      reason:
+        "releases are named by date, so two releases on one day would need one tag",
+      recommended: NO_RELEASE_TAGS,
+    };
+  }
+  if (convention !== null) {
+    return { reason: null, recommended: convention };
+  }
+  return {
+    reason: null,
+    recommended:
+      trains.length >= 2
+        ? (defaultTrainTemplates(trains) ?? NO_RELEASE_TAGS)
+        : `v${VERSION_PLACEHOLDER}`,
+  };
+};
+
+/** Inspects release-tag evidence and recommends a `releaseTags` value. */
+const inspectReleaseTags = async (
+  root: string,
+  inventory: Inventory,
+  policy: RepoPolicy | undefined,
+  crossSurfaceVersioning = policy?.crossSurfaceVersioning
+): Promise<ReleaseTagsInspection> => {
+  const [headings, tags, members, workflows] = await Promise.all([
+    newestReleasedHeadings(join(root, "CHANGELOG.md")),
+    localTagNames(root),
+    workspaceMembers(root),
+    ciWorkflows(root),
+  ]);
+  const [tooling, ciTriggers] = await Promise.all([
+    tagToolingEvidence(root, members, workflows),
+    tagTriggeredCi(root, workflows),
+  ]);
+  const trains = releaseTrainsFor(inventory, crossSurfaceVersioning);
+  const evidence: string[] = [];
+  if (tags === null) {
+    evidence.push("Local Git tags could not be read");
+  } else if (tags.length === 0) {
+    evidence.push("No local Git tags");
+  }
+  const versions = [
+    ...new Set(headings.flatMap(({ version }) => (version ? [version] : []))),
+  ];
+  const dated = [
+    ...new Set(headings.flatMap(({ date }) => (date ? [date] : []))),
+  ];
+  const dateOnly =
+    headings.length > 0 && versions.length === 0 && dated.length > 0;
+  let convention: ReleaseTagsSetting | null = null;
+  if (trains.length >= 2) {
+    evidence.push(
+      `${trains.length} public release trains: ${trains.map(({ train }) => train).join(", ")}`
+    );
+    convention = await trainConventions(
+      root,
+      trains,
+      tags ?? [],
+      headings,
+      evidence
+    );
+  } else {
+    const found = tagConvention(tags ?? [], dateOnly ? dated : versions);
+    if (found) {
+      convention = `${found.prefix}${VERSION_PLACEHOLDER}`;
+      evidence.push(
+        `Local tags follow ${convention}: ${found.examples.slice(0, 3).join(", ")}`
+      );
+    }
+  }
+  if (tags && tags.length > 0 && convention === null) {
+    evidence.push("No local tag names a released version");
+  }
+  if (dateOnly) {
+    evidence.push("Release headings are dated, not numbered");
+  }
+  evidence.push(
+    ...tooling.map((item) => `Tag-creating tooling: ${item}`),
+    ...ciTriggers.map((path) => `CI runs when a tag is pushed: ${path}`)
+  );
+  return {
+    ciTriggers,
+    convention,
+    evidence,
+    ...recommendReleaseTags(tooling, dateOnly, convention, trains),
+    stored: policy?.releaseTags ?? null,
+    tooling,
+  };
+};
+
 const inspectInventory = async (
   root: string,
   dependencies: string[],
@@ -2128,7 +2731,8 @@ const recommendationFor = (
   inventory: Inventory,
   global: StateRecord<GlobalPreferences>,
   policy: StateRecord<RepoPolicy>,
-  cmsPolicy: StateRecord<CmsPolicy>
+  cmsPolicy: StateRecord<CmsPolicy>,
+  releaseTags: ReleaseTagsInspection | null
 ): Recommendation => {
   const reusableDefaults = global.value ?? safeGlobalDefaults();
   const backfillStatus: BackfillStatus | undefined =
@@ -2141,7 +2745,7 @@ const recommendationFor = (
           distribution: installed,
           guidance: {
             backfillStatus: backfillStatus ?? ("partial" as const),
-            version: GUIDANCE_VERSIONS[installed],
+            version: GUIDANCE_VERSION,
           },
           majorReleaseNaming:
             reusableDefaults.majorReleaseNaming ?? DEFAULT_MAJOR_RELEASE_NAMING,
@@ -2151,6 +2755,7 @@ const recommendationFor = (
           releaseNoteGrouping:
             reusableDefaults.releaseNoteGrouping ??
             DEFAULT_RELEASE_NOTE_GROUPING,
+          ...(releaseTags && { releaseTags: releaseTags.recommended }),
           schemaVersion: 1 as const,
           signatures: reusableDefaults.signatures,
         });
@@ -2215,9 +2820,10 @@ const publicVersioningSelectionFrom = (
 const onboardingContributionFor = (
   installed: Distribution | "cms",
   policy: StateRecord<RepoPolicy>,
-  recommendation: Recommendation
+  recommendation: Recommendation,
+  releaseTags: ReleaseTagsInspection | null
 ): OnboardingContribution | null => {
-  if (installed === "cms" || policy.state !== "absent") {
+  if (installed === "cms" || policy.state !== "absent" || !releaseTags) {
     return null;
   }
   const resolvedPolicy =
@@ -2233,6 +2839,7 @@ const onboardingContributionFor = (
   ) {
     questions.push({ id: "public-version-suggestions", required: true });
   }
+  questions.push({ id: "release-tags", required: true });
   return {
     destination: POLICY_FILENAME,
     owner: "simple-changelogs",
@@ -2245,9 +2852,10 @@ const onboardingContributionFor = (
       releaseNoteGrouping:
         recommendation.policy?.releaseNoteGrouping ??
         DEFAULT_RELEASE_NOTE_GROUPING,
+      releaseTags: releaseTags.recommended,
     },
     summary:
-      "Simple Changelogs owns release-note grouping, major-release naming, and public-version selection; deployment and publication remain separate.",
+      "Simple Changelogs owns release-note grouping, major-release naming, public-version selection, and release-tag names; Simple Changes creates and pushes tags, and deployment and publication remain separate.",
   };
 };
 
@@ -2349,6 +2957,7 @@ const unresolvedFor = (
   }
   if (installed !== "cms" && policy.state === "absent") {
     unresolved.push("major-release-naming");
+    unresolved.push("release-tags");
     unresolved.push("preference-scope");
   }
   if (inventory.releasedHistoryCount > 0) {
@@ -2409,6 +3018,32 @@ const inspectionSummary = (
   return `Simple Changelogs ${selectedLabel} needs onboarding before write-capable changelog work.`;
 };
 
+// Each question is asked once, by the notice that first reaches its
+// guidance; an unanswered question records nothing.
+const guidanceQuestionsFor = (
+  notice: GuidanceUpdateNotice,
+  inventory: Inventory,
+  policy: RepoPolicy | undefined,
+  releaseTags: ReleaseTagsInspection | null
+): GuidanceQuestion[] => {
+  const questions: GuidanceQuestion[] = [];
+  if (
+    notice.recordedVersion < SHARED_VERSION_LINES_GUIDANCE &&
+    asksVersionLines(inventory, policy)
+  ) {
+    questions.push("shared-version-lines");
+  }
+  if (
+    releaseTags &&
+    policy &&
+    policy.guidance.version < RELEASE_TAGS_GUIDANCE &&
+    policy.releaseTags === undefined
+  ) {
+    questions.push("release-tags");
+  }
+  return questions;
+};
+
 export const inspectRepository = async (
   options: InspectOptions
 ): Promise<SetupResult> => {
@@ -2439,24 +3074,34 @@ export const inspectRepository = async (
   const hasMalformedState =
     relevantPolicy.state === "malformed" ||
     (installed === "web-cms" && cmsPolicy.state === "malformed");
+  // CMS history has no release, so it has no tag to name.
+  const releaseTags =
+    installed === "cms"
+      ? null
+      : await inspectReleaseTags(root, inventory, policy.value);
   const recommendation = recommendationFor(
     installed,
     inventory,
     globalPreferences,
     policy,
-    cmsPolicy
+    cmsPolicy,
+    releaseTags
   );
   const guidanceUpdate = await guidanceUpdateNoticeFor(
     installed,
     installed === "cms" ? cmsPolicy.value : policy.value,
     installed === "web-cms" ? cmsPolicy.value : undefined
   );
-  if (
-    guidanceUpdate &&
-    guidanceUpdate.recordedVersion < SHARED_VERSION_LINES_GUIDANCE &&
-    asksVersionLines(inventory, policy.value)
-  ) {
-    guidanceUpdate.questions = ["shared-version-lines"];
+  if (guidanceUpdate) {
+    const questions = guidanceQuestionsFor(
+      guidanceUpdate,
+      inventory,
+      policy.value,
+      releaseTags
+    );
+    if (questions.length > 0) {
+      guidanceUpdate.questions = questions;
+    }
   }
   const unresolvedQuestions = configured
     ? []
@@ -2489,7 +3134,8 @@ export const inspectRepository = async (
     onboardingContribution: onboardingContributionFor(
       installed,
       policy,
-      recommendation
+      recommendation,
+      releaseTags
     ),
     onboardingRequired,
     ownerWriteReceipt:
@@ -2497,6 +3143,7 @@ export const inspectRepository = async (
     policy: installed === "cms" ? null : policy,
     publicVersioning: publicVersioningResolutionFor(installed, policy),
     recommendation,
+    releaseTags,
     repository: root,
     schemaVersion: 1,
     selection: {},
@@ -2832,10 +3479,37 @@ const curationBudgetSelectionFrom = (
     ? undefined
     : { max: options.curationMax, min: options.curationMin };
 
+// The value a confirmed setup stores when the owner gave no answer: the
+// recommendation, recomputed when this setup records the trains as one.
+const recommendedReleaseTags = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<ReleaseTagsSetting | undefined> => {
+  if (!inspect.releaseTags) {
+    return;
+  }
+  const stored = inspect.policy?.value?.crossSurfaceVersioning;
+  if (
+    options.crossSurfaceVersioning === undefined ||
+    options.crossSurfaceVersioning === stored
+  ) {
+    return inspect.releaseTags.recommended;
+  }
+  return (
+    await inspectReleaseTags(
+      inspect.repository,
+      inspect.inventory,
+      inspect.policy?.value,
+      options.crossSurfaceVersioning
+    )
+  ).recommended;
+};
+
 const selectionFrom = (
   options: ApplyOptions,
   inspect: SetupResult,
-  installed: Distribution | "cms"
+  installed: Distribution | "cms",
+  releaseTags?: ReleaseTagsSetting
 ): CompleteSelection => {
   const defaults = inspect.recommendation.reusableDefaults;
   const publicVersioning =
@@ -2888,6 +3562,7 @@ const selectionFrom = (
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
     releaseNoteGrouping,
     releaseNoteLinks: options.releaseNoteLinks,
+    releaseTags: options.releaseTags ?? releaseTags,
     scope: options.scope ?? "repository",
     setupStyle: options.setupStyle ?? defaults.setupStyle,
     sharedVersionLines: options.sharedVersionLines,
@@ -2923,9 +3598,7 @@ const cmsPolicyFor = (
     guidance: {
       backfillStatus: selection.backfillStatus,
       version:
-        installed === "cms"
-          ? CMS_GUIDANCE_VERSION
-          : WEB_CMS_CMS_GUIDANCE_VERSION,
+        installed === "cms" ? GUIDANCE_VERSION : WEB_CMS_CMS_GUIDANCE_VERSION,
     },
     newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "existing-only",
     schemaVersion: 1,
@@ -2961,7 +3634,7 @@ const repoPolicyFor = (
     distribution: installed,
     guidance: {
       backfillStatus: selection.backfillStatus,
-      version: GUIDANCE_VERSIONS[installed],
+      version: GUIDANCE_VERSION,
     },
     majorReleaseNaming:
       selection.majorReleaseNaming ?? DEFAULT_MAJOR_RELEASE_NAMING,
@@ -2993,6 +3666,9 @@ const repoPolicyFor = (
   }
   if (selection.releaseNoteLinks !== undefined) {
     policy.releaseNoteLinks = selection.releaseNoteLinks;
+  }
+  if (selection.releaseTags !== undefined) {
+    policy.releaseTags = selection.releaseTags;
   }
   if (selection.sharedVersionLines !== undefined) {
     policy.sharedVersionLines = selection.sharedVersionLines;
@@ -3186,19 +3862,22 @@ const updateGuidanceDisposition = async (
     ]);
   }
   // Recorded versions never decrease, so acknowledging one track cannot
-  // lower the other below what a newer helper already recorded.
-  const lines = options.sharedVersionLines && {
-    sharedVersionLines: options.sharedVersionLines,
+  // lower the other below what a newer helper already recorded. Answers to
+  // the notice's questions are saved in the same write.
+  const lines = {
+    ...(options.releaseTags !== undefined && {
+      releaseTags: options.releaseTags,
+    }),
+    ...(options.sharedVersionLines && {
+      sharedVersionLines: options.sharedVersionLines,
+    }),
   };
   const updatedPolicy = {
     ...record.value,
     ...lines,
     guidance: {
       backfillStatus: disposition,
-      version: Math.max(
-        record.value.guidance.version,
-        currentGuidanceVersionFor(installed)
-      ),
+      version: Math.max(record.value.guidance.version, GUIDANCE_VERSION),
     },
   };
   const candidates: CandidateWrite[] = [
@@ -3350,6 +4029,10 @@ const updateContextualPreferences = async (
   if (options.releaseNoteLinks !== undefined) {
     selection.releaseNoteLinks = options.releaseNoteLinks;
     updates.releaseNoteLinks = options.releaseNoteLinks;
+  }
+  if (options.releaseTags !== undefined) {
+    selection.releaseTags = options.releaseTags;
+    updates.releaseTags = options.releaseTags;
   }
   if (options.sharedVersionLines !== undefined) {
     selection.sharedVersionLines = options.sharedVersionLines;
@@ -3810,6 +4493,44 @@ const sharedVersionLineApplyErrors = (
   return errors;
 };
 
+// The tag setting is repository-only and names releases, so CMS history,
+// run-only setup, and one template shared by several trains never store it.
+const releaseTagsApplyErrors = (
+  options: ApplyOptions,
+  inspect: SetupResult,
+  installed: Distribution | "cms"
+): string[] => {
+  const setting = options.releaseTags;
+  if (setting === undefined) {
+    return [];
+  }
+  if (installed === "cms") {
+    return [
+      "Release tags apply only to versioned distributions; CMS operator history has no release to tag.",
+    ];
+  }
+  if (options.scope === "run-only") {
+    return ["Release tags are a repository setting and are never run-only."];
+  }
+  const errors = releaseTagsErrors(setting);
+  const trains = releaseTrainsFor(
+    inspect.inventory,
+    options.crossSurfaceVersioning ??
+      inspect.policy?.value?.crossSurfaceVersioning
+  );
+  if (
+    errors.length === 0 &&
+    typeof setting === "string" &&
+    setting !== NO_RELEASE_TAGS &&
+    trains.length >= 2
+  ) {
+    errors.push(
+      `releaseTags needs one template per release train (${trains.map(({ train }) => train).join(", ")}), such as {"${trains[0]?.train}":"${trains[0]?.train}@{version}"}, so two trains never name one tag.`
+    );
+  }
+  return errors;
+};
+
 export const applySetup = async (
   options: ApplyOptions
 ): Promise<SetupResult> => {
@@ -3868,6 +4589,7 @@ export const applySetup = async (
   const curationErrors = [
     ...curationSelectionErrors(options, inspect),
     ...sharedVersionLineApplyErrors(options, inspect, installed),
+    ...releaseTagsApplyErrors(options, inspect, installed),
   ];
   if (curationErrors.length > 0) {
     return blockResult(inspect, curationErrors);
@@ -3900,7 +4622,12 @@ export const applySetup = async (
   if (earlyResult) {
     return earlyResult;
   }
-  const selection = selectionFrom(options, inspect, installed);
+  const selection = selectionFrom(
+    options,
+    inspect,
+    installed,
+    await recommendedReleaseTags(options, inspect)
+  );
   const errors = selectionErrors(options, inspect, selection, installed);
   if (errors.length > 0) {
     return blockResult(inspect, errors, selection);
@@ -3941,6 +4668,7 @@ const valueOptionNames = new Set([
   "--release-note-environments",
   "--release-note-grouping",
   "--release-note-links",
+  "--release-tags",
   "--repo",
   "--scope",
   "--setup-style",
@@ -4019,6 +4747,19 @@ export const parseCli = (argv: string[]): ParsedCli => {
   } catch (error) {
     throw new Error("--shared-version-lines must be JSON", { cause: error });
   }
+  // `none`, one template, or a JSON object of per-train templates.
+  let releaseTags: ReleaseTagsSetting | undefined =
+    values.get("--release-tags");
+  if (releaseTags?.trimStart().startsWith("{")) {
+    try {
+      releaseTags = JSON.parse(releaseTags) as ReleaseTagsSetting;
+    } catch (error) {
+      throw new Error(
+        "--release-tags must be none, a <prefix>{version} template, or a JSON object",
+        { cause: error }
+      );
+    }
+  }
   return {
     command,
     options: {
@@ -4076,6 +4817,7 @@ export const parseCli = (argv: string[]): ParsedCli => {
         "--release-note-links",
         RELEASE_NOTE_LINK_POLICIES
       ),
+      releaseTags,
       repo: values.get("--repo") ?? ".",
       scope: enumValue("--scope", SCOPES),
       setupStyle: enumValue("--setup-style", SETUP_STYLES),

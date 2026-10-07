@@ -1249,6 +1249,7 @@ for (const { directoryName, source } of cmsPolicySchemas) {
     source.includes("releaseNoteLinks") ||
     source.includes("releaseNoteGrouping") ||
     source.includes("majorReleaseNaming") ||
+    source.includes("releaseTags") ||
     source.includes("sharedVersionLines")
   ) {
     failures.push(

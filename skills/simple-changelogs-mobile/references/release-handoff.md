@@ -13,6 +13,7 @@ data, secret, environment, migration, and DNS authority do not.
 - Digests and approval
 - Prepare
 - Verify
+- Release tags
 - Retry and closed failures
 
 ## Negotiate before delegation
@@ -29,7 +30,7 @@ Skill-path presence is not compatibility.
 The `changelog-provider.json` marker beside `SKILL.md` declares provider
 identity, distribution, guidance version, and schema digests. Setup generates
 it; Simple Changes reads it for discovery. The CMS-only distribution
-advertises the same protocol versions but takes an entry-only handoff for its
+advertises request v1 and receipt v2 and takes an entry-only handoff for its
 version-less operator history: it prepares and verifies a
 `CMS_CHANGELOG.json` entry on the `none` boundary and never a version, tag,
 or public note. Its own `release-handoff.md` describes that contract.
@@ -95,7 +96,9 @@ approve that unused public version.
 
 Use RFC 8785 canonical JSON and lowercase SHA-256 digests. The effective-policy
 digest covers the resolved source and granular policy, version convention,
-automation owner, and train/version-owner map. The decision digest also covers
+automation owner, and train/version-owner map, plus the train's resolved
+`releaseTags` template (`none` included) only when that field is present. The
+decision digest also covers
 the transaction, boundary, input target revision, aggregate impact, current,
 suggested and selected versions, and effective-policy digest.
 
@@ -128,6 +131,37 @@ Return `verified` with no changed paths and
 `targetContainedUnreleased: "integrated"`. Otherwise return `blocked` with
 `final-verification-failed` and `review-finalization`; never repair during
 verification.
+
+## Release tags
+
+Simple Changelogs names each release's tag; Simple Changes 0.27.0 or later
+creates and pushes it once the release crosses its public boundary. Never
+create, push, move, or delete a tag yourself.
+
+- Answer with the highest receipt version in `supportedReceiptVersions` that
+  `changelog-provider.json` also lists. Receipt v4 is receipt v3 plus a
+  required `release.tag`: null, or `{ "name", "message" }`. Like v3, it echoes
+  request v3's `releaseSetTrains` and carries `versionDecision.versionLine`,
+  which is null off a shared version line and outside the full distribution.
+- Resolve the train's template from `releaseTags`: the single template, the
+  train's map entry, or no tag when the field is absent, `"none"`, or leaves
+  the train unlisted. One template other than `"none"` with two or more public
+  trains blocks with `malformed-policy` and `repair-policy`.
+- The name is the template prefix plus the exact `release.version`, never a
+  build number. The message is one line of at most 200 characters,
+  `<display name> <version>`, using the name the changelog already uses.
+- At classify and prepare, run `git check-ref-format "refs/tags/<name>"` and
+  refuse a leading `-`. A name Git refuses, or one a local tag on another
+  commit already holds, blocks with `invalid-version-direction` and
+  `choose-version`.
+- `prepared` and `verified` receipts name the tag, or null for no tag; verify
+  repeats the prepared `release.tag` exactly, since Simple Changes refuses a
+  tag dropped, changed, or added after prepare. Never name one tag for two
+  trains.
+
+Earlier releases are tagged only on separate request: propose a table of tag
+name, version, and commit from released headings and release-merge evidence,
+and leave publishing the approved table to Simple Changes.
 
 ## Retry and closed failures
 

@@ -1,4 +1,5 @@
 import { types as utilTypes } from "node:util";
+import { releaseTagsErrors } from "../setup.ts";
 import {
   ACTIVATION_MODES,
   ASSERTION_KINDS,
@@ -429,6 +430,12 @@ const curationBudget: Validator = (value, path, errors) => {
   }
 };
 
+// The setup helper owns the release-tag template rules; reuse them so the
+// policy example and fixtures are held to exactly what setup stores.
+const releaseTags: Validator = (value, path, errors) => {
+  errors.push(...releaseTagsErrors(value, path));
+};
+
 const repoPolicyBase = objectOf({
   crossSurfaceVersioning: optional(enumOf(CROSS_SURFACE_VERSIONING_POLICIES)),
   curationBudget: optional(curationBudget),
@@ -456,6 +463,7 @@ const repoPolicyBase = objectOf({
   ),
   releaseNoteGrouping: optional(enumOf(RELEASE_NOTE_GROUPING_POLICIES)),
   releaseNoteLinks: optional(enumOf(RELEASE_NOTE_LINK_POLICIES)),
+  releaseTags: optional(releaseTags),
   schemaVersion: literal(1),
   sharedVersionLines: optional(
     arrayOf(

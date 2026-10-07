@@ -1086,7 +1086,7 @@ describe("request v2 and receipt v3", () => {
         "mobile must appear once and in releaseSetTrains",
       ]);
       expect(check([decisionRequired(), member("web")]).errors).toContain(
-        "a release-set check needs valid v3 receipts"
+        "a release-set check needs valid v3 or v4 receipts"
       );
       expect(
         check([

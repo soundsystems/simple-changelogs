@@ -411,3 +411,20 @@ commas, colons, periods, or parentheses as appropriate; do not merely swap the
 character. Repository house style no longer supplies an exception. Released
 history stays unchanged. This update asks no new policy questions and needs no
 backfill.
+
+<!-- simple-changelogs-guidance-update version="25" kinds="capability,onboarding" backfill="not-needed" summary="Each release can now get a Git tag: Simple Changelogs names it in the release receipt, and Simple Changes 0.27.0 or later creates and pushes it. This update asks once how releases should be tagged." -->
+## Guidance 25
+
+Each public release can now get a Git tag on its exact released commit. The
+optional `releaseTags` setting picks the style: `"v{version}"`, another
+`<prefix>{version}` template, one template per release train such as
+`{"web": "web@{version}"}`, or `"none"`. Simple Changelogs names the tag in
+receipt v4; Simple Changes 0.27.0 or later creates and pushes it when the
+release goes out, under the approval that release already needs. Simple
+Changelogs never creates or pushes tags, and earlier releases are never tagged.
+
+This update asks **Should each release get a Git tag?** once, recommending the
+repository's existing tag style when local tags show one, and no tags when
+release tooling already creates them. No answer records nothing and leaves
+releases untagged. This distribution moves from 22 to 25 because every Simple
+Changelogs distribution now shares one guidance number. No backfill is needed.

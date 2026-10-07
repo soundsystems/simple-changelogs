@@ -78,12 +78,15 @@ describe("changelog-provider marker", () => {
         declaredGuidance.get(directoryName) as number
       );
       expect(marker.features).toContain("guidance-update-notices");
-      // Only full writes receipt v3; no marker advertises the
+      // Only full writes receipt v3; the others skip request v2 and receipt
+      // v3, so controllers before Simple Changes 0.27.0 still negotiate
+      // request v1 and receipt v2 with them. No marker advertises the
       // shared-version-lines feature, which consumers before Simple Changes
-      // 0.23.0 reject.
+      // 0.23.0 reject, or any feature for release tags.
       const full = distribution === "full";
-      expect(marker.requestVersions).toEqual(full ? [1, 2] : [1]);
-      expect(marker.receiptVersions).toEqual(full ? [1, 2, 3] : [1, 2]);
+      expect(marker.requestVersions).toEqual(full ? [1, 2, 3] : [1, 3]);
+      expect(marker.receiptVersions).toEqual(full ? [1, 2, 3, 4] : [1, 2, 4]);
+      expect(marker.guidanceVersion).toBe(25);
       expect(marker.features).not.toContain("shared-version-lines");
     });
   }
@@ -123,6 +126,7 @@ describe("changelog-provider marker", () => {
     ]);
     expect(marker.requestVersions).toEqual([1]);
     expect(marker.receiptVersions).toEqual([2]);
+    expect(marker.guidanceVersion).toBe(25);
     expect(marker.schemaDigests).toEqual(
       (await providerMarkerFor("full")).schemaDigests
     );

@@ -132,6 +132,7 @@
     "crossSurfaceVersioning": {
       "enum": ["shared", "independent", "mixed"]
     },
+    "releaseTags": { "$ref": "#/$defs/releaseTags" },
     "sharedVersionLines": {
       "$comment": "A train may join at most one line; the setup helper and lib/validate.ts enforce that.",
       "type": "array",
@@ -152,6 +153,21 @@
     }
   },
   "$defs": {
+    "releaseTags": {
+      "$comment": "A single template, \"none\", or one per release train. The setup helper and lib/validate.ts also require prefix-free per-train prefixes, no digit or . directly before {version}, and names Git accepts.",
+      "oneOf": [
+        { "$ref": "#/$defs/releaseTagTemplate" },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/releaseTagTemplate" }
+        }
+      ]
+    },
+    "releaseTagTemplate": {
+      "type": "string",
+      "pattern": "^(?:none|[A-Za-z0-9._+/@-]*\\{version\\})$"
+    },
     "curationBudget": {
       "$comment": "min <= max is enforced by the setup helper and lib/validate.ts, not by this schema, which cannot compare fields. {min: 0, max: 0} is valid: each release gets only the rollup line.",
       "type": "object",
