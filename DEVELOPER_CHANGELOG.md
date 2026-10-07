@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-10-06
+
 - Releases are numbered from 0.1.0. The root `package.json` `version` is the
   family version, release headings use `<version> - <date>`, and the release
   merge commit is tagged `v<version>`. Sections dated `2026-07-30` and earlier

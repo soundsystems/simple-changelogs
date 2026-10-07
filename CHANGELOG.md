@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-10-06
+
 - **Releases**
   - Simple Changelogs releases now have version numbers, starting with 0.1.0.
     One release covers every distribution and is tagged with its version, such
