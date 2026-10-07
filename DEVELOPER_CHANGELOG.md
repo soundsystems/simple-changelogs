@@ -17,36 +17,44 @@
     changelog headings, falling back to the owner manifest version only when
     no heading names the train; `recommendReleaseTags` recommends the existing
     convention, or `"none"` when release tooling or CI already creates tags.
-    Trains come from `versionOwnersIn`, which uses the classify owner model:
-    same-named owners in different directories stay separate (the later one
-    keyed by its directory, such as `packages/web`), and a root or
+    A package script counts as tag tooling only when one of its commands runs
+    `npm`, `pnpm`, `yarn`, or `bun pm` `version` without turning tagging off
+    (`--no-git-tag-version`, or `--git-tag-version` set to `false`). Trains
+    come from `versionOwnersIn`, which uses the classify owner model:
+    same-named owners in different directories stay separate. The app train
+    that shared version lines know by that name keeps it, or else the first
+    in walk order, where a root product sorts first; the others are keyed by
+    their directory, such as `packages/web`, `./ios`, or `.`. A root or
     `packages/*` product folds into a native or Tauri app only with a mobile
     framework dependency, an `@tauri-apps/*` dependency, or an Expo
     `app.json`. `inventory.versionTrains` and shared version lines are
     unchanged.
-  - Protocol: request v3 and receipt v4 add `release.tag` (`{name, message}`
-    or null), advertised beside the earlier versions; `lib/release-handoff.ts`
-    negotiates older Simple Changes down exactly as before. Schemas match
-    Simple Changes 0.27.0 by canonical-JSON digest.
+  - Protocol: request v3 lets Simple Changes accept receipt v4, and receipt v4
+    adds `release.tag` (`{name, message}` or null); the closed request schema
+    carries no tag. Both are advertised beside the earlier versions;
+    `lib/release-handoff.ts` negotiates older Simple Changes down exactly as
+    before. Schemas match Simple Changes 0.27.0 by canonical-JSON digest.
   - Docs: onboarding, setup, release-handoff, and version-decisions references
     in the five versioned distributions, with no host-specific commands.
-  - Tests: `release-tags.check.ts` (59 tests), five eval cases with fixture
+  - Tests: `release-tags.check.ts` (60 tests), five eval cases with fixture
     tags (`.fixture-git-tags`) in the eval harness, and 101 mutants of the new
     guards, all caught.
 - Unified guidance 25: `GUIDANCE_VERSION`, provider markers, the distribution
   manifest, and all six `SKILL.md` files say 25; the web-cms CMS track stays
   at 2. `contracts.ts` accepts `## Guidance A to B` range headings and one jump
-  up to 25. Guidance 1 to 15 is condensed to a table and 16 to 24 to one
-  paragraph each, with every update marker kept.
+  up to 25. The full distribution condenses guidance 1 to 15 into a table, and
+  the full, mobile, Web, and Web+CMS histories summarize each later checkpoint
+  before 25 in one paragraph, with every update marker kept. The CMS and
+  skill-maintainer histories only gain guidance 25.
 - The vendored protocol schemas ship minified, exactly
   `JSON.stringify(JSON.parse(text))` plus a newline, the bytes Simple Changes
   ships; readable canonical copies stay in tooling, and
   `distributions.check.ts` enforces the form. Each distribution saves 30,950
   bytes with canonical digests unchanged.
 - The support budget rose from 256 KiB to 384 KiB, approved by the user on
-  2026-10-07. Measured at release: support files Web+CMS 281,607 bytes, full
-  264,976, mobile 264,986, Web 264,975, skill-maintainer 265,036, CMS-only
-  219,905. The guidance budget stays at 224 KiB (full Markdown 216,599). When
+  2026-10-07. Measured at release: support files Web+CMS 282,076 bytes, full
+  265,445, mobile 265,455, Web 265,444, skill-maintainer 265,505, CMS-only
+  220,374. The guidance budget stays at 224 KiB (full Markdown 216,599). When
   the support budget binds again, move distribution-specific code into a
   module only those distributions ship before raising it.
 - Versioning: releases are numbered `0.<guidance>.<patch>`, so this release

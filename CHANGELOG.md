@@ -6,12 +6,13 @@
 
 - **Release tags**
   - Each public release can now get a Git tag on its exact released commit.
-    The guidance 25 update and new setups ask **Should each release get a Git
-    tag?** once. The recommendation follows the tags your repository already
-    has, such as `v1.4.0`, uses one tag style per release train in a
-    repository with several products, such as `web@2.3.0`, and is no tags
-    when your release tooling already creates them. No answer leaves releases
-    untagged.
+    The guidance 25 update and guided setup ask **Should each release get a
+    Git tag?** once, and no answer leaves releases untagged. Recommended setup
+    saves the recommendation and lists it in the setup details you confirm.
+    The recommendation follows the tags your repository already has, such as
+    `v1.4.0`, uses one tag style per release train in a repository with
+    several products, such as `web@2.3.0`, and is no tags when your release
+    tooling already creates them.
   - Simple Changelogs names the tag in its release receipt and never creates
     or pushes one. Simple Changes 0.27.0 or later creates the tag when the
     release goes out, under the approval that release already needs, and
@@ -24,8 +25,9 @@
   - Releases are numbered `0.<guidance>.<patch>`. This release introduces
     guidance 25, so it is 0.25.0 and is tagged `v0.25.0`. A fix that leaves
     guidance unchanged is a patch release.
-  - Installed copies are smaller: the guidance update history now summarizes
-    earlier checkpoints briefly, and this changelog keeps the full history.
+  - The guidance update history installed with most distributions now
+    summarizes earlier checkpoints briefly. This changelog keeps the full
+    history.
 <!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-07T18:22:00-05:00" -->
 
 ## 0.1.0 - 2026-10-07
