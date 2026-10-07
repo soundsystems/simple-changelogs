@@ -164,7 +164,7 @@ describe("query CLI against this repository", () => {
   test("show resolves the first version heading above dated history", async () => {
     const result = await runQuery([
       "show",
-      "0.1",
+      "0.1.0",
       "--log",
       "customer",
       "--repo",
