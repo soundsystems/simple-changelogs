@@ -52,6 +52,10 @@ Selected simple-changelogs-skill-maintainer (guidance <N>) for this repository.
 
 Do not shorten that to “Simple Changelogs `<N>`.”
 
+Family releases use SemVer, starting at 0.1.0. One release covers every
+distribution: the root `package.json` `version` names it, and its tag, such as
+`v0.1.0`, is a Git ref you can install or report.
+
 ## Release-note depth and surface isolation
 
 Public notes adapt to their proven audience. General customer destinations keep
