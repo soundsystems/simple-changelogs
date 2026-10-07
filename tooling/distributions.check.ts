@@ -22,13 +22,12 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // reference prose before raising it.
 // The support budget rose from 256 KiB to 384 KiB for release tags (approved
 // by the user on 2026-10-07): the protocol schemas each distribution vendors
-// must stay byte-identical with Simple Changes, and request v3 and receipt v4
-// alone add 19,959 bytes to every handoff distribution. Scripts are executed,
-// not read into context. Measured on that branch: support files Web+CMS
-// 309,187 bytes, full 292,556, mobile 292,566, Web 292,555,
-// skill-maintainer 292,616, CMS-only 247,485. When the support budget binds,
-// prefer moving distribution-specific code into a module only those
-// distributions ship before raising again.
+// must stay byte-identical with Simple Changes, which ships them minified, and
+// scripts are executed, not read into context. Measured on that branch with
+// minified schemas: support files Web+CMS 278,237 bytes, full 261,606, mobile
+// 261,616, Web 261,605, skill-maintainer 261,666, CMS-only 216,535. When the
+// support budget binds, prefer moving distribution-specific code into a module
+// only those distributions ship before raising again.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
 const MAX_SUPPORT_BYTES = 384 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
@@ -99,6 +98,11 @@ const canonicalQueryFiles = new Map(
     )
   )
 );
+// The readable canonical protocol files live in tooling; every distribution
+// ships them minified, exactly JSON.stringify(JSON.parse(text)) plus a
+// newline, the bytes Simple Changes ships for the same schemas.
+const minifiedJson = (text: string): string =>
+  `${JSON.stringify(JSON.parse(text))}\n`;
 const canonicalProtocolFiles = new Map(
   await Promise.all(
     [
@@ -357,9 +361,11 @@ for (const {
           failures.push(
             `skills/${directoryName} is missing pinned protocol schema ${filename}`
           );
-        } else if (readFileSync(protocolPath, "utf8") !== canonical) {
+        } else if (
+          readFileSync(protocolPath, "utf8") !== minifiedJson(canonical)
+        ) {
           failures.push(
-            `skills/${directoryName}/schemas/${filename} diverges from the pinned producer fixture`
+            `skills/${directoryName}/schemas/${filename} is not the minified pinned producer fixture`
           );
         }
       }

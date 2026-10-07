@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { file } from "bun";
 
 // Expected canonical-JSON SHA-256 digests of the vendored Simple Changes
 // protocol schemas. The consumer (simple-changes) owns these schemas; the
-// copies under evals/schemas and skills/*/schemas must stay byte-exact with
-// skills/simple-changes/evals/schemas in the simple-changes repository, or
-// digest negotiation fails with schema-digest-mismatch. When this check
+// readable copies under evals/schemas match it by canonical JSON, and every
+// distribution ships them minified (JSON.stringify of the parsed text plus a
+// newline), byte for byte as Simple Changes ships them, or digest
+// negotiation fails with schema-digest-mismatch. When this check
 // fails, resync the vendored copies from simple-changes and update these
 // digests to the values reported in the failure message.
 const EXPECTED_DIGESTS: Record<string, string> = {
@@ -68,4 +71,46 @@ describe("protocol schema digests", () => {
       ).toBe(expected);
     });
   }
+
+  test("every distribution ships the minified bytes with the same digests", async () => {
+    const root = join(import.meta.dir, "..", "..", "..", "..");
+    const distributions = [
+      "simple-changelogs",
+      "simple-changelogs-cms",
+      "simple-changelogs-mobile",
+      "simple-changelogs-skill-maintainer",
+      "simple-changelogs-web",
+      "simple-changelogs-web-cms",
+    ];
+    const shipped = await Promise.all(
+      distributions.flatMap((distribution) =>
+        Object.entries(EXPECTED_DIGESTS).map(async ([filename, expected]) => {
+          const [text, readable] = await Promise.all([
+            readFile(
+              join(root, "skills", distribution, "schemas", filename),
+              "utf8"
+            ),
+            readFile(
+              join(root, "tooling/simple-changelogs/evals/schemas", filename),
+              "utf8"
+            ),
+          ]);
+          return {
+            digest: digestSchema(JSON.parse(text)),
+            expected,
+            minified: text === `${JSON.stringify(JSON.parse(readable))}\n`,
+            readable: text === readable,
+          };
+        })
+      )
+    );
+
+    for (const item of shipped) {
+      expect(item).toMatchObject({
+        digest: item.expected,
+        minified: true,
+        readable: false,
+      });
+    }
+  });
 });
