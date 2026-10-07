@@ -646,6 +646,48 @@ metadata:
     }
   });
 
+  test("accepts collapsed older checkpoints and one jump to the unified guidance number", async () => {
+    const withGuidance = async (current: number, headings: string) => {
+      const skillDirectory = await createValidSkill();
+      const skillPath = join(skillDirectory, "SKILL.md");
+      await writeFile(
+        skillPath,
+        (await readFile(skillPath, "utf8")).replace(
+          "Current guidance version: 2",
+          `Current guidance version: ${current}`
+        )
+      );
+      await writeFixtureFile(
+        skillDirectory,
+        "references/guidance-updates.md",
+        `# Guidance Updates\n\n${headings}`
+      );
+      return findingCodes(await evaluateContracts(skillDirectory));
+    };
+    const guidance = (...versions: (number | string)[]) =>
+      versions.map((version) => `## Guidance ${version}\n\nText.\n\n`).join("");
+
+    const [collapsed, jumped, reversed, early, twoGaps, afterJump, missing] =
+      await Promise.all([
+        withGuidance(16, guidance("1 to 15", 16)),
+        withGuidance(26, guidance("1 to 7", 25, 26)),
+        withGuidance(16, guidance("15 to 1", 16)),
+        withGuidance(25, guidance(1, 2, 24, 25)),
+        withGuidance(25, guidance(1, 3, 25)),
+        withGuidance(27, guidance("1 to 7", 25, 27)),
+        withGuidance(25, guidance(1, 2, 3)),
+      ]);
+
+    for (const codes of [collapsed, jumped]) {
+      expect(codes.filter((code) => code.startsWith("GUIDANCE_"))).toEqual([]);
+    }
+    expect(reversed).toContain("GUIDANCE_VERSION_INVALID");
+    // The only allowed gap ends just below the unified number 25.
+    for (const codes of [early, twoGaps, afterJump, missing]) {
+      expect(codes).toContain("GUIDANCE_VERSION_UNDOCUMENTED");
+    }
+  });
+
   test("ignores fake guidance headings in fences and comments and rejects duplicate real headings", async () => {
     const missingSkill = await createValidSkill();
     await writeFixtureFile(

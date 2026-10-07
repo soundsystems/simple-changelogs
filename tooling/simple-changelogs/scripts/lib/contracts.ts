@@ -62,7 +62,12 @@ const POLICY_MARKER_PATTERN = /<!-- simple-changelogs-policy-example -->/g;
 const POLICY_BLOCK_PATTERN =
   /<!-- simple-changelogs-policy-example -->[\t ]*\r?\n[\t ]*(```|~~~)(jsonc?)[\t ]*\r?\n([\s\S]*?)\r?\n\1[\t ]*(?=\r?\n|$)/gi;
 const GUIDANCE_DECLARATION_PATTERN = /^Current guidance version:\s*(.+?)\s*$/im;
-const GUIDANCE_HEADING_PATTERN = /^## Guidance ([1-9]\d*)[\t ]*$/gm;
+// `## Guidance N`, or `## Guidance A to B` for collapsed older checkpoints.
+const GUIDANCE_HEADING_PATTERN =
+  /^## Guidance ([1-9]\d*)(?: to ([1-9]\d*))?[\t ]*$/gm;
+// From this checkpoint every distribution shares one guidance number, so a
+// distribution's history may jump once from its last own number to it.
+const UNIFIED_GUIDANCE_VERSION = 25;
 const INSTALLED_TARGET_PATTERN =
   /(?:\b(?:globally[- ]installed|installed)\b.{0,80}\b(?:skill|copy|directory|file)\b|\b(?:skill|copy|directory|file)\b.{0,80}\b(?:globally[- ]installed|installed)\b)/i;
 const MUTATION_ACTION_PATTERN =
@@ -408,12 +413,26 @@ const checkGuidanceCoverage = (context: ContractContext): ContractFinding[] => {
     entryText(context, "references/guidance-updates.md")
   );
   const headings = Array.from(
-    source.matchAll(GUIDANCE_HEADING_PATTERN),
-    (match) => Number(match[1])
-  );
+    source.matchAll(GUIDANCE_HEADING_PATTERN)
+  ).flatMap((match) => {
+    const first = Number(match[1]);
+    const last = Number(match[2] ?? match[1]);
+    return last < first
+      ? [Number.NaN]
+      : Array.from({ length: last - first + 1 }, (_, index) => first + index);
+  });
   const counts = new Map<number, number>();
   for (const version of headings) {
     counts.set(version, (counts.get(version) ?? 0) + 1);
+  }
+  if (counts.has(Number.NaN)) {
+    return [
+      finding(
+        "GUIDANCE_VERSION_INVALID",
+        "references/guidance-updates.md",
+        "A `## Guidance A to B` heading must not end before it starts"
+      ),
+    ];
   }
   const findings: ContractFinding[] = [];
   for (const [version, count] of counts) {
@@ -440,12 +459,22 @@ const checkGuidanceCoverage = (context: ContractContext): ContractFinding[] => {
   const documented = Array.from(counts.keys())
     .filter((version) => version <= currentVersion)
     .sort((left, right) => left - right);
+  // Every checkpoint from 1 is documented, except that one gap may end just
+  // below the unified number: a distribution that last stood at 22 moves
+  // straight to 25 and has no 23 or 24.
   let expected = 1;
   for (const version of documented) {
-    if (version !== expected) {
+    if (
+      version !== expected &&
+      !(
+        version === UNIFIED_GUIDANCE_VERSION &&
+        expected > 1 &&
+        expected < UNIFIED_GUIDANCE_VERSION
+      )
+    ) {
       break;
     }
-    expected += 1;
+    expected = version + 1;
   }
   if (expected <= currentVersion) {
     findings.push(
