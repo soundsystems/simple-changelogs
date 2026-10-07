@@ -2172,11 +2172,10 @@ const TAG_TOOLING_FILES: [RegExp, string][] = [
   [/^\.?goreleaser\.ya?ml$/u, "goreleaser"],
   [/^release\.toml$/u, "cargo-release"],
 ];
-const VERSION_SCRIPT =
-  /\b(?:npm|pnpm|yarn)\s+version\b|\bbun\s+pm\s+version\b/u;
-const VERSION_SCRIPT_UNTAGGED =
-  /--no-git-tag-version\b|--git-tag-version(?:=|\s+)false\b/u;
-const SHELL_COMMAND_SEPARATOR = /&&|\|\||[;|\n]/u;
+const VERSION_COMMAND =
+  /\b(?:npm|pnpm|yarn)\s+version\b|\bbun\s+pm\s+version\b/gu;
+const UNTAGGED_VERSION_FLAG = /--no-git-tag-version\b/gu;
+const TAG_MENTION = /git-tag-version|\bgit\s+tag\b/gu;
 const CARGO_RELEASE_METADATA =
   /^\[(?:package|workspace)\.metadata\.release\]/mu;
 const FASTLANE_TAG = /\badd_git_tag\b/u;
@@ -2315,15 +2314,16 @@ const workspaceMembers = async (root: string): Promise<string[]> => [
   ).flat(),
 ];
 
-// A version command tags unless it turns tagging off, as
-// `npm version patch --no-git-tag-version` does.
-const versionScriptTags = (script: string): boolean =>
-  script
-    .split(SHELL_COMMAND_SEPARATOR)
-    .some(
-      (command) =>
-        VERSION_SCRIPT.test(command) && !VERSION_SCRIPT_UNTAGGED.test(command)
-    );
+// A script with a version command tags unless it passes
+// `--no-git-tag-version` once per version command and mentions tagging nowhere
+// else. Any other spelling counts as tagging without parsing shell arguments,
+// so a wrong guess recommends no tags, as before release tags existed.
+const versionScriptTags = (script: string): boolean => {
+  const commands = script.match(VERSION_COMMAND)?.length ?? 0;
+  const untagged = script.match(UNTAGGED_VERSION_FLAG)?.length ?? 0;
+  const mentions = script.match(TAG_MENTION)?.length ?? 0;
+  return commands > 0 && !(untagged === commands && mentions === untagged);
+};
 
 // Release tooling that creates Git tags itself, from manifests, scripts,
 // configuration files, Fastlane, and CI workflow steps.

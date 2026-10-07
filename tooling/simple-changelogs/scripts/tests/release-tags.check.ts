@@ -1198,14 +1198,26 @@ describe("release-tag detection", () => {
     }
   });
 
-  test("a version script that turns tagging off is not tag tooling", async () => {
+  test("a version script is tag tooling unless each command turns tagging off", async () => {
     const cases: [string, boolean][] = [
       ["npm version patch --no-git-tag-version", false],
       ["bun pm version minor --no-git-tag-version", false],
-      ["npm version patch --git-tag-version=false", false],
-      ["yarn version --new-version 2.0.0 --git-tag-version false", false],
+      [
+        'npm version patch --message "Release %s; notes" --no-git-tag-version',
+        false,
+      ],
+      [
+        "pnpm version patch --no-git-tag-version && pnpm version minor --no-git-tag-version",
+        false,
+      ],
       ["npm run build && npm version minor", true],
       ["npm version patch --no-git-tag-version; npm version minor", true],
+      ["npm version patch --no-git-tag-version --git-tag-version=true", true],
+      ["npm version patch --no-git-tag-version && git tag v1.2.0", true],
+      // Other spellings count as tagging, so the guess errs toward no tags.
+      ['npm version patch --git-tag-version="false"', true],
+      // Only scripts with a version command are considered.
+      ["git tag --list", false],
     ];
     const inspections = await Promise.all(
       cases.map(async ([release]) => {

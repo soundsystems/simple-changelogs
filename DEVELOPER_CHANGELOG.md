@@ -17,10 +17,12 @@
     changelog headings, falling back to the owner manifest version only when
     no heading names the train; `recommendReleaseTags` recommends the existing
     convention, or `"none"` when release tooling or CI already creates tags.
-    A package script counts as tag tooling only when one of its commands runs
-    `npm`, `pnpm`, `yarn`, or `bun pm` `version` without turning tagging off
-    (`--no-git-tag-version`, or `--git-tag-version` set to `false`). Trains
-    come from `versionOwnersIn`, which uses the classify owner model:
+    A package script with an `npm`, `pnpm`, `yarn`, or `bun pm` `version`
+    command counts as tag tooling unless it passes `--no-git-tag-version`
+    once per version command and mentions tagging nowhere else. Shell
+    arguments are not parsed, so any other spelling counts as tagging and a
+    wrong guess recommends no tags. Trains come from `versionOwnersIn`, which
+    uses the classify owner model:
     same-named owners in different directories stay separate. The app train
     that shared version lines know by that name keeps it, or else the first
     in walk order, where a root product sorts first; the others are keyed by
@@ -52,9 +54,9 @@
   `distributions.check.ts` enforces the form. Each distribution saves 30,950
   bytes with canonical digests unchanged.
 - The support budget rose from 256 KiB to 384 KiB, approved by the user on
-  2026-10-07. Measured at release: support files Web+CMS 282,076 bytes, full
-  265,445, mobile 265,455, Web 265,444, skill-maintainer 265,505, CMS-only
-  220,374. The guidance budget stays at 224 KiB (full Markdown 216,599). When
+  2026-10-07. Measured at release: support files Web+CMS 282,336 bytes, full
+  265,705, mobile 265,715, Web 265,704, skill-maintainer 265,765, CMS-only
+  220,634. The guidance budget stays at 224 KiB (full Markdown 216,599). When
   the support budget binds again, move distribution-specific code into a
   module only those distributions ship before raising it.
 - Versioning: releases are numbered `0.<guidance>.<patch>`, so this release
