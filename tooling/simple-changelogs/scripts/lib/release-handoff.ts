@@ -67,10 +67,6 @@ const REASON_ACTIONS = {
 } as const;
 const REVISION_PATTERN = /^[0-9a-f]{40,64}$/u;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/u;
-// Receipt v4 release tags, mirrored from the Simple Changes 0.27.0 schema:
-// Git's ref characters for the name, and one line of 1 to 200 characters
-// for the message.
-const TAG_NAME_EXCLUDED = new Set("~^:?*[\\");
 const VERSION_BOUNDARY_PATTERN = /[0-9.]$/u;
 // The receipt versions each request version may advertise.
 const RECEIPTS_BY_REQUEST: Record<1 | 2 | 3, readonly number[]> = {
@@ -79,20 +75,15 @@ const RECEIPTS_BY_REQUEST: Record<1 | 2 | 3, readonly number[]> = {
   3: [1, 2, 3, 4],
 };
 
-const isControl = (character: string, space: boolean): boolean => {
-  const code = character.codePointAt(0) ?? 0;
-  return code < 0x20 || code === 0x7f || (space && code === 0x20);
-};
-const tagNameShape = (name: string): boolean =>
-  name !== "" &&
-  ![...name].some(
-    (character) =>
-      isControl(character, true) || TAG_NAME_EXCLUDED.has(character)
-  );
+// A receipt v4 tag message, as the Simple Changes 0.27.0 schema allows it:
+// one line of 1 to 200 characters.
 const tagMessageShape = (message: string): boolean =>
   message.length >= 1 &&
   [...message].length <= 200 &&
-  ![...message].some((character) => isControl(character, false));
+  ![...message].some((character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return code < 0x20 || code === 0x7f;
+  });
 // Receipt v3 shapes, mirrored from the Simple Changes 0.23.0 schemas.
 const STABLE_VERSION = /^([0-9]+(?:\.[0-9]+){0,2})(?:\+[0-9A-Za-z.-]+)?$/u;
 const PATH_PATTERN = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$)).+$/u;
@@ -981,14 +972,14 @@ const decisionShape = (decision: unknown): boolean =>
   ].every((version) => nullable(version, nonEmpty));
 
 // A receipt v4 release also carries `tag`: null, or a closed name and message.
+// The schema's name and message patterns are not repeated here:
+// releaseTagProblem refuses every name and message they refuse, and more.
 const tagShape = (tag: unknown): boolean =>
   tag === null ||
   (isRecord(tag) &&
     exactKeys(tag, ["name", "message"]) &&
     typeof tag.name === "string" &&
-    tagNameShape(tag.name) &&
-    typeof tag.message === "string" &&
-    tagMessageShape(tag.message));
+    typeof tag.message === "string");
 
 const releaseShape = (release: unknown, withTag: boolean): boolean =>
   isRecord(release) &&

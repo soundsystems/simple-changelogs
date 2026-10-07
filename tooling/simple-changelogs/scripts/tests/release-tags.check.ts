@@ -1434,15 +1434,24 @@ describe("request v3 and receipt v4", () => {
     expect(errorsOf(release({ ...TAG, name: "-1.4.0" })).join(" ")).toContain(
       "must not start with -"
     );
+    // Structure is a shape error; the schema's name and message patterns are
+    // enforced by the tag rules, which refuse everything they refuse.
     for (const tag of [
       { name: "v1.4.0" },
       { ...TAG, extra: true },
-      { ...TAG, name: "v 1.4.0" },
-      { ...TAG, message: "Acme\n1.4.0" },
-      { ...TAG, message: "" },
+      { ...TAG, name: 7 },
       "v1.4.0",
     ]) {
       expect(errorsOf(release(tag))).toContain("release is invalid");
+    }
+    for (const [tag, message] of [
+      [{ ...TAG, name: "v 1.4.0" }, "contains a space"],
+      [{ ...TAG, name: "" }, "is empty"],
+      [{ ...TAG, message: "Acme\n1.4.0" }, "message must be one line"],
+      [{ ...TAG, message: "" }, "message must be one line"],
+      [{ ...TAG, message: `${"A".repeat(195)} 1.4.0` }, "message must be"],
+    ] as const) {
+      expect(errorsOf(release(tag)).join(" ")).toContain(message);
     }
     const { tag: _tag, ...untagged } = receiptV4("prepared").release as Record<
       string,
