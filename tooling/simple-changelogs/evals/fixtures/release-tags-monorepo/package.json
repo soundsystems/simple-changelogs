@@ -1,0 +1,7 @@
+{
+  "name": "trailhead",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ]
+}

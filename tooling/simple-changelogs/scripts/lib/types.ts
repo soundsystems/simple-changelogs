@@ -413,6 +413,7 @@ export interface SetupResult {
     recommended: ReleaseTagsSetting;
     stored: ReleaseTagsSetting | null;
     tooling: string[];
+    trains: string[];
   } | null;
   repository: string;
   schemaVersion: 1;

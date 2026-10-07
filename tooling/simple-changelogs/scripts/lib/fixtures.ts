@@ -29,6 +29,10 @@ const MARKDOWN_FENCE_PATTERN = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u;
 const BLANK_PATTERN = /^[ \t]*$/u;
 const DETERMINISTIC_GIT_DATE = "2000-01-01T00:00:00+00:00";
 const FIXTURE_GIT_NAME = "Simple Changelogs Eval";
+// Optional fixture file naming lightweight tags, one per line, to create on
+// the baseline commit; it is removed before the baseline so agents never see
+// it.
+const FIXTURE_TAGS_FILE = ".fixture-git-tags";
 const FIXTURE_GIT_EMAIL = "eval@simple-changelogs.invalid";
 const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 const MAX_COMMAND_TIMEOUT_MS = 2_147_483_647;
@@ -95,6 +99,7 @@ interface ChangedPathsExpectation {
 interface RepoStateExpectation {
   branch?: string;
   clean?: boolean;
+  tags?: string[];
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -437,6 +442,14 @@ export const initializeFixtureGit = async (
   await runGit(workspace, ["init", "--initial-branch=main", "--template="]);
   await runGit(workspace, ["config", "user.name", FIXTURE_GIT_NAME]);
   await runGit(workspace, ["config", "user.email", FIXTURE_GIT_EMAIL]);
+  const tagsPath = join(workspace, FIXTURE_TAGS_FILE);
+  let tags: string[] = [];
+  try {
+    tags = (await readFile(tagsPath, "utf8")).split("\n").filter(Boolean);
+    await rm(tagsPath, { force: true });
+  } catch {
+    // Most fixtures carry no tags.
+  }
   await runGit(workspace, ["add", "--all"]);
   await runGit(
     workspace,
@@ -463,6 +476,14 @@ export const initializeFixtureGit = async (
     }
   );
   const baseline = await runGit(workspace, ["rev-parse", "HEAD"]);
+  // One at a time, so tag creation order and errors stay deterministic.
+  await tags.reduce<Promise<unknown>>(
+    (pending, tag) =>
+      pending.then(() =>
+        runGit(workspace, ["tag", "--no-sign", tag, baseline])
+      ),
+    Promise.resolve()
+  );
   baselineCommits.set(workspace, baseline);
   return baseline;
 };
@@ -660,19 +681,24 @@ const changedExpectation = (
 const repoExpectation = (
   value: JsonValue
 ): RepoStateExpectation | undefined => {
-  if (!isRecordWithOnlyKeys(value, ["branch", "clean"])) {
+  if (!isRecordWithOnlyKeys(value, ["branch", "clean", "tags"])) {
     return;
   }
-  const { branch, clean } = value;
+  const { branch, clean, tags } = value;
   if (
     (branch !== undefined && typeof branch !== "string") ||
-    (clean !== undefined && typeof clean !== "boolean")
+    (clean !== undefined && typeof clean !== "boolean") ||
+    !(
+      tags === undefined ||
+      (Array.isArray(tags) && tags.every((tag) => typeof tag === "string"))
+    )
   ) {
     return;
   }
   return {
     ...(branch === undefined ? {} : { branch }),
     ...(clean === undefined ? {} : { clean }),
+    ...(tags === undefined ? {} : { tags: tags as string[] }),
   };
 };
 
@@ -1136,15 +1162,25 @@ const evaluateRepoAssertion = async (
   if (!expected) {
     return fail(assertion, "repo.state expected value is invalid");
   }
-  const [branch, paths] = await Promise.all([
+  const [branch, paths, tags] = await Promise.all([
     runGit(context.workspace, ["branch", "--show-current"]),
     changedPaths(context.workspace),
+    runGit(context.workspace, [
+      "for-each-ref",
+      "--format=%(refname:strip=2)",
+      "refs/tags",
+    ]),
   ]);
   const branchMatches =
     expected.branch === undefined || expected.branch === branch;
   const cleanMatches =
     expected.clean === undefined || expected.clean === (paths.length === 0);
-  return branchMatches && cleanMatches
+  // The exact local tag list, so a created, moved-in, or deleted tag fails.
+  const tagsMatch =
+    expected.tags === undefined ||
+    JSON.stringify(tags.split("\n").filter(Boolean).sort()) ===
+      JSON.stringify([...expected.tags].sort());
+  return branchMatches && cleanMatches && tagsMatch
     ? pass(assertion, "Repository state matched")
     : fail(assertion, "Repository state did not match");
 };

@@ -283,6 +283,7 @@ describe("releaseTags setting", () => {
       ["/v{version}", "start or end with /"],
       ["release//{version}", "must not contain //"],
       ["release.lock/{version}", ".lock"],
+      ["release.lock{version}", ".lock"],
       ["release/.hidden/{version}", "starts with ."],
       [".v{version}", "starts with ."],
       ["v {version}", "letters, digits"],
@@ -492,6 +493,126 @@ describe("release-tag detection", () => {
     });
   });
 
+  test("keeps distinct per-train styles when trains share version numbers", async () => {
+    const repo = await gitRepository([
+      "mobile-release-1.0.0",
+      "mobile-release-1.1.0",
+      "web-release-1.0.0",
+      "web-release-1.1.0",
+    ]);
+    await Promise.all(
+      ["web", "mobile"].flatMap((app) => [
+        writeJson(repo, `apps/${app}/package.json`, { version: "1.1.0" }),
+        writeText(
+          repo,
+          `apps/${app}/CHANGELOG.md`,
+          changelog("1.1.0", "1.0.0")
+        ),
+      ])
+    );
+
+    const inspection = await inspect(repo);
+
+    expect(inspection.releaseTags?.recommended).toEqual({
+      mobile: "mobile-release-{version}",
+      web: "web-release-{version}",
+    });
+  });
+
+  test("never borrows another train's style and prefers a train's own", async () => {
+    const borrowed = await gitRepository([
+      "mobile-release-1.0.0",
+      "mobile-release-1.1.0",
+    ]);
+    const preferred = await gitRepository([
+      "mobile-2.0.0",
+      "v1.0.0",
+      "v1.1.0",
+      "web-v1.0.0",
+      "web-v1.1.0",
+    ]);
+    await Promise.all([
+      ...["web", "mobile"].flatMap((app) => [
+        writeJson(borrowed, `apps/${app}/package.json`, { version: "1.1.0" }),
+        writeText(
+          borrowed,
+          `apps/${app}/CHANGELOG.md`,
+          changelog("1.1.0", "1.0.0")
+        ),
+      ]),
+      writeJson(preferred, "apps/web/package.json", { version: "1.1.0" }),
+      writeText(
+        preferred,
+        "apps/web/CHANGELOG.md",
+        changelog("1.1.0", "1.0.0")
+      ),
+      writeJson(preferred, "apps/mobile/app.json", {
+        expo: { version: "2.0.0" },
+      }),
+    ]);
+
+    const [untagged, own] = await Promise.all([
+      inspect(borrowed),
+      inspect(preferred),
+    ]);
+
+    // Web has no tags of its own, so it gets the default, not mobile's.
+    expect(untagged.releaseTags?.recommended).toEqual({
+      mobile: "mobile-release-{version}",
+      web: "web@{version}",
+    });
+    expect(own.releaseTags?.recommended).toEqual({
+      mobile: "mobile-{version}",
+      web: "web-v{version}",
+    });
+  });
+
+  test("counts an owner's version only when no release heading names the train", async () => {
+    const repo = await gitRepository([
+      "web-release-1.0.0",
+      "mobile-release-2.0.0",
+    ]);
+    await Promise.all([
+      // Web's owner already reads 1.1.0, which is not released yet.
+      writeJson(repo, "apps/web/package.json", { version: "1.1.0" }),
+      writeText(repo, "apps/web/CHANGELOG.md", changelog("1.0.0")),
+      writeJson(repo, "apps/mobile/app.json", { expo: { version: "2.0.0" } }),
+    ]);
+
+    const inspection = await inspect(repo);
+
+    expect(inspection.releaseTags?.recommended).toEqual({
+      mobile: "mobile-release-{version}",
+      web: "web-release-{version}",
+    });
+  });
+
+  test("narrow distributions detect several trains too", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/site-a/package.json", { version: "1.0.0" }),
+      writeJson(repo, "apps/site-b/package.json", { version: "2.0.0" }),
+    ]);
+
+    const inspection = await inspect(repo, "web");
+    const blocked = await onboard(repo, {
+      distribution: "web",
+      mobileReleaseNotePlacement: undefined,
+      releaseTags: "v{version}",
+    });
+
+    expect(Object.hasOwn(inspection.inventory, "versionTrains")).toBe(false);
+    expect(inspection.releaseTags?.trains).toEqual(["site-a", "site-b"]);
+    expect(inspection.releaseTags?.recommended).toEqual({
+      "site-a": "site-a@{version}",
+      "site-b": "site-b@{version}",
+    });
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain(
+      "one template per release train"
+    );
+  });
+
   test("recommends none when release tooling already creates tags", async () => {
     const cases: [string, Record<string, string>][] = [
       [
@@ -577,7 +698,19 @@ describe("release-tag detection", () => {
         ".github/workflows/release.yml",
         "on:\n  push:\n    tags:\n      - 'v*'\n"
       ),
-      writeText(repo, ".github/workflows/ci.yml", "on: pull_request\n"),
+      writeText(
+        repo,
+        ".github/workflows/ci.yml",
+        "on: pull_request\njobs:\n  x:\n    if: github.ref_type == 'tag'\n    steps:\n      - run: echo refs/tags/v1\n"
+      ),
+      writeText(
+        repo,
+        ".github/workflows/branches.yml",
+        "on:\n  push:\n    branches: [main]\n"
+      ),
+      writeText(repo, ".github/workflows/any-push.yaml", "on: [push]\n"),
+      writeText(repo, ".github/workflows/create.yml", "on: create\n"),
+      writeText(repo, ".github/workflows/broken.yml", "on: [push\n"),
       writeText(
         repo,
         ".gitlab-ci.yml",
@@ -587,7 +720,10 @@ describe("release-tag detection", () => {
 
     const { releaseTags } = await inspect(repo, "web");
 
+    // Only triggers count: a workflow that merely mentions tags does not.
     expect(releaseTags?.ciTriggers).toEqual([
+      ".github/workflows/any-push.yaml",
+      ".github/workflows/create.yml",
       ".github/workflows/release.yml",
       ".gitlab-ci.yml",
     ]);
@@ -1068,6 +1204,21 @@ describe("request v3 and receipt v4", () => {
     expect(
       errorsOf(v3, "verify", receiptV4("prepared", null), 2)
     ).not.toContain("the release tag changed after prepare");
+    // Receipt v2 cannot name a tag either, so it may not drop one.
+    const v2 = receiptV2("integrated");
+    const v2Errors = (prior: unknown) =>
+      validateChangelogReceipt(
+        v2,
+        validateChangelogRequest({
+          ...requestFor(2, "verify", [1, 2]),
+          priorReceiptDigest: digestCanonicalJson(prior),
+        }).value as ChangelogRequest,
+        prior
+      ).errors;
+    expect(v2Errors(prepared)).toContain(
+      "the release tag changed after prepare"
+    );
+    expect(v2Errors(receiptV4("prepared", null))).toEqual([]);
   });
 
   test("refuses unbound names, refused names, and malformed tags", () => {

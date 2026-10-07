@@ -28,6 +28,7 @@ import {
   sep,
 } from "node:path";
 import { promisify } from "node:util";
+import { YAML } from "bun";
 
 const BACKFILL_STATUSES = [
   "not-applicable",
@@ -504,6 +505,7 @@ export interface ReleaseTagsInspection {
   recommended: ReleaseTagsSetting;
   stored: ReleaseTagsSetting | null;
   tooling: string[];
+  trains: string[];
 }
 
 type GuidanceQuestion = "release-tags" | "shared-version-lines";
@@ -1107,6 +1109,9 @@ export const releaseTagTemplateProblem = (template: unknown): string | null => {
   }
   if (VERSION_BOUNDARY.test(prefix)) {
     return "must not put a digit or . directly before {version}";
+  }
+  if (prefix.split("/").some((component) => component.endsWith(".lock"))) {
+    return "must not have a part ending in .lock";
   }
   const problem = releaseTagNameProblem(prefix + SAMPLE_TAG_VERSION);
   return problem ? `expands to a tag name that ${problem}` : null;
@@ -2033,8 +2038,6 @@ const CARGO_RELEASE_METADATA =
 const FASTLANE_TAG = /\badd_git_tag\b/u;
 const WORKFLOW_TAG_TOOL =
   /\b(semantic-release|release-please|goreleaser|changesets\/action)\b/u;
-const GITHUB_TAG_TRIGGER =
-  /^\s*tags(?:-ignore)?\s*:|refs\/tags\/|github\.ref_type/mu;
 const GITLAB_TAG_TRIGGER =
   /\$\{?CI_COMMIT_TAG\b|^\s*only\s*:\s*\[?\s*tags\b|^\s*-\s*tags\s*$/mu;
 const REGEX_SYNTAX = /[.*+?^${}()|[\]\\/]/gu;
@@ -2103,21 +2106,36 @@ const tagPrefixes = (
 
 // A prefix naming two or more released versions, or the only one, is a
 // convention; the most matches wins, then the one naming the newest version.
+// For one of several trains, a prefix naming another train is never its
+// style, and one naming this train outranks the rest.
 const tagConvention = (
   tags: string[],
-  versions: string[]
+  versions: string[],
+  train?: { name: string; others: string[] }
 ): { examples: string[]; prefix: string } | null => {
   let best: { examples: string[]; prefix: string } | null = null;
+  const rank = ({ examples, prefix }: { examples: string[]; prefix: string }) =>
+    [
+      Number(train !== undefined && prefix.toLowerCase().includes(train.name)),
+      examples.length,
+      Number(examples.includes(`${prefix}${versions[0]}`)),
+    ] as const;
   for (const [prefix, examples] of tagPrefixes(tags, versions)) {
+    const lower = prefix.toLowerCase();
+    const foreign =
+      train !== undefined &&
+      !lower.includes(train.name) &&
+      train.others.some((other) => lower.includes(other));
     const counts = examples.length >= 2 || versions.length === 1;
+    const candidate = { examples, prefix };
+    const [named, count, newest] = rank(candidate);
+    const [bestNamed, bestCount, bestNewest] = best ? rank(best) : [-1, 0, 0];
     const better =
-      !best ||
-      examples.length > best.examples.length ||
-      (examples.length === best.examples.length &&
-        examples.includes(`${prefix}${versions[0]}`) &&
-        !best.examples.includes(`${best.prefix}${versions[0]}`));
-    if (counts && better) {
-      best = { examples, prefix };
+      named === bestNamed
+        ? count > bestCount || (count === bestCount && newest > bestNewest)
+        : named > bestNamed;
+    if (counts && !foreign && better) {
+      best = candidate;
     }
   }
   return best;
@@ -2227,12 +2245,49 @@ const ciWorkflows = async (root: string): Promise<Map<string, string>> => {
   return workflows;
 };
 
+// A workflow runs on a tag push when it listens to `create`, or to `push`
+// with a tag filter or without a branch filter. Only its triggers count, never
+// text that merely mentions tags.
+const eventsOf = (on: unknown): string[] => {
+  if (typeof on === "string") {
+    return [on];
+  }
+  if (Array.isArray(on)) {
+    return on.filter((event): event is string => typeof event === "string");
+  }
+  return isRecord(on) ? Object.keys(on) : [];
+};
+
+const runsOnTagPush = (content: string): boolean => {
+  let workflow: unknown;
+  try {
+    workflow = YAML.parse(content);
+  } catch {
+    return false;
+  }
+  // YAML 1.1 readers turn a bare `on` key into true.
+  const on = isRecord(workflow) ? (workflow.on ?? workflow.true) : undefined;
+  const events = eventsOf(on);
+  if (events.includes("create")) {
+    return true;
+  }
+  const push = isRecord(on) ? on.push : undefined;
+  if (!(events.includes("push") && isRecord(push))) {
+    return events.includes("push");
+  }
+  return (
+    Object.hasOwn(push, "tags") ||
+    Object.hasOwn(push, "tags-ignore") ||
+    !(Object.hasOwn(push, "branches") || Object.hasOwn(push, "branches-ignore"))
+  );
+};
+
 const tagTriggeredCi = async (
   root: string,
   workflows: Map<string, string>
 ): Promise<string[]> => {
   const triggered = [...workflows]
-    .filter(([, content]) => GITHUB_TAG_TRIGGER.test(content))
+    .filter(([, content]) => runsOnTagPush(content))
     .map(([path]) => path);
   if (
     GITLAB_TAG_TRIGGER.test(await readSmallText(join(root, ".gitlab-ci.yml")))
@@ -2242,8 +2297,8 @@ const tagTriggeredCi = async (
   return triggered.sort((left, right) => left.localeCompare(right, "en"));
 };
 
-// Versions each release train has released: its owner's version, its own
-// changelog's newest headings, and root headings that name the train.
+// Versions each release train has released: its own changelog's newest
+// headings and root headings that name the train.
 const trainVersions = async (
   root: string,
   train: VersionTrain,
@@ -2265,16 +2320,17 @@ const trainVersions = async (
     "u"
   );
   const named = rootHeadings.filter(({ text }) => name.test(text));
-  return [
-    ...new Set([
-      ...(train.version && PUBLIC_VERSION.test(train.version)
-        ? [train.version]
-        : []),
-      ...[...own, ...named].flatMap(({ version }) =>
-        version ? [version] : []
-      ),
-    ]),
+  const released = [
+    ...new Set(
+      [...own, ...named].flatMap(({ version }) => (version ? [version] : []))
+    ),
   ];
+  // The owner's version may be unreleased, so it counts only when no release
+  // heading names the train.
+  if (released.length > 0 || !train.version) {
+    return released;
+  }
+  return PUBLIC_VERSION.test(train.version) ? [train.version] : [];
 };
 
 // One convention per train; trains whose conventions could collide, and
@@ -2289,7 +2345,12 @@ const trainConventions = async (
   const found = new Map<string, string>();
   const conventions = await Promise.all(
     trains.map(async (train) =>
-      tagConvention(tags, await trainVersions(root, train, rootHeadings))
+      tagConvention(tags, await trainVersions(root, train, rootHeadings), {
+        name: train.train,
+        others: trains
+          .map(({ train: other }) => other)
+          .filter((other) => other !== train.train),
+      })
     )
   );
   trains.forEach(({ train }, index) => {
@@ -2328,11 +2389,22 @@ const defaultTrainTemplates = (
   return templates.length > 0 ? Object.fromEntries(templates) : null;
 };
 
-const releaseTrainsFor = (
-  inventory: Inventory,
+// Full inventories already list version trains; every other versioned
+// distribution probes the same owners for release tags only.
+const detectedTrains = async (
+  installed: Distribution | "cms",
+  root: string,
+  inventory: Inventory
+): Promise<VersionTrain[]> =>
+  (installed === "full" ? inventory : await versionTrainsIn(root))
+    .versionTrains ?? [];
+
+// Trains that `crossSurfaceVersioning` "shared" mirrors are one release
+// train, so they take one tag.
+const publicTrains = <Train>(
+  trains: Train[],
   crossSurfaceVersioning: CrossSurfaceVersioning | undefined
-): VersionTrain[] =>
-  crossSurfaceVersioning === "shared" ? [] : (inventory.versionTrains ?? []);
+): Train[] => (crossSurfaceVersioning === "shared" ? [] : trains);
 
 // Tooling that already tags, then date-only headings, recommend `"none"`;
 // otherwise a detected convention, one template per train for 2+ public
@@ -2371,7 +2443,7 @@ const recommendReleaseTags = (
 /** Inspects release-tag evidence and recommends a `releaseTags` value. */
 const inspectReleaseTags = async (
   root: string,
-  inventory: Inventory,
+  detected: VersionTrain[],
   policy: RepoPolicy | undefined,
   crossSurfaceVersioning = policy?.crossSurfaceVersioning
 ): Promise<ReleaseTagsInspection> => {
@@ -2385,7 +2457,7 @@ const inspectReleaseTags = async (
     tagToolingEvidence(root, members, workflows),
     tagTriggeredCi(root, workflows),
   ]);
-  const trains = releaseTrainsFor(inventory, crossSurfaceVersioning);
+  const trains = publicTrains(detected, crossSurfaceVersioning);
   const evidence: string[] = [];
   if (tags === null) {
     evidence.push("Local Git tags could not be read");
@@ -2438,6 +2510,7 @@ const inspectReleaseTags = async (
     ...recommendReleaseTags(tooling, dateOnly, convention, trains),
     stored: policy?.releaseTags ?? null,
     tooling,
+    trains: detected.map(({ train }) => train),
   };
 };
 
@@ -3078,7 +3151,11 @@ export const inspectRepository = async (
   const releaseTags =
     installed === "cms"
       ? null
-      : await inspectReleaseTags(root, inventory, policy.value);
+      : await inspectReleaseTags(
+          root,
+          await detectedTrains(installed, root, inventory),
+          policy.value
+        );
   const recommendation = recommendationFor(
     installed,
     inventory,
@@ -3483,7 +3560,8 @@ const curationBudgetSelectionFrom = (
 // recommendation, recomputed when this setup records the trains as one.
 const recommendedReleaseTags = async (
   options: ApplyOptions,
-  inspect: SetupResult
+  inspect: SetupResult,
+  installed: Distribution | "cms"
 ): Promise<ReleaseTagsSetting | undefined> => {
   if (!inspect.releaseTags) {
     return;
@@ -3498,7 +3576,7 @@ const recommendedReleaseTags = async (
   return (
     await inspectReleaseTags(
       inspect.repository,
-      inspect.inventory,
+      await detectedTrains(installed, inspect.repository, inspect.inventory),
       inspect.policy?.value,
       options.crossSurfaceVersioning
     )
@@ -4513,8 +4591,9 @@ const releaseTagsApplyErrors = (
     return ["Release tags are a repository setting and are never run-only."];
   }
   const errors = releaseTagsErrors(setting);
-  const trains = releaseTrainsFor(
-    inspect.inventory,
+  const detected = inspect.releaseTags ? inspect.releaseTags.trains : [];
+  const trains = publicTrains(
+    detected,
     options.crossSurfaceVersioning ??
       inspect.policy?.value?.crossSurfaceVersioning
   );
@@ -4525,7 +4604,7 @@ const releaseTagsApplyErrors = (
     trains.length >= 2
   ) {
     errors.push(
-      `releaseTags needs one template per release train (${trains.map(({ train }) => train).join(", ")}), such as {"${trains[0]?.train}":"${trains[0]?.train}@{version}"}, so two trains never name one tag.`
+      `releaseTags needs one template per release train (${trains.join(", ")}), such as {"${trains[0]}":"${trains[0]}@{version}"}, so two trains never name one tag.`
     );
   }
   return errors;
@@ -4626,7 +4705,7 @@ export const applySetup = async (
     options,
     inspect,
     installed,
-    await recommendedReleaseTags(options, inspect)
+    await recommendedReleaseTags(options, inspect, installed)
   );
   const errors = selectionErrors(options, inspect, selection, installed);
   if (errors.length > 0) {

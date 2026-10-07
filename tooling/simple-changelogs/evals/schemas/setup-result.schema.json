@@ -339,7 +339,8 @@
         "reason",
         "recommended",
         "stored",
-        "tooling"
+        "tooling",
+        "trains"
       ],
       "properties": {
         "ciTriggers": {
@@ -361,6 +362,10 @@
           "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/releaseTags" }]
         },
         "tooling": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "trains": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         }

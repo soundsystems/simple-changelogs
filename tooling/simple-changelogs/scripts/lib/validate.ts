@@ -308,6 +308,7 @@ const activationExpectation = oneOf(
 const repoStateExpectation = objectOf({
   branch: optional(nonEmptyString),
   clean: optional(booleanValue),
+  tags: optional(stringArray),
 });
 const changedPathsExpectation = objectOf({
   allowed: optional(stringArray),

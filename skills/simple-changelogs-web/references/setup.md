@@ -180,17 +180,18 @@ untouched until the user authorizes a repair.
 Git tag, which Simple Changes creates and pushes; Simple Changelogs never does.
 Absent or `"none"` means no tags. Otherwise it is one `"<prefix>{version}"`
 template, such as `"v{version}"` or `"release-{version}"`, or a map giving each
-release train its template or `"none"`, such as
-`{ "web": "web@{version}", "ios": "ios@{version}" }`; an unlisted train gets no
-tag, and two or more trains need a map. `{version}` appears once, at the end.
-The prefix uses only letters, digits, and `. _ - + / @`; does not start with
-`-` or `/`; contains no `..` or `//`; has no `/`-separated part starting with
-`.` or ending in `.lock`; and does not end with a digit or `.`, so `v1` plus
-`1.2.0` never reads as `v11.2.0`. No map prefix may equal or begin another, so
-two trains never name one tag. When your Git host's tag protection or tag
-rules refuse these tags, use `"none"` or adjust those rules. Record it with
-`--release-tags`; it never joins all-projects preferences and grants no push,
-merge, or deployment authority.
+release train its template or `"none"`, such as `{ "web": "web@{version}",
+"ios": "ios@{version}" }`; an unlisted train gets no tag, and two or more
+trains need a map (surfaces that `crossSurfaceVersioning` `shared` mirrors are
+one train). `{version}` appears once, at the end. The prefix uses only letters,
+digits, and `. _ - + / @`; does not start with `-` or `/`; contains no `..` or
+`//`; has no `/`-separated part starting with `.` or ending in `.lock`; and
+does not end with a digit or `.`, so `v1` plus `1.2.0` never reads as
+`v11.2.0`. No map prefix may equal or begin another, so two trains never name
+one tag. When your Git host's tag protection or tag rules refuse these tags,
+use `"none"` or adjust those rules. Record it with `--release-tags`; it never
+joins all-projects preferences and grants no push, merge, or deployment
+authority.
 
 `crossSurfaceVersioning` is optional and accepts:
 
@@ -284,13 +285,13 @@ work for one separate history choice: preview/start (`partial`), defer
 `userPrompt` is null, explain that the update is prospective and no historical
 backfill is needed, record `not-applicable`, and continue.
 
-Record the disposition with
-`apply --guidance-backfill <status> --confirm`. A verified completed audit adds
-`--audit-verified`. When `questions` lists `release-tags`, ask the release-tag
-question from `references/onboarding.md` once and pass an answer with
-`--release-tags` in that call; no answer records nothing. This acknowledgement
-changes only guidance state and answered questions, and does not grant
-history-rewrite, release, deployment, or publication authority.
+Record the disposition with `apply --guidance-backfill <status> --confirm`. A
+verified completed audit adds `--audit-verified`. When `questions` lists
+`release-tags`, ask the release-tag question from `references/onboarding.md`
+once, before offering the review choices, and pass an answer with
+`--release-tags` in the disposition call; no answer records nothing. This
+acknowledgement changes only guidance state and answered questions, and does
+not grant history-rewrite, release, deployment, or publication authority.
 
 
 ## Surface Authorization State

@@ -63,7 +63,11 @@
       "additionalProperties": false,
       "properties": {
         "branch": { "type": "string", "minLength": 1 },
-        "clean": { "type": "boolean" }
+        "clean": { "type": "boolean" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
       }
     },
     "authorizationExpectation": {

@@ -868,6 +868,7 @@ export const validateChangelogReceipt = (
     ...receiptRequestErrors(receipt, request),
     ...receiptStatusErrors(receipt),
     ...(carriesLine(receipt) ? receiptRulesV3(receipt, request, prior) : []),
+    ...tagContinuityErrors(receipt, prior),
   ];
   return errors.length > 0 ? { errors } : { errors, value: receipt };
 };
@@ -1288,10 +1289,7 @@ const versionLineErrors = (receipt: LineCarryingReceipt): string[] => {
   return errors;
 };
 
-// Bindings to the prior receipt: one line state under one decision digest,
-// and, once a prior v4 receipt carried the release, exactly the same tag (or
-// none when the prior named none) in every later receipt that carries it; a
-// v3 receipt names none.
+// The line state stays fixed under one decision digest.
 const priorReceiptErrors = (
   receipt: LineCarryingReceipt,
   prior: unknown
@@ -1312,17 +1310,24 @@ const priorReceiptErrors = (
       sameLineState(priorLine, receipt.versionDecision?.versionLine ?? null),
     "the line state changed under the same decisionDigest"
   );
-  requireCondition(
-    errors,
-    !(
-      prior.schemaVersion === 4 &&
-      isRecord(prior.release) &&
-      receipt.release !== null
-    ) || sameTag(releaseTagOf(prior), releaseTagOf(receipt)),
-    "the release tag changed after prepare"
-  );
   return errors;
 };
+
+// Once a prior v4 receipt carried the release, every later receipt that
+// carries it, of any version, names exactly the same tag, or none when the
+// prior named none; a v2 or v3 receipt names none. The pre-merge dry run
+// checked that name, so a dropped, changed, or added tag fails closed.
+const tagContinuityErrors = (
+  receipt: ChangelogReceipt,
+  prior: unknown
+): string[] =>
+  isRecord(prior) &&
+  prior.schemaVersion === 4 &&
+  isRecord(prior.release) &&
+  receipt.release !== null &&
+  !sameTag(releaseTagOf(prior), releaseTagOf(receipt))
+    ? ["the release tag changed after prepare"]
+    : [];
 
 const receiptRulesV3 = (
   receipt: LineCarryingReceipt,

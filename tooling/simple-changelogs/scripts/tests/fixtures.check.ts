@@ -202,6 +202,44 @@ describe("fixture workspaces", () => {
     expect(commitDate.stdout.toString().trim()).toBe(FIXED_COMMIT_DATE);
   });
 
+  test("tags the baseline from a hidden fixture file and asserts the exact tag list", async () => {
+    const fixturesRoot = await makeFixtureRoot();
+    await writeFile(
+      join(fixturesRoot, "base", ".fixture-git-tags"),
+      "release-1.0.0\nv1.1.0\n"
+    );
+    const workspace = await createFixtureWorkspace(fixturesRoot, "base");
+    temporaryPaths.add(workspace);
+
+    const baseline = await initializeFixtureGit(workspace);
+    const tagged = spawnSync(
+      [
+        "git",
+        "for-each-ref",
+        "--format=%(refname:strip=2) %(objectname)",
+        "refs/tags",
+      ],
+      { cwd: workspace }
+    );
+    const tracked = spawnSync(["git", "ls-files"], { cwd: workspace });
+    const expectTags = async (tags: string[]) =>
+      (
+        await evaluateAssertions([{ expected: { tags }, kind: "repo.state" }], {
+          response: completedResponse(),
+          workspace,
+        })
+      )[0]?.passed;
+
+    expect(tagged.stdout.toString()).toBe(
+      `release-1.0.0 ${baseline}\nv1.1.0 ${baseline}\n`
+    );
+    expect(tracked.stdout.toString()).not.toContain(".fixture-git-tags");
+    await expect(lstat(join(workspace, ".fixture-git-tags"))).rejects.toThrow();
+    expect(await expectTags(["v1.1.0", "release-1.0.0"])).toBe(true);
+    spawnSync(["git", "tag", "--no-sign", "v1.2.0"], { cwd: workspace });
+    expect(await expectTags(["v1.1.0", "release-1.0.0"])).toBe(false);
+  });
+
   test("ignores hostile host Git signing, hook, and template configuration", async () => {
     const fixturesRoot = await makeFixtureRoot();
     const workspace = await createFixtureWorkspace(fixturesRoot, "base");
