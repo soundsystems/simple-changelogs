@@ -2174,6 +2174,9 @@ const TAG_TOOLING_FILES: [RegExp, string][] = [
 ];
 const VERSION_SCRIPT =
   /\b(?:npm|pnpm|yarn)\s+version\b|\bbun\s+pm\s+version\b/u;
+const VERSION_SCRIPT_UNTAGGED =
+  /--no-git-tag-version\b|--git-tag-version(?:=|\s+)false\b/u;
+const SHELL_COMMAND_SEPARATOR = /&&|\|\||[;|\n]/u;
 const CARGO_RELEASE_METADATA =
   /^\[(?:package|workspace)\.metadata\.release\]/mu;
 const FASTLANE_TAG = /\badd_git_tag\b/u;
@@ -2312,6 +2315,16 @@ const workspaceMembers = async (root: string): Promise<string[]> => [
   ).flat(),
 ];
 
+// A version command tags unless it turns tagging off, as
+// `npm version patch --no-git-tag-version` does.
+const versionScriptTags = (script: string): boolean =>
+  script
+    .split(SHELL_COMMAND_SEPARATOR)
+    .some(
+      (command) =>
+        VERSION_SCRIPT.test(command) && !VERSION_SCRIPT_UNTAGGED.test(command)
+    );
+
 // Release tooling that creates Git tags itself, from manifests, scripts,
 // configuration files, Fastlane, and CI workflow steps.
 const tagToolingEvidence = async (
@@ -2332,7 +2345,7 @@ const tagToolingEvidence = async (
       const scripts = isRecord(manifest?.scripts) ? manifest.scripts : {};
       if (
         Object.values(scripts).some(
-          (script) => typeof script === "string" && VERSION_SCRIPT.test(script)
+          (script) => typeof script === "string" && versionScriptTags(script)
         )
       ) {
         found.add(`a version script (${manifestPath})`);

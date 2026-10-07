@@ -1198,6 +1198,38 @@ describe("release-tag detection", () => {
     }
   });
 
+  test("a version script that turns tagging off is not tag tooling", async () => {
+    const cases: [string, boolean][] = [
+      ["npm version patch --no-git-tag-version", false],
+      ["bun pm version minor --no-git-tag-version", false],
+      ["npm version patch --git-tag-version=false", false],
+      ["yarn version --new-version 2.0.0 --git-tag-version false", false],
+      ["npm run build && npm version minor", true],
+      ["npm version patch --no-git-tag-version; npm version minor", true],
+    ];
+    const inspections = await Promise.all(
+      cases.map(async ([release]) => {
+        const repo = await gitRepository(["v1.0.0", "v1.1.0"]);
+        await writeText(repo, "CHANGELOG.md", changelog("1.1.0", "1.0.0"));
+        await writeText(
+          repo,
+          "package.json",
+          JSON.stringify({ scripts: { release } })
+        );
+        return (await inspect(repo, "web")).releaseTags;
+      })
+    );
+
+    for (const [index, [, tags]] of cases.entries()) {
+      const inspection = inspections[index];
+      expect(inspection?.convention).toBe("v{version}");
+      expect(inspection?.recommended).toBe(tags ? "none" : "v{version}");
+      expect(inspection?.tooling.join(" ").includes("a version script")).toBe(
+        tags
+      );
+    }
+  });
+
   test("recommends none for date-only releases and reports date tags", async () => {
     const repo = await gitRepository([
       "release-2026-10-01",
