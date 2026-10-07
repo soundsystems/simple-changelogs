@@ -867,9 +867,45 @@ describe("release-tag detection", () => {
       writeJson(desktop, "src-tauri/tauri.conf.json", { version: "5.0.0" }),
     ]);
 
-    const [nativeTags, desktopTags] = await Promise.all(
-      [native, desktop].map(async (repo) => (await inspect(repo)).releaseTags)
-    );
+    // Named like the app beside it, a site is still its own product, keyed
+    // by its directory.
+    const namedNative = await gitRepository();
+    await Promise.all([
+      writeJson(namedNative, "package.json", {
+        dependencies: { next: "16.0.0" },
+        name: "android",
+        version: "1.0.0",
+      }),
+      writeText(namedNative, "android/app/build.gradle", gradle("5.0.0")),
+    ]);
+    const namedDesktop = await gitRepository();
+    await Promise.all([
+      writeJson(namedDesktop, "package.json", {
+        dependencies: { next: "16.0.0" },
+        name: "desktop",
+        version: "1.0.0",
+      }),
+      writeJson(namedDesktop, "src-tauri/tauri.conf.json", {
+        version: "5.0.0",
+      }),
+    ]);
+    // A root Expo app mirrors only its own native projects, never another
+    // member's.
+    const expo = await gitRepository();
+    await Promise.all([
+      writeJson(expo, "app.json", { expo: { version: "1.0.0" } }),
+      writeText(expo, "apps/admin/android/app/build.gradle", gradle("2.0.0")),
+    ]);
+
+    const repos = [native, desktop, namedNative, namedDesktop, expo];
+    const inspected = await Promise.all(repos.map((repo) => inspect(repo)));
+    const [
+      nativeTags,
+      desktopTags,
+      namedNativeTags,
+      namedDesktopTags,
+      expoTags,
+    ] = inspected.map(({ releaseTags }) => releaseTags);
 
     expect(nativeTags?.trains).toEqual(["android", "site"]);
     expect(nativeTags?.recommended).toEqual({
@@ -877,11 +913,22 @@ describe("release-tag detection", () => {
       site: "site@{version}",
     });
     expect(desktopTags?.trains).toEqual(["site", "desktop"]);
-    const refused = await onboard(native, { releaseTags: "v{version}" });
-    expect(refused.status).toBe("blocked");
-    expect(refused.errors.join(" ")).toContain(
-      "one template per release train"
+    expect(namedNativeTags?.trains).toEqual(["android", "."]);
+    expect(namedDesktopTags?.trains).toEqual([".", "desktop"]);
+    expect(expoTags?.trains).toEqual(["mobile", "android"]);
+    // Shared version lines relate the same app trains as before.
+    expect(inspected[4]?.inventory.versionTrains).toEqual([
+      { path: "app.json", train: "mobile", version: "1.0.0" },
+    ]);
+    const refused = await Promise.all(
+      repos.map((repo) => onboard(repo, { releaseTags: "v{version}" }))
     );
+    for (const result of refused) {
+      expect(result.status).toBe("blocked");
+      expect(result.errors.join(" ")).toContain(
+        "one template per release train"
+      );
+    }
   });
 
   test("a published package named like an app, or a second app's native project, is its own train", async () => {

@@ -1908,21 +1908,48 @@ const sameProduct = (owner: VersionOwner, other: VersionOwner): boolean => {
   return owner.dependencies.some((name) => MOBILE_DEPENDENCIES.has(name));
 };
 
-const mirrors = (owner: VersionOwner, other: VersionOwner): boolean =>
+const sameMember = (owner: VersionOwner, other: VersionOwner): boolean =>
+  memberOf(other.path) === memberOf(owner.path);
+
+// package.json beside another owner in its own member, or native files in an
+// Expo app, mirror. App trains keep letting a root Expo app mirror native
+// projects in any member, as shared version lines always have; release
+// trains mirror only within a member.
+const mirrors = (
+  owner: VersionOwner,
+  other: VersionOwner,
+  release: boolean
+): boolean =>
   owner.path.endsWith("package.json")
     ? other !== owner &&
       other.path.startsWith(ownerPrefix(owner.path)) &&
-      memberOf(other.path) === memberOf(owner.path) &&
+      sameMember(owner, other) &&
       sameProduct(owner, other)
     : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
       other.path.endsWith("app.json") &&
-      owner.path.startsWith(ownerPrefix(other.path));
+      owner.path.startsWith(ownerPrefix(other.path)) &&
+      !(release && !sameMember(owner, other));
 
-// Release trains in two members can share a name. The app train that shared
-// version lines know by it keeps it, or else the first in walk order, where a
-// root product sorts first; the rest are keyed by their directory, such as
-// `packages/web`, `apps/admin/ios`, `./ios` for a root native project, or `.`
-// for a root product.
+// App trains join same-named owners anywhere, as shared version lines always
+// have. Release trains join only app owners in one member, such as a second
+// Info.plist; owners in two members, or a product package.json that does not
+// mirror, release separately.
+const joins = (
+  owner: VersionOwner,
+  train: VersionOwner,
+  release: boolean
+): boolean =>
+  train.train === owner.train &&
+  !(
+    release &&
+    (owner.releaseOnly || train.releaseOnly || !sameMember(owner, train))
+  );
+
+// Release trains can share a name. The app train that shared version lines
+// know by it keeps it, or else the first in walk order, where a root product
+// sorts first; the rest are keyed by their directory, such as `packages/web`,
+// `apps/admin/ios`, `./ios` for a root native project, or `.` for a root
+// product.
 const releaseTrainId = (
   owner: VersionOwner,
   trains: VersionOwner[]
@@ -1938,23 +1965,18 @@ const releaseTrainId = (
     : dirname(lower);
 };
 
-// package.json beside another owner in its own member, or native files in an
-// Expo app, mirror. App trains join same-named owners anywhere, as shared
-// version lines always have; release trains join them only within a member,
-// since owners in two members release two products.
 const versionTrainsFrom = (
   owners: VersionOwner[],
   release = false
 ): VersionTrain[] => {
   const trains: VersionOwner[] = [];
   for (const owner of owners) {
-    const mirror = owners.some((other) => mirrors(owner, other));
-    const joins = trains.some(
-      ({ path, train }) =>
-        train === owner.train &&
-        !(release && memberOf(path) !== memberOf(owner.path))
-    );
-    if (!(mirror || joins)) {
+    if (
+      !(
+        owners.some((other) => mirrors(owner, other, release)) ||
+        trains.some((train) => joins(owner, train, release))
+      )
+    ) {
       trains.push(owner);
     }
   }
