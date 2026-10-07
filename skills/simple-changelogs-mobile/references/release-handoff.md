@@ -147,9 +147,10 @@ create, push, move, or delete a tag yourself.
   train's map entry, or no tag when the field is absent, `"none"`, or leaves
   the train unlisted. Public trains are the `releaseTags.trains` that
   `scripts/setup.ts inspect` reports, one when `crossSurfaceVersioning` is
-  `shared`; setup checks the same list before saving. One template other than
-  `"none"` with two or more public trains blocks with `malformed-policy` and
-  `repair-policy`.
+  `shared`; setup checks the same list before saving. A train named like one
+  in another directory is keyed by its directory, such as `packages/web`. One
+  template other than `"none"` with two or more public trains blocks with
+  `malformed-policy` and `repair-policy`.
 - The name is the template prefix plus the exact `release.version`, never a
   build number. The message is one line of at most 200 characters,
   `<display name> <version>`, using the name the changelog already uses.

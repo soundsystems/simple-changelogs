@@ -69,6 +69,12 @@ const changelog = (...headings: string[]): string =>
     .map((heading) => `## ${heading}\n\n- Item.\n`)
     .join("\n")}`;
 
+const gradle = (version: string): string =>
+  `android {\n  defaultConfig {\n    versionName "${version}"\n  }\n}\n`;
+
+const plist = (version: string): string =>
+  `<plist><dict><key>CFBundleShortVersionString</key><string>${version}</string></dict></plist>\n`;
+
 // One spawn per repository: init, one commit, and lightweight tags. Nothing
 // is fetched or pushed.
 const gitRepository = async (tags: string[] = []): Promise<string> => {
@@ -794,7 +800,7 @@ describe("release-tag detection", () => {
     );
   });
 
-  test("a root product beside root app owners stays one train", async () => {
+  test("a root product beside its own root app owners stays one train", async () => {
     const expo = await gitRepository();
     await Promise.all([
       writeJson(expo, "package.json", { name: "trail", version: "3.0.0" }),
@@ -802,12 +808,21 @@ describe("release-tag detection", () => {
     ]);
     const native = await gitRepository();
     await Promise.all([
-      writeJson(native, "package.json", { name: "trail", version: "3.0.0" }),
-      writeText(
-        native,
-        "android/app/build.gradle",
-        'android {\n  defaultConfig {\n    versionName "3.0.0"\n  }\n}\n'
-      ),
+      writeJson(native, "package.json", {
+        dependencies: { "react-native": "0.79.0" },
+        name: "trail",
+        version: "3.0.0",
+      }),
+      writeText(native, "android/app/build.gradle", gradle("3.0.0")),
+    ]);
+    const desktop = await gitRepository();
+    await Promise.all([
+      writeJson(desktop, "package.json", {
+        devDependencies: { "@tauri-apps/cli": "2.0.0" },
+        name: "trail",
+        version: "3.0.0",
+      }),
+      writeJson(desktop, "src-tauri/tauri.conf.json", { version: "3.0.0" }),
     ]);
     const alone = await gitRepository();
     await writeJson(alone, "package.json", {
@@ -815,18 +830,139 @@ describe("release-tag detection", () => {
       version: "1.0.0",
     });
 
-    const [expoTags, nativeTags, aloneTags] = await Promise.all(
-      [expo, native, alone].map(
+    const [expoTags, nativeTags, desktopTags, aloneTags] = await Promise.all(
+      [expo, native, desktop, alone].map(
         async (repo) => (await inspect(repo)).releaseTags
       )
     );
 
     expect(expoTags?.trains).toEqual(["mobile"]);
     expect(nativeTags?.trains).toEqual(["android"]);
+    expect(desktopTags?.trains).toEqual(["desktop"]);
     expect(aloneTags?.trains).toEqual(["lantern"]);
-    for (const releaseTags of [expoTags, nativeTags, aloneTags]) {
+    for (const releaseTags of [expoTags, nativeTags, desktopTags, aloneTags]) {
       expect(releaseTags?.recommended).toBe("v{version}");
     }
+  });
+
+  test("a root product beside an unrelated root native or Tauri app is its own train", async () => {
+    // A Next.js site and an Android app with separate histories are two
+    // products, so one template would let both claim one name.
+    const native = await gitRepository();
+    await Promise.all([
+      writeJson(native, "package.json", {
+        dependencies: { next: "16.0.0" },
+        name: "site",
+        version: "1.0.0",
+      }),
+      writeText(native, "android/app/build.gradle", gradle("5.0.0")),
+    ]);
+    const desktop = await gitRepository();
+    await Promise.all([
+      writeJson(desktop, "package.json", {
+        dependencies: { next: "16.0.0" },
+        name: "site",
+        version: "1.0.0",
+      }),
+      writeJson(desktop, "src-tauri/tauri.conf.json", { version: "5.0.0" }),
+    ]);
+
+    const [nativeTags, desktopTags] = await Promise.all(
+      [native, desktop].map(async (repo) => (await inspect(repo)).releaseTags)
+    );
+
+    expect(nativeTags?.trains).toEqual(["android", "site"]);
+    expect(nativeTags?.recommended).toEqual({
+      android: "android@{version}",
+      site: "site@{version}",
+    });
+    expect(desktopTags?.trains).toEqual(["site", "desktop"]);
+    const refused = await onboard(native, { releaseTags: "v{version}" });
+    expect(refused.status).toBe("blocked");
+    expect(refused.errors.join(" ")).toContain(
+      "one template per release train"
+    );
+  });
+
+  test("a published package named like an app, or a second app's native project, is its own train", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "apps/web/package.json", { version: "1.0.0" }),
+      writeJson(repo, "packages/web/package.json", {
+        name: "web",
+        version: "2.0.0",
+      }),
+    ]);
+    // A root product named like an app is keyed by its directory, since the
+    // app keeps the name shared version lines know it by.
+    const rooted = await gitRepository();
+    await Promise.all([
+      writeJson(rooted, "package.json", { name: "web", version: "3.0.0" }),
+      writeJson(rooted, "apps/web/package.json", { version: "1.0.0" }),
+    ]);
+    // packages/ sorts before src-tauri/, yet the Tauri app keeps its name.
+    const desktop = await gitRepository();
+    await Promise.all([
+      writeJson(desktop, "packages/desktop/package.json", { version: "2.0.0" }),
+      writeJson(desktop, "src-tauri/tauri.conf.json", { version: "1.0.0" }),
+    ]);
+    const natives = await gitRepository();
+    await Promise.all([
+      writeText(natives, "android/app/build.gradle", gradle("1.0.0")),
+      writeText(
+        natives,
+        "apps/admin/android/app/build.gradle",
+        gradle("4.0.0")
+      ),
+      writeText(natives, "apps/admin/ios/App/Info.plist", plist("4.0.0")),
+      writeText(natives, "ios/App/Info.plist", plist("1.0.0")),
+    ]);
+
+    const [full, rootedFull, desktopFull, nativeFull] = await Promise.all([
+      inspect(repo),
+      inspect(rooted),
+      inspect(desktop),
+      inspect(natives),
+    ]);
+
+    expect(full.releaseTags?.trains).toEqual(["web", "packages/web"]);
+    expect(full.releaseTags?.recommended).toEqual({
+      "packages/web": "packages/web@{version}",
+      web: "web@{version}",
+    });
+    expect(rootedFull.releaseTags?.trains).toEqual(["web", "."]);
+    expect(desktopFull.releaseTags?.trains).toEqual([
+      "packages/desktop",
+      "desktop",
+    ]);
+    expect(desktopFull.inventory.versionTrains).toEqual([
+      { path: "src-tauri/tauri.conf.json", train: "desktop", version: "1.0.0" },
+    ]);
+    expect(nativeFull.releaseTags?.trains).toEqual([
+      "android",
+      "apps/admin/android",
+      "ios",
+      "./ios",
+    ]);
+    // Shared version lines relate the same app trains as before.
+    for (const inspected of [full, rootedFull]) {
+      expect(inspected.inventory.versionTrains).toEqual([
+        { path: "apps/web/package.json", train: "web", version: "1.0.0" },
+      ]);
+    }
+    expect(nativeFull.inventory.versionTrains).toEqual([
+      { path: "android/app/build.gradle", train: "android", version: "1.0.0" },
+      {
+        path: "apps/admin/ios/App/Info.plist",
+        train: "ios",
+        version: "4.0.0",
+      },
+    ]);
+    const refused = await onboard(repo, { releaseTags: "v{version}" });
+    expect(refused.status).toBe("blocked");
+    expect(refused.errors.join(" ")).toContain(
+      "one template per release train"
+    );
   });
 
   test("a root product's own history is the root changelog, less other trains' headings", async () => {

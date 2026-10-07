@@ -1809,6 +1809,7 @@ const collectFileEvidence = (
 // that is not a workspace root, or a published packages/* package, releases
 // on its own but never joins a shared version line.
 interface VersionOwner extends VersionTrain {
+  dependencies: string[];
   releaseOnly: boolean;
 }
 
@@ -1844,6 +1845,7 @@ const versionOwnerFor = (
   let train = native;
   let raw: unknown;
   let releaseOnly = false;
+  let dependencies: string[] = [];
   try {
     if (native) {
       raw = (name === "info.plist" ? PLIST_VERSION : GRADLE_VERSION).exec(
@@ -1862,6 +1864,7 @@ const versionOwnerFor = (
         : undefined;
       raw = manifest?.version;
       releaseOnly = true;
+      dependencies = dependencyNames(manifest);
     } else if (name === "tauri.conf.json") {
       const config = JSON.parse(content);
       train = "desktop";
@@ -1874,6 +1877,7 @@ const versionOwnerFor = (
     return;
   }
   return {
+    dependencies,
     path,
     releaseOnly,
     train,
@@ -1888,29 +1892,77 @@ const ownerPrefix = (path: string): string =>
 const memberOf = (path: string): string =>
   WORKSPACE_MEMBER_DIRECTORY.exec(path.toLowerCase())?.[0] ?? "";
 
+const TAURI_DEPENDENCY = /^@tauri-apps\//u;
+
+// Whether a package.json is the same product as another owner in its member.
+// An app's always is; a root or packages/* product only beside an Expo
+// app.json, a native project with a mobile framework dependency, or a Tauri
+// app with a Tauri dependency, so an unrelated root site stays its own train.
+const sameProduct = (owner: VersionOwner, other: VersionOwner): boolean => {
+  if (!owner.releaseOnly || other.path.endsWith("app.json")) {
+    return true;
+  }
+  if (other.path.endsWith("tauri.conf.json")) {
+    return owner.dependencies.some((name) => TAURI_DEPENDENCY.test(name));
+  }
+  return owner.dependencies.some((name) => MOBILE_DEPENDENCIES.has(name));
+};
+
+const mirrors = (owner: VersionOwner, other: VersionOwner): boolean =>
+  owner.path.endsWith("package.json")
+    ? other !== owner &&
+      other.path.startsWith(ownerPrefix(owner.path)) &&
+      memberOf(other.path) === memberOf(owner.path) &&
+      sameProduct(owner, other)
+    : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
+      other.path.endsWith("app.json") &&
+      owner.path.startsWith(ownerPrefix(other.path));
+
+// Release trains in two members can share a name. The app train that shared
+// version lines know by it keeps it, or else the first in walk order, where a
+// root product sorts first; the rest are keyed by their directory, such as
+// `packages/web`, `apps/admin/ios`, `./ios` for a root native project, or `.`
+// for a root product.
+const releaseTrainId = (
+  owner: VersionOwner,
+  trains: VersionOwner[]
+): string => {
+  const named = trains.filter(({ train }) => train === owner.train);
+  const keeper = named.find(({ releaseOnly }) => !releaseOnly) ?? named[0];
+  if (keeper === owner) {
+    return owner.train;
+  }
+  const lower = owner.path.toLowerCase();
+  return NATIVE_OWNER.test(lower)
+    ? `${memberOf(lower) || "."}/${owner.train}`
+    : dirname(lower);
+};
+
 // package.json beside another owner in its own member, or native files in an
-// Expo app, mirror.
-const versionTrainsFrom = (owners: VersionOwner[]): VersionTrain[] => {
-  const trains: VersionTrain[] = [];
+// Expo app, mirror. App trains join same-named owners anywhere, as shared
+// version lines always have; release trains join them only within a member,
+// since owners in two members release two products.
+const versionTrainsFrom = (
+  owners: VersionOwner[],
+  release = false
+): VersionTrain[] => {
+  const trains: VersionOwner[] = [];
   for (const owner of owners) {
-    const mirror = owners.some((other) =>
-      owner.path.endsWith("package.json")
-        ? other !== owner &&
-          other.path.startsWith(ownerPrefix(owner.path)) &&
-          memberOf(other.path) === memberOf(owner.path)
-        : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
-          other.path.endsWith("app.json") &&
-          owner.path.startsWith(ownerPrefix(other.path))
+    const mirror = owners.some((other) => mirrors(owner, other));
+    const joins = trains.some(
+      ({ path, train }) =>
+        train === owner.train &&
+        !(release && memberOf(path) !== memberOf(owner.path))
     );
-    if (!(mirror || trains.some(({ train }) => train === owner.train))) {
-      trains.push({
-        path: owner.path,
-        train: owner.train,
-        version: owner.version,
-      });
+    if (!(mirror || joins)) {
+      trains.push(owner);
     }
   }
-  return trains;
+  return trains.map((owner) => ({
+    path: owner.path,
+    train: releaseTrainId(owner, trains),
+    version: owner.version,
+  }));
 };
 
 const OWNER_FILES = [
@@ -2067,7 +2119,8 @@ const versionOwnersIn = async (
       found.filter(
         ({ path, releaseOnly }) =>
           !(workspaceRoot && releaseOnly && path === "package.json")
-      )
+      ),
+      true
     ),
   };
 };
