@@ -771,6 +771,29 @@ describe("release-tag detection", () => {
     expect(pnpmTags.releaseTags?.recommended).toBe("v{version}");
   });
 
+  test("a sole train's own changelog finds its tag style", async () => {
+    const repo = await gitRepository(["sdk-release-1.0.0"]);
+    await Promise.all([
+      writeJson(repo, "package.json", {
+        private: true,
+        workspaces: ["packages/*"],
+      }),
+      writeJson(repo, "packages/sdk/package.json", {
+        name: "@acme/sdk",
+        version: "1.1.0",
+      }),
+      writeText(repo, "packages/sdk/CHANGELOG.md", changelog("1.0.0")),
+    ]);
+
+    const { releaseTags } = await inspect(repo, "web");
+
+    expect(releaseTags?.trains).toEqual(["@acme/sdk"]);
+    expect(releaseTags?.recommended).toBe("sdk-release-{version}");
+    expect(releaseTags?.evidence).not.toContain(
+      "No local tag names a released version"
+    );
+  });
+
   test("a root product beside root app owners stays one train", async () => {
     const expo = await gitRepository();
     await Promise.all([
@@ -1437,6 +1460,56 @@ describe("release tags in the guidance-update notice", () => {
     );
     expect(unchanged).toBe(before);
     expect(mapped.status).toBe("configured");
+  });
+
+  test("any later policy write rechecks a stored single template", async () => {
+    const repo = await gitRepository();
+    await Promise.all([
+      writeJson(repo, "package.json", { name: "lantern", version: "1.0.0" }),
+      writeJson(
+        repo,
+        ".simple-changelogs.json",
+        policyFor("web", 25, { releaseTags: "v{version}" })
+      ),
+    ]);
+    const options = {
+      configDirectory: await temporaryDirectory("config"),
+      confirm: true,
+      distribution: "web" as const,
+      repo,
+    };
+    // One train: an unrelated preference update writes.
+    const single = await applySetup({ ...options, releaseNoteLinks: "ask" });
+    // A published SDK makes a second train; the next write is refused.
+    await writeJson(repo, "packages/sdk/package.json", {
+      name: "@acme/sdk",
+      version: "1.0.0",
+    });
+    const before = await readFile(
+      join(repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const blocked = await applySetup({
+      ...options,
+      releaseNoteLinks: "disabled",
+    });
+    const unchanged = await readFile(
+      join(repo, ".simple-changelogs.json"),
+      "utf8"
+    );
+    const fixed = await applySetup({
+      ...options,
+      releaseNoteLinks: "disabled",
+      releaseTags: { "@acme/sdk": "sdk@{version}", lantern: "v{version}" },
+    });
+
+    expect(single.status).toBe("configured");
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.errors.join(" ")).toContain(
+      "one template per release train"
+    );
+    expect(unchanged).toBe(before);
+    expect(fixed.status).toBe("configured");
   });
 
   test("saves an answer with the disposition, and no answer records nothing", async () => {

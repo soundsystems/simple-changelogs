@@ -2435,7 +2435,8 @@ const trainVersions = async (
   root: string,
   train: VersionTrain,
   rootHeadings: ReleasedHeading[],
-  names: string[]
+  names: string[],
+  sole = false
 ): Promise<string[]> => {
   const member = WORKSPACE_MEMBER.exec(train.path)?.[1];
   const directories = [...new Set([dirname(train.path), member])].filter(
@@ -2448,9 +2449,10 @@ const trainVersions = async (
       )
     )
   ).flat();
-  // A root product's own history is the root changelog, less headings that
-  // name another train; any other train counts root headings naming it.
-  const rootLevel = dirname(train.path) === ".";
+  // A root product's or a sole train's own history is the root changelog,
+  // less headings that name another train; any other train counts root
+  // headings naming it.
+  const rootLevel = sole || dirname(train.path) === ".";
   const named = rootHeadings.filter(({ text }) => {
     const owner = headingTrain(text, names);
     return rootLevel
@@ -2626,7 +2628,14 @@ const inspectReleaseTags = async (
       evidence
     );
   } else {
-    const found = tagConvention(tags ?? [], dateOnly ? dated : versions);
+    // A sole train also counts its own changelog, such as a published
+    // package's; a shared release or date-named history reads the root only.
+    const [sole] = trains;
+    let released = dateOnly ? dated : versions;
+    if (sole && !dateOnly) {
+      released = await trainVersions(root, sole, headings, [sole.train], true);
+    }
+    const found = tagConvention(tags ?? [], released);
     if (found) {
       convention = `${found.prefix}${VERSION_PLACEHOLDER}`;
       evidence.push(
@@ -3928,12 +3937,55 @@ const validateStoredPolicies = async (
   return errors;
 };
 
+// One template with two or more public trains could name one tag twice.
+const oneTemplateErrors = (
+  setting: ReleaseTagsSetting | undefined,
+  inspect: SetupResult,
+  relationship: CrossSurfaceVersioning | undefined
+): string[] => {
+  const trains = publicTrains(
+    inspect.releaseTags ? inspect.releaseTags.trains : [],
+    relationship
+  );
+  return typeof setting === "string" &&
+    setting !== NO_RELEASE_TAGS &&
+    trains.length >= 2
+    ? [
+        `releaseTags needs one template per release train (${trains.join(", ")}), such as {"${trains[0]}":"${trains[0]}@{version}"}, so two trains never name one tag.`,
+      ]
+    : [];
+};
+
+// Setup never writes a policy whose releaseTags classify would refuse: one
+// template with two or more public trains under the crossSurfaceVersioning
+// that same policy records. Every policy write passes through here, so a
+// stored template is rechecked whenever a later apply rewrites the policy.
+const releaseTagWriteErrors = (
+  inspect: SetupResult,
+  candidates: CandidateWrite[]
+): string[] =>
+  candidates.flatMap((candidate) => {
+    if (candidate.kind !== "repository-policy") {
+      return [];
+    }
+    const policy = JSON.parse(candidate.content) as RepoPolicy;
+    return oneTemplateErrors(
+      policy.releaseTags,
+      inspect,
+      policy.crossSurfaceVersioning
+    );
+  });
+
 // Rewrites configured state in one transaction, then revalidates it.
 const replaceState = async (
   inspect: SetupResult,
   installed: Distribution | "cms",
   candidates: CandidateWrite[]
 ): Promise<{ errors: string[]; writes: WriteRecord[] }> => {
+  const tagErrors = releaseTagWriteErrors(inspect, candidates);
+  if (tagErrors.length > 0) {
+    return { errors: tagErrors, writes: [] };
+  }
   try {
     const writes = await commitSet(inspect.repository, candidates, true);
     return {
@@ -4585,6 +4637,10 @@ const persistSetup = async (
   installed: Distribution | "cms",
   candidates: CandidateWrite[]
 ): Promise<SetupResult> => {
+  const tagErrors = releaseTagWriteErrors(inspect, candidates);
+  if (tagErrors.length > 0) {
+    return blockResult(inspect, tagErrors, selection);
+  }
   let preparedGlobal: PreparedGlobalPreferences | undefined;
   let writes: WriteRecord[] = [];
   try {
@@ -4717,44 +4773,15 @@ const sharedVersionLineApplyErrors = (
   return errors;
 };
 
-// One template with two or more public trains could name one tag twice.
-const oneTemplateErrors = (
-  setting: ReleaseTagsSetting | undefined,
-  inspect: SetupResult,
-  relationship: CrossSurfaceVersioning | undefined
-): string[] => {
-  const trains = publicTrains(
-    inspect.releaseTags ? inspect.releaseTags.trains : [],
-    relationship
-  );
-  return typeof setting === "string" &&
-    setting !== NO_RELEASE_TAGS &&
-    trains.length >= 2
-    ? [
-        `releaseTags needs one template per release train (${trains.join(", ")}), such as {"${trains[0]}":"${trains[0]}@{version}"}, so two trains never name one tag.`,
-      ]
-    : [];
-};
-
-// The tag setting is repository-only and names releases, so CMS history,
-// run-only setup, and one template shared by several trains never store it.
-// A guidance disposition keeps the stored crossSurfaceVersioning, and a
-// relationship change rechecks the stored setting.
+// The tag setting is repository-only and names releases, so CMS history and
+// run-only setup never store it; releaseTagWriteErrors checks the trains.
 const releaseTagsApplyErrors = (
   options: ApplyOptions,
-  inspect: SetupResult,
   installed: Distribution | "cms"
 ): string[] => {
   const supplied = options.releaseTags;
-  const stored = inspect.policy?.value;
-  const relationship =
-    options.guidanceBackfill === undefined
-      ? (options.crossSurfaceVersioning ?? stored?.crossSurfaceVersioning)
-      : stored?.crossSurfaceVersioning;
   if (supplied === undefined) {
-    return relationship === stored?.crossSurfaceVersioning
-      ? []
-      : oneTemplateErrors(stored?.releaseTags, inspect, relationship);
+    return [];
   }
   if (installed === "cms") {
     return [
@@ -4764,10 +4791,7 @@ const releaseTagsApplyErrors = (
   if (options.scope === "run-only") {
     return ["Release tags are a repository setting and are never run-only."];
   }
-  const errors = releaseTagsErrors(supplied);
-  return errors.length > 0
-    ? errors
-    : oneTemplateErrors(supplied, inspect, relationship);
+  return releaseTagsErrors(supplied);
 };
 
 export const applySetup = async (
@@ -4828,7 +4852,7 @@ export const applySetup = async (
   const curationErrors = [
     ...curationSelectionErrors(options, inspect),
     ...sharedVersionLineApplyErrors(options, inspect, installed),
-    ...releaseTagsApplyErrors(options, inspect, installed),
+    ...releaseTagsApplyErrors(options, installed),
   ];
   if (curationErrors.length > 0) {
     return blockResult(inspect, curationErrors);
