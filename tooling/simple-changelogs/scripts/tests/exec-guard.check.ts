@@ -1,10 +1,16 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawn, which } from "bun";
+import { spawn } from "bun";
 import {
   commonDirectory,
   hasPassingReceipt,
@@ -17,12 +23,29 @@ import { verdict } from "../../../exec-guard.ts";
 const GUARD = join(import.meta.dir, "..", "..", "..", "exec-guard.ts");
 const temporaryDirectories: string[] = [];
 
-// The guard lists glab and gh aliases, so give both CLIs empty configuration
-// directories rather than the developer's own.
-const providerConfig = mkdtempSync(join(tmpdir(), "exec-guard-config-"));
-process.env.GH_CONFIG_DIR = join(providerConfig, "gh");
-process.env.GLAB_CONFIG_DIR = join(providerConfig, "glab");
-afterAll(() => rmSync(providerConfig, { force: true, recursive: true }));
+// The guard runs `gh alias list` and `glab alias list`. Stand-in CLIs first
+// on PATH print aliases from files here, so tests never read or change the
+// developer's own configuration and need neither CLI installed.
+const providerStubs = mkdtempSync(join(tmpdir(), "exec-guard-cli-"));
+const DEFAULT_ALIASES = {
+  gh: "co: pr checkout\n",
+  glab: "Alias\tCommand\nci\tpipeline ci\nco\tmr checkout\n",
+};
+for (const cli of ["gh", "glab"] as const) {
+  writeFileSync(join(providerStubs, `${cli}-aliases`), DEFAULT_ALIASES[cli]);
+  writeFileSync(
+    join(providerStubs, cli),
+    `#!/bin/sh\nif [ "$1 $2" = "alias list" ]; then cat "${join(providerStubs, `${cli}-aliases`)}"; fi\n`,
+    { mode: 0o755 }
+  );
+}
+process.env.PATH = `${providerStubs}:${process.env.PATH ?? ""}`;
+afterAll(() => rmSync(providerStubs, { force: true, recursive: true }));
+const addAlias = (cli: "gh" | "glab", name: string, expansion: string) =>
+  appendFileSync(
+    join(providerStubs, `${cli}-aliases`),
+    cli === "gh" ? `${name}: ${expansion}\n` : `${name}\t${expansion}\n`
+  );
 
 afterEach(async () => {
   await Promise.all(
@@ -462,31 +485,29 @@ describe("exec guard", () => {
     refused(repo, ["gh", "--frobnicate", "pr", "merge", "3"], "not inspected");
     refused(repo, ["gh", "pr", "--web", "merge", "3"], "not inspected");
     // Aliases and extensions can expand to a merge, so only built-ins run.
-    // Each CLI gets the temporary configuration explicitly, never the real one.
-    const setAlias = (cli: string, name: string, expansion: string) =>
-      execFileSync(cli, ["alias", "set", name, expansion], {
-        env: {
-          ...process.env,
-          GH_CONFIG_DIR: join(providerConfig, "gh"),
-          GLAB_CONFIG_DIR: join(providerConfig, "glab"),
-        },
-        stdio: "ignore",
-      });
-    if (which("gh")) {
-      allowed(repo, ["gh", "co", "3"]);
-      setAlias("gh", "pr ship", "pr merge");
-      setAlias("gh", "p", "pr");
-      refused(repo, ["gh", "pr", "ship", "123", "--squash"], "is an alias");
-      // The CLI appends the caller's arguments: `p merge 7` is `pr merge 7`.
-      refused(repo, ["gh", "p", "merge", "7", "--squash"], "is an alias");
-    }
-    if (which("glab")) {
-      allowed(repo, ["glab", "ci", "status"]);
-      setAlias("glab", "mrm", "mr merge");
-      setAlias("glab", "m", "mr");
-      refused(repo, ["glab", "mrm", "123", "--yes"], "is an alias");
-      refused(repo, ["glab", "m", "merge", "123", "--yes"], "is an alias");
-    }
+    allowed(repo, ["gh", "co", "3"]);
+    allowed(repo, ["glab", "ci", "status"]);
+    addAlias("gh", "pr ship", "pr merge");
+    addAlias("gh", "p", "pr");
+    addAlias("glab", "mrm", "mr merge");
+    addAlias("glab", "m", "mr");
+    refused(repo, ["gh", "pr", "ship", "123", "--squash"], "is an alias");
+    // The CLI appends the caller's arguments: `p merge 7` is `pr merge 7`.
+    refused(repo, ["gh", "p", "merge", "7", "--squash"], "is an alias");
+    refused(repo, ["glab", "mrm", "123", "--yes"], "is an alias");
+    refused(repo, ["glab", "m", "merge", "123", "--yes"], "is an alias");
+    // The exact executable named, on the command's own PATH, lists aliases;
+    // one that cannot be found refuses the command.
+    refused(
+      repo,
+      [join(providerStubs, "gh"), "pr", "ship", "7", "--squash"],
+      "is an alias"
+    );
+    refused(
+      repo,
+      ["env", "PATH=/nonexistent", "gh", "pr", "view", "7"],
+      "alias list failed"
+    );
     refused(repo, ["gh", "extension", "exec", "x"], "not a built-in command");
     refused(
       repo,
@@ -725,6 +746,17 @@ describe("exec guard", () => {
     git("checkout", "-q", "feature");
     allowed(repo, ["git", "merge", "main"]);
     allowed(repo, ["git", "pull", "origin", "main"]);
+  });
+
+  test("names the branches exactly when other refs share their names", async () => {
+    const { git, repo } = await fixture();
+    // A tag `main` makes `--short` spell the branch `heads/main`, and a
+    // branch `origin/main` makes it spell the remote HEAD `remotes/origin/main`.
+    git("tag", "main", "feature");
+    git("branch", "origin/main", "feature");
+    refused(repo, ["git", "merge", "feature"], "git merge into main");
+    refused(repo, ["git", "pull"], "git pull does not run on main");
+    refused(repo, ["git", "push", "origin", "refs/heads/main"], "no passing");
   });
 
   test("refuses merges and pushes it cannot inspect", async () => {

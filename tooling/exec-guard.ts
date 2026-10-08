@@ -54,7 +54,7 @@
 // tip.
 
 import { basename } from "node:path";
-import { spawnSync } from "bun";
+import { spawnSync, which } from "bun";
 import { hasPassingReceipt, RECEIPT_COMMAND } from "./check-receipt.ts";
 
 // Git run as `git <global options> <args>` in the checkout, so `-C`, `-c`,
@@ -162,19 +162,23 @@ const positionals = (args: string[], valueOptions: Set<string>): string[] => {
   return found;
 };
 
+// Full symbolic refs with exact prefixes stripped, never `--short`, which
+// shortens ambiguously when a tag or branch shares a name.
+const symbolicBranch = (
+  context: GitContext,
+  ref: string,
+  prefix: string
+): string | null => {
+  const full = gitText(context, ["symbolic-ref", "--quiet", ref]);
+  return full?.startsWith(prefix) ? full.slice(prefix.length) : null;
+};
+
 const currentBranch = (context: GitContext): string | null =>
-  gitText(context, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+  symbolicBranch(context, "HEAD", HEADS_PREFIX);
 
 const targetBranch = (context: GitContext): string =>
-  gitText(context, [
-    "symbolic-ref",
-    "--quiet",
-    "--short",
-    "refs/remotes/origin/HEAD",
-  ])
-    ?.split("/")
-    .slice(1)
-    .join("/") || DEFAULT_TARGET;
+  symbolicBranch(context, "refs/remotes/origin/HEAD", "refs/remotes/origin/") ??
+  DEFAULT_TARGET;
 
 // The guard's own --dry-run, --porcelain, and --no-quiet go last, so they
 // override any earlier negation (--no-dry-run, --no-porcelain, -q); a push
@@ -629,30 +633,32 @@ const apiCall = (
 };
 
 // The CLI's configured aliases, name to expansion, from `<cli> alias list`
-// (`name: expansion` or tab-separated lines); empty when the CLI is not
-// installed, since the command cannot run, and null when listing fails.
+// (`name: expansion` or tab-separated lines), run as the exact executable
+// the command names on the command's own PATH. A CLI that cannot be found or
+// cannot list them yields null, which refuses the command.
 const providerAliases = (
-  cli: string,
+  program: string,
   env: Record<string, string>
 ): Map<string, string> | null => {
-  let listed: ReturnType<typeof spawnSync>;
-  try {
-    listed = spawnSync({
-      cmd: [cli, "alias", "list"],
-      env: {
-        ...process.env,
-        ...env,
-        GH_NO_UPDATE_NOTIFIER: "1",
-        GH_PROMPT_DISABLED: "1",
-        GLAB_CHECK_UPDATE: "false",
-      },
-      stderr: "pipe",
-      stdin: "ignore",
-      stdout: "pipe",
-    });
-  } catch {
-    return new Map();
+  const environment: Record<string, string | undefined> = {
+    ...process.env,
+    ...env,
+    GH_NO_UPDATE_NOTIFIER: "1",
+    GH_PROMPT_DISABLED: "1",
+    GLAB_CHECK_UPDATE: "false",
+  };
+  // The executable the command names, found on the command's own PATH.
+  const executable = which(program, { PATH: environment.PATH ?? "" });
+  if (executable === null) {
+    return null;
   }
+  const listed = spawnSync({
+    cmd: [executable, "alias", "list"],
+    env: environment,
+    stderr: "pipe",
+    stdin: "ignore",
+    stdout: "pipe",
+  });
   if (!listed.success) {
     return null;
   }
@@ -721,10 +727,11 @@ const subcommandWords = (
 const commandGate = (
   provider: Provider,
   words: string[],
+  program: string,
   env: Record<string, string>
 ): Gate | null => {
   const [noun = "", verb = ""] = words;
-  const aliases = providerAliases(provider.cli, env);
+  const aliases = providerAliases(program, env);
   if (aliases === null) {
     return refuse(
       `${provider.cli} alias list failed, so aliases cannot be checked`
@@ -774,7 +781,7 @@ const cliMerge = (
 
 const providerCommand = (
   checkout: string,
-  args: string[],
+  [program = "", ...args]: string[],
   env: Record<string, string>,
   provider: Provider
 ): Gate => {
@@ -783,7 +790,7 @@ const providerCommand = (
     return located;
   }
   const { index, words } = located;
-  const gate = commandGate(provider, words, env);
+  const gate = commandGate(provider, words, program, env);
   if (gate !== null) {
     return gate;
   }
@@ -831,7 +838,7 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
       return git(checkout, args, env);
     }
     case "glab": {
-      return providerCommand(checkout, args, env, {
+      return providerCommand(checkout, command, env, {
         builtins: GLAB_COMMANDS,
         cli: "glab",
         headOption: "--sha",
@@ -842,7 +849,7 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
       });
     }
     case "gh": {
-      return providerCommand(checkout, args, env, {
+      return providerCommand(checkout, command, env, {
         builtins: GH_COMMANDS,
         cli: "gh",
         headOption: "--match-head-commit",
