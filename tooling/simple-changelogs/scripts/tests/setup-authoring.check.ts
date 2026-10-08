@@ -1142,6 +1142,32 @@ describe("authoring question and inspection", () => {
     }
     expect(await readFile(target.path, "utf8")).toBe("{malformed");
     await rm(target.path);
+    // A formatting-only edit of a valid sidecar (same stored value, other
+    // bytes) that lands while the answer is staged is refused too: the bytes
+    // held under the marker are compared again before the rename.
+    const prior = sidecar({ gamma: { model: "kept" } });
+    await writeJson(target.path, prior);
+    const inspected = (await inspectFixture(fixture)).authoringFiles.repository;
+    expect(inspected.state).toBe("valid");
+    const compact = `${JSON.stringify(prior)}\n\n`;
+    const reformat = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (path, mode) => {
+        await writeFile(target.path, compact);
+        return realChmod(path, mode);
+      }
+    );
+    try {
+      await expect(
+        writeAuthoringFile(inspected, sidecar({}), 0o644)
+      ).rejects.toThrow("changed while this answer was being written");
+    } finally {
+      reformat.mockRestore();
+    }
+    expect(await readFile(target.path, "utf8")).toBe(compact);
+    expect(
+      (await readdir(fixture.repo)).filter((name) => name.startsWith("."))
+    ).not.toContain(".simple-changelogs.setup-transaction.json");
+    await rm(target.path);
     // A live setup transaction in the same directory holds the write off.
     const marker = join(
       fixture.repo,

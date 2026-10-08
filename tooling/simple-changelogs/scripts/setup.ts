@@ -5577,11 +5577,24 @@ const authoringPreconditionErrors = (options: ApplyOptions): string[] => {
   return errors;
 };
 
+// The sidecar's exact bytes, or null when it is absent.
+const rawSidecarBytes = async (path: string): Promise<string | null> => {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+};
+
 // Stage-and-rename, as the personal preferences file is written. The write
 // holds the setup transaction marker in the target's directory (the same one
 // every repository setup write holds), so cooperating applies serialize; it
-// refuses a target whose bytes changed since inspection read them, so an
-// intervening edit (a malformed one included) is never overwritten; and it
+// refuses a target whose stored value changed since inspection read it, or
+// whose bytes changed while the marker was held, so an intervening edit (a
+// malformed or formatting-only one included) is never overwritten; and it
 // does all fallible work on the staged file, so the rename is the last step
 // and a failure leaves the existing sidecar untouched.
 export const writeAuthoringFile = async (
@@ -5611,6 +5624,10 @@ export const writeAuthoringFile = async (
   await acquireTransaction(markerPath);
   try {
     const current = await unchanged();
+    // The exact bytes once the marker is held, compared again before the
+    // rename: even a formatting-only edit that lands while the answer is
+    // staged is never replaced.
+    const bytesBefore = await rawSidecarBytes(path);
     if (current.state === "valid" && json(current.value) === content) {
       return { kind: "authoring", path, written: false };
     }
@@ -5627,6 +5644,11 @@ export const writeAuthoringFile = async (
         );
       }
       await unchanged();
+      if ((await rawSidecarBytes(path)) !== bytesBefore) {
+        throw new Error(
+          `${path} changed while this answer was being written; nothing was replaced. Inspect it and retry.`
+        );
+      }
       await ensureNoSymlink(path);
       await rename(staged.temporaryPath, path);
     } catch (error) {
