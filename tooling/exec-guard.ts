@@ -27,7 +27,10 @@
 // - `git send-pack`, `git http-push`, `git subtree push|pull|merge`, and a
 //   Git alias that expands to a push, merge, or pull are refused.
 //
-// Boundary: the guard reads the exec argv. Another program whose arguments
+// Boundary: the guard reads the exec argv. It inherits the environment the
+// command runs with, and it refuses `env` assignments to GIT_ variables and
+// provider merges that repeat their method, sha, or head option rather than
+// model which one the CLI keeps. Another program whose arguments
 // read as a Git or provider merge or push (a shell `-c` script, `timeout`,
 // `bunx`) is refused; a merge hidden inside a script or package task is not
 // seen, and only commands run through `loop exec` are guarded at all. Local
@@ -174,6 +177,18 @@ const optionValue = (args: string[], name: string): string | undefined => {
   }
   return undefined;
 };
+
+// How many times any of `names` appears: alone, as `name=value`, or, for a
+// short option, with its value attached.
+const occurrences = (args: string[], names: string[]): number =>
+  args.filter((arg) =>
+    names.some(
+      (name) =>
+        arg === name ||
+        arg.startsWith(`${name}=`) ||
+        (name.length === 2 && arg.startsWith(name))
+    )
+  ).length;
 
 // Every `-f k=v`, `-fk=v`, or `--raw-field=k=v` value, in order.
 const fieldValues = (args: string[]): string[] =>
@@ -343,6 +358,46 @@ const apiMethod = (args: string[]): string => {
 const READ_METHODS = new Set(["GET", "HEAD"]);
 const endpointPath = (arg: string): string => arg.split("?")[0] ?? "";
 
+// A provider API call to a merge or ref-writing endpoint: reads pass, a
+// merge must pin one head with a receipt, and a direct ref write is refused.
+// The CLI keeps the last of a repeated option, so a repeated method or sha is
+// refused rather than modeled.
+const apiMerge = (
+  context: GitContext,
+  args: string[],
+  endpoint: string,
+  label: string
+): Gate => {
+  const query = new URLSearchParams(endpoint.split("?")[1] ?? "");
+  const shas = fieldValues(args)
+    .filter((field) => field.startsWith("sha="))
+    .map((field) => field.slice(4));
+  if (query.has("sha")) {
+    shas.push(query.get("sha") ?? "");
+  }
+  if (occurrences(args, ["-X", "--method"]) > 1 || shas.length > 1) {
+    return refuse(
+      `a ${label} API merge that repeats its method or sha is not inspected`
+    );
+  }
+  if (READ_METHODS.has(apiMethod(args))) {
+    return ALLOW;
+  }
+  if (
+    !API_MERGE_PATHS.some((pattern) => pattern.test(endpointPath(endpoint)))
+  ) {
+    return refuse(
+      `${endpoint} writes refs, commits, or files directly; push through git instead`
+    );
+  }
+  const [sha] = shas;
+  return sha
+    ? requireReceipts(context, `a ${label} API merge`, [sha])
+    : refuse(
+        `a ${label} API merge must pin the head it merges with -f sha=<head>`
+      );
+};
+
 // A provider merge, wherever its subcommand sits among the flags: a mutating
 // API call to a merge endpoint pinned with `-f sha=<head>` or a `sha` query
 // parameter, or the CLI merge pinned with its head option. A mutating API
@@ -372,27 +427,7 @@ const providerMerge = (
     )
   );
   if (endpoint !== undefined) {
-    if (READ_METHODS.has(apiMethod(args))) {
-      return ALLOW;
-    }
-    if (
-      !API_MERGE_PATHS.some((pattern) => pattern.test(endpointPath(endpoint)))
-    ) {
-      return refuse(
-        `${endpoint} writes refs, commits, or files directly; push through git instead`
-      );
-    }
-    const sha =
-      fieldValues(args)
-        .find((field) => field.startsWith("sha="))
-        ?.slice(4) ??
-      new URLSearchParams(endpoint.split("?")[1] ?? "").get("sha") ??
-      undefined;
-    return sha
-      ? requireReceipts(context, `a ${provider.label} API merge`, [sha])
-      : refuse(
-          `a ${provider.label} API merge must pin the head it merges with -f sha=<head>`
-        );
+    return apiMerge(context, args, endpoint, provider.label);
   }
   const noun = args.indexOf(provider.noun);
   if (
@@ -401,6 +436,9 @@ const providerMerge = (
   ) {
     const sha = optionValue(args, provider.headOption);
     const label = `${provider.label} ${provider.noun} merge`;
+    if (occurrences(args, [provider.headOption]) > 1) {
+      return refuse(`${label} repeats ${provider.headOption}`);
+    }
     return sha
       ? requireReceipts(context, label, [sha])
       : refuse(
@@ -413,10 +451,15 @@ const providerMerge = (
 /** Decides whether the exec command is gated, and on which revisions. */
 export const gateFor = (checkout: string, argv: string[]): Gate => {
   let command = argv;
-  // `env NAME=value command` still runs the command as direct argv.
+  // `env NAME=value command` still runs the command as direct argv, but an
+  // assignment that redirects Git (GIT_DIR, GIT_CONFIG_*) is not inspected.
   if (basename(command[0] ?? "") === "env") {
     const rest = command.slice(1);
     const start = rest.findIndex((arg) => !ENV_ASSIGNMENT_PATTERN.test(arg));
+    const assignments = start === -1 ? rest : rest.slice(0, start);
+    if (assignments.some((arg) => arg.startsWith("GIT_"))) {
+      return refuse("env assignments to GIT_ variables are not inspected");
+    }
     if (start !== -1 && !(rest[start] ?? "").startsWith("-")) {
       command = rest.slice(start);
     }

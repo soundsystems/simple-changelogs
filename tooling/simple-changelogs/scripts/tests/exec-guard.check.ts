@@ -280,6 +280,50 @@ describe("exec guard", () => {
       "PUT",
       `-fsha=${head}`,
     ]);
+    // The CLI keeps the last of a repeated option, so repeats are refused.
+    for (const argv of [
+      [
+        "gh",
+        "api",
+        "repos/o/r/pulls/3/merge",
+        "-X",
+        "GET",
+        "-X",
+        "PUT",
+        "-f",
+        `sha=${head}`,
+      ],
+      ["gh", "api", "repos/o/r/pulls/3/merge", "-XGET", "--method=PUT"],
+      [
+        "gh",
+        "api",
+        `repos/o/r/pulls/3/merge?sha=${head}`,
+        "-X",
+        "PUT",
+        "-f",
+        `sha=${sha("main")}`,
+      ],
+    ]) {
+      refused(repo, argv, "repeats its method or sha");
+    }
+    refused(
+      repo,
+      ["glab", "mr", "merge", "7", `--sha=${head}`, "--sha", sha("main")],
+      "repeats --sha"
+    );
+    refused(
+      repo,
+      [
+        "gh",
+        "pr",
+        "merge",
+        "3",
+        "--match-head-commit",
+        head,
+        `--match-head-commit=${sha("main")}`,
+      ],
+      "repeats --match-head-commit"
+    );
     // A different head than the one that passed is still refused.
     refused(
       repo,
@@ -385,6 +429,16 @@ describe("exec guard", () => {
       "cannot inspect"
     );
     refused(repo, ["env", "-i", "git", "push"], "cannot inspect");
+    refused(
+      repo,
+      ["env", "GIT_DIR=/elsewhere/.git", "git", "merge", "feature"],
+      "GIT_ variables"
+    );
+    refused(
+      repo,
+      ["env", "GIT_CONFIG_COUNT=1", "git", "push", "origin", "feature"],
+      "GIT_ variables"
+    );
     refused(repo, ["bunx", "glab", "mr", "merge", "7"], "cannot inspect");
     refused(
       repo,
