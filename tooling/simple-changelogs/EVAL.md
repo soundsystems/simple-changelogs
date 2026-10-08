@@ -222,10 +222,10 @@ required and each optional one also accepting null. The canonical response
 schema is unchanged: the adapter reads a returned null for an optional property
 as absent, fails a response that repeats an item the canonical schema requires
 to be unique, and then validates against the neutral response contract. A
-schema keyword outside the set strict mode is known to accept, an object that
-allows extra properties, a `$ref` with a constraint beside it, or an optional
-property whose type admits null fails as a configuration error before Codex
-starts.
+schema node outside the shapes strict mode was probed to accept (closed objects
+with properties, arrays with items, strings, booleans, enums, constants, and
+references with only annotations beside them), or an optional property whose
+type admits null, fails as a configuration error before Codex starts.
 
 The Hermes adapter uses `hermes chat --safe-mode --quiet`, validates its
 plain one-shot output against the neutral response schema, and requires the

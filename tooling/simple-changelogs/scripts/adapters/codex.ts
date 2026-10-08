@@ -32,30 +32,30 @@ type Schema = Record<string, unknown>;
 // schema stays unchanged: a returned null for an optional property reads as
 // absent, and every stripped uniqueness rule is checked after parsing.
 const STRIPPED_KEYWORDS = new Set(["uniqueItems"]);
-// Keywords the same probe showed strict mode accepts. The copy keeps only
-// these, so a new keyword in the canonical schema fails before Codex runs
-// instead of reaching the API untried.
-const STRICT_KEYWORDS = new Set([
-  "$defs",
-  "$ref",
-  "$schema",
-  "additionalProperties",
-  "const",
-  "description",
-  "enum",
-  "items",
-  "minItems",
-  "minLength",
-  "pattern",
-  "properties",
-  "required",
-  "title",
-  "type",
-]);
+// The node shapes the same probe showed strict mode accepts, each with the
+// keywords it may carry and those it must carry. `description` and `title` may
+// annotate any node, and `$defs` and `$schema` only the root. A schema outside
+// these shapes fails before Codex runs instead of reaching the API untried, so
+// widen a shape only after probing it. Only annotations sit beside `$ref`,
+// because following a reference must not lose a constraint.
+const NODE_SHAPES: Record<string, { allowed: string[]; required: string[] }> = {
+  $ref: { allowed: ["$ref"], required: ["$ref"] },
+  array: {
+    allowed: ["items", "minItems", "type", "uniqueItems"],
+    required: ["items"],
+  },
+  boolean: { allowed: ["type"], required: [] },
+  const: { allowed: ["const"], required: ["const"] },
+  enum: { allowed: ["enum"], required: ["enum"] },
+  object: {
+    allowed: ["additionalProperties", "properties", "required", "type"],
+    required: ["properties"],
+  },
+  string: { allowed: ["minLength", "pattern", "type"], required: [] },
+};
+const ANNOTATION_KEYWORDS = new Set(["description", "title"]);
+const ROOT_KEYWORDS = new Set(["$defs", "$schema"]);
 const SCHEMA_MAP_KEYWORDS = new Set(["$defs", "properties"]);
-// Following a reference must not lose a constraint, so only annotations may
-// sit beside `$ref`.
-const REFERENCE_SIBLING_KEYWORDS = new Set(["$ref", "description", "title"]);
 const JSON_PATH_IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 
 const isRecord = (value: unknown): value is Schema =>
@@ -105,16 +105,51 @@ const resolvedSchema = (root: Schema, schema: Schema): Schema => {
   return current;
 };
 
-const requireClosedObject = (schema: Schema, path: string): void => {
-  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
-  if (
-    (types.includes("object") ||
-      Object.hasOwn(schema, "properties") ||
-      Object.hasOwn(schema, "additionalProperties")) &&
-    schema.additionalProperties !== false
-  ) {
+const nodeKind = (schema: Schema): string => {
+  if (Object.hasOwn(schema, "$ref")) {
+    return "$ref";
+  }
+  if (Object.hasOwn(schema, "type")) {
+    return typeof schema.type === "string" ? schema.type : "type list";
+  }
+  if (Object.hasOwn(schema, "enum")) {
+    return "enum";
+  }
+  return Object.hasOwn(schema, "const") ? "const" : "untyped";
+};
+
+const requireProbedShape = (schema: Schema, path: string): void => {
+  const kind = nodeKind(schema);
+  const shape = Object.hasOwn(NODE_SHAPES, kind) ? NODE_SHAPES[kind] : null;
+  if (!shape) {
+    throw new Error(
+      `Codex response schema at ${path} has node kind ${kind}, which strict structured outputs were not probed to accept`
+    );
+  }
+  for (const keyword of Object.keys(schema)) {
+    if (
+      !(
+        shape.allowed.includes(keyword) ||
+        ANNOTATION_KEYWORDS.has(keyword) ||
+        (path === "#" && ROOT_KEYWORDS.has(keyword))
+      )
+    ) {
+      throw new Error(
+        `Codex response schema keyword ${keyword} at ${path} is not known to pass strict structured outputs on node kind ${kind}`
+      );
+    }
+  }
+  if (kind === "object" && schema.additionalProperties !== false) {
     throw new Error(
       `Codex response schema object at ${path} must set additionalProperties to false`
+    );
+  }
+  const missing = shape.required.find(
+    (keyword) => !Object.hasOwn(schema, keyword)
+  );
+  if (missing !== undefined) {
+    throw new Error(
+      `Codex response schema node of kind ${kind} at ${path} must set ${missing}`
     );
   }
 };
@@ -193,11 +228,6 @@ const strictKeywordValue = (
   value: unknown,
   path: string
 ): unknown => {
-  if (!STRICT_KEYWORDS.has(keyword)) {
-    throw new Error(
-      `Codex response schema keyword ${keyword} at ${path} is not known to pass strict structured outputs`
-    );
-  }
   if (SCHEMA_MAP_KEYWORDS.has(keyword)) {
     if (!isRecord(value)) {
       throw new Error(
@@ -227,19 +257,9 @@ const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
   if (!isRecord(schema)) {
     throw new Error(`Codex response schema at ${path} must be an object`);
   }
-  requireClosedObject(schema, path);
+  requireProbedShape(schema, path);
   requireDeclaredRequirements(schema, path);
   requireNullFreeOptionals(root, schema, path);
-  if (Object.hasOwn(schema, "$ref")) {
-    const sibling = Object.keys(schema).find(
-      (keyword) => !REFERENCE_SIBLING_KEYWORDS.has(keyword)
-    );
-    if (sibling !== undefined) {
-      throw new Error(
-        `Codex response schema at ${path} may set only description and title beside $ref, not ${sibling}`
-      );
-    }
-  }
   const strict: Schema = {};
   for (const [keyword, value] of Object.entries(schema)) {
     if (!STRIPPED_KEYWORDS.has(keyword)) {

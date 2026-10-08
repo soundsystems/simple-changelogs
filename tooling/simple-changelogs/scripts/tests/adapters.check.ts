@@ -540,18 +540,36 @@ describe("Codex strict response schema", () => {
     for (const [schema, message] of [
       [
         fixture({ value: { maxLength: 4, type: "string" } }),
-        "keyword maxLength at #/properties/value is not known",
+        "keyword maxLength at #/properties/value is not known to pass strict structured outputs on node kind string",
       ],
       [
-        fixture({ value: { oneOf: [{ type: "string" }] } }),
+        fixture({ value: { oneOf: [{ type: "string" }], type: "string" } }),
         "keyword oneOf at #/properties/value",
       ],
       [
+        fixture({ value: { minLength: 1, type: "array" } }),
+        "keyword minLength at #/properties/value is not known to pass strict structured outputs on node kind array",
+      ],
+      [
         fixture({ value: { properties: {} } }),
+        "#/properties/value has node kind untyped, which strict structured outputs were not probed to accept",
+      ],
+      [
+        fixture({ value: { type: "integer" } }),
+        "#/properties/value has node kind integer",
+      ],
+      [
+        fixture({ value: { type: ["object", "null"] } }),
+        "#/properties/value has node kind type list",
+      ],
+      [
+        fixture({ value: { properties: {}, type: "object" } }),
         "object at #/properties/value must set additionalProperties to false",
       ],
       [
-        fixture({ value: { additionalProperties: true } }),
+        fixture({
+          value: { additionalProperties: true, properties: {}, type: "object" },
+        }),
         "must set additionalProperties to false",
       ],
       [
@@ -559,15 +577,23 @@ describe("Codex strict response schema", () => {
         "must set additionalProperties to false",
       ],
       [
-        fixture({ value: { type: ["object", "null"] } }),
-        "must set additionalProperties to false",
+        fixture({ value: { additionalProperties: false, type: "object" } }),
+        "node of kind object at #/properties/value must set properties",
+      ],
+      [
+        fixture({ value: { type: "array" } }),
+        "node of kind array at #/properties/value must set items",
+      ],
+      [
+        fixture({ value: { $defs: {}, type: "string" } }),
+        "keyword $defs at #/properties/value",
       ],
       [
         fixture(
           { value: { $ref: "#/$defs/codes", uniqueItems: true } },
           { $defs: { codes: { items: { type: "string" }, type: "array" } } }
         ),
-        "may set only description and title beside $ref, not uniqueItems",
+        "keyword uniqueItems at #/properties/value is not known to pass strict structured outputs on node kind $ref",
       ],
       [
         fixture(
@@ -607,7 +633,7 @@ describe("Codex strict response schema", () => {
           required: [],
           type: "object",
         }),
-        "required at # must list only names in its own properties",
+        "node of kind object at # must set properties",
       ],
       ...[
         { type: ["string", "null"] },
