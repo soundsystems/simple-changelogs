@@ -4,6 +4,11 @@ The bundled `scripts/query.ts` CLI answers questions about the raw Markdown
 histories without writing anything. The Markdown files stay the source of
 truth: there is no cache, index, or generated database to refresh.
 
+Inspect history through these subcommands rather than by opening the files:
+`releases` gives the outline and `show unreleased` the pending section. A
+whole-file read belongs to a backfill or an approved audit
+(`references/backfill.md`).
+
 Run this skill's own copy with Bun 1.3 or later from the repository root (or
 pass `--repo PATH`). The paths below assume a repository-local install; for a
 global install, run the installed copy by absolute path

@@ -80,7 +80,7 @@ Read only the references needed for the current branch of work:
 | First use, policy state, setup prompts, or raw-markdown signatures | `references/setup.md` |
 | Guidance-version changes and their user-readable effects | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
-| Read-only history queries and structure lint | `references/querying.md` |
+| Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification, expert public detail, wording, grouping, or hot fixes | `references/entry-classification.md` |
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
 | `Unreleased`, release intent, merges, deployments, or reconciliation | `references/release-lifecycle.md` |
@@ -109,8 +109,11 @@ Other changelog edits skip the checklist.
 
 ### 1. Inspect
 
-Read repository instructions, Git state, recent history, both changelogs, and
-the files changed by the task. Inventory every affected release-note
+Read repository instructions, Git state, recent history, and the files changed
+by the task. Read both changelogs through `scripts/query.ts`: `releases` for
+the outline, `show unreleased` for pending work, and `gaps` for merges since
+the last release tag without an entry. Open a whole changelog only for a
+backfill or an approved audit. Inventory every affected release-note
 destination and its audience, product, app or package, platform, release train,
 source, inclusion rules, and exclusions. Inspect diffs when commit subjects do
 not reveal visible impact. For repositories with web and mobile products, read

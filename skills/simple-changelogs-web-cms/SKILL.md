@@ -76,7 +76,7 @@ access, release, source-of-truth, or surface rules.
 | Public/developer setup, distribution, or signatures | `references/setup.md` |
 | Public guidance changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
-| Read-only history queries and structure lint | `references/querying.md` |
+| Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification and expert public detail | `references/entry-classification.md` |
 | Public history reconstruction | `references/backfill.md` |
 | Release boundaries and reconciliation | `references/release-lifecycle.md` |
@@ -101,9 +101,12 @@ production deployment, or a delegated `prepare` or `verify`), copy steps 1–6
 into your reply as a `- [ ]` checklist and tick each only on fresh evidence.
 Other changelog edits skip the checklist.
 
-1. Inspect repository instructions, Git state, all three histories, both policy
-   files, release evidence, public web destinations, the CMS route and access
-   guard, each destination's audience/app/release scope, and the task diff.
+1. Inspect repository instructions, Git state, both policy files, release
+   evidence, public web destinations, the CMS route and access guard, each
+   destination's audience/app/release scope, and the task diff. Read the
+   Markdown histories through `scripts/query.ts` (`releases`,
+   `show unreleased`, `gaps`) and only the newest CMS entries you need; open a
+   whole history only for backfill or audit.
 2. Classify each outcome independently for customers, maintainers, and
    authenticated operators. One outcome may belong to multiple sources only
    when each audience is independently affected; wording and detail must fit

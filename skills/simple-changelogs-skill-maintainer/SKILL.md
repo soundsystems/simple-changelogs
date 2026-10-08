@@ -76,7 +76,7 @@ versioning, eval requirements, publication flow, and generated mirrors.
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
-| Read-only history queries and structure lint | `references/querying.md` |
+| Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | User/developer classification and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
@@ -95,9 +95,11 @@ target, or a delegated `prepare` or `verify`), copy steps 1–7 into your reply 
 a `- [ ]` checklist and tick each only on fresh evidence. Other changelog edits
 skip the checklist.
 
-1. Inspect repository instructions, Git state, public and developer histories,
-   skill directories, package manifests, install docs, release-note readers,
-   evals, and the task diff.
+1. Inspect repository instructions, Git state, skill directories, package
+   manifests, install docs, release-note readers, evals, and the task diff.
+   Read the public and developer histories through `scripts/query.ts`
+   (`releases`, `show unreleased`, `gaps`); open a whole file only for
+   backfill or audit.
 2. Classify changes by audience. Skill behavior, compatibility, user-visible
    safety, installation, and output changes usually belong in public history;
    harness, schema, adapter, fixture, and release mechanics belong in developer

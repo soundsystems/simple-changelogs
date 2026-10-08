@@ -71,7 +71,7 @@ release flow, source of truth, or store boundary.
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
-| Read-only history queries and structure lint | `references/querying.md` |
+| Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification, expert public detail, and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
@@ -97,9 +97,11 @@ public deployment, or a delegated `prepare` or `verify`), copy steps 1–6 into
 your reply as a `- [ ]` checklist and tick each only on fresh evidence. Other
 changelog edits skip the checklist.
 
-1. Inspect repository instructions, Git state, both changelogs, release
-   evidence, mobile package metadata, established in-app/store destinations,
-   each destination's app/platform/release scope, and the task diff.
+1. Inspect repository instructions, Git state, release evidence, mobile
+   package metadata, established in-app/store destinations, each
+   destination's app/platform/release scope, and the task diff. Read both
+   changelogs through `scripts/query.ts` (`releases`, `show unreleased`,
+   `gaps`); open a whole file only for backfill or audit.
 2. Classify each durable mobile outcome as customer, developer, both, or
    neither, then include it in each in-app or store destination only when that
    app and release train are affected.

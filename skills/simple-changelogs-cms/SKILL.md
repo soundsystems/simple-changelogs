@@ -86,8 +86,9 @@ release process, content source, or validation command.
 ### 1. Inspect
 
 Read repository instructions, Git state, release evidence, the policy file,
-the structured changelog, the authenticated CMS route, and the files changed
-by the task. Verify the route's access control from code rather than assuming
+the authenticated CMS route, and the files changed by the task. From the
+structured changelog, read only the newest entries the task needs; read the
+whole file only for a backfill or an audit. Verify the route's access control from code rather than assuming
 that an `/admin` or `/studio` path is private.
 
 ### 2. Classify
