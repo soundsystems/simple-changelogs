@@ -4,13 +4,14 @@
 
 ## 0.25.1 - 2026-10-08
 
-- Every Simple Changelogs skill now declares its license (Apache-2.0) and what
-  it needs to run in standard Agent Skills frontmatter: Git and Bun 1.3 or
-  later, plus a POSIX shell where the fork checker ships.
-- The skills no longer name specific models, so they behave the same with
-  whichever model your agent uses.
-- Each guidance update history now opens with a table of contents, so an agent
-  can jump straight to the checkpoint it needs.
+- **Bug Fixes & Improvements**:
+  - Every Simple Changelogs skill now declares its license (Apache-2.0) and
+    what it needs to run in standard Agent Skills frontmatter: Git and Bun 1.3
+    or later, plus a POSIX shell where the fork checker ships.
+  - The skills no longer name specific models or carry model preferences, so
+    the same skill files work with whichever model your agent uses.
+  - Each guidance update history now opens with a table of contents, so an
+    agent can jump straight to the checkpoint it needs.
 <!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-07T22:10:00-05:00" -->
 
 ## 0.25.0 - 2026-10-07
