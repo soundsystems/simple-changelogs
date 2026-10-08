@@ -656,6 +656,19 @@ describe("exec guard", () => {
       ["git", "merge", "--abort", "--no-abort", "feature"],
       "no passing"
     );
+    // Operands that can name another or several commits are refused, even
+    // when the upstream and the first fetched head have receipts.
+    pass("origin/main");
+    git("fetch", "-q", "origin", "main");
+    for (const argv of [
+      ["git", "merge", "-"],
+      ["git", "merge"],
+      ["git", "merge", "--continue"],
+      ["git", "merge", "FETCH_HEAD"],
+      ["git", "merge", "MERGE_HEAD"],
+    ]) {
+      refused(repo, argv, "git merge into main");
+    }
     pass("feature");
     allowed(repo, [
       "git",

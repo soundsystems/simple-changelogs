@@ -29,9 +29,9 @@
 //   needs a receipt for the pushed commit. Deleting the target is refused,
 //   and so is a push whose dry run fails, one with `--`, and one whose last
 //   argument is an option;
-// - `git merge` while the target branch is checked out, for each merged
-//   revision (MERGE_HEAD for --continue, the upstream with no revision); no
-//   `git pull` runs on the target branch;
+// - `git merge` while the target branch is checked out, for each named
+//   revision; `-`, no revision, --continue, FETCH_HEAD, and MERGE_HEAD are
+//   refused there, and no `git pull` runs on the target branch;
 // - `git send-pack`, `git http-push`, and any `git` subcommand that is not a
 //   built-in command (an alias, chained or not, or an external git-*
 //   command such as `git subtree`) are refused.
@@ -224,6 +224,10 @@ const gitPush = (context: GitContext, args: string[]): Gate => {
     : ALLOW;
 };
 
+// A merge into the target branch must name each revision it merges, and
+// each must resolve to one commit: `-`, no revision (the upstream, possibly
+// several), --continue, and FETCH_HEAD or MERGE_HEAD (possibly several
+// commits) are refused rather than resolved.
 const gitMerge = (context: GitContext, args: string[]): Gate => {
   const target = targetBranch(context);
   // Only a lone --abort or --quit is exempt; Git honors a later negation.
@@ -232,12 +236,22 @@ const gitMerge = (context: GitContext, args: string[]): Gate => {
   if (currentBranch(context) !== target || stops) {
     return ALLOW;
   }
-  const named = positionals(args, MERGE_VALUE_OPTIONS);
-  let revisions = named.length > 0 ? named : ["@{upstream}"];
-  if (args.includes("--continue")) {
-    revisions = ["MERGE_HEAD"];
+  const label = `git merge into ${target}`;
+  const revisions = positionals(args, MERGE_VALUE_OPTIONS);
+  if (args.includes("-") || args.includes("--continue")) {
+    return refuse(
+      `${label} with - or --continue is not inspected; name each branch`
+    );
   }
-  return requireReceipts(context, `git merge into ${target}`, revisions);
+  if (revisions.length === 0) {
+    return refuse(`${label} must name each revision it merges`);
+  }
+  if (revisions.some((revision) => AGGREGATE_HEAD.test(revision))) {
+    return refuse(
+      `${label} from FETCH_HEAD or MERGE_HEAD can take several commits; merge a named branch`
+    );
+  }
+  return requireReceipts(context, label, revisions);
 };
 
 // Options and configuration decide what a pull merges, so no pull runs on
@@ -453,6 +467,7 @@ const PROVIDER_GLOBAL_VALUES = new Set(["-R", "--hostname", "--repo"]);
 const FIELD_FLAGS = ["-F", "-f", "--field", "--form", "--raw-field"];
 const READ_METHODS = new Set(["GET", "HEAD"]);
 const LEADING_EQUALS = /^=/u;
+const AGGREGATE_HEAD = /(?:^|\/)(?:FETCH|MERGE)_HEAD\b/u;
 const QUERY_OR_FRAGMENT = /[?#]/u;
 const TRAILING_SLASHES = /\/+$/u;
 // Any spelling of the GraphQL endpoint: `graphql`, `/graphql`, or a URL.
