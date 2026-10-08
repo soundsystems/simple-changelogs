@@ -471,6 +471,40 @@ describe("exec guard", () => {
       ["glab", "api", "-X", "PUT", "projects/1/merge_requests/7/%6Derge"],
       "must pin the head"
     );
+    // A namespaced project ID stays one path segment.
+    refused(
+      repo,
+      [
+        "glab",
+        "api",
+        "projects/soundsystems%2Fsimple-changelogs/merge_requests/7/merge",
+        "-X",
+        "PUT",
+      ],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      [
+        "glab",
+        "api",
+        "-X",
+        "POST",
+        "projects/group%2Fproject/merge_trains/merge_requests/7",
+      ],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      [
+        "glab",
+        "api",
+        "-X",
+        "POST",
+        "projects/group%2Fproject/repository/commits",
+      ],
+      "writes refs"
+    );
     refused(
       repo,
       [
@@ -580,6 +614,24 @@ describe("exec guard", () => {
       ["git", "-c", "remote.origin.push=HEAD:main", "push", "origin"],
       sha("feature")
     );
+    // The guard's dry run sees `env` assignments, not only inherited values.
+    process.env.GUARD_REFS = "HEAD:refs/heads/feature";
+    try {
+      refused(
+        repo,
+        [
+          "env",
+          "GUARD_REFS=HEAD:refs/heads/main",
+          "git",
+          "--config-env=remote.origin.push=GUARD_REFS",
+          "push",
+          "origin",
+        ],
+        sha("feature")
+      );
+    } finally {
+      Reflect.deleteProperty(process.env, "GUARD_REFS");
+    }
     pass("feature");
     allowed(repo, ["git", "push", "origin", "feature:main"]);
   });

@@ -39,7 +39,8 @@
 // Boundary: the guard reads the exec argv and fails safe: whatever it cannot
 // read as one plain value (a repeated method, sha, or head option; an `env`
 // assignment to a GIT_ variable; a body from a file) is refused rather than
-// modeled, and it inherits the environment the command runs with. Another
+// modeled. It inherits the environment the command runs with, and an `env`
+// prefix's assignments apply to its Git lookups and dry run too. Another
 // program whose arguments read as a Git or provider merge or push (a shell
 // `-c` script, `timeout`, `bunx`) is refused; a merge hidden inside a script
 // or package task is not seen, and only commands run through `loop exec` are
@@ -59,6 +60,9 @@ import { hasPassingReceipt, RECEIPT_COMMAND } from "./check-receipt.ts";
 // `--git-dir`, and `--work-tree` apply to every lookup the guard makes.
 interface GitContext {
   checkout: string;
+  // `env NAME=value` assignments the command runs with, which `-c` and
+  // `--config-env` can read.
+  env: Record<string, string>;
   global: string[];
 }
 
@@ -130,7 +134,7 @@ const runGit = (context: GitContext, args: string[]) =>
   spawnSync({
     cmd: ["git", ...context.global, ...args],
     cwd: context.checkout,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    env: { ...process.env, ...context.env, GIT_TERMINAL_PROMPT: "0" },
     stderr: "pipe",
     stdin: "ignore",
     stdout: "pipe",
@@ -247,12 +251,16 @@ const gitPull = (context: GitContext): Gate => {
     : ALLOW;
 };
 
-const git = (checkout: string, args: string[]): Gate => {
+const git = (
+  checkout: string,
+  args: string[],
+  env: Record<string, string>
+): Gate => {
   let index = 0;
   while ((args[index] ?? "").startsWith("-")) {
     index += GIT_VALUE_OPTIONS.has(args[index] ?? "") ? 2 : 1;
   }
-  const context = { checkout, global: args.slice(0, index) };
+  const context = { checkout, env, global: args.slice(0, index) };
   const subcommand = args[index] ?? "";
   const rest = args.slice(index + 1);
   switch (subcommand) {
@@ -517,18 +525,24 @@ const hiddenBody = (parsed: ParsedFlags): boolean =>
   valuesOf(parsed, ["--input"]).length > 0 ||
   valuesOf(parsed, FIELD_FLAGS).some((field) => field.includes("=@"));
 
-// An endpoint's path without its query or fragment, percent-decoded, and
-// without trailing slashes, so every spelling of one endpoint matches.
-const endpointPath = (endpoint: string): string => {
-  const path = endpoint.split(QUERY_OR_FRAGMENT)[0] ?? "";
-  let decoded = path;
+// One path segment, percent-decoded, with a decoded slash kept encoded so a
+// namespaced project ID (`group%2Fproject`) stays one segment.
+const decodedSegment = (segment: string): string => {
   try {
-    decoded = decodeURIComponent(path);
+    return decodeURIComponent(segment).replaceAll("/", "%2F");
   } catch {
-    // A malformed escape keeps the raw path.
+    return segment;
   }
-  return decoded.replace(TRAILING_SLASHES, "");
 };
+
+// An endpoint's path without its query or fragment, decoded segment by
+// segment, and without trailing slashes, so every spelling matches.
+const endpointPath = (endpoint: string): string =>
+  (endpoint.split(QUERY_OR_FRAGMENT)[0] ?? "")
+    .split("/")
+    .map(decodedSegment)
+    .join("/")
+    .replace(TRAILING_SLASHES, "");
 
 // A merge or ref-writing endpoint: reads pass, a merge must pin exactly one
 // visible head with a receipt, and a direct ref write is refused.
@@ -630,7 +644,7 @@ const providerCommand = (
       );
     }
   }
-  const context = { checkout, global: [] };
+  const context = { checkout, env: {}, global: [] };
   const [noun = "", verb = ""] = words;
   // An alias or extension can expand to anything, so only built-in commands
   // run; `gh repo sync` can move a branch through the API.
@@ -674,8 +688,10 @@ const providerCommand = (
 /** Decides whether the exec command is gated, and on which revisions. */
 export const gateFor = (checkout: string, argv: string[]): Gate => {
   let command = argv;
-  // `env NAME=value command` still runs the command as direct argv, but an
-  // assignment that redirects Git (GIT_DIR, GIT_CONFIG_*) is not inspected.
+  let env: Record<string, string> = {};
+  // `env NAME=value command` still runs the command as direct argv; every
+  // Git lookup runs with the same assignments, and one that redirects Git
+  // itself (GIT_DIR, GIT_CONFIG_*) is refused.
   if (basename(command[0] ?? "") === "env") {
     const rest = command.slice(1);
     const start = rest.findIndex((arg) => !ENV_ASSIGNMENT_PATTERN.test(arg));
@@ -685,12 +701,18 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
     }
     if (start !== -1 && !(rest[start] ?? "").startsWith("-")) {
       command = rest.slice(start);
+      env = Object.fromEntries(
+        assignments.map((arg) => {
+          const split = arg.indexOf("=");
+          return [arg.slice(0, split), arg.slice(split + 1)];
+        })
+      );
     }
   }
   const [program = "", ...args] = command;
   switch (basename(program)) {
     case "git": {
-      return git(checkout, args);
+      return git(checkout, args, env);
     }
     case "glab": {
       return providerCommand(checkout, args, {
