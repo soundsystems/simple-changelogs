@@ -26,8 +26,9 @@
 // - `git merge` while the target branch is checked out, for each merged
 //   revision (MERGE_HEAD for --continue, the upstream with no revision); no
 //   `git pull` runs on the target branch;
-// - `git send-pack`, `git http-push`, `git subtree push|pull|merge`, and a
-//   Git alias that expands to a push, merge, or pull are refused.
+// - `git send-pack`, `git http-push`, and any `git` subcommand that is not a
+//   built-in command (an alias, chained or not, or an external git-*
+//   command such as `git subtree`) are refused.
 //
 // Boundary: the guard reads the exec argv and fails safe: whatever it cannot
 // read as one plain value (a repeated method, sha, or head option; an `env`
@@ -78,7 +79,6 @@ const HEADS_PREFIX = "refs/heads/";
 const ENV_ASSIGNMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=/u;
 // One `git push --porcelain` ref line: flag, then `from:to`, then a summary.
 const PORCELAIN_LINE = /^([ +\-*!=])\t([^\t]*)\t/u;
-const MERGING_WORD = /\b(?:push|merge|pull|send-pack)\b/u;
 // GraphQL mutations that merge or move a branch.
 const GRAPHQL_REF_WRITE =
   /mutation|merge|updateRefs?\b|createCommitOnBranch|commitCreate|createRef|deleteRef/iu;
@@ -314,22 +314,18 @@ const git = (checkout: string, args: string[]): Gate => {
     case "send-pack": {
       return refuse(`git ${subcommand} is not inspected; use git push`);
     }
-    case "subtree": {
-      return rest.some((arg) => MERGING_WORD.test(arg))
-        ? refuse("git subtree push, pull, and merge are not inspected")
-        : ALLOW;
+    case "": {
+      return ALLOW;
     }
     default: {
-      const alias = gitText(context, [
-        "config",
-        "--get",
-        `alias.${subcommand}`,
-      ]);
-      return alias !== null && MERGING_WORD.test(alias)
-        ? refuse(
-            `git ${subcommand} is an alias for "${alias}"; run the command directly`
-          )
-        : ALLOW;
+      // An alias, possibly chained, or an external git-* command can run
+      // anything, so only Git's built-in commands pass.
+      const builtins = gitText(context, ["--list-cmds=builtins"]);
+      return builtins?.split("\n").includes(subcommand)
+        ? ALLOW
+        : refuse(
+            `git ${subcommand} is not a built-in Git command (an alias or external command); run the underlying command directly`
+          );
     }
   }
 };

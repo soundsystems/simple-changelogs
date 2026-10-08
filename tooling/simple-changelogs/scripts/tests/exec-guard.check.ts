@@ -167,7 +167,6 @@ describe("exec guard", () => {
       ["rg", "merge", "tooling"],
       ["git", "status"],
       ["git", "fetch", "origin"],
-      ["git", "-c", "alias.lg=log", "lg", "-1"],
       ["git", "push", "origin", "feature"],
       ["git", "push", "origin", "v1.0.0"],
       ["git", "push", "--tags", "origin"],
@@ -513,12 +512,27 @@ describe("exec guard", () => {
       ],
       "cannot inspect"
     );
-    refused(repo, ["git", "-c", "alias.ship=push", "ship", "origin"], "alias");
+    for (const argv of [
+      ["git", "-c", "alias.ship=push", "ship", "origin"],
+      [
+        "git",
+        "-c",
+        "alias.ship=publish",
+        "-c",
+        "alias.publish=push",
+        "ship",
+        "origin",
+        "HEAD:main",
+      ],
+      ["git", "-c", "alias.lg=log", "lg", "-1"],
+    ]) {
+      refused(repo, argv, "not a built-in Git command");
+    }
     refused(repo, ["git", "send-pack", "origin", "main"], "not inspected");
     refused(
       repo,
       ["git", "subtree", "push", "--prefix=docs", "origin", "main"],
-      "not inspected"
+      "not a built-in Git command"
     );
   });
 

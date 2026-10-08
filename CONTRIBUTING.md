@@ -23,8 +23,11 @@ the GitHub mirror is read-only, so open issues and merge requests on GitLab.
    `execGuard`: under `simple-changes loop exec`, a provider merge pinned to
    a head (`glab api .../merge_requests/<iid>/merge -f sha=<head>`, `glab mr
    merge --sha`), a `git merge` into `main`, or a `git push` that Git's own
-   dry run says updates `main` runs only when that head has a receipt; a
-   merge that pins no head is refused. Every other command passes.
+   dry run says updates `main` runs only when that head has a receipt. Input
+   the guard cannot read as one plain value (a merge that pins no head, a
+   repeated option, a Git alias, a `git pull` on `main`) is refused; the
+   header of `tooling/exec-guard.ts` lists every rule and its limits. Other
+   commands pass.
 
 Distribution boundaries are evidence-based. A distribution owns only the
 audiences and release surfaces its `SKILL.md` claims; shared behavior lives in
