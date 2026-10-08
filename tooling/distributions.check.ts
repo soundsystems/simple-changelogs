@@ -38,6 +38,11 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // only those distributions ship before raising again.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
 const MAX_SUPPORT_BYTES = 384 * 1024;
+// Claude Code keeps only the first 5,000 tokens of a loaded skill after
+// compaction, so every SKILL.md stays at or under about 5,000 tokens: 17,500
+// bytes at 3.5 bytes per token. The router and invariants come first;
+// everything else belongs in a reference.
+const MAX_SKILL_BYTES = 17_500;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -225,6 +230,13 @@ for (const {
   const supportBytes = entries
     .filter((entry) => !entry.path.endsWith(".md"))
     .reduce((sum, entry) => sum + entry.bytes, 0);
+  const skillBytes =
+    entries.find((entry) => entry.path === "SKILL.md")?.bytes ?? 0;
+  if (skillBytes > MAX_SKILL_BYTES) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md is ${skillBytes} bytes; the SKILL.md maximum is ${MAX_SKILL_BYTES} (about 5,000 tokens)`
+    );
+  }
   if (guidanceBytes > MAX_GUIDANCE_BYTES) {
     failures.push(
       `skills/${directoryName} Markdown is ${guidanceBytes} bytes; the guidance maximum is ${MAX_GUIDANCE_BYTES}`
