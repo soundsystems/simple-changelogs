@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "distributions": [
-    { "name": "simple-changelogs", "guidanceVersion": 25 },
-    { "name": "simple-changelogs-cms", "guidanceVersion": 25 },
-    { "name": "simple-changelogs-mobile", "guidanceVersion": 25 },
-    { "name": "simple-changelogs-skill-maintainer", "guidanceVersion": 25 },
-    { "name": "simple-changelogs-web", "guidanceVersion": 25 },
-    { "name": "simple-changelogs-web-cms", "guidanceVersion": 25 }
+    { "name": "simple-changelogs", "guidanceVersion": 26 },
+    { "name": "simple-changelogs-cms", "guidanceVersion": 26 },
+    { "name": "simple-changelogs-mobile", "guidanceVersion": 26 },
+    { "name": "simple-changelogs-skill-maintainer", "guidanceVersion": 26 },
+    { "name": "simple-changelogs-web", "guidanceVersion": 26 },
+    { "name": "simple-changelogs-web-cms", "guidanceVersion": 26 }
   ]
 }

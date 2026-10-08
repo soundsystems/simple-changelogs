@@ -140,7 +140,7 @@ describe("changelog-provider marker", () => {
       const full = distribution === "full";
       expect(marker.requestVersions).toEqual(full ? [1, 2, 3] : [1, 3]);
       expect(marker.receiptVersions).toEqual(full ? [1, 2, 3, 4] : [1, 2, 4]);
-      expect(marker.guidanceVersion).toBe(25);
+      expect(marker.guidanceVersion).toBe(26);
       expect(marker.features).not.toContain("shared-version-lines");
     });
   }
@@ -180,7 +180,7 @@ describe("changelog-provider marker", () => {
     ]);
     expect(marker.requestVersions).toEqual([1]);
     expect(marker.receiptVersions).toEqual([2]);
-    expect(marker.guidanceVersion).toBe(25);
+    expect(marker.guidanceVersion).toBe(26);
     expect(marker.schemaDigests).toEqual(
       (await providerMarkerFor("full")).schemaDigests
     );

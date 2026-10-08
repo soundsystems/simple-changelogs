@@ -19,6 +19,7 @@ an unanswered prompt records nothing and may be asked again later.
 - Guidance 23
 - Guidance 24
 - Guidance 25
+- Guidance 26
 
 ## Guidance 1 to 15
 
@@ -150,3 +151,23 @@ repository's existing tag style when local tags show one, and no tags when
 release tooling already creates them. No answer records nothing and leaves
 releases untagged. Every Simple Changelogs distribution now shares this
 guidance number. No backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="26" kinds="behavior,capability" backfill="not-needed" summary="Agents read changelogs through query.ts instead of whole files, query.ts gaps lists merges since the last release tag without an entry, query.ts check enforces App Store and Google Play note limits, and scripts/handoff.ts computes release receipts." -->
+## Guidance 26
+
+Agents now read changelogs through `scripts/query.ts` instead of opening
+whole files: `releases` for the outline and `show unreleased` for pending
+work. A whole-file read is kept for a backfill or an approved audit. The new
+`query.ts gaps` lists the merges since the last release tag, the newest one
+your `releaseTags` style names, that added no changelog entry.
+
+`query.ts check` now holds App Store notes to 4,000 and Google Play notes to
+500 characters per locale, counted in Unicode code points, for Fastlane and
+Gradle Play Publisher note files.
+
+Delegated release receipts are no longer built by hand: the bundled
+`scripts/handoff.ts` computes the policy, decision, changed-path, and
+prior-receipt digests and assembles the receipt at the negotiated version.
+Simple Changes still validates it.
+
+No question is asked, no setting changes, and no backfill is needed.

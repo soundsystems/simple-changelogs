@@ -431,9 +431,9 @@ describe("post-onboarding write guards", () => {
   test("acknowledging one guidance track never lowers the other", async () => {
     const config = await temporaryDirectory("config");
     const repo = await temporaryDirectory("repo");
-    // A newer helper already recorded main-track guidance 26; this helper's
-    // current main version is 25.
-    await webCmsPolicies(repo, 26, 1);
+    // A newer helper already recorded main-track guidance 27; this helper's
+    // current main version is 26.
+    await webCmsPolicies(repo, 27, 1);
 
     const result = await applySetup({
       configDirectory: config,
@@ -446,7 +446,7 @@ describe("post-onboarding write guards", () => {
     expect(result.status).toBe("configured");
     expect((await readJson(join(repo, POLICY))).guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 26,
+      version: 27,
     });
     expect((await readJson(join(repo, CMS_POLICY))).guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -487,7 +487,7 @@ describe("post-onboarding write guards", () => {
     const outcomes = await Promise.all(
       [0, 1].map(async (cmsVersion) => {
         const repo = await temporaryDirectory("repo");
-        await webCmsPolicies(repo, 25, cmsVersion);
+        await webCmsPolicies(repo, 26, cmsVersion);
         return inspectRepository({
           configDirectory: config,
           distribution: "web-cms",
