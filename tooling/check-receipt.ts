@@ -5,6 +5,9 @@
 // tooling/exec-guard.ts refuses a merge or a push to the target branch whose
 // head has no receipt.
 //
+// A clean checkout has no changed, untracked, assume-unchanged, or
+// skip-worktree path.
+//
 // Receipt format (schemaVersion 1), one JSON file per commit at
 // `<git common dir>/check-receipts/<40-hex HEAD>.json`, so every worktree of
 // the repository shares it and Git never tracks it:
@@ -24,6 +27,7 @@ export const RECEIPT_COMMAND = "bun run check";
 const RECEIPT_DIRECTORY = "check-receipts";
 const HEAD_PATTERN = /^[0-9a-f]{40}$/u;
 const MILLISECONDS_PATTERN = /\.\d{3}Z$/u;
+const HIDDEN_TAG = /^(?:[a-z]|S) /u;
 
 export interface CheckReceipt {
   command: typeof RECEIPT_COMMAND;
@@ -88,13 +92,24 @@ export const writeReceipt = (common: string, head: string): string => {
   return path;
 };
 
+// Changed or untracked paths, plus tracked paths marked assume-unchanged
+// (a lowercase `git ls-files -v` tag) or skip-worktree (`S`), whose edits
+// `git status` would not show.
 const dirtyPaths = (root: string): string[] | null => {
   const status = gitOutput(root, [
     "status",
     "--porcelain=v1",
     "--untracked-files=all",
   ]);
-  return status === null ? null : status.split("\n").filter(Boolean);
+  const listed = gitOutput(root, ["ls-files", "-v"]);
+  if (status === null || listed === null) {
+    return null;
+  }
+  const hidden = listed
+    .split("\n")
+    .filter((line) => HIDDEN_TAG.test(line))
+    .map((line) => `hidden from git status: ${line.slice(2)}`);
+  return [...status.split("\n").filter(Boolean), ...hidden];
 };
 
 // Install from the lockfile, then run the check, exactly as committed.

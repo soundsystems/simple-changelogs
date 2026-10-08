@@ -114,7 +114,7 @@ describe("check receipts", () => {
   });
 
   test("write nothing for a dirty checkout, a failing check, or a checkout that changes", async () => {
-    const { common, repo, sha } = await fixture();
+    const { common, git, repo, sha } = await fixture();
     const lines: string[] = [];
     const log = (line: string) => lines.push(line);
     const head = sha("HEAD");
@@ -141,6 +141,20 @@ describe("check receipts", () => {
       )
     ).toBe(1);
     expect(lines.at(-1)).toContain("changed while");
+    await rm(join(repo, "made.txt"));
+    // An edit hidden from git status still makes the checkout dirty.
+    for (const flag of ["--assume-unchanged", "--skip-worktree"]) {
+      git("update-index", flag, "README.md");
+      expect(
+        runCheckReceipt(
+          repo,
+          [[process.execPath, "-e", "process.exit(0)"]],
+          log
+        )
+      ).toBe(1);
+      expect(lines.at(-1)).toContain("hidden from git status: README.md");
+      git("update-index", flag.replace("--", "--no-"), "README.md");
+    }
     expect(existsSync(receiptPath(common, head))).toBe(false);
   });
 
