@@ -37,10 +37,10 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // support budget binds, prefer moving distribution-specific code into a module
 // only those distributions ship before raising again.
 // Measured for 0.26.0, with scripts/handoff.ts in every distribution and the
-// query.ts gaps and store-note checks: Markdown full 220,893 bytes, Web+CMS
-// 200,177, mobile 191,294, Web 186,646, skill-maintainer 113,465, CMS-only
-// 68,394; support files Web+CMS 318,680, full 302,049, mobile 302,059, Web
-// 302,048, skill-maintainer 302,109, CMS-only 243,272.
+// query.ts gaps and store-note checks: Markdown full 220,916 bytes, Web+CMS
+// 200,200, mobile 191,317, Web 186,669, skill-maintainer 113,488, CMS-only
+// 68,394; support files Web+CMS 318,553, full 301,922, mobile 301,932, Web
+// 301,921, skill-maintainer 301,982, CMS-only 243,272.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
 const MAX_SUPPORT_BYTES = 384 * 1024;
 // Claude Code keeps only the first 5,000 tokens of a loaded skill after
