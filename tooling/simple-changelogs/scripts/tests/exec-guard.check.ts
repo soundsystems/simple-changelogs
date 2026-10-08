@@ -459,14 +459,19 @@ describe("exec guard", () => {
         stdio: "ignore",
       });
     if (which("gh")) {
+      allowed(repo, ["gh", "co", "3"]);
       setAlias("gh", "pr ship", "pr merge");
-      setAlias("gh", "pv", "pr view");
+      setAlias("gh", "p", "pr");
       refused(repo, ["gh", "pr", "ship", "123", "--squash"], "is an alias");
-      allowed(repo, ["gh", "pv", "3"]);
+      // The CLI appends the caller's arguments: `p merge 7` is `pr merge 7`.
+      refused(repo, ["gh", "p", "merge", "7", "--squash"], "is an alias");
     }
     if (which("glab")) {
+      allowed(repo, ["glab", "ci", "status"]);
       setAlias("glab", "mrm", "mr merge");
+      setAlias("glab", "m", "mr");
       refused(repo, ["glab", "mrm", "123", "--yes"], "is an alias");
+      refused(repo, ["glab", "m", "merge", "123", "--yes"], "is an alias");
     }
     refused(repo, ["gh", "extension", "exec", "x"], "not a built-in command");
     refused(

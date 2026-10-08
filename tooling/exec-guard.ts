@@ -16,9 +16,9 @@
 //   flag table, so an option's value never poses as a head, endpoint, or
 //   method; an unknown flag, or an option before or between the subcommand
 //   words other than `-R`/`--repo`/`--hostname`, is refused, and so is any
-//   command outside each CLI's built-in list (an extension), any alias at
-//   either depth that does not expand to a plain built-in command without a
-//   merge, API call, sync, or shell, and `repo sync`. Endpoints match however they are spelled (a URL, a trailing
+//   command outside each CLI's built-in list (an extension), any configured
+//   alias at either depth but the default checkout and pipeline aliases, and
+//   `repo sync`. Endpoints match however they are spelled (a URL, a trailing
 //   slash, percent escapes). An API call is a read only with
 //   one GET or HEAD method, or with no method and no body. A merge that pins
 //   no head or repeats it, one whose body comes from a file, a mutating call
@@ -471,8 +471,13 @@ const READ_METHODS = new Set(["GET", "HEAD"]);
 const LEADING_EQUALS = /^=/u;
 const ALIAS_SEPARATOR = /:\s+/u;
 const SURROUNDING_QUOTES = /^['"]|['"]$/gu;
-const WHITESPACE = /\s+/u;
-const RISKY_ALIAS_WORD = /merge|accept|\bapi\b|\bsync\b/u;
+// The aliases glab and gh install by default; any other alias is refused,
+// because the CLI appends the caller's arguments to its expansion.
+const DEFAULT_ALIASES = new Set([
+  "ci=pipeline ci",
+  "co=mr checkout",
+  "co=pr checkout",
+]);
 const AGGREGATE_HEAD = /(?:^|\/)(?:FETCH|MERGE)_HEAD\b/u;
 const QUERY_OR_FRAGMENT = /[?#]/u;
 const TRAILING_SLASHES = /\/+$/u;
@@ -666,14 +671,6 @@ const providerAliases = (
   return aliases;
 };
 
-const harmlessAlias = (
-  expansion: string,
-  builtins: ReadonlySet<string>
-): boolean =>
-  !expansion.startsWith("!") &&
-  builtins.has(expansion.split(WHITESPACE)[0] ?? "") &&
-  !RISKY_ALIAS_WORD.test(expansion);
-
 // A provider command, read as `<cli> [-R repo] <noun> <verb> ...`: an API
 // call is judged by its endpoint and method, and the CLI merge must pin one
 // head with its head option. Any other option before the subcommand is
@@ -715,11 +712,12 @@ const subcommandWords = (
   return { index, words };
 };
 
-// A configured alias, at either depth, runs only when it expands to a
-// built-in command that names no merge, API call, sync, or shell; an
-// extension can run anything, so other commands must be built in. `repo
-// sync` can move a branch through the API. Null lets the command through to
-// the merge and API checks.
+// A configured alias, at either depth, is refused unless it is a default
+// checkout or pipeline alias: the CLI appends the caller's arguments to the
+// expansion, so `p` for `pr` turns `p merge 7` into a merge, and an alias can
+// chain to another. An extension can run anything, so other commands must be
+// built in. `repo sync` can move a branch through the API. Null lets the
+// command through to the merge and API checks.
 const commandGate = (
   provider: Provider,
   words: string[],
@@ -732,12 +730,13 @@ const commandGate = (
       `${provider.cli} alias list failed, so aliases cannot be checked`
     );
   }
-  const expansion = aliases.get(`${noun} ${verb}`) ?? aliases.get(noun);
+  const name = aliases.has(`${noun} ${verb}`) ? `${noun} ${verb}` : noun;
+  const expansion = aliases.get(name);
   if (expansion !== undefined) {
-    return harmlessAlias(expansion, provider.builtins)
+    return DEFAULT_ALIASES.has(`${name}=${expansion}`)
       ? ALLOW
       : refuse(
-          `${provider.cli} ${noun} is an alias for "${expansion}"; run the underlying command directly`
+          `${provider.cli} ${name} is an alias for "${expansion}"; run the underlying command directly`
         );
   }
   if (noun !== "" && !provider.builtins.has(noun)) {
