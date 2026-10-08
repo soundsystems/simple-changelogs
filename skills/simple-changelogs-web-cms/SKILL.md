@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-web-cms
 description: Maintain public web changelogs and release notes plus a separate authenticated CMS operator history. Update customer, developer, and operator entries and finalize web releases. Use when the repository selects the web-plus-CMS Simple Changelogs distribution, not for mobile or store history.
+license: Apache-2.0
+compatibility: Requires Git and Bun 1.3 or later; check-fork-sync.sh requires a POSIX shell
 ---
 
 # Simple Changelogs Web + CMS

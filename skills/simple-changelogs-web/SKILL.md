@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-web
 description: Maintain changelogs and public web release notes. Update customer and developer changelogs, sync established web release-note pages, and finalize web releases. Use when the repository selects the web-only Simple Changelogs distribution or installs it as its only changelog skill, not for mobile, store, or CMS history.
+license: Apache-2.0
+compatibility: Requires Git and Bun 1.3 or later; check-fork-sync.sh requires a POSIX shell
 ---
 
 # Simple Changelogs Web

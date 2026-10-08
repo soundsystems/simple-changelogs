@@ -1,6 +1,8 @@
 ---
 name: simple-changelogs-mobile
 description: Maintain mobile changelogs, in-app notes, and App Store or Google Play metadata. Finalize mobile releases and prepare reusable What to Test instructions for TestFlight and Play test builds. Use when the repository selects the mobile-only Simple Changelogs distribution or installs it as its only changelog skill, not for web or CMS history.
+license: Apache-2.0
+compatibility: Requires Git and Bun 1.3 or later; check-fork-sync.sh requires a POSIX shell
 ---
 
 # Simple Changelogs Mobile

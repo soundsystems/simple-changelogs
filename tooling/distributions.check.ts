@@ -43,6 +43,21 @@ const LOCAL_ROUTE_PATTERN =
 
 const expectedSkills = new Set([...changelogDistributions, "publish-skill"]);
 const forbiddenNames = new Set(["EVAL.md"]);
+// Agent Skills frontmatter: every package states its license and runtime
+// requirements, a distribution that ships the POSIX fork checker says so, and
+// changelog distributions carry only the specification's portable fields.
+const SKILL_LICENSE = "Apache-2.0";
+const MAX_COMPATIBILITY_LENGTH = 500;
+const BASE_COMPATIBILITY = "Requires Git and Bun 1.3 or later";
+const FORK_CHECKER_COMPATIBILITY = `${BASE_COMPATIBILITY}; check-fork-sync.sh requires a POSIX shell`;
+const PORTABLE_FRONTMATTER_KEYS = new Set([
+  "name",
+  "description",
+  "license",
+  "compatibility",
+  "metadata",
+]);
+const HARNESS_ONLY_FRONTMATTER_KEYS = ["model", "effort"];
 const PROVIDER_MARKER_FILENAME = "changelog-provider.json";
 // Directory name -> the distribution identifier consumers match on. The marker
 // exists so a consumer never has to re-derive this from the directory name.
@@ -226,8 +241,10 @@ for (const {
     continue;
   }
   const metadata = YAML.parse(frontmatter) as {
+    compatibility?: unknown;
     "disable-model-invocation"?: unknown;
     description?: unknown;
+    license?: unknown;
     name?: unknown;
   };
   if (metadata.name !== directoryName) {
@@ -248,6 +265,48 @@ for (const {
     );
   } else {
     descriptions.set(metadata.description, directoryName);
+  }
+
+  if (metadata.license !== SKILL_LICENSE) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md must declare license: ${SKILL_LICENSE}`
+    );
+  }
+  if (
+    typeof metadata.compatibility !== "string" ||
+    !metadata.compatibility.trim() ||
+    metadata.compatibility.length > MAX_COMPATIBILITY_LENGTH
+  ) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md needs a compatibility of at most ${MAX_COMPATIBILITY_LENGTH} characters`
+    );
+  }
+  for (const key of HARNESS_ONLY_FRONTMATTER_KEYS) {
+    if (Object.hasOwn(metadata, key)) {
+      failures.push(
+        `skills/${directoryName}/SKILL.md sets the harness-only ${key} key`
+      );
+    }
+  }
+  if (changelogDistributions.has(directoryName)) {
+    const expectedCompatibility = entries.some(
+      (entry) => entry.path === "scripts/check-fork-sync.sh"
+    )
+      ? FORK_CHECKER_COMPATIBILITY
+      : BASE_COMPATIBILITY;
+    if (metadata.compatibility !== expectedCompatibility) {
+      failures.push(
+        `skills/${directoryName}/SKILL.md compatibility must read: ${expectedCompatibility}`
+      );
+    }
+    const extraKeys = Object.keys(metadata).filter(
+      (key) => !PORTABLE_FRONTMATTER_KEYS.has(key)
+    );
+    if (extraKeys.length > 0) {
+      failures.push(
+        `skills/${directoryName}/SKILL.md frontmatter has non-portable keys: ${extraKeys.join(", ")}`
+      );
+    }
   }
 
   // A user-invoked skill must be user-invoked in every harness: Claude Code's
