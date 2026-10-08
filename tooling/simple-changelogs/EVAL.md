@@ -214,6 +214,17 @@ For a new adapter, first unit-test exact argument arrays, stdin/stdout framing,
 final-message extraction, stderr preservation, timeout behavior, and normalized
 errors. Then run one trigger and one behavior case before expanding coverage.
 
+The Codex adapter uses `codex exec --json --output-schema`. OpenAI structured
+outputs apply that schema in strict mode, which rejects `uniqueItems` and any
+property missing from `required`, so the adapter sends a temporary copy,
+written outside the workspace, without `uniqueItems`, with every property
+required and each optional one also accepting null. The canonical response
+schema is unchanged: the adapter reads a returned null for an optional property
+as absent, fails a response that repeats an item the canonical schema requires
+to be unique, and then validates against the neutral response contract. A
+schema keyword outside the set strict mode is known to accept fails as a
+configuration error before Codex starts.
+
 The Hermes adapter uses `hermes chat --safe-mode --quiet`, validates its
 plain one-shot output against the neutral response schema, and requires the
 Docker terminal backend. It overrides Hermes' terminal environment so tool
