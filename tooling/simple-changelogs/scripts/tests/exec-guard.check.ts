@@ -430,6 +430,28 @@ describe("exec guard", () => {
       "--frobnicate"
     );
     refused(repo, ["gh", "--frobnicate", "pr", "merge", "3"], "not inspected");
+    refused(repo, ["gh", "pr", "--web", "merge", "3"], "not inspected");
+    // -R and --repo may sit between the subcommand words.
+    refused(
+      repo,
+      ["gh", "pr", "--repo", "o/r", "merge", "123", "--merge"],
+      "--match-head-commit <head>"
+    );
+    refused(
+      repo,
+      ["glab", "mr", "-Ro/r", "merge", "123", "--yes"],
+      "--sha <head>"
+    );
+    allowed(repo, [
+      "glab",
+      "mr",
+      "--repo",
+      "o/r",
+      "merge",
+      "123",
+      "--sha",
+      head,
+    ]);
     refused(
       repo,
       ["glab", "api", "--frobnicate", "projects/1/merge_requests/7/merge"],

@@ -14,8 +14,8 @@
 //   endpoint or a pull request's `/merge` or `/merge-async`, pinned with one
 //   `sha` field or query value. Each command is parsed against its complete
 //   flag table, so an option's value never poses as a head, endpoint, or
-//   method; an unknown flag, or an option before the subcommand other than
-//   `-R`/`--repo`/`--hostname`, is refused. An API call is a read only with
+//   method; an unknown flag, or an option before or between the subcommand
+//   words other than `-R`/`--repo`/`--hostname`, is refused. An API call is a read only with
 //   one GET or HEAD method, or with no method and no body. A merge that pins
 //   no head or repeats it, one whose body comes from a file, a mutating call
 //   that writes refs, commits, or files directly, and any GraphQL call but
@@ -517,13 +517,23 @@ const providerCommand = (
     noun: string;
   }
 ): Gate => {
+  // The subcommand words, `<noun> <verb>` or `api`, with only -R, --repo, or
+  // --hostname allowed before or between them: any other option there could
+  // hide which subcommand runs.
+  const words: string[] = [];
   let index = 0;
-  while ((args[index] ?? "").startsWith("-")) {
+  while (index < args.length && words.length < 2 && words[0] !== "api") {
     const arg = args[index] ?? "";
-    if (PROVIDER_GLOBAL_VALUES.has(arg)) {
+    if (!arg.startsWith("-")) {
+      words.push(arg);
+      index += 1;
+    } else if (PROVIDER_GLOBAL_VALUES.has(arg)) {
       index += 2;
     } else if (
-      [...PROVIDER_GLOBAL_VALUES].some((name) => arg.startsWith(`${name}=`))
+      [...PROVIDER_GLOBAL_VALUES].some(
+        (name) =>
+          arg.startsWith(`${name}=`) || (name === "-R" && arg.startsWith("-R"))
+      )
     ) {
       index += 1;
     } else {
@@ -533,11 +543,11 @@ const providerCommand = (
     }
   }
   const context = { checkout, global: [] };
-  const [noun = "", verb = ""] = args.slice(index);
+  const [noun = "", verb = ""] = words;
   if (noun === "api") {
     return apiCall(
       context,
-      parseFlags(args.slice(index + 1), API_FLAGS),
+      parseFlags(args.slice(index), API_FLAGS),
       provider.label
     );
   }
@@ -545,7 +555,7 @@ const providerCommand = (
     return ALLOW;
   }
   const label = `${provider.label} ${noun} merge`;
-  const parsed = parseFlags(args.slice(index + 2), provider.mergeFlags);
+  const parsed = parseFlags(args.slice(index), provider.mergeFlags);
   if (parsed.unknown.length > 0) {
     return refuse(`${label} with ${parsed.unknown.join(" ")} is not inspected`);
   }
