@@ -378,7 +378,11 @@ bun skills/simple-changelogs-web/scripts/query.ts releases --repo .
 bun skills/simple-changelogs-web/scripts/query.ts show unreleased --log customer --repo .
 bun skills/simple-changelogs-web/scripts/query.ts entries --since 2026-07-01 --grep "release" --repo . --json
 bun skills/simple-changelogs-web/scripts/query.ts show 2.1.0 --log customer --omitted --repo .
+bun skills/simple-changelogs-web/scripts/query.ts gaps --since v2.1.0 --repo .
 ```
+
+`gaps` lists the merges since a release tag (by default the newest one the
+`releaseTags` template names) that add no changelog lines, using plain Git.
 
 `check` lints structure (unrecognized release headings, malformed signature
 comments, parser diagnostics) and exits nonzero on problems so it can join

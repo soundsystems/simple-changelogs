@@ -24,6 +24,13 @@ Subcommands:
 - `entries`: a flat entry list filtered by `--since`/`--until` (release date,
   falling back to the entry's signature timestamp for `Unreleased` work),
   `--group` for `- **Group**:` bullets, `--agent`, and `--grep`.
+- `gaps [--since TAG] [--train NAME]`: merges on the first-parent line since a
+  release tag whose diff adds no line to the selected changelogs. The default
+  tag is the newest one reachable from `HEAD` that the `releaseTags` template
+  names (`v{version}` when none is recorded); a per-train map needs `--train`
+  unless it holds one template. It runs plain Git and writes nothing. A merge
+  whose entry lives in another file is still listed, and integrations without
+  a merge commit (squash, rebase, direct) are counted in a note, not checked.
 - `check`: structure lint for unrecognized or ambiguous release headings,
   duplicate `Unreleased` headings, malformed signature comments, unclosed code
   fences or HTML comments, and unindented or ordered-list lines that are not

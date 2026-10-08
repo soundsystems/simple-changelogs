@@ -6,6 +6,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { spawnSync } from "bun";
 import {
   type ChangelogEntry,
   type ChangelogRelease,
@@ -25,6 +26,10 @@ Commands:
   show <version|date|unreleased>
                                Show every entry of one release section.
   entries                      List entries, optionally filtered.
+  gaps [--since TAG] [--train NAME]
+                               List merges since a release tag (default: the
+                               newest one reachable from HEAD that matches
+                               releaseTags) that add no changelog lines.
   check                        Lint changelog structure; nonzero on problems.
                                Under a curated policy, also verifies
                                RELEASE_NOTES.md against the changelog.
@@ -35,6 +40,9 @@ Options:
   --repo PATH                     Repository root (default: current directory).
   --json                          Structured JSON output.
   --since YYYY-MM-DD              entries: keep entries on or after this day.
+  --since TAG                     gaps: the release tag to start after.
+  --train NAME                    gaps: the train whose releaseTags template
+                                  names the default tag.
   --until YYYY-MM-DD              entries: keep entries on or before this day.
   --group NAME                    entries: keep "- **NAME**:" grouped bullets.
   --agent SUBSTRING               entries: filter by signature agent.
@@ -71,6 +79,7 @@ interface CliOptions {
   repo: string;
   selector: string | null;
   since: string | null;
+  train: string | null;
   until: string | null;
 }
 
@@ -83,6 +92,7 @@ const VALUE_FLAGS = new Set([
   "--log",
   "--repo",
   "--since",
+  "--train",
   "--until",
 ]);
 
@@ -103,6 +113,7 @@ const parseCli = (argv: string[]): CliOptions => {
     repo: process.cwd(),
     selector: null,
     since: null,
+    train: null,
     until: null,
   };
   for (let index = 1; index < argv.length; index += 1) {
@@ -178,8 +189,17 @@ const applyValueFlag = (
       options.repo = resolve(value);
       break;
     }
+    case "--train": {
+      options.train = value;
+      break;
+    }
     case "--since":
     case "--until": {
+      // gaps takes a release tag, which Git resolves or refuses.
+      if (options.command === "gaps" && name === "--since") {
+        options.since = value;
+        break;
+      }
       if (!DAY_PATTERN.test(value)) {
         throw new CliError(
           `${name} must be a YYYY-MM-DD date (got "${value}")`
@@ -881,12 +901,296 @@ const runCheck = (
   };
 };
 
+// gaps: merges since a release tag whose first-parent diff adds no line to
+// the selected changelogs. Read-only, plain Git. A merge counts as covered
+// only when it adds lines to CHANGELOG.md or DEVELOPER_CHANGELOG.md under
+// --repo, so an entry kept elsewhere is reported, never hidden, and squash
+// or rebase integrations without a merge commit are counted, not checked.
+
+const VERSION_PLACEHOLDER = "{version}";
+const DEFAULT_TAG_TEMPLATE = `v${VERSION_PLACEHOLDER}`;
+const TAG_VERSION_PATTERN =
+  /^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/u;
+const NUMERIC_PATTERN = /^\d+$/u;
+const RECORD_SEPARATOR = "\u001e";
+const FIELD_SEPARATOR = "\u001f";
+
+const git = (repo: string, args: string[]): string => {
+  const result = spawnSync({
+    cmd: ["git", "-C", repo, ...args],
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  if (!result.success) {
+    throw new CliError(
+      `git ${args[0]} failed in ${repo}: ${result.stderr.toString().trim()}`
+    );
+  }
+  return result.stdout.toString();
+};
+
+// The releaseTags template that names the default tag: the single template,
+// the --train entry of a map, a map's only template, or v{version} when the
+// policy records none.
+const tagTemplate = (policy: Policy | string, train: string | null): string => {
+  if (typeof policy === "string") {
+    throw new CliError(`${policy}; pass --since TAG`);
+  }
+  const setting = policy?.releaseTags;
+  if (typeof setting === "object" && setting !== null) {
+    const map = setting as Record<string, unknown>;
+    const named = Object.entries(map).filter(([, value]) => value !== "none");
+    const chosen = train === null ? named : [[train, map[train]] as const];
+    const [only] = chosen;
+    if (!only || chosen.length > 1) {
+      throw new CliError(
+        `releaseTags has a template per train (${Object.keys(map).join(", ")}); pass --train NAME or --since TAG`
+      );
+    }
+    if (typeof only[1] !== "string" || only[1] === "none") {
+      throw new CliError(
+        `releaseTags records no tag template for ${only[0]}; pass --since TAG`
+      );
+    }
+    return only[1];
+  }
+  return typeof setting === "string" && setting !== "none"
+    ? setting
+    : DEFAULT_TAG_TEMPLATE;
+};
+
+// SemVer precedence of two prerelease identifiers.
+const compareIdentifier = (left: string, right: string): number => {
+  const leftNumeric = NUMERIC_PATTERN.test(left);
+  const rightNumeric = NUMERIC_PATTERN.test(right);
+  if (leftNumeric && rightNumeric) {
+    return Math.sign(Number(BigInt(left) - BigInt(right)));
+  }
+  if (leftNumeric !== rightNumeric) {
+    return leftNumeric ? -1 : 1;
+  }
+  return left < right ? -1 : Number(left > right);
+};
+
+const comparePrerelease = (left: string, right: string): number => {
+  const a = left.split(".");
+  const b = right.split(".");
+  for (const [index, identifier] of a.entries()) {
+    const other = b[index];
+    if (other === undefined) {
+      return 1;
+    }
+    const order = compareIdentifier(identifier, other);
+    if (order !== 0) {
+      return order;
+    }
+  }
+  return a.length < b.length ? -1 : 0;
+};
+
+// SemVer precedence for dotted versions of any length; build metadata is
+// ignored and a prerelease ranks below its release.
+const compareTagVersions = (left: string, right: string): number => {
+  const [, leftCore = "", leftPre] = TAG_VERSION_PATTERN.exec(left) ?? [];
+  const [, rightCore = "", rightPre] = TAG_VERSION_PATTERN.exec(right) ?? [];
+  const a = leftCore.split(".");
+  const b = rightCore.split(".");
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const x = BigInt(a[index] ?? 0);
+    const y = BigInt(b[index] ?? 0);
+    if (x !== y) {
+      return x < y ? -1 : 1;
+    }
+  }
+  if (leftPre === undefined || rightPre === undefined) {
+    return Number(leftPre === undefined) - Number(rightPre === undefined);
+  }
+  return comparePrerelease(leftPre, rightPre);
+};
+
+// The newest tag reachable from HEAD that the template names.
+const newestReleaseTag = (repo: string, template: string): string => {
+  if (!template.endsWith(VERSION_PLACEHOLDER)) {
+    throw new CliError(
+      `releaseTags template ${template} does not end with ${VERSION_PLACEHOLDER}; pass --since TAG`
+    );
+  }
+  const prefix = template.slice(0, -VERSION_PLACEHOLDER.length);
+  const candidates = git(repo, ["tag", "--merged", "HEAD"])
+    .split("\n")
+    .filter(
+      (name) =>
+        name.startsWith(prefix) &&
+        TAG_VERSION_PATTERN.test(name.slice(prefix.length))
+    )
+    .sort(
+      (left, right) =>
+        compareTagVersions(
+          left.slice(prefix.length),
+          right.slice(prefix.length)
+        ) || (left < right ? -1 : Number(left > right))
+    );
+  const newest = candidates.at(-1);
+  if (newest === undefined) {
+    throw new CliError(
+      `No tag reachable from HEAD matches ${template}; pass --since TAG`
+    );
+  }
+  return newest;
+};
+
+interface GapCommit {
+  commit: string;
+  date: string;
+  parents: string[];
+  subject: string;
+}
+
+interface GapsReport {
+  checkedMerges: number;
+  gaps: GapCommit[];
+  head: string;
+  notes: string[];
+  since: { commit: string; tag: string; template: string | null };
+  uncheckedCommits: number;
+}
+
+// One record per first-parent commit: its header, then the numstat lines of
+// its diff against its first parent.
+const firstParentCommits = (repo: string, range: string, files: string[]) =>
+  git(repo, [
+    "log",
+    "--first-parent",
+    "--diff-merges=first-parent",
+    "--no-renames",
+    "--relative",
+    "--numstat",
+    `--format=${RECORD_SEPARATOR}%H${FIELD_SEPARATOR}%P${FIELD_SEPARATOR}%cI${FIELD_SEPARATOR}%s`,
+    range,
+  ])
+    .split(RECORD_SEPARATOR)
+    .filter((record) => record.trim() !== "")
+    .map((record) => {
+      const [header = "", ...stats] = record.split("\n");
+      const [commit = "", parents = "", date = "", subject = ""] =
+        header.split(FIELD_SEPARATOR);
+      const covered = stats.some((line) => {
+        const [added, , path] = line.split("\t");
+        return (
+          path !== undefined &&
+          files.includes(path) &&
+          NUMERIC_PATTERN.test(added ?? "") &&
+          Number(added) > 0
+        );
+      });
+      return {
+        commit,
+        covered,
+        date: date.slice(0, 10),
+        parents: parents.split(" ").filter(Boolean),
+        subject,
+      };
+    });
+
+const gapsReport = async (options: CliOptions): Promise<GapsReport> => {
+  const { repo } = options;
+  git(repo, ["rev-parse", "--is-inside-work-tree"]);
+  let tag = options.since;
+  let template: string | null = null;
+  if (tag === null) {
+    template = tagTemplate(await readRepoPolicy(repo), options.train);
+    tag = newestReleaseTag(repo, template);
+  }
+  const resolved = spawnSync({
+    cmd: [
+      "git",
+      "-C",
+      repo,
+      "rev-parse",
+      "--verify",
+      "--quiet",
+      `refs/tags/${tag}^{commit}`,
+    ],
+    stdout: "pipe",
+  });
+  if (!resolved.success) {
+    throw new CliError(`No tag named ${tag} resolves to a commit`);
+  }
+  const base = resolved.stdout.toString().trim();
+  const head = git(repo, ["rev-parse", "HEAD"]).trim();
+  const files = requestedLogs(options.log).map((log) => LOG_FILES[log]);
+  const commits = firstParentCommits(repo, `${base}..${head}`, files);
+  const merges = commits.filter((commit) => commit.parents.length > 1);
+  const notes: string[] = [];
+  const ancestor = spawnSync({
+    cmd: ["git", "-C", repo, "merge-base", "--is-ancestor", base, head],
+  });
+  if (!ancestor.success) {
+    notes.push(`${tag} is not an ancestor of HEAD; the range is ${tag}..HEAD`);
+  }
+  const unchecked = commits.length - merges.length;
+  if (unchecked > 0) {
+    notes.push(
+      `not checked: ${unchecked} first-parent commits since ${tag} that are not merges (squash, rebase, or direct commits)`
+    );
+  }
+  return {
+    checkedMerges: merges.length,
+    gaps: merges
+      .filter((merge) => !merge.covered)
+      .map(({ commit, date, parents, subject }) => ({
+        commit,
+        date,
+        parents,
+        subject,
+      })),
+    head,
+    notes,
+    since: { commit: base, tag, template },
+    uncheckedCommits: unchecked,
+  };
+};
+
+const runGaps = async (options: CliOptions): Promise<string> => {
+  const report = await gapsReport(options);
+  if (options.json) {
+    return JSON.stringify(report, null, 2);
+  }
+  const files = requestedLogs(options.log)
+    .map((log) => LOG_FILES[log])
+    .join(" or ");
+  const lines = [
+    `Since ${report.since.tag} (${report.since.commit.slice(0, 8)}): ${report.gaps.length} of ${report.checkedMerges} merges add no lines to ${files}.`,
+  ];
+  if (report.gaps.length > 0) {
+    lines.push(
+      "",
+      table(
+        ["COMMIT", "DATE", "SUBJECT"],
+        report.gaps.map((gap) => [
+          gap.commit.slice(0, 8),
+          gap.date,
+          gap.subject,
+        ])
+      )
+    );
+  }
+  for (const note of report.notes) {
+    lines.push(`note: ${note}`);
+  }
+  return lines.join("\n");
+};
+
 const run = async (argv: string[]): Promise<number> => {
   if (["help", "--help", "-h"].includes(argv[0] ?? "")) {
     process.stdout.write(`${USAGE}\n`);
     return 0;
   }
   const options = parseCli(argv);
+  if (options.command === "gaps") {
+    process.stdout.write(`${await runGaps(options)}\n`);
+    return 0;
+  }
   const logs = await loadLogs(options);
   switch (options.command) {
     case "releases": {
