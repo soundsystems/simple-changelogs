@@ -35,8 +35,8 @@ At the input target revision, read each member's latest stable public version
 from its canonical owner. Order dotted numeric versions of one to three parts,
 zero-padded (`1.2` equals `1.2.0`), ignoring `+build`; exclude prereleases, and
 block on a version with non-numeric parts. Record exactly these keys as
-receipt v3's `versionDecision.versionLine`, or in receipt v2 as one evidence
-item, `versionLine ` plus compact JSON:
+receipt v3 or v4's `versionDecision.versionLine`, or in receipt v2 as one
+evidence item, `versionLine ` plus compact JSON:
 
 - `mode`, and `members`: the line's trains, sorted;
 - `memberVersions`: each member's version, or `null` before its first stable
@@ -63,8 +63,9 @@ version after `v` at `L`.
    above `H`, or `H` is null.
 
 Answer with the highest receipt version in the request's
-`supportedReceiptVersions`, so request v1 never gets v3. Receipt v3 echoes
-request v2's `releaseSetTrains` exactly; `versionLine` is null off a line. On a
+`supportedReceiptVersions`, so request v1 never gets v3 or v4. Receipts v3 and
+v4 echo the request's `releaseSetTrains` exactly; `versionLine` is null off a
+line. On a
 line, the decision digest also covers `mode`, `members`, `memberVersions`, and
 `sharedVersion`, and the effective-policy digest covers `sharedVersionLines`.
 `releaseImpact` is the train's own impact, the bump level is the jump from its

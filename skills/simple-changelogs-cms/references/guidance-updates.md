@@ -110,3 +110,12 @@ commas, colons, periods, or parentheses as appropriate; do not merely swap the
 character. Repository house style no longer supplies an exception. Released
 history stays unchanged. This update asks no new policy questions and needs no
 backfill.
+
+<!-- simple-changelogs-guidance-update version="25" kinds="maintenance" backfill="not-needed" summary="Nothing changes for CMS repositories; the guidance number now matches the other Simple Changelogs distributions." -->
+## Guidance 25
+
+Nothing changes for CMS repositories. Operator history has no release, so the
+release tags the other distributions gained in this checkpoint do not apply.
+Every Simple Changelogs distribution now shares one guidance number, so this
+distribution moves from 7 to 25. No question is asked, no setting changes, and
+no backfill is needed.

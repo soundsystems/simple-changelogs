@@ -316,6 +316,7 @@ describe("release-train detection", () => {
     expect(onboarding.unresolvedQuestions).toContain("shared-version-lines");
     expect(configured.guidanceUpdate?.questions).toEqual([
       "shared-version-lines",
+      "release-tags",
     ]);
   });
 
@@ -415,8 +416,8 @@ describe("guidance 22 version-line notice", () => {
 
     expect(inspection.status).toBe("already-configured");
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 24,
-      questions: ["shared-version-lines"],
+      currentVersion: 25,
+      questions: ["shared-version-lines", "release-tags"],
       recordedVersion: 21,
       userPrompt: null,
     });
@@ -448,14 +449,12 @@ describe("guidance 22 version-line notice", () => {
     );
 
     for (const inspection of inspections) {
-      expect(inspection.guidanceUpdate?.currentVersion).toBe(24);
-      expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
-        false
-      );
+      expect(inspection.guidanceUpdate?.currentVersion).toBe(25);
+      expect(inspection.guidanceUpdate?.questions).toEqual(["release-tags"]);
     }
   });
 
-  test("other distributions' notices never carry the question", async () => {
+  test("other distributions' notices never carry the version-line question", async () => {
     const repo = await twoTrainRepo();
     await writeJson(repo, ".simple-changelogs.json", {
       ...fullPolicy({ distribution: "web" }),
@@ -469,10 +468,8 @@ describe("guidance 22 version-line notice", () => {
       repo,
     });
 
-    expect(inspection.guidanceUpdate?.currentVersion).toBe(22);
-    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
-      false
-    );
+    expect(inspection.guidanceUpdate?.currentVersion).toBe(25);
+    expect(inspection.guidanceUpdate?.questions).toEqual(["release-tags"]);
   });
 
   test("records the answer with the disposition and never asks again", async () => {
@@ -507,7 +504,7 @@ describe("guidance 22 version-line notice", () => {
     expect(policy.sharedVersionLines).toEqual(catchUpLine());
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 24,
+      version: 25,
     });
     expect(after.guidanceUpdate).toBeNull();
   });

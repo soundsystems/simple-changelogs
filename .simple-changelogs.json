@@ -3,7 +3,7 @@
   "distribution": "skill-repository",
   "guidance": {
     "backfillStatus": "not-applicable",
-    "version": 15
+    "version": 25
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
@@ -15,5 +15,6 @@
     "suggestWhenAsking": true
   },
   "majorReleaseNaming": "named",
-  "releaseNoteGrouping": "product-areas"
+  "releaseNoteGrouping": "product-areas",
+  "releaseTags": "v{version}"
 }

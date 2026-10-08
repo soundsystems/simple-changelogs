@@ -6,15 +6,15 @@ const repositoryRoot = join(import.meta.dir, "../../../..");
 
 const distributions = [
   {
-    guidanceVersion: 24,
+    guidanceVersion: 25,
     name: "simple-changelogs",
   },
   {
-    guidanceVersion: 22,
+    guidanceVersion: 25,
     name: "simple-changelogs-web",
   },
   {
-    guidanceVersion: 22,
+    guidanceVersion: 25,
     name: "simple-changelogs-web-cms",
   },
 ] as const;

@@ -161,6 +161,9 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+// `"none"`, one `<prefix>{version}` template, or one per release train.
+export type ReleaseTagsSetting = string | Record<string, string>;
+
 export interface CurationBudget {
   max: number;
   min: number;
@@ -184,6 +187,7 @@ export interface RepoPolicy {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   schemaVersion: 1;
   sharedVersionLines?: SharedVersionLine[];
   signatures: SignaturePolicy;
@@ -234,6 +238,7 @@ export interface SetupSelection {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   scope?: SetupScope;
   setupStyle?: SetupStyle;
   sharedVersionLines?: SharedVersionLine[];
@@ -327,8 +332,8 @@ export interface IntegrationCapabilities {
   features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2, 3] | [1, 2] | [2];
-  requestVersions: [1, 2] | [1];
+  receiptVersions: [1, 2, 3, 4] | [1, 2, 4] | [2];
+  requestVersions: [1, 2, 3] | [1, 3] | [1];
   schemaDigests: {
     changelogReceipt: string;
     changelogRequest: string;
@@ -354,7 +359,7 @@ export interface SetupResult {
     }[];
     currentVersion: number;
     headline: "Simple Changelogs has recently been updated.";
-    questions?: ["shared-version-lines"];
+    questions?: ("release-tags" | "shared-version-lines")[];
     recordedVersion: number;
     releaseNotesOffer: string;
     releaseNotesPath: string;
@@ -371,13 +376,15 @@ export interface SetupResult {
       id:
         | "major-release-naming"
         | "public-version-actions"
-        | "public-version-suggestions";
+        | "public-version-suggestions"
+        | "release-tags";
       required: boolean;
     }[];
     resolvedPolicy: PublicVersioningPolicy;
     resolvedPreferences: {
       majorReleaseNaming: MajorReleaseNamingPolicy;
       releaseNoteGrouping: ReleaseNoteGroupingPolicy;
+      releaseTags: ReleaseTagsSetting;
     };
     summary: string;
   } | null;
@@ -398,6 +405,16 @@ export interface SetupResult {
     stored: PublicVersioningPolicy | null;
   } | null;
   recommendation: SetupRecommendation;
+  releaseTags: {
+    ciTriggers: string[];
+    convention: ReleaseTagsSetting | null;
+    evidence: string[];
+    reason: string | null;
+    recommended: ReleaseTagsSetting;
+    stored: ReleaseTagsSetting | null;
+    tooling: string[];
+    trains: string[];
+  } | null;
   repository: string;
   schemaVersion: 1;
   selection: SetupSelection;

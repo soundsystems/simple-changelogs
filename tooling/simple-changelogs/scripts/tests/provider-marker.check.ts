@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawn } from "bun";
 import type { Distribution } from "../lib/types.ts";
 import { inspectRepository, providerMarkerFor } from "../setup.ts";
 
@@ -52,7 +53,60 @@ const manifestGuidanceVersions = async (): Promise<Map<string, number>> => {
   );
 };
 
+// Each installed helper reads its own minified schemas; run it from the
+// distribution directory so the digests come from the shipped bytes.
+const shippedCapabilities = async (directoryName: string): Promise<unknown> => {
+  const repo = await mkdtemp(join(tmpdir(), "changelog-provider-shipped-"));
+  try {
+    const child = spawn(
+      [
+        process.execPath,
+        join(SKILLS_ROOT, directoryName, "scripts", "setup.ts"),
+        "inspect",
+        "--task-mode",
+        "read",
+        "--repo",
+        repo,
+      ],
+      {
+        env: { ...process.env, SIMPLE_CHANGELOGS_CONFIG_DIR: repo },
+        stderr: "pipe",
+        stdout: "pipe",
+      }
+    );
+    const [stdout] = await Promise.all([
+      new Response(child.stdout).text(),
+      child.exited,
+    ]);
+    return (JSON.parse(stdout) as { capabilities: unknown }).capabilities;
+  } finally {
+    await rm(repo, { force: true, recursive: true });
+  }
+};
+
 describe("changelog-provider marker", () => {
+  test("each shipped helper advertises its marker from its own minified schemas", async () => {
+    const directories = [
+      ...MARKER_DIRECTORIES.map(([, directoryName]) => directoryName),
+      "simple-changelogs-cms",
+    ];
+    const results = await Promise.all(
+      directories.map(async (directoryName) => ({
+        computed: await shippedCapabilities(directoryName),
+        marker: JSON.parse(
+          await readFile(
+            join(SKILLS_ROOT, directoryName, MARKER_FILENAME),
+            "utf8"
+          )
+        ) as unknown,
+      }))
+    );
+
+    for (const { computed, marker } of results) {
+      expect(computed).toEqual(marker);
+    }
+  });
+
   for (const [distribution, directoryName] of MARKER_DIRECTORIES) {
     test(`skills/${directoryName} ships a marker matching setup.ts`, async () => {
       const markerPath = join(SKILLS_ROOT, directoryName, MARKER_FILENAME);
@@ -78,12 +132,15 @@ describe("changelog-provider marker", () => {
         declaredGuidance.get(directoryName) as number
       );
       expect(marker.features).toContain("guidance-update-notices");
-      // Only full writes receipt v3; no marker advertises the
+      // Only full writes receipt v3; the others skip request v2 and receipt
+      // v3, so controllers before Simple Changes 0.27.0 still negotiate
+      // request v1 and receipt v2 with them. No marker advertises the
       // shared-version-lines feature, which consumers before Simple Changes
-      // 0.23.0 reject.
+      // 0.23.0 reject, or any feature for release tags.
       const full = distribution === "full";
-      expect(marker.requestVersions).toEqual(full ? [1, 2] : [1]);
-      expect(marker.receiptVersions).toEqual(full ? [1, 2, 3] : [1, 2]);
+      expect(marker.requestVersions).toEqual(full ? [1, 2, 3] : [1, 3]);
+      expect(marker.receiptVersions).toEqual(full ? [1, 2, 3, 4] : [1, 2, 4]);
+      expect(marker.guidanceVersion).toBe(25);
       expect(marker.features).not.toContain("shared-version-lines");
     });
   }
@@ -123,6 +180,7 @@ describe("changelog-provider marker", () => {
     ]);
     expect(marker.requestVersions).toEqual([1]);
     expect(marker.receiptVersions).toEqual([2]);
+    expect(marker.guidanceVersion).toBe(25);
     expect(marker.schemaDigests).toEqual(
       (await providerMarkerFor("full")).schemaDigests
     );

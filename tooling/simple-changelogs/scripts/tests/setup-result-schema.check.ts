@@ -33,7 +33,7 @@ type Check = (schema: Schema, value: unknown, path: string) => string[];
 // Evaluates the draft 2020-12 subset setup-result.schema.json uses: local
 // $ref, const, enum, type, allOf/anyOf/oneOf, required, properties,
 // additionalProperties, items, min/maxItems, uniqueItems, minLength, pattern,
-// and minimum.
+// minProperties, schema-valued additionalProperties, and minimum.
 const combinatorViolations: Check = (schema, value, path) => {
   const found: string[] = [];
   const matches = (branch: unknown) =>
@@ -113,16 +113,24 @@ const objectViolations: Check = (schema, value, path) => {
   }
   const properties = isObject(schema.properties) ? schema.properties : {};
   const required = (schema.required as string[] | undefined) ?? [];
+  const { additionalProperties } = schema;
   return [
     ...required
       .filter((key) => !Object.hasOwn(value, key))
       .map((key) => `${path}.${key} is required`),
+    ...(typeof schema.minProperties === "number" &&
+    Object.keys(value).length < schema.minProperties
+      ? [`${path} has too few properties`]
+      : []),
     ...Object.entries(value).flatMap(([key, item]) => {
       const property = properties[key];
       if (isObject(property)) {
         return violations(property, item, `${path}.${key}`);
       }
-      return schema.additionalProperties === false
+      if (isObject(additionalProperties)) {
+        return violations(additionalProperties, item, `${path}.${key}`);
+      }
+      return additionalProperties === false
         ? [`${path}.${key} is not allowed`]
         : [];
     }),
@@ -334,9 +342,83 @@ describe("setup-result.schema.json", () => {
     });
 
     expect(onboarding.inventory.versionTrains).toHaveLength(2);
-    expect(notice.guidanceUpdate?.questions).toEqual(["shared-version-lines"]);
+    expect(notice.guidanceUpdate?.questions).toEqual([
+      "shared-version-lines",
+      "release-tags",
+    ]);
     expect(recorded.policy?.state).toBe("valid");
     expect([onboarding, notice, recorded].flatMap(check)).toEqual([]);
+  });
+
+  test("accepts release-tag evidence, recommendations, stored maps, and the tag question", async () => {
+    const config = await temporaryDirectory("config");
+    const repo = await temporaryDirectory("repo");
+    const write = async (path: string, value: string) => {
+      await mkdir(join(repo, path, ".."), { recursive: true });
+      await writeFile(join(repo, path), value, "utf8");
+    };
+    await write("apps/web/package.json", JSON.stringify({ version: "1.0.0" }));
+    await write(
+      "apps/mobile/app.json",
+      JSON.stringify({ expo: { version: "1.0.0" } })
+    );
+    await write(
+      ".github/workflows/release.yml",
+      "on:\n  push:\n    tags: ['v*']\n"
+    );
+    await write(
+      "package.json",
+      JSON.stringify({ devDependencies: { "release-it": "19.0.0" } })
+    );
+    const onboarding = await inspectRepository({
+      configDirectory: config,
+      distribution: "full",
+      repo,
+    });
+    const configured = await applySetup({
+      backfillStatus: "not-applicable",
+      configDirectory: config,
+      confirm: true,
+      distribution: "full",
+      mobileReleaseNotePlacement: "mobile-only",
+      releaseTags: { mobile: "mobile@{version}", web: "none" },
+      repo,
+      scope: "repository",
+    });
+    const cms = await inspectRepository({
+      configDirectory: config,
+      distribution: "cms",
+      repo: await temporaryDirectory("repo"),
+    });
+
+    expect(onboarding.releaseTags).toMatchObject({
+      ciTriggers: [".github/workflows/release.yml"],
+      recommended: "none",
+      tooling: ["release-it (package.json)"],
+    });
+    expect(onboarding.onboardingContribution?.questions).toContainEqual({
+      id: "release-tags",
+      required: true,
+    });
+    expect(configured.status).toBe("configured");
+    expect(configured.selection.releaseTags).toEqual({
+      mobile: "mobile@{version}",
+      web: "none",
+    });
+    expect(cms.releaseTags).toBeNull();
+    expect([onboarding, configured, cms].flatMap(check)).toEqual([]);
+    expect(
+      check({
+        ...configured,
+        selection: { ...configured.selection, releaseTags: "v1{version}x" },
+      }).length
+    ).toBeGreaterThan(0);
+    expect(
+      check({
+        ...configured,
+        selection: { ...configured.selection, releaseTags: {} },
+      }).length
+    ).toBeGreaterThan(0);
   });
 
   test("rejects a CMS policy at guidance version 0 and unknown fields", async () => {

@@ -280,134 +280,83 @@ automatically, and record the one-time disposition with
 <!-- simple-changelogs-guidance-update version="16" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Web setup now verifies real destinations and product structure before reusing, proposing, or recording a surface as planned." -->
 ## Guidance 16
 
-First-use setup now begins with a plain-language overview and offers **Walk me
-through it**. The walkthrough explains the customer and developer histories,
-Web release-note destinations, unresolved preferences, consequences,
-recommended defaults, and authority boundaries one question at a time.
-
-Installed-guidance notices now lead with a clear headline and up to three
-practical effects, confirm that saved settings and released history are
-unchanged, and offer **Walk me through what changed — Recommended**, **Keep my
-current settings and continue**, or **View detailed release notes**. Historical
-review remains a separate, conditional choice, and setup grants no deployment
-or new-surface authority.
-
-Web onboarding now reports discovered Web, Mobile, store, CMS, workspace, and
-release-note evidence before asking where notes belong. It reuses an established
-Web destination; if none exists, setup may recommend one but asks before the
-exact current surface, then rescans and requires confirmation or a revised
-choice. A selection cannot prove a product, route, authentication boundary,
-credential, environment, or monorepo and grants no creation or deployment
-authority.
+First-use setup opens with a plain-language overview and offers **Walk me
+through it**, and guidance notices lead with a headline and up to three
+practical effects, then offer a guided review, continuing, or the detailed
+notes. Web onboarding reports the Web, Mobile, store, CMS, workspace, and
+release-note evidence it found, reuses an established Web destination, and asks
+before recommending a new one, rescanning to confirm it. No choice proves a
+product exists or grants creation or deployment authority.
 
 <!-- simple-changelogs-guidance-update version="17" kinds="behavior,onboarding" backfill="not-needed" summary="Web setup now offers progressive confirmation receipts, a two-step page and audience flow, and separate source-revision and distribution-guidance identity." -->
 ## Guidance 17
 
-Recommended Web setup now presents one plain-language, evidence-backed receipt
-and asks only for confirmation or changes. Guided setup defines unfamiliar
-terms when they matter and asks about the Web destination before its placement,
-environment, links, or component details.
-
-Install and update reporting now separates the Git source revision, when known,
-from the selected distribution's guidance checkpoint.
-
-Confirmation receipts now show a compact consequential summary first with
-**Confirm**, **Show details**, and **Change something**. The complete receipt
-remains available, and details hidden by default cannot expand setup authority.
-
-Inspection reports whether its scan was complete and whether each product
-surface was detected, not detected, or remains uncertain. It omits irrelevant
-Mobile and store questions only after a complete, recognizable scan; uncertain
-repositories get one product-shape confirmation instead.
-
-Web archive setup now asks **Should I build a Release Notes page?**, defines it
-as the complete history of shipped updates, and offers a dedicated page, an
-existing page, or no page while explaining that building it does not expose it
-live. It then asks **Who should see Release Notes?** and maps developers, preview
-reviewers, and live visitors to the environments where the page appears.
-
-Version setup now offers automatic patch selection while minor and major
-releases ask, and explains each SemVer level with concrete examples. Ordinary
-first-time setup records `ask` for future missing release-note UI and waits to
-request authority for an exact surface; advanced `allow` and `existing-only`
-policies remain supported. This prospective change rewrites no released history
-and grants no surface, dependency, deployment, publication, or version authority.
+Recommended Web setup presents one evidence-backed receipt with **Confirm**,
+**Show details**, and **Change something**, and reports separate the Git source
+revision from the guidance checkpoint. Inspection marks each surface detected,
+not detected, or uncertain and skips Mobile and store questions only after a
+complete scan. Web archive setup asks whether to build a Release Notes page and
+who should see it, version setup can automate patches, and new setups record
+`ask` for future release-note surfaces.
 
 <!-- simple-changelogs-guidance-update version="18" kinds="behavior,onboarding" backfill="not-needed" summary="Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section." -->
 ## Guidance 18
 
-Release notes now group related changes under user-recognizable product areas by
-default, merging repeated categories and leaving sparse releases flat.
-Onboarding confirms whether stable major releases should receive a concise name
-beside the canonical version. Minor releases require no name, and patches always
-use one flat **Bug Fixes & Improvements** section. The preferences are
-prospective and grant no surface, deployment, publication, or version authority.
+Release notes group related bullets under user-recognizable product areas by
+default and keep sparse releases flat. Onboarding confirms whether stable major
+releases get a concise name beside the version; minor releases need no name,
+and patches use one flat **Bug Fixes & Improvements** section. Released history
+is unchanged.
 
 <!-- simple-changelogs-guidance-update version="19" kinds="capability,onboarding" backfill="optional" summary="A bundled read-only query CLI now answers release, entry, and structure-lint questions over the raw Markdown histories. Curated public release notes can now derive RELEASE_NOTES.md from the changelog." -->
 ## Guidance 19
 
-Web repositories gain a queryable history: agents and maintainers can answer history questions
-directly from `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` with the bundled
-`scripts/query.ts` helper. It lists release sections, shows one release by
-version, date, or `Unreleased`, filters entries by date, group, agent, or
-pattern, and lint-checks structure with a nonzero exit on problems. Bare
-versions resolve to full ones, duplicate headings are disambiguated by
-occurrence, and ambiguity produces a candidate list rather than a guess.
-
-The helper also understands the legacy `<!-- Agent: ... -->` signature dialect
-used before the canonical signature comment, so older attributed history stays
-queryable. Legacy signatures are reported as notes during lint, never treated
-as errors, and `references/querying.md` documents every subcommand.
-
-This addition is read-only. It changes no saved settings, asks no new
-onboarding questions, writes no cache or index beside the Markdown source of
-truth, and gives released history no reason for a backfill.
-
-Setup state recorded after onboarding — completing a partial released-history
-audit, acknowledging a guidance update, or changing contextual preferences —
-now writes through the same transaction-marked atomic path as initial
-onboarding, and re-recording identical contextual preferences reports the
-repository as already configured without rewriting stored policy.
-
-Repositories with a public marketing or web surface may now opt into curated
-public release notes. A new optional `publicReleaseNotes` repository policy
-(`full` by default, `curated` on request) derives a `RELEASE_NOTES.md` at each
-release boundary: a few one-sentence highlights within an optional
-`curationBudget` (default 3-8) plus one rollup line pointing at the complete
-changelog. The curated file is derived, never authored; every changelog entry
-is mechanically accounted as highlighted, rolled up, or omitted, and breaking
-changes and security notices are never omitted or rolled up. The proposed
-section rides the existing release receipt, onboarding asks one evidence-led
-question only when a public destination is detected, and repositories that
-keep the default `full` policy see no change. Backfilling curated sections for
-already-released history is a safe derived operation, offered once, never
-automatic.
+The bundled read-only `scripts/query.ts` lists releases, shows one release,
+filters entries, and lint-checks the Markdown histories, including legacy `<!--
+Agent: ... -->` signatures (`references/querying.md`). Setup writes after
+onboarding use the same atomic transaction as onboarding. Optional
+`publicReleaseNotes: "curated"` derives `RELEASE_NOTES.md` from the changelog
+at each release, accounting every entry as highlighted, rolled up, or omitted
+and never dropping breaking or security notes; a curated backfill is optional.
 
 <!-- simple-changelogs-guidance-update version="20" kinds="behavior" backfill="optional" summary="Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release." -->
 ## Guidance 20
 
-A reconciled release now keeps an empty `## Unreleased` heading in both
-changelogs; removing it let the next merge prepend into the newest release.
-`query.ts check` flags a duplicate or non-leading `Unreleased`. An optional
-audit restores a missing empty heading and reports entries the newest release
-absorbed; moving them needs separate authority.
+A reconciled release keeps an empty `## Unreleased` heading in both changelogs
+so the next merge cannot land in the newest release, and `query.ts check` flags
+a duplicate or non-leading one. An optional audit restores a missing heading
+and reports entries the newest release absorbed; moving them needs separate
+authority.
 
 <!-- simple-changelogs-guidance-update version="21" kinds="behavior" backfill="not-needed" summary="New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence." -->
 ## Guidance 21
 
 New changelog entries and release-note lines use commas, colons, periods, or
-parentheses instead of em-dashes; a sentence that would reach for one is
-rewritten rather than having the character swapped. A repository's documented
-house style still takes precedence. Setup and update questions now present each
-choice as `**Choice (Recommended)**: consequence`, with the choices and their
-defaults unchanged. Released entries keep their wording; no backfill is needed.
+parentheses instead of em dashes, rewriting the sentence rather than swapping
+the character, and setup and update choices read as `**Choice (Recommended)**:
+consequence`. Released entries keep their wording.
 
 <!-- simple-changelogs-guidance-update version="22" kinds="behavior" backfill="not-needed" summary="New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception." -->
 ## Guidance 22
 
-Web release notes and changelog entries now use no em dashes in new or
-edited copy unless the user explicitly requests them. Rewrite the sentence with
-commas, colons, periods, or parentheses as appropriate; do not merely swap the
-character. Repository house style no longer supplies an exception. Released
-history stays unchanged. This update asks no new policy questions and needs no
-backfill.
+New or edited Web release notes and changelog entries use no em dashes unless
+the user explicitly requests them, and repository house style no longer
+supplies an exception. Rewrite the sentence rather than swapping the character;
+released history stays unchanged.
+
+<!-- simple-changelogs-guidance-update version="25" kinds="capability,onboarding" backfill="not-needed" summary="Each release can now get a Git tag: Simple Changelogs names it in the release receipt, and Simple Changes 0.27.0 or later creates and pushes it. This update asks once how releases should be tagged." -->
+## Guidance 25
+
+Each public release can now get a Git tag on its exact released commit. The
+optional `releaseTags` setting picks the style: `"v{version}"`, another
+`<prefix>{version}` template, one template per release train such as
+`{"web": "web@{version}"}`, or `"none"`. Simple Changelogs names the tag in
+receipt v4; Simple Changes 0.27.0 or later creates and pushes it when the
+release goes out, under the approval that release already needs. Simple
+Changelogs never creates or pushes tags, and earlier releases are never tagged.
+
+This update asks **Should each release get a Git tag?** once, recommending the
+repository's existing tag style when local tags show one, and no tags when
+release tooling already creates them. No answer records nothing and leaves
+releases untagged. This distribution moves from 22 to 25 because every Simple
+Changelogs distribution now shares one guidance number. No backfill is needed.

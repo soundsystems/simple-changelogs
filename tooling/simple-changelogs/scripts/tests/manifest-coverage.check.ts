@@ -72,6 +72,11 @@ const FIXTURE_IDS = new Set([
   "next-major",
   "python-prerelease",
   "release-repo",
+  "release-tags-dated",
+  "release-tags-monorepo",
+  "release-tags-prefix",
+  "release-tags-tooling",
+  "release-tags-update",
   "routed-app",
   "single-changelog",
   "skill-package",
@@ -141,6 +146,11 @@ const TRIGGER_CASE_IDS = new Set([
 ]);
 
 const BEHAVIOR_CASE_IDS = new Set([
+  "behavior-release-tags-existing-style",
+  "behavior-release-tags-tooling-owns-tags",
+  "behavior-release-tags-monorepo",
+  "behavior-release-tags-date-only",
+  "behavior-release-tags-update-asks-once",
   "behavior-test-build-finalizer-owns-notes",
   "behavior-test-build-extend-existing-notes",
   "behavior-play-test-build-full-and-compact-notes",
@@ -262,8 +272,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(80);
-    expect(new Set(ids).size).toBe(80);
+    expect(ids).toHaveLength(85);
+    expect(new Set(ids).size).toBe(85);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });

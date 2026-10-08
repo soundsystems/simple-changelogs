@@ -7,7 +7,8 @@ import {
 } from "../lib/release-handoff.ts";
 
 // Parity between lib/release-handoff.ts and the vendored Simple Changes
-// 0.23.0 request and receipt schemas. The evaluator below mirrors the
+// 0.27.0 request and receipt schemas (request v3 and receipt v4 extend the
+// 0.23.0 request v2 and receipt v3). The evaluator below mirrors the
 // draft 2020-12 subset the controller's own validator implements (local $ref,
 // allOf, if/then/else, anyOf, const, enum, type, required, properties,
 // additionalProperties, minProperties, items, min/maxItems, uniqueItems,
@@ -170,6 +171,11 @@ const requestV2 = (phase: "classify" | "prepare" | "verify") => ({
   schemaVersion: 2,
   supportedReceiptVersions: [2, 3],
 });
+const requestV3 = (phase: "classify" | "prepare" | "verify") => ({
+  ...requestV2(phase),
+  schemaVersion: 3,
+  supportedReceiptVersions: [2, 3, 4],
+});
 
 const LINE = {
   members: ["mobile", "web"],
@@ -315,10 +321,28 @@ const toV3 = (receipt: Json): Json => ({
 const V3_RECEIPTS = Object.fromEntries(
   Object.entries(V2_RECEIPTS).map(([name, receipt]) => [name, toV3(receipt)])
 );
+// Receipt v4 names the release tag; the prepared release also covers the
+// no-tag case.
+const toV4 = (receipt: Json, tag: Json | null): Json => ({
+  ...receipt,
+  release: isRecord(receipt.release) ? { ...receipt.release, tag } : null,
+  schemaVersion: 4,
+});
+const TAG = { message: "Acme Mobile 1.0.0", name: "mobile@1.0.0" };
+const V4_RECEIPTS: Record<string, Json> = {
+  ...Object.fromEntries(
+    Object.entries(V3_RECEIPTS).map(([name, receipt]) => [
+      name,
+      toV4(receipt, TAG),
+    ])
+  ),
+  "prepared-untagged": toV4(V3_RECEIPTS.prepared as Json, null),
+};
 const REQUESTS: Record<string, Json> = Object.fromEntries(
   (["classify", "prepare", "verify"] as const).flatMap((phase) => [
     [`v1 ${phase}`, requestV1(phase)],
     [`v2 ${phase}`, requestV2(phase)],
+    [`v3 ${phase}`, requestV3(phase)],
   ])
 );
 
@@ -337,6 +361,15 @@ const VALUES: [string, unknown][] = [
   ["single", ["web"]],
   ["pair", ["web", "mobile"]],
 ];
+// Tag-shaped values, tried only inside receipt v4's release.tag so every
+// earlier result stays pinned.
+const TAG_VALUES: [string, unknown][] = [
+  ["v-tag", "v1.0.0"],
+  ["space", "v 1.0.0"],
+  ["dotted", "a..b"],
+  ["multiline", "Acme\n1.0.0"],
+  ["long", "x".repeat(201)],
+];
 const NESTED = [
   "",
   "revisionLineage",
@@ -344,6 +377,7 @@ const NESTED = [
   "versionDecision.versionLine",
   "versionDecision.versionLine.memberVersions",
   "release",
+  "release.tag",
   "paths.0",
 ];
 
@@ -372,14 +406,16 @@ const mutations = (name: string, base: Json): [string, unknown][] => {
       const dropped = clone(base);
       delete (at(dropped, path) as Json)[key];
       found.push([`${name}: ${prefix}${key} dropped`, dropped]);
-      for (const [label, value] of VALUES) {
+      const values =
+        path === "release.tag" ? [...VALUES, ...TAG_VALUES] : VALUES;
+      for (const [label, value] of values) {
         const changed = clone(base);
         (at(changed, path) as Json)[key] = clone(value);
         found.push([`${name}: ${prefix}${key}=${label}`, changed]);
       }
     }
   }
-  for (const version of [1, 2, 3]) {
+  for (const version of [1, 2, 3, 4]) {
     found.push([
       `${name}: schemaVersion ${version}`,
       { ...base, schemaVersion: version },
@@ -422,6 +458,8 @@ const RULE_MESSAGES = [
   "must exceed the train's own",
   "does not fit",
   "is below the current version",
+  "release tag",
+  "the release tag changed after prepare",
 ];
 const ruleOnly = (errors: string[]): boolean =>
   errors.every((error) => RULE_MESSAGES.some((rule) => error.includes(rule)));
@@ -448,6 +486,7 @@ const cases = (
         isRecord(value) &&
         (label.startsWith("classified-public:") ||
           value.schemaVersion === 3 ||
+          value.schemaVersion === 4 ||
           (value.schemaVersion === 2 && "supportedReceiptVersions" in value)),
       label,
       ours: ours(validate, value),
@@ -466,6 +505,12 @@ const receiptCases = cases(
         receipt,
       ])
     ),
+    ...Object.fromEntries(
+      Object.entries(V4_RECEIPTS).map(([name, receipt]) => [
+        `v4 ${name}`,
+        receipt,
+      ])
+    ),
   },
   receiptSchema,
   (value) => validateChangelogReceipt(value)
@@ -476,7 +521,7 @@ const all = [...requestCases, ...receiptCases];
 // and receipt v2 retain their original checks. Those never were a full schema
 // validator: these are the fields where the
 // corpus finds the schema refusing an input they accept, with case counts.
-// Request v2 and receipt v3 have none.
+// Requests v2 and v3 and receipts v3 and v4 have none.
 const LEGACY_GAPS: Record<string, number> = {
   "receipt v2: observedAt": 88,
   "receipt v2: paths": 1,
@@ -517,8 +562,20 @@ const LEGACY_UNCHANGED_RESULTS_DIGEST =
 const CLASSIFIED_RESULTS_DIGEST =
   "fdf9391a4c433dc9ecb1d7df8b28fcfbe4fc727f7129f31cbde2617375036e9e";
 
+// Request v3 and receipt v4 bases are new: their mutations into earlier
+// versions are new inputs, not changed legacy behavior, so the pins below
+// cover only the bases they always covered.
+const NEW_BASES = new Set([
+  ...(["classify", "prepare", "verify"] as const).map((phase) => `v3 ${phase}`),
+  ...Object.keys(V4_RECEIPTS).map((name) => `v4 ${name}`),
+]);
 const legacy = all.filter(
-  ({ current, label }) => !(current || label.includes("classified-public:"))
+  ({ current, label }) =>
+    !(
+      current ||
+      label.includes("classified-public:") ||
+      NEW_BASES.has(label.split(": ")[0] ?? "")
+    )
 );
 const gapSummary = (): Record<string, number> => {
   const summary: Record<string, number> = {};
@@ -533,11 +590,13 @@ const gapSummary = (): Record<string, number> => {
   return summary;
 };
 
-describe("protocol schema parity (Simple Changes 0.23.0)", () => {
+describe("protocol schema parity (Simple Changes 0.27.0)", () => {
   test("every base fixture is accepted by both the schema and the validator", () => {
     const bases = all.filter(({ label }) => label.endsWith(": base"));
     expect(bases.length).toBe(
-      Object.keys(REQUESTS).length + Object.keys(V2_RECEIPTS).length * 2
+      Object.keys(REQUESTS).length +
+        Object.keys(V2_RECEIPTS).length * 2 +
+        Object.keys(V4_RECEIPTS).length
     );
     expect(
       bases
@@ -548,7 +607,7 @@ describe("protocol schema parity (Simple Changes 0.23.0)", () => {
     ).toEqual([]);
   });
 
-  test("request v2 and receipt v3 never accept what the schema refuses or throw", () => {
+  test("requests v2 and v3 and receipts v3 and v4 never accept what the schema refuses or throw", () => {
     const current = all.filter((item) => item.current);
     expect(current.length).toBeGreaterThan(4000);
     expect(

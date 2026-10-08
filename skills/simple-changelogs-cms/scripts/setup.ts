@@ -28,6 +28,7 @@ import {
   sep,
 } from "node:path";
 import { promisify } from "node:util";
+import { YAML } from "bun";
 
 const BACKFILL_STATUSES = [
   "not-applicable",
@@ -175,6 +176,8 @@ const MOBILE_APP_PATH = /^(?:apps?\/mobile|ios|android)(?:\/|$)/u;
 const STORE_METADATA_PATH =
   /(?:^|\/)(?:fastlane\/metadata|metadata\/.+(?:changelogs?|release.?notes?)|eas\.json$|app\.json$|app\.config\.(?:cjs|js|mjs|ts)$)/u;
 const WORKSPACE_APP_PATH = /(?:^|\/)apps\/([^/]+)(?:\/|$)/u;
+const WORKSPACE_PACKAGE_PATH = /^packages\/([^/]+)\//u;
+const WORKSPACE_MEMBER_DIRECTORY = /^(?:apps|packages)\/[^/]+/u;
 const COMPONENT_CONFIG_FILE = "components.json";
 const SWIFT_SOURCE_PATH = /\.swift$/u;
 const SWIFT_UI_CONTENT = /\bSwiftUI\b/u;
@@ -280,14 +283,9 @@ type SetupStatus =
   | "ready"
   | "run-only";
 
-const GUIDANCE_VERSIONS = {
-  full: 24,
-  mobile: 21,
-  "skill-repository": 15,
-  web: 22,
-  "web-cms": 22,
-} as const satisfies Record<Distribution, number>;
-const CMS_GUIDANCE_VERSION = 7;
+// Every distribution shares one guidance number, and each family release is
+// numbered 0.<guidance>.<patch>, so a distribution may jump straight to it.
+const GUIDANCE_VERSION = 25;
 // The web-cms distribution records the CMS side of its policy on a separate
 // guidance track from the standalone CMS distribution.
 const WEB_CMS_CMS_GUIDANCE_VERSION = 2;
@@ -306,11 +304,16 @@ const DISTRIBUTION_DIRECTORIES = {
 // guidance bump.
 const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
 const SHARED_VERSION_LINES_GUIDANCE = 22;
+const RELEASE_TAGS_GUIDANCE = 25;
 
 export interface CurationBudget {
   max: number;
   min: number;
 }
+
+// `"none"`, one `<prefix>{version}` template, or one template (or `"none"`)
+// per release train.
+export type ReleaseTagsSetting = string | Record<string, string>;
 
 interface RepoPolicy {
   crossSurfaceVersioning?: CrossSurfaceVersioning;
@@ -330,6 +333,7 @@ interface RepoPolicy {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   schemaVersion: 1;
   sharedVersionLines?: SharedVersionLine[];
   signatures: SignaturePolicy;
@@ -430,6 +434,7 @@ interface Selection {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   sharedVersionLines?: SharedVersionLine[];
@@ -447,6 +452,7 @@ type OptionalSelectionKeys =
   | "releaseNoteEnvironmentScope"
   | "releaseNoteGrouping"
   | "releaseNoteLinks"
+  | "releaseTags"
   | "sharedVersionLines";
 
 type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
@@ -479,6 +485,7 @@ export interface SetupResult {
   policy: StateRecord<RepoPolicy> | null;
   publicVersioning: PublicVersioningResolution | null;
   recommendation: Recommendation;
+  releaseTags: ReleaseTagsInspection | null;
   repository: string;
   schemaVersion: 1;
   selection: Selection;
@@ -488,6 +495,22 @@ export interface SetupResult {
   writeCapable: boolean;
   writes: WriteRecord[];
 }
+
+// Read-only evidence for the release-tag question: local tags (never
+// fetched), tag-creating tooling, CI that runs on tag pushes, and date-only
+// release headings, with the value a confirmed setup stores by default.
+export interface ReleaseTagsInspection {
+  ciTriggers: string[];
+  convention: ReleaseTagsSetting | null;
+  evidence: string[];
+  reason: string | null;
+  recommended: ReleaseTagsSetting;
+  stored: ReleaseTagsSetting | null;
+  tooling: string[];
+  trains: string[];
+}
+
+type GuidanceQuestion = "release-tags" | "shared-version-lines";
 
 export interface GuidanceUpdateNotice {
   actions: ("walkthrough" | "continue" | "view-release-notes")[];
@@ -500,7 +523,7 @@ export interface GuidanceUpdateNotice {
   }[];
   currentVersion: number;
   headline: "Simple Changelogs has recently been updated.";
-  questions?: ["shared-version-lines"];
+  questions?: GuidanceQuestion[];
   recordedVersion: number;
   releaseNotesOffer: string;
   releaseNotesPath: string;
@@ -517,13 +540,15 @@ export interface OnboardingContribution {
     id:
       | "major-release-naming"
       | "public-version-actions"
-      | "public-version-suggestions";
+      | "public-version-suggestions"
+      | "release-tags";
     required: boolean;
   }[];
   resolvedPolicy: PublicVersioningPolicy;
   resolvedPreferences: {
     majorReleaseNaming: MajorReleaseNamingPolicy;
     releaseNoteGrouping: ReleaseNoteGroupingPolicy;
+    releaseTags: ReleaseTagsSetting;
   };
   summary: string;
 }
@@ -552,8 +577,8 @@ export interface IntegrationCapabilities {
   features: IntegrationFeatures;
   guidanceVersion: number;
   provider: "simple-changelogs";
-  receiptVersions: [1, 2, 3] | [1, 2] | [2];
-  requestVersions: [1, 2] | [1];
+  receiptVersions: [1, 2, 3, 4] | [1, 2, 4] | [2];
+  requestVersions: [1, 2, 3] | [1, 3] | [1];
   schemaDigests: {
     changelogReceipt: string;
     changelogRequest: string;
@@ -593,6 +618,7 @@ export interface ApplyOptions extends InspectOptions {
   releaseNoteEnvironmentScope?: ReleaseNoteEnvironmentScope;
   releaseNoteGrouping?: ReleaseNoteGroupingPolicy;
   releaseNoteLinks?: ReleaseNoteLinkPolicy;
+  releaseTags?: ReleaseTagsSetting;
   scope?: PreferenceScope;
   setupStyle?: SetupStyle;
   sharedVersionLines?: SharedVersionLine[];
@@ -771,16 +797,26 @@ const integrationCapabilitiesFor = async (
     readFile(capabilitySchemaPath("changelog-request.schema.json"), "utf8"),
     readFile(capabilitySchemaPath("changelog-receipt.schema.json"), "utf8"),
   ]);
-  // Only full writes request v2's receipt v3 with its version line.
-  const full = installed === "full";
-  const receiptVersions: [1, 2] | [2] = installed === "cms" ? [2] : [1, 2];
+  // Only full writes request v2's receipt v3 with its version line. Request
+  // v3 and receipt v4 name the release tag; the other versioned distributions
+  // skip request v2 and receipt v3, so a controller before Simple Changes
+  // 0.27.0 still negotiates request v1 and receipt v2 with them. CMS history
+  // has no release to tag.
+  let versions: Pick<
+    IntegrationCapabilities,
+    "receiptVersions" | "requestVersions"
+  > = { receiptVersions: [1, 2, 4], requestVersions: [1, 3] };
+  if (installed === "full") {
+    versions = { receiptVersions: [1, 2, 3, 4], requestVersions: [1, 2, 3] };
+  } else if (installed === "cms") {
+    versions = { receiptVersions: [2], requestVersions: [1] };
+  }
   return {
     distribution: installed,
     features: integrationFeaturesFor(installed),
-    guidanceVersion: currentGuidanceVersionFor(installed),
+    guidanceVersion: GUIDANCE_VERSION,
     provider: "simple-changelogs",
-    receiptVersions: full ? [1, 2, 3] : receiptVersions,
-    requestVersions: full ? [1, 2] : [1],
+    ...versions,
     schemaDigests: {
       changelogReceipt: digestSchema(receiptSchema),
       changelogRequest: digestSchema(requestSchema),
@@ -797,9 +833,6 @@ const capabilitiesFor = (
 export const providerMarkerFor = (
   installed: Distribution | "cms"
 ): Promise<IntegrationCapabilities> => integrationCapabilitiesFor(installed);
-
-const currentGuidanceVersionFor = (installed: Distribution | "cms"): number =>
-  installed === "cms" ? CMS_GUIDANCE_VERSION : GUIDANCE_VERSIONS[installed];
 
 const guidanceReleaseNotesPath = (installed: Distribution | "cms"): string => {
   const packageRoot = resolve(import.meta.dir, "..");
@@ -879,7 +912,7 @@ const guidanceUpdateNoticeFor = async (
   const tracks = [
     {
       cmsTrack: false,
-      current: currentGuidanceVersionFor(installed),
+      current: GUIDANCE_VERSION,
       recorded: policy.guidance.version,
     },
     {
@@ -1004,6 +1037,141 @@ const sharedVersionLineErrors = (value: Record<string, unknown>): string[] => {
   return errors;
 };
 
+// Release tags: a template is a literal prefix plus the exact public version,
+// so the version alone decides the name and two trains with prefix-free
+// prefixes can never expand to the same tag.
+const VERSION_PLACEHOLDER = "{version}";
+const NO_RELEASE_TAGS = "none";
+const RELEASE_TAG_PREFIX = /^[A-Za-z0-9._+/@-]*$/u;
+const VERSION_BOUNDARY = /[0-9.]$/u;
+// Git refuses spaces, control characters, and these in any ref name.
+const REF_FORBIDDEN_CHARACTERS = new Set("~^:?*[\\");
+// A sample public version for checking what a template expands to.
+const SAMPLE_TAG_VERSION = "1.2.0";
+
+/**
+ * Why Git would refuse `refs/tags/<name>`, matching `git check-ref-format`,
+ * plus a leading `-` so a name never reads as a command-line option. Null
+ * when the name is acceptable.
+ */
+export const releaseTagNameProblem = (name: string): string | null => {
+  if (name === "") {
+    return "is empty";
+  }
+  if (name.startsWith("-")) {
+    return "must not start with -";
+  }
+  if (
+    [...name].some(
+      (character) =>
+        (character.codePointAt(0) ?? 0) <= 0x20 ||
+        character === "\u007f" ||
+        REF_FORBIDDEN_CHARACTERS.has(character)
+    )
+  ) {
+    return "contains a space, control character, or one of ~ ^ : ? * [ \\";
+  }
+  if (name.startsWith("/") || name.endsWith("/")) {
+    return "must not start or end with /";
+  }
+  if (name.endsWith(".")) {
+    return "must not end with .";
+  }
+  for (const sequence of ["..", "@{", "//"]) {
+    if (name.includes(sequence)) {
+      return `must not contain ${sequence}`;
+    }
+  }
+  if (
+    name
+      .split("/")
+      .some(
+        (component) => component.startsWith(".") || component.endsWith(".lock")
+      )
+  ) {
+    return "must not have a component that starts with . or ends with .lock";
+  }
+  return null;
+};
+
+/** Why a `<prefix>{version}` template is unusable, or null when it is valid. */
+export const releaseTagTemplateProblem = (template: unknown): string | null => {
+  if (typeof template !== "string") {
+    return "must be a string";
+  }
+  if (
+    template.split(VERSION_PLACEHOLDER).length !== 2 ||
+    !template.endsWith(VERSION_PLACEHOLDER)
+  ) {
+    return `must contain ${VERSION_PLACEHOLDER} exactly once, at the end`;
+  }
+  const prefix = template.slice(0, -VERSION_PLACEHOLDER.length);
+  if (!RELEASE_TAG_PREFIX.test(prefix)) {
+    return "may put only letters, digits, and . _ - + / @ before {version}";
+  }
+  if (VERSION_BOUNDARY.test(prefix)) {
+    return "must not put a digit or . directly before {version}";
+  }
+  if (prefix.split("/").some((component) => component.endsWith(".lock"))) {
+    return "must not have a part ending in .lock";
+  }
+  const problem = releaseTagNameProblem(prefix + SAMPLE_TAG_VERSION);
+  return problem ? `expands to a tag name that ${problem}` : null;
+};
+
+const releaseTagPrefix = (template: string): string =>
+  template.slice(0, -VERSION_PLACEHOLDER.length);
+
+/**
+ * Validates a `releaseTags` setting: absent, `"none"`, one template, or a
+ * non-empty map of release trains to templates or `"none"` whose prefixes
+ * are prefix-free, so no two trains can ever name one tag.
+ */
+export const releaseTagsErrors = (
+  value: unknown,
+  field = "releaseTags"
+): string[] => {
+  // Absent means no tags, like "none".
+  if (value === undefined || value === NO_RELEASE_TAGS) {
+    return [];
+  }
+  if (typeof value === "string") {
+    const problem = releaseTagTemplateProblem(value);
+    return problem ? [`${field} ${problem}`] : [];
+  }
+  if (!isRecord(value) || Object.keys(value).length === 0) {
+    return [
+      `${field} must be "none", a "<prefix>{version}" template, or a map of release trains to templates`,
+    ];
+  }
+  const errors: string[] = [];
+  const prefixes: [string, string][] = [];
+  for (const [train, template] of Object.entries(value)) {
+    if (train.trim() === "") {
+      errors.push(`${field} needs a release-train name for every template`);
+    }
+    if (template === NO_RELEASE_TAGS) {
+      continue;
+    }
+    const problem = releaseTagTemplateProblem(template);
+    if (problem) {
+      errors.push(`${field}.${train} ${problem}`);
+    } else {
+      prefixes.push([train, releaseTagPrefix(template as string)]);
+    }
+  }
+  prefixes.forEach(([train, prefix], index) => {
+    for (const [other, otherPrefix] of prefixes.slice(index + 1)) {
+      if (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix)) {
+        errors.push(
+          `${field}.${train} and ${field}.${other} could name one tag; no prefix may equal or begin another`
+        );
+      }
+    }
+  });
+  return errors;
+};
+
 const validateRepoPolicy = (
   value: unknown
 ): { errors: string[]; value?: RepoPolicy } => {
@@ -1031,6 +1199,7 @@ const validateRepoPolicy = (
           "releaseNoteEnvironmentScope",
           "releaseNoteGrouping",
           "releaseNoteLinks",
+          "releaseTags",
           "sharedVersionLines",
         ]
       )
@@ -1106,6 +1275,7 @@ const validateRepoPolicy = (
     value.releaseNoteLinks,
     RELEASE_NOTE_LINK_POLICIES
   );
+  errors.push(...releaseTagsErrors(value.releaseTags));
   if (
     value.mobileReleaseNotePlacement !== undefined &&
     !oneOf(value.mobileReleaseNotePlacement, MOBILE_RELEASE_NOTE_PLACEMENTS)
@@ -1635,16 +1805,47 @@ const collectFileEvidence = (
 };
 
 // Release-train version owners; a "$(...)" build variable reads as null.
+// A version owner, and whether only release tags count it: a root product
+// that is not a workspace root, or a published packages/* package, releases
+// on its own but never joins a shared version line.
+interface VersionOwner extends VersionTrain {
+  dependencies: string[];
+  releaseOnly: boolean;
+}
+
+// The train a root or packages/* package.json releases as, or undefined when
+// it releases nothing: a workspace root, or a private or unversioned library.
+const releaseOnlyTrainFor = (
+  lower: string,
+  manifest: Record<string, unknown>
+): string | undefined => {
+  const member = WORKSPACE_PACKAGE_PATH.exec(lower)?.[1];
+  const ownName =
+    typeof manifest.name === "string" && manifest.name ? manifest.name : null;
+  if (dirname(lower) === ".") {
+    return Object.hasOwn(manifest, "workspaces")
+      ? undefined
+      : (ownName ?? "root");
+  }
+  return member &&
+    dirname(lower) === `packages/${member}` &&
+    manifest.private !== true
+    ? (ownName ?? member)
+    : undefined;
+};
+
 const versionOwnerFor = (
   path: string,
   content: string
-): VersionTrain | undefined => {
+): VersionOwner | undefined => {
   const lower = path.toLowerCase();
   const name = basename(lower);
   const app = WORKSPACE_APP_PATH.exec(lower)?.[1];
   const native = NATIVE_OWNER.exec(lower)?.[1];
   let train = native;
   let raw: unknown;
+  let releaseOnly = false;
+  let dependencies: string[] = [];
   try {
     if (native) {
       raw = (name === "info.plist" ? PLIST_VERSION : GRADLE_VERSION).exec(
@@ -1656,6 +1857,14 @@ const versionOwnerFor = (
     } else if (name === "package.json" && dirname(lower) === `apps/${app}`) {
       train = app;
       raw = JSON.parse(content).version;
+    } else if (name === "package.json") {
+      const manifest = JSON.parse(content);
+      train = isRecord(manifest)
+        ? releaseOnlyTrainFor(lower, manifest)
+        : undefined;
+      raw = manifest?.version;
+      releaseOnly = true;
+      dependencies = dependencyNames(manifest);
     } else if (name === "tauri.conf.json") {
       const config = JSON.parse(content);
       train = "desktop";
@@ -1667,28 +1876,115 @@ const versionOwnerFor = (
   if (!train || typeof raw !== "string") {
     return;
   }
-  return { path, train, version: raw.includes("$") ? null : raw };
+  return {
+    dependencies,
+    path,
+    releaseOnly,
+    train,
+    version: raw.includes("$") ? null : raw,
+  };
 };
 
 const ownerPrefix = (path: string): string =>
   dirname(path) === "." ? "" : `${dirname(path)}/`;
 
-// package.json beside another owner, or native files in an Expo app, mirror.
-const versionTrainsFrom = (owners: VersionTrain[]): VersionTrain[] => {
-  const trains: VersionTrain[] = [];
+// The apps/* or packages/* member a path sits in, or "" at the root.
+const memberOf = (path: string): string =>
+  WORKSPACE_MEMBER_DIRECTORY.exec(path.toLowerCase())?.[0] ?? "";
+
+const TAURI_DEPENDENCY = /^@tauri-apps\//u;
+
+// Whether a package.json is the same product as another owner in its member.
+// An app's always is; a root or packages/* product only beside an Expo
+// app.json, a native project with a mobile framework dependency, or a Tauri
+// app with a Tauri dependency, so an unrelated root site stays its own train.
+const sameProduct = (owner: VersionOwner, other: VersionOwner): boolean => {
+  if (!owner.releaseOnly || other.path.endsWith("app.json")) {
+    return true;
+  }
+  if (other.path.endsWith("tauri.conf.json")) {
+    return owner.dependencies.some((name) => TAURI_DEPENDENCY.test(name));
+  }
+  return owner.dependencies.some((name) => MOBILE_DEPENDENCIES.has(name));
+};
+
+const sameMember = (owner: VersionOwner, other: VersionOwner): boolean =>
+  memberOf(other.path) === memberOf(owner.path);
+
+// package.json beside another owner in its own member, or native files in an
+// Expo app, mirror. App trains keep letting a root Expo app mirror native
+// projects in any member, as shared version lines always have; release
+// trains mirror only within a member.
+const mirrors = (
+  owner: VersionOwner,
+  other: VersionOwner,
+  release: boolean
+): boolean =>
+  owner.path.endsWith("package.json")
+    ? other !== owner &&
+      other.path.startsWith(ownerPrefix(owner.path)) &&
+      sameMember(owner, other) &&
+      sameProduct(owner, other)
+    : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
+      other.path.endsWith("app.json") &&
+      owner.path.startsWith(ownerPrefix(other.path)) &&
+      !(release && !sameMember(owner, other));
+
+// App trains join same-named owners anywhere, as shared version lines always
+// have. Release trains join only app owners in one member, such as a second
+// Info.plist; owners in two members, or a product package.json that does not
+// mirror, release separately.
+const joins = (
+  owner: VersionOwner,
+  train: VersionOwner,
+  release: boolean
+): boolean =>
+  train.train === owner.train &&
+  !(
+    release &&
+    (owner.releaseOnly || train.releaseOnly || !sameMember(owner, train))
+  );
+
+// Release trains can share a name. The app train that shared version lines
+// know by it keeps it, or else the first in walk order, where a root product
+// sorts first; the rest are keyed by their directory, such as `packages/web`,
+// `apps/admin/ios`, `./ios` for a root native project, or `.` for a root
+// product.
+const releaseTrainId = (
+  owner: VersionOwner,
+  trains: VersionOwner[]
+): string => {
+  const named = trains.filter(({ train }) => train === owner.train);
+  const keeper = named.find(({ releaseOnly }) => !releaseOnly) ?? named[0];
+  if (keeper === owner) {
+    return owner.train;
+  }
+  const lower = owner.path.toLowerCase();
+  return NATIVE_OWNER.test(lower)
+    ? `${memberOf(lower) || "."}/${owner.train}`
+    : dirname(lower);
+};
+
+const versionTrainsFrom = (
+  owners: VersionOwner[],
+  release = false
+): VersionTrain[] => {
+  const trains: VersionOwner[] = [];
   for (const owner of owners) {
-    const mirror = owners.some((other) =>
-      owner.path.endsWith("package.json")
-        ? other !== owner && other.path.startsWith(ownerPrefix(owner.path))
-        : NATIVE_OWNER.test(owner.path.toLowerCase()) &&
-          other.path.endsWith("app.json") &&
-          owner.path.startsWith(ownerPrefix(other.path))
-    );
-    if (!(mirror || trains.some(({ train }) => train === owner.train))) {
+    if (
+      !(
+        owners.some((other) => mirrors(owner, other, release)) ||
+        trains.some((train) => joins(owner, train, release))
+      )
+    ) {
       trains.push(owner);
     }
   }
-  return trains;
+  return trains.map((owner) => ({
+    path: owner.path,
+    train: releaseTrainId(owner, trains),
+    version: owner.version,
+  }));
 };
 
 const OWNER_FILES = [
@@ -1807,10 +2103,13 @@ const walkOrder = (left: string, right: string): number => {
 };
 
 // Probes known owner spots in the root, apps/*, and packages/*, past the
-// capped walk; only apps/*/package.json owns a version, as before.
-const versionTrainsIn = async (
+// capped walk. App trains, where only apps/*/package.json owns a version, are
+// what shared version lines relate; release trains add a root product that is
+// not a workspace root and each published packages/* package, and are what
+// release tags name, at setup and at classify.
+const versionOwnersIn = async (
   root: string
-): Promise<Pick<Inventory, "versionTrains">> => {
+): Promise<{ apps: VersionTrain[]; releases: VersionTrain[] }> => {
   const packages = await Promise.all(
     WORKSPACE_PARENTS.map(async (parent) =>
       (await probeEntries(root, parent)).flatMap((entry) =>
@@ -1833,23 +2132,654 @@ const versionTrainsIn = async (
         versionOwnerFor(path, await readSmallText(join(root, path)))
       )
   );
+  const found = owners.flatMap((owner) => owner ?? []);
+  // A pnpm workspace root is a container, not a product.
+  const workspaceRoot = existsSync(join(root, "pnpm-workspace.yaml"));
   return {
-    versionTrains: versionTrainsFrom(owners.flatMap((owner) => owner ?? [])),
+    apps: versionTrainsFrom(found.filter(({ releaseOnly }) => !releaseOnly)),
+    releases: versionTrainsFrom(
+      found.filter(
+        ({ path, releaseOnly }) =>
+          !(workspaceRoot && releaseOnly && path === "package.json")
+      ),
+      true
+    ),
+  };
+};
+
+// Release-tag evidence. Only the newest released versions count, a tag's
+// suffix must be one of them exactly, and nothing is fetched.
+const NEWEST_RELEASES = 10;
+const HEADING_VERSION =
+  /(?<![0-9A-Za-z.])v?(\d+(?:\.\d+){1,3}(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z.-]+)?)(?![0-9A-Za-z])/u;
+const HEADING_DATE = /(?<!\d)\d{4}-\d{2}-\d{2}(?!\d)/u;
+const TAG_TOOLING_DEPENDENCIES = new Set([
+  "semantic-release",
+  "release-please",
+  "@changesets/cli",
+  "lerna",
+  "release-it",
+  "standard-version",
+  "np",
+]);
+// Root configuration files of release tooling that creates Git tags.
+const TAG_TOOLING_FILES: [RegExp, string][] = [
+  [/^(?:\.releaserc(?:\.\w+)?|release\.config\.[cm]?js)$/u, "semantic-release"],
+  [/^\.?release-please-(?:config|manifest)\.json$/u, "release-please"],
+  [/^lerna\.json$/u, "lerna"],
+  [/^\.release-it\.\w+$/u, "release-it"],
+  [/^\.versionrc(?:\.\w+)?$/u, "standard-version"],
+  [/^\.?goreleaser\.ya?ml$/u, "goreleaser"],
+  [/^release\.toml$/u, "cargo-release"],
+];
+const PACKAGE_MANAGER_WORD = /\b(?:npm|pnpm|yarn|bun)\b/iu;
+// Line continuations, then quote and escape characters, are dropped first,
+// so `ver""sion` and `ver\` plus a newline and `sion` read as `version`.
+const LINE_CONTINUATION = /\\\r?\n/gu;
+const SHELL_QUOTING = /["'\\]/gu;
+// A standalone word, so `--version`, `--tags`, and `version-check` do not
+// count: `version`, npm's `verison` alias, or a prefix npm resolves to them,
+// from `ve`.
+const VERSION_WORD =
+  /(?<![-\w.:/])ve(?:r(?:s(?:i(?:on?)?)?|i(?:s(?:on?)?)?)?)?(?![-\w.:])/iu;
+const GIT_WORD = /\bgit\b/iu;
+const TAG_WORD = /(?<![-\w.:/])tag(?![-\w.:])/iu;
+const TAG_SCRIPT_TOOL = "a version or tag script";
+const CARGO_RELEASE_METADATA =
+  /^\[(?:package|workspace)\.metadata\.release\]/mu;
+const FASTLANE_TAG = /\badd_git_tag\b/u;
+const WORKFLOW_TAG_TOOL =
+  /\b(semantic-release|release-please|goreleaser|changesets\/action)\b/u;
+const REGEX_SYNTAX = /[.*+?^${}()|[\]\\/]/gu;
+const YAML_FILE = /\.ya?ml$/u;
+const WORKSPACE_MEMBER = /^((?:apps|packages)\/[^/]+)\//u;
+const EVIDENCE_SOURCE = / \(.*$/u;
+
+interface ReleasedHeading {
+  date: string | null;
+  text: string;
+  version: string | null;
+}
+
+const newestReleasedHeadings = async (
+  path: string
+): Promise<ReleasedHeading[]> => {
+  let content = "";
+  try {
+    content = await readFile(path, "utf8");
+  } catch {
+    return [];
+  }
+  return [...content.matchAll(RELEASE_HEADING)]
+    .slice(0, NEWEST_RELEASES)
+    .map(([line]) => ({
+      date: HEADING_DATE.exec(line)?.[0] ?? null,
+      text: line.toLowerCase(),
+      version:
+        HEADING_VERSION.exec(line.replace(HEADING_DATE, " "))?.[1] ?? null,
+    }));
+};
+
+const localTagNames = async (root: string): Promise<string[] | null> => {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", root, "for-each-ref", "--format=%(refname:strip=2)", "refs/tags"],
+      { maxBuffer: 16 * 1024 * 1024, timeout: 10_000 }
+    );
+    return stdout.split("\n").filter(Boolean);
+  } catch {
+    return null;
+  }
+};
+
+// The prefix a tag puts before one of the versions, kept only when it is a
+// valid template prefix, so `v11.2.0` never reads as `v1` plus `1.2.0`.
+const tagPrefixes = (
+  tags: string[],
+  versions: string[]
+): Map<string, string[]> => {
+  const matches = new Map<string, string[]>();
+  for (const tag of tags) {
+    for (const version of versions) {
+      const prefix = tag.slice(0, tag.length - version.length);
+      if (
+        tag.endsWith(version) &&
+        releaseTagTemplateProblem(prefix + VERSION_PLACEHOLDER) === null
+      ) {
+        matches.set(prefix, [...(matches.get(prefix) ?? []), tag]);
+      }
+    }
+  }
+  return matches;
+};
+
+// A prefix naming two or more released versions, or the only one, is a
+// convention; the most matches wins, then the one naming the newest version.
+// The train a prefix names: the longest train name it contains, so
+// `web-admin-release-` belongs to `web-admin`, not `web`.
+const trainNamedBy = (prefix: string, names: string[]): string | undefined =>
+  names
+    .filter((name) => prefix.toLowerCase().includes(name))
+    .sort((left, right) => right.length - left.length)[0];
+
+// For one of several trains, a prefix naming another train is never its
+// style, and one naming this train outranks the rest.
+const tagConvention = (
+  tags: string[],
+  versions: string[],
+  train?: { name: string; others: string[] }
+): { examples: string[]; prefix: string } | null => {
+  let best: { examples: string[]; prefix: string } | null = null;
+  const owner = (prefix: string) =>
+    train && trainNamedBy(prefix, [train.name, ...train.others]);
+  const rank = ({ examples, prefix }: { examples: string[]; prefix: string }) =>
+    [
+      Number(train !== undefined && owner(prefix) === train.name),
+      examples.length,
+      Number(examples.includes(`${prefix}${versions[0]}`)),
+    ] as const;
+  for (const [prefix, examples] of tagPrefixes(tags, versions)) {
+    const named = owner(prefix);
+    const foreign = named !== undefined && named !== train?.name;
+    const counts = examples.length >= 2 || versions.length === 1;
+    const candidate = { examples, prefix };
+    const [ours, count, newest] = rank(candidate);
+    const [bestOurs, bestCount, bestNewest] = best ? rank(best) : [-1, 0, 0];
+    const better =
+      ours === bestOurs
+        ? count > bestCount || (count === bestCount && newest > bestNewest)
+        : ours > bestOurs;
+    if (counts && !foreign && better) {
+      best = candidate;
+    }
+  }
+  return best;
+};
+
+const readJsonRecord = async (
+  path: string
+): Promise<Record<string, unknown> | null> => {
+  try {
+    const value = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return isRecord(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const workspaceMembers = async (root: string): Promise<string[]> => [
+  "",
+  ...(
+    await Promise.all(
+      WORKSPACE_PARENTS.map(async (parent) =>
+        (
+          await probeEntries(root, parent)
+        ).flatMap((entry) =>
+          entry.isDirectory() ? [`${parent}/${entry.name}/`] : []
+        )
+      )
+    )
+  ).flat(),
+];
+
+// A package script may create tags when it names a package manager and a
+// version command anywhere in it, or `git` and `tag`, whatever lies between
+// or around them. Flags that turn tagging off are not recognized, so such a
+// script recommends no tags, which the user can change. This only shapes the
+// recommendation: Simple Changes refuses a tag name that already exists.
+const scriptMayTag = (script: string): boolean => {
+  const words = script
+    .replace(LINE_CONTINUATION, "")
+    .replace(SHELL_QUOTING, "");
+  return (
+    (PACKAGE_MANAGER_WORD.test(words) && VERSION_WORD.test(words)) ||
+    (GIT_WORD.test(words) && TAG_WORD.test(words))
+  );
+};
+
+// Release tooling that creates Git tags itself, from manifests, scripts,
+// configuration files, Fastlane, and CI workflow steps.
+const tagToolingEvidence = async (
+  root: string,
+  members: string[],
+  workflows: Map<string, string>
+): Promise<string[]> => {
+  const found = new Set<string>();
+  await Promise.all(
+    members.map(async (member) => {
+      const manifest = await readJsonRecord(join(root, member, "package.json"));
+      const manifestPath = `${member}package.json`;
+      for (const name of dependencyNames(manifest)) {
+        if (TAG_TOOLING_DEPENDENCIES.has(name)) {
+          found.add(`${name} (${manifestPath})`);
+        }
+      }
+      const scripts = isRecord(manifest?.scripts) ? manifest.scripts : {};
+      if (
+        Object.values(scripts).some(
+          (script) => typeof script === "string" && scriptMayTag(script)
+        )
+      ) {
+        found.add(`${TAG_SCRIPT_TOOL} (${manifestPath})`);
+      }
+      const fastfiles = ["fastlane", "ios/fastlane", "android/fastlane"].map(
+        (directory) => `${member}${directory}/Fastfile`
+      );
+      const tagging = await Promise.all(
+        fastfiles.map(async (path) =>
+          FASTLANE_TAG.test(await readSmallText(join(root, path))) ? [path] : []
+        )
+      );
+      for (const path of tagging.flat()) {
+        found.add(`Fastlane add_git_tag (${path})`);
+      }
+    })
+  );
+  for (const { name } of await probeEntries(root, "")) {
+    const tool = TAG_TOOLING_FILES.find(([file]) => file.test(name))?.[1];
+    if (tool) {
+      found.add(`${tool} (${name})`);
+    }
+  }
+  if (existsSync(join(root, ".changeset"))) {
+    found.add("@changesets/cli (.changeset)");
+  }
+  if (
+    CARGO_RELEASE_METADATA.test(await readSmallText(join(root, "Cargo.toml")))
+  ) {
+    found.add("cargo-release (Cargo.toml)");
+  }
+  for (const [path, content] of workflows) {
+    const tool = WORKFLOW_TAG_TOOL.exec(content)?.[1];
+    if (tool) {
+      found.add(
+        `${tool === "changesets/action" ? "@changesets/cli" : tool} (${path})`
+      );
+    }
+  }
+  return [...found].sort();
+};
+
+const ciWorkflows = async (root: string): Promise<Map<string, string>> => {
+  const workflows = new Map<string, string>();
+  const directory = ".github/workflows";
+  const entries = await probeEntries(root, directory);
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && YAML_FILE.test(entry.name))
+      .map(async (entry) => {
+        const path = `${directory}/${entry.name}`;
+        workflows.set(path, await readSmallText(join(root, path)));
+      })
+  );
+  return workflows;
+};
+
+// A workflow runs on a tag push when it listens to `create`, or to `push`
+// with a tag filter or without a branch filter. Only its triggers count, never
+// text that merely mentions tags.
+const eventsOf = (on: unknown): string[] => {
+  if (typeof on === "string") {
+    return [on];
+  }
+  if (Array.isArray(on)) {
+    return on.filter((event): event is string => typeof event === "string");
+  }
+  return isRecord(on) ? Object.keys(on) : [];
+};
+
+const runsOnTagPush = (content: string): boolean => {
+  let workflow: unknown;
+  try {
+    workflow = YAML.parse(content);
+  } catch {
+    return false;
+  }
+  // YAML 1.1 readers turn a bare `on` key into true.
+  const on = isRecord(workflow) ? (workflow.on ?? workflow.true) : undefined;
+  const events = eventsOf(on);
+  if (events.includes("create")) {
+    return true;
+  }
+  const push = isRecord(on) ? on.push : undefined;
+  if (!(events.includes("push") && isRecord(push))) {
+    return events.includes("push");
+  }
+  if (Object.hasOwn(push, "tags-ignore")) {
+    // `**` ignores every tag; narrower patterns still let some tags run.
+    const ignored = push["tags-ignore"];
+    return !(Array.isArray(ignored) ? ignored : [ignored]).includes("**");
+  }
+  return (
+    Object.hasOwn(push, "tags") ||
+    !(Object.hasOwn(push, "branches") || Object.hasOwn(push, "branches-ignore"))
+  );
+};
+
+// GitLab jobs run on a tag push through `only: tags` (or `only: refs: tags`)
+// or a rule whose `if` tests a set CI_COMMIT_TAG; a script that merely prints
+// the variable, or a rule excluding tags, does not count. This is evidence for
+// the question only, not a pipeline evaluator: Simple Changes inventories
+// every tag-triggered effect at release time.
+const GITLAB_TAG_RULE = /\$\{?CI_COMMIT_TAG\b/u;
+const GITLAB_NEGATED_TAG =
+  /!\s*\$\{?CI_COMMIT_TAG|\$\{?CI_COMMIT_TAG\}?\s*==\s*(?:null|""|'')/u;
+
+const gitlabTagTrigger = (value: unknown): boolean => {
+  if (Array.isArray(value)) {
+    return value.some(gitlabTagTrigger);
+  }
+  if (!isRecord(value)) {
+    return false;
+  }
+  const { only, rules } = value;
+  const refs = isRecord(only) ? only.refs : only;
+  if (Array.isArray(refs) ? refs.includes("tags") : refs === "tags") {
+    return true;
+  }
+  if (
+    Array.isArray(rules) &&
+    rules.some(
+      (rule) =>
+        isRecord(rule) &&
+        rule.when !== "never" &&
+        typeof rule.if === "string" &&
+        GITLAB_TAG_RULE.test(rule.if) &&
+        !GITLAB_NEGATED_TAG.test(rule.if)
+    )
+  ) {
+    return true;
+  }
+  return Object.entries(value).some(
+    ([key, child]) =>
+      key !== "only" && key !== "rules" && gitlabTagTrigger(child)
+  );
+};
+
+const gitlabRunsOnTagPush = (content: string): boolean => {
+  try {
+    return gitlabTagTrigger(YAML.parse(content));
+  } catch {
+    return false;
+  }
+};
+
+const tagTriggeredCi = async (
+  root: string,
+  workflows: Map<string, string>
+): Promise<string[]> => {
+  const triggered = [...workflows]
+    .filter(([, content]) => runsOnTagPush(content))
+    .map(([path]) => path);
+  if (gitlabRunsOnTagPush(await readSmallText(join(root, ".gitlab-ci.yml")))) {
+    triggered.push(".gitlab-ci.yml");
+  }
+  return triggered.sort((left, right) => left.localeCompare(right, "en"));
+};
+
+// Versions each release train has released: its own changelog's newest
+// headings and the root headings that belong to it.
+// The train a root heading names: the most specific train name it contains
+// as a word, so `web-admin 2.0.0` never counts toward `web`.
+const headingTrain = (text: string, names: string[]): string | undefined =>
+  names
+    .filter((name) =>
+      new RegExp(
+        `(?<![a-z0-9])${name.replace(REGEX_SYNTAX, "\\$&")}(?![a-z0-9])`,
+        "u"
+      ).test(text)
+    )
+    .sort((left, right) => right.length - left.length)[0];
+
+const trainVersions = async (
+  root: string,
+  train: VersionTrain,
+  rootHeadings: ReleasedHeading[],
+  names: string[],
+  sole = false
+): Promise<string[]> => {
+  const member = WORKSPACE_MEMBER.exec(train.path)?.[1];
+  const directories = [...new Set([dirname(train.path), member])].filter(
+    (directory): directory is string => Boolean(directory) && directory !== "."
+  );
+  const own = (
+    await Promise.all(
+      directories.map((directory) =>
+        newestReleasedHeadings(join(root, directory, "CHANGELOG.md"))
+      )
+    )
+  ).flat();
+  // A root product's or a sole train's own history is the root changelog,
+  // less headings that name another train; any other train counts root
+  // headings naming it.
+  const rootLevel = sole || dirname(train.path) === ".";
+  const named = rootHeadings.filter(({ text }) => {
+    const owner = headingTrain(text, names);
+    return rootLevel
+      ? owner === undefined || owner === train.train
+      : owner === train.train;
+  });
+  const released = [
+    ...new Set(
+      [...own, ...named].flatMap(({ version }) => (version ? [version] : []))
+    ),
+  ];
+  // The owner's version may be unreleased, so it counts only when no release
+  // heading names the train.
+  if (released.length > 0 || !train.version) {
+    return released;
+  }
+  return PUBLIC_VERSION.test(train.version) ? [train.version] : [];
+};
+
+// One convention per train; trains whose conventions could collide, and
+// trains without one, take `<train>@{version}` when that stays prefix-free.
+const trainConventions = async (
+  root: string,
+  trains: VersionTrain[],
+  tags: string[],
+  rootHeadings: ReleasedHeading[],
+  evidence: string[]
+): Promise<Record<string, string> | null> => {
+  const found = new Map<string, string>();
+  const conventions = await Promise.all(
+    trains.map(async (train) =>
+      tagConvention(
+        tags,
+        await trainVersions(
+          root,
+          train,
+          rootHeadings,
+          trains.map(({ train: name }) => name)
+        ),
+        {
+          name: train.train,
+          others: trains
+            .map(({ train: other }) => other)
+            .filter((other) => other !== train.train),
+        }
+      )
+    )
+  );
+  trains.forEach(({ train }, index) => {
+    const convention = conventions[index];
+    if (convention) {
+      found.set(train, convention.prefix);
+      evidence.push(
+        `${train} tags follow ${convention.prefix}${VERSION_PLACEHOLDER}: ${convention.examples.slice(0, 3).join(", ")}`
+      );
+    }
+  });
+  if (found.size === 0) {
+    return null;
+  }
+  const map = Object.fromEntries(
+    trains.map(({ train }) => [
+      train,
+      `${found.get(train) ?? `${train}@`}${VERSION_PLACEHOLDER}`,
+    ])
+  );
+  if (releaseTagsErrors(map).length > 0) {
+    evidence.push(
+      "Existing tag styles could make two trains name one tag, so each train needs its own style"
+    );
+    return null;
+  }
+  return map;
+};
+
+// `<train>@{version}` for every train; null when a train name cannot form a
+// template or two could name one tag, so no train silently loses its tag.
+const defaultTrainTemplates = (
+  trains: VersionTrain[]
+): Record<string, string> | null => {
+  const map = Object.fromEntries(
+    trains.map(({ train }) => [train, `${train}@${VERSION_PLACEHOLDER}`])
+  );
+  return releaseTagsErrors(map).length === 0 ? map : null;
+};
+
+// Trains that `crossSurfaceVersioning` "shared" mirrors are one release
+// train, so they take one tag.
+const publicTrains = <Train>(
+  trains: Train[],
+  crossSurfaceVersioning: CrossSurfaceVersioning | undefined
+): Train[] => (crossSurfaceVersioning === "shared" ? [] : trains);
+
+// Tooling that already tags, then date-only headings, recommend `"none"`;
+// otherwise a detected convention, one template per train for 2+ public
+// trains, or `"v{version}"`.
+const recommendReleaseTags = (
+  tooling: string[],
+  dateOnly: boolean,
+  convention: ReleaseTagsSetting | null,
+  trains: VersionTrain[]
+): Pick<ReleaseTagsInspection, "reason" | "recommended"> => {
+  if (tooling[0]) {
+    const tool = tooling[0].replace(EVIDENCE_SOURCE, "");
+    return {
+      reason:
+        tool === TAG_SCRIPT_TOOL
+          ? `${tool} may already create this repository's tags`
+          : `${tool} already creates this repository's tags`,
+      recommended: NO_RELEASE_TAGS,
+    };
+  }
+  if (dateOnly) {
+    return {
+      reason:
+        "releases are named by date, so two releases on one day would need one tag",
+      recommended: NO_RELEASE_TAGS,
+    };
+  }
+  if (convention !== null) {
+    return { reason: null, recommended: convention };
+  }
+  if (trains.length < 2) {
+    return { reason: null, recommended: `v${VERSION_PLACEHOLDER}` };
+  }
+  const map = defaultTrainTemplates(trains);
+  return map
+    ? { reason: null, recommended: map }
+    : {
+        reason: "these release trains need tag styles chosen by hand",
+        recommended: NO_RELEASE_TAGS,
+      };
+};
+
+/** Inspects release-tag evidence and recommends a `releaseTags` value. */
+const inspectReleaseTags = async (
+  root: string,
+  detected: VersionTrain[],
+  policy: RepoPolicy | undefined,
+  crossSurfaceVersioning = policy?.crossSurfaceVersioning
+): Promise<ReleaseTagsInspection> => {
+  const [headings, tags, members, workflows] = await Promise.all([
+    newestReleasedHeadings(join(root, "CHANGELOG.md")),
+    localTagNames(root),
+    workspaceMembers(root),
+    ciWorkflows(root),
+  ]);
+  const [tooling, ciTriggers] = await Promise.all([
+    tagToolingEvidence(root, members, workflows),
+    tagTriggeredCi(root, workflows),
+  ]);
+  const trains = publicTrains(detected, crossSurfaceVersioning);
+  const evidence: string[] = [];
+  if (tags === null) {
+    evidence.push("Local Git tags could not be read");
+  } else if (tags.length === 0) {
+    evidence.push("No local Git tags");
+  }
+  const versions = [
+    ...new Set(headings.flatMap(({ version }) => (version ? [version] : []))),
+  ];
+  const dated = [
+    ...new Set(headings.flatMap(({ date }) => (date ? [date] : []))),
+  ];
+  const dateOnly =
+    headings.length > 0 && versions.length === 0 && dated.length > 0;
+  let convention: ReleaseTagsSetting | null = null;
+  if (trains.length >= 2) {
+    evidence.push(
+      `${trains.length} public release trains: ${trains.map(({ train }) => train).join(", ")}`
+    );
+    convention = await trainConventions(
+      root,
+      trains,
+      tags ?? [],
+      headings,
+      evidence
+    );
+  } else {
+    // A sole train also counts its own changelog, such as a published
+    // package's; a shared release or date-named history reads the root only.
+    const [sole] = trains;
+    let released = dateOnly ? dated : versions;
+    if (sole && !dateOnly) {
+      released = await trainVersions(root, sole, headings, [sole.train], true);
+    }
+    const found = tagConvention(tags ?? [], released);
+    if (found) {
+      convention = `${found.prefix}${VERSION_PLACEHOLDER}`;
+      evidence.push(
+        `Local tags follow ${convention}: ${found.examples.slice(0, 3).join(", ")}`
+      );
+    }
+  }
+  if (tags && tags.length > 0 && convention === null) {
+    evidence.push("No local tag names a released version");
+  }
+  if (dateOnly) {
+    evidence.push("Release headings are dated, not numbered");
+  }
+  evidence.push(
+    ...tooling.map((item) => `Tag-creating tooling: ${item}`),
+    ...ciTriggers.map((path) => `CI runs when a tag is pushed: ${path}`)
+  );
+  return {
+    ciTriggers,
+    convention,
+    evidence,
+    ...recommendReleaseTags(tooling, dateOnly, convention, trains),
+    stored: policy?.releaseTags ?? null,
+    tooling,
+    trains: detected.map(({ train }) => train),
   };
 };
 
 const inspectInventory = async (
   root: string,
   dependencies: string[],
-  withTrains = false
+  versionTrains?: VersionTrain[]
 ): Promise<Inventory> => {
   const publicPath = join(root, "CHANGELOG.md");
   const developerPath = join(root, "DEVELOPER_CHANGELOG.md");
-  const [publicReleases, developerReleases, scan, trains] = await Promise.all([
+  const [publicReleases, developerReleases, scan] = await Promise.all([
     countReleasedHeadings(publicPath),
     countReleasedHeadings(developerPath),
     walkTextFiles(root),
-    withTrains && versionTrainsIn(root),
   ]);
   const { files } = scan;
   const developerHistoryEvidence: string[] = [];
@@ -2015,7 +2945,7 @@ const inspectInventory = async (
       workspace: applicabilityFor(surfaceStructureEvidence.workspace),
     },
     surfaceStructureEvidence,
-    ...trains,
+    ...(versionTrains && { versionTrains }),
   };
 };
 
@@ -2128,7 +3058,8 @@ const recommendationFor = (
   inventory: Inventory,
   global: StateRecord<GlobalPreferences>,
   policy: StateRecord<RepoPolicy>,
-  cmsPolicy: StateRecord<CmsPolicy>
+  cmsPolicy: StateRecord<CmsPolicy>,
+  releaseTags: ReleaseTagsInspection | null
 ): Recommendation => {
   const reusableDefaults = global.value ?? safeGlobalDefaults();
   const backfillStatus: BackfillStatus | undefined =
@@ -2141,7 +3072,7 @@ const recommendationFor = (
           distribution: installed,
           guidance: {
             backfillStatus: backfillStatus ?? ("partial" as const),
-            version: GUIDANCE_VERSIONS[installed],
+            version: GUIDANCE_VERSION,
           },
           majorReleaseNaming:
             reusableDefaults.majorReleaseNaming ?? DEFAULT_MAJOR_RELEASE_NAMING,
@@ -2151,6 +3082,7 @@ const recommendationFor = (
           releaseNoteGrouping:
             reusableDefaults.releaseNoteGrouping ??
             DEFAULT_RELEASE_NOTE_GROUPING,
+          ...(releaseTags && { releaseTags: releaseTags.recommended }),
           schemaVersion: 1 as const,
           signatures: reusableDefaults.signatures,
         });
@@ -2215,9 +3147,10 @@ const publicVersioningSelectionFrom = (
 const onboardingContributionFor = (
   installed: Distribution | "cms",
   policy: StateRecord<RepoPolicy>,
-  recommendation: Recommendation
+  recommendation: Recommendation,
+  releaseTags: ReleaseTagsInspection | null
 ): OnboardingContribution | null => {
-  if (installed === "cms" || policy.state !== "absent") {
+  if (installed === "cms" || policy.state !== "absent" || !releaseTags) {
     return null;
   }
   const resolvedPolicy =
@@ -2233,6 +3166,7 @@ const onboardingContributionFor = (
   ) {
     questions.push({ id: "public-version-suggestions", required: true });
   }
+  questions.push({ id: "release-tags", required: true });
   return {
     destination: POLICY_FILENAME,
     owner: "simple-changelogs",
@@ -2245,9 +3179,10 @@ const onboardingContributionFor = (
       releaseNoteGrouping:
         recommendation.policy?.releaseNoteGrouping ??
         DEFAULT_RELEASE_NOTE_GROUPING,
+      releaseTags: releaseTags.recommended,
     },
     summary:
-      "Simple Changelogs owns release-note grouping, major-release naming, and public-version selection; deployment and publication remain separate.",
+      "Simple Changelogs owns release-note grouping, major-release naming, public-version selection, and release-tag names; Simple Changes creates and pushes tags, and deployment and publication remain separate.",
   };
 };
 
@@ -2349,6 +3284,7 @@ const unresolvedFor = (
   }
   if (installed !== "cms" && policy.state === "absent") {
     unresolved.push("major-release-naming");
+    unresolved.push("release-tags");
     unresolved.push("preference-scope");
   }
   if (inventory.releasedHistoryCount > 0) {
@@ -2409,6 +3345,32 @@ const inspectionSummary = (
   return `Simple Changelogs ${selectedLabel} needs onboarding before write-capable changelog work.`;
 };
 
+// Each question is asked once, by the notice that first reaches its
+// guidance; an unanswered question records nothing.
+const guidanceQuestionsFor = (
+  notice: GuidanceUpdateNotice,
+  inventory: Inventory,
+  policy: RepoPolicy | undefined,
+  releaseTags: ReleaseTagsInspection | null
+): GuidanceQuestion[] => {
+  const questions: GuidanceQuestion[] = [];
+  if (
+    notice.recordedVersion < SHARED_VERSION_LINES_GUIDANCE &&
+    asksVersionLines(inventory, policy)
+  ) {
+    questions.push("shared-version-lines");
+  }
+  if (
+    releaseTags &&
+    policy &&
+    policy.guidance.version < RELEASE_TAGS_GUIDANCE &&
+    policy.releaseTags === undefined
+  ) {
+    questions.push("release-tags");
+  }
+  return questions;
+};
+
 export const inspectRepository = async (
   options: InspectOptions
 ): Promise<SetupResult> => {
@@ -2416,6 +3378,13 @@ export const inspectRepository = async (
   const installed = options.distribution ?? distributionFromInstall();
   const taskMode = options.taskMode ?? "write";
   const dependencies = await readPackageDependencies(root);
+  // Only full inventories list app trains; every versioned distribution
+  // names release tags from the release trains. CMS history has no release,
+  // so it has neither.
+  const owners =
+    installed === "cms"
+      ? { apps: undefined, releases: null }
+      : await versionOwnersIn(root);
   const [policy, cmsPolicy, globalPreferences, inventory, capabilities] =
     await Promise.all([
       readState(join(root, POLICY_FILENAME), validateRepoPolicy),
@@ -2424,7 +3393,11 @@ export const inspectRepository = async (
         resolveGlobalPreferencesPath(options.configDirectory),
         validateGlobalPreferences
       ),
-      inspectInventory(root, dependencies, installed === "full"),
+      inspectInventory(
+        root,
+        dependencies,
+        installed === "full" ? owners.apps : undefined
+      ),
       capabilitiesFor(installed),
     ]);
   const projectEvidence = inspectProjectEvidence(root, inventory, dependencies);
@@ -2439,24 +3412,32 @@ export const inspectRepository = async (
   const hasMalformedState =
     relevantPolicy.state === "malformed" ||
     (installed === "web-cms" && cmsPolicy.state === "malformed");
+  const releaseTags =
+    owners.releases &&
+    (await inspectReleaseTags(root, owners.releases, policy.value));
   const recommendation = recommendationFor(
     installed,
     inventory,
     globalPreferences,
     policy,
-    cmsPolicy
+    cmsPolicy,
+    releaseTags
   );
   const guidanceUpdate = await guidanceUpdateNoticeFor(
     installed,
     installed === "cms" ? cmsPolicy.value : policy.value,
     installed === "web-cms" ? cmsPolicy.value : undefined
   );
-  if (
-    guidanceUpdate &&
-    guidanceUpdate.recordedVersion < SHARED_VERSION_LINES_GUIDANCE &&
-    asksVersionLines(inventory, policy.value)
-  ) {
-    guidanceUpdate.questions = ["shared-version-lines"];
+  if (guidanceUpdate) {
+    const questions = guidanceQuestionsFor(
+      guidanceUpdate,
+      inventory,
+      policy.value,
+      releaseTags
+    );
+    if (questions.length > 0) {
+      guidanceUpdate.questions = questions;
+    }
   }
   const unresolvedQuestions = configured
     ? []
@@ -2489,7 +3470,8 @@ export const inspectRepository = async (
     onboardingContribution: onboardingContributionFor(
       installed,
       policy,
-      recommendation
+      recommendation,
+      releaseTags
     ),
     onboardingRequired,
     ownerWriteReceipt:
@@ -2497,6 +3479,7 @@ export const inspectRepository = async (
     policy: installed === "cms" ? null : policy,
     publicVersioning: publicVersioningResolutionFor(installed, policy),
     recommendation,
+    releaseTags,
     repository: root,
     schemaVersion: 1,
     selection: {},
@@ -2832,10 +3815,39 @@ const curationBudgetSelectionFrom = (
     ? undefined
     : { max: options.curationMax, min: options.curationMin };
 
+// The value a confirmed setup stores when the owner gave no answer: the
+// recommendation, recomputed when this setup records the trains as one.
+const recommendedReleaseTags = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<ReleaseTagsSetting | undefined> => {
+  if (!inspect.releaseTags) {
+    return;
+  }
+  const stored = inspect.policy?.value?.crossSurfaceVersioning;
+  if (
+    options.crossSurfaceVersioning === undefined ||
+    options.crossSurfaceVersioning === stored
+  ) {
+    return inspect.releaseTags.recommended;
+  }
+  return (
+    await inspectReleaseTags(
+      inspect.repository,
+      (
+        await versionOwnersIn(inspect.repository)
+      ).releases,
+      inspect.policy?.value,
+      options.crossSurfaceVersioning
+    )
+  ).recommended;
+};
+
 const selectionFrom = (
   options: ApplyOptions,
   inspect: SetupResult,
-  installed: Distribution | "cms"
+  installed: Distribution | "cms",
+  releaseTags?: ReleaseTagsSetting
 ): CompleteSelection => {
   const defaults = inspect.recommendation.reusableDefaults;
   const publicVersioning =
@@ -2888,6 +3900,7 @@ const selectionFrom = (
     releaseNoteEnvironmentScope: options.releaseNoteEnvironmentScope,
     releaseNoteGrouping,
     releaseNoteLinks: options.releaseNoteLinks,
+    releaseTags: options.releaseTags ?? releaseTags,
     scope: options.scope ?? "repository",
     setupStyle: options.setupStyle ?? defaults.setupStyle,
     sharedVersionLines: options.sharedVersionLines,
@@ -2923,9 +3936,7 @@ const cmsPolicyFor = (
     guidance: {
       backfillStatus: selection.backfillStatus,
       version:
-        installed === "cms"
-          ? CMS_GUIDANCE_VERSION
-          : WEB_CMS_CMS_GUIDANCE_VERSION,
+        installed === "cms" ? GUIDANCE_VERSION : WEB_CMS_CMS_GUIDANCE_VERSION,
     },
     newReleaseNoteSurfaces: options.newReleaseNoteSurfaces ?? "existing-only",
     schemaVersion: 1,
@@ -2961,7 +3972,7 @@ const repoPolicyFor = (
     distribution: installed,
     guidance: {
       backfillStatus: selection.backfillStatus,
-      version: GUIDANCE_VERSIONS[installed],
+      version: GUIDANCE_VERSION,
     },
     majorReleaseNaming:
       selection.majorReleaseNaming ?? DEFAULT_MAJOR_RELEASE_NAMING,
@@ -2993,6 +4004,9 @@ const repoPolicyFor = (
   }
   if (selection.releaseNoteLinks !== undefined) {
     policy.releaseNoteLinks = selection.releaseNoteLinks;
+  }
+  if (selection.releaseTags !== undefined) {
+    policy.releaseTags = selection.releaseTags;
   }
   if (selection.sharedVersionLines !== undefined) {
     policy.sharedVersionLines = selection.sharedVersionLines;
@@ -3028,12 +4042,55 @@ const validateStoredPolicies = async (
   return errors;
 };
 
+// One template with two or more public trains could name one tag twice.
+const oneTemplateErrors = (
+  setting: ReleaseTagsSetting | undefined,
+  inspect: SetupResult,
+  relationship: CrossSurfaceVersioning | undefined
+): string[] => {
+  const trains = publicTrains(
+    inspect.releaseTags ? inspect.releaseTags.trains : [],
+    relationship
+  );
+  return typeof setting === "string" &&
+    setting !== NO_RELEASE_TAGS &&
+    trains.length >= 2
+    ? [
+        `releaseTags needs one template per release train (${trains.join(", ")}), such as {"${trains[0]}":"${trains[0]}@{version}"}, so two trains never name one tag.`,
+      ]
+    : [];
+};
+
+// Setup never writes a policy whose releaseTags classify would refuse: one
+// template with two or more public trains under the crossSurfaceVersioning
+// that same policy records. Every policy write passes through here, so a
+// stored template is rechecked whenever a later apply rewrites the policy.
+const releaseTagWriteErrors = (
+  inspect: SetupResult,
+  candidates: CandidateWrite[]
+): string[] =>
+  candidates.flatMap((candidate) => {
+    if (candidate.kind !== "repository-policy") {
+      return [];
+    }
+    const policy = JSON.parse(candidate.content) as RepoPolicy;
+    return oneTemplateErrors(
+      policy.releaseTags,
+      inspect,
+      policy.crossSurfaceVersioning
+    );
+  });
+
 // Rewrites configured state in one transaction, then revalidates it.
 const replaceState = async (
   inspect: SetupResult,
   installed: Distribution | "cms",
   candidates: CandidateWrite[]
 ): Promise<{ errors: string[]; writes: WriteRecord[] }> => {
+  const tagErrors = releaseTagWriteErrors(inspect, candidates);
+  if (tagErrors.length > 0) {
+    return { errors: tagErrors, writes: [] };
+  }
   try {
     const writes = await commitSet(inspect.repository, candidates, true);
     return {
@@ -3186,19 +4243,22 @@ const updateGuidanceDisposition = async (
     ]);
   }
   // Recorded versions never decrease, so acknowledging one track cannot
-  // lower the other below what a newer helper already recorded.
-  const lines = options.sharedVersionLines && {
-    sharedVersionLines: options.sharedVersionLines,
+  // lower the other below what a newer helper already recorded. Answers to
+  // the notice's questions are saved in the same write.
+  const lines = {
+    ...(options.releaseTags !== undefined && {
+      releaseTags: options.releaseTags,
+    }),
+    ...(options.sharedVersionLines && {
+      sharedVersionLines: options.sharedVersionLines,
+    }),
   };
   const updatedPolicy = {
     ...record.value,
     ...lines,
     guidance: {
       backfillStatus: disposition,
-      version: Math.max(
-        record.value.guidance.version,
-        currentGuidanceVersionFor(installed)
-      ),
+      version: Math.max(record.value.guidance.version, GUIDANCE_VERSION),
     },
   };
   const candidates: CandidateWrite[] = [
@@ -3350,6 +4410,10 @@ const updateContextualPreferences = async (
   if (options.releaseNoteLinks !== undefined) {
     selection.releaseNoteLinks = options.releaseNoteLinks;
     updates.releaseNoteLinks = options.releaseNoteLinks;
+  }
+  if (options.releaseTags !== undefined) {
+    selection.releaseTags = options.releaseTags;
+    updates.releaseTags = options.releaseTags;
   }
   if (options.sharedVersionLines !== undefined) {
     selection.sharedVersionLines = options.sharedVersionLines;
@@ -3678,6 +4742,10 @@ const persistSetup = async (
   installed: Distribution | "cms",
   candidates: CandidateWrite[]
 ): Promise<SetupResult> => {
+  const tagErrors = releaseTagWriteErrors(inspect, candidates);
+  if (tagErrors.length > 0) {
+    return blockResult(inspect, tagErrors, selection);
+  }
   let preparedGlobal: PreparedGlobalPreferences | undefined;
   let writes: WriteRecord[] = [];
   try {
@@ -3810,6 +4878,27 @@ const sharedVersionLineApplyErrors = (
   return errors;
 };
 
+// The tag setting is repository-only and names releases, so CMS history and
+// run-only setup never store it; releaseTagWriteErrors checks the trains.
+const releaseTagsApplyErrors = (
+  options: ApplyOptions,
+  installed: Distribution | "cms"
+): string[] => {
+  const supplied = options.releaseTags;
+  if (supplied === undefined) {
+    return [];
+  }
+  if (installed === "cms") {
+    return [
+      "Release tags apply only to versioned distributions; CMS operator history has no release to tag.",
+    ];
+  }
+  if (options.scope === "run-only") {
+    return ["Release tags are a repository setting and are never run-only."];
+  }
+  return releaseTagsErrors(supplied);
+};
+
 export const applySetup = async (
   options: ApplyOptions
 ): Promise<SetupResult> => {
@@ -3868,6 +4957,7 @@ export const applySetup = async (
   const curationErrors = [
     ...curationSelectionErrors(options, inspect),
     ...sharedVersionLineApplyErrors(options, inspect, installed),
+    ...releaseTagsApplyErrors(options, installed),
   ];
   if (curationErrors.length > 0) {
     return blockResult(inspect, curationErrors);
@@ -3900,7 +4990,12 @@ export const applySetup = async (
   if (earlyResult) {
     return earlyResult;
   }
-  const selection = selectionFrom(options, inspect, installed);
+  const selection = selectionFrom(
+    options,
+    inspect,
+    installed,
+    await recommendedReleaseTags(options, inspect)
+  );
   const errors = selectionErrors(options, inspect, selection, installed);
   if (errors.length > 0) {
     return blockResult(inspect, errors, selection);
@@ -3941,6 +5036,7 @@ const valueOptionNames = new Set([
   "--release-note-environments",
   "--release-note-grouping",
   "--release-note-links",
+  "--release-tags",
   "--repo",
   "--scope",
   "--setup-style",
@@ -4019,6 +5115,23 @@ export const parseCli = (argv: string[]): ParsedCli => {
   } catch (error) {
     throw new Error("--shared-version-lines must be JSON", { cause: error });
   }
+  // `none`, one template, or a JSON object of per-train templates.
+  let releaseTags: ReleaseTagsSetting | undefined =
+    values.get("--release-tags");
+  // A template such as `{version}` also starts with a brace.
+  if (
+    releaseTags?.trimStart().startsWith("{") &&
+    releaseTagTemplateProblem(releaseTags) !== null
+  ) {
+    try {
+      releaseTags = JSON.parse(releaseTags) as ReleaseTagsSetting;
+    } catch (error) {
+      throw new Error(
+        "--release-tags must be none, a <prefix>{version} template, or a JSON object",
+        { cause: error }
+      );
+    }
+  }
   return {
     command,
     options: {
@@ -4076,6 +5189,7 @@ export const parseCli = (argv: string[]): ParsedCli => {
         "--release-note-links",
         RELEASE_NOTE_LINK_POLICIES
       ),
+      releaseTags,
       repo: values.get("--repo") ?? ".",
       scope: enumValue("--scope", SCOPES),
       setupStyle: enumValue("--setup-style", SETUP_STYLES),

@@ -20,6 +20,7 @@
     "inventory",
     "onboardingContribution",
     "recommendation",
+    "releaseTags",
     "ownerWriteReceipt",
     "selection",
     "unresolvedQuestions",
@@ -71,6 +72,9 @@
       ]
     },
     "recommendation": { "$ref": "#/$defs/recommendation" },
+    "releaseTags": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/releaseTagsInspection" }]
+    },
     "ownerWriteReceipt": {
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/ownerWriteReceipt" }]
     },
@@ -174,8 +178,9 @@
         "questions": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 1,
-          "items": { "const": "shared-version-lines" }
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["shared-version-lines", "release-tags"] }
         }
       }
     },
@@ -207,12 +212,16 @@
         },
         "guidanceVersion": { "type": "integer", "minimum": 1 },
         "requestVersions": {
-          "anyOf": [{ "const": [1, 2] }, { "const": [1] }]
+          "anyOf": [
+            { "const": [1, 2, 3] },
+            { "const": [1, 3] },
+            { "const": [1] }
+          ]
         },
         "receiptVersions": {
           "anyOf": [
-            { "const": [1, 2, 3] },
-            { "const": [1, 2] },
+            { "const": [1, 2, 3, 4] },
+            { "const": [1, 2, 4] },
             { "const": [2] }
           ]
         },
@@ -305,6 +314,63 @@
         }
       }
     },
+    "releaseTags": {
+      "$comment": "A single template, \"none\", or one per release train. The setup helper and lib/validate.ts also require prefix-free per-train prefixes, no digit or . directly before {version}, and names Git accepts.",
+      "oneOf": [
+        { "$ref": "#/$defs/releaseTagTemplate" },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/releaseTagTemplate" }
+        }
+      ]
+    },
+    "releaseTagTemplate": {
+      "type": "string",
+      "pattern": "^(?:none|[A-Za-z0-9._+/@-]*\\{version\\})$"
+    },
+    "releaseTagsInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ciTriggers",
+        "convention",
+        "evidence",
+        "reason",
+        "recommended",
+        "stored",
+        "tooling",
+        "trains"
+      ],
+      "properties": {
+        "ciTriggers": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "convention": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/releaseTags" }]
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reason": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+        },
+        "recommended": { "$ref": "#/$defs/releaseTags" },
+        "stored": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/releaseTags" }]
+        },
+        "tooling": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "trains": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "releaseNoteEnvironmentScope": {
       "enum": [
         "all-environments",
@@ -392,6 +458,7 @@
         },
         "publicReleaseNotes": { "$ref": "#/$defs/publicReleaseNotes" },
         "curationBudget": { "$ref": "#/$defs/curationBudget" },
+        "releaseTags": { "$ref": "#/$defs/releaseTags" },
         "sharedVersionLines": { "$ref": "#/$defs/sharedVersionLines" }
       }
     },
@@ -746,7 +813,8 @@
                 "enum": [
                   "major-release-naming",
                   "public-version-actions",
-                  "public-version-suggestions"
+                  "public-version-suggestions",
+                  "release-tags"
                 ]
               },
               "required": { "type": "boolean" }
@@ -757,10 +825,15 @@
         "resolvedPreferences": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["majorReleaseNaming", "releaseNoteGrouping"],
+          "required": [
+            "majorReleaseNaming",
+            "releaseNoteGrouping",
+            "releaseTags"
+          ],
           "properties": {
             "majorReleaseNaming": { "$ref": "#/$defs/majorReleaseNaming" },
-            "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" }
+            "releaseNoteGrouping": { "$ref": "#/$defs/releaseNoteGrouping" },
+            "releaseTags": { "$ref": "#/$defs/releaseTags" }
           }
         },
         "summary": { "type": "string", "minLength": 1 }
@@ -808,6 +881,7 @@
         "publicReleaseNotes": { "$ref": "#/$defs/publicReleaseNotes" },
         "curationBudget": { "$ref": "#/$defs/curationBudget" },
         "publicVersioning": { "$ref": "#/$defs/publicVersioning" },
+        "releaseTags": { "$ref": "#/$defs/releaseTags" },
         "sharedVersionLines": { "$ref": "#/$defs/sharedVersionLines" },
         "scope": { "enum": ["repository", "all-projects", "run-only"] },
         "setupStyle": { "enum": ["recommended", "customized"] },

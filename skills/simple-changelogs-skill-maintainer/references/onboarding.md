@@ -12,6 +12,7 @@ inside the original task, not a separate task.
 - First screen
 - Customized questions
 - Public-version choice
+- Release tags
 - Release-note organization and major names
 - Public release-note layer
 - Contextual product-surface choice
@@ -272,6 +273,33 @@ values prefill but require repository or current-run confirmation. The receipt
 states that work remains under `Unreleased` until a public boundary and that
 version selection grants no publication, tagging, or hosted-release authority.
 Coordinated setup keeps separate owners and resumable write receipts.
+
+## Release tags
+
+Ask after the public-version choice, from inspection's `releaseTags`. Ask
+**Should each release get a Git tag? Choose one:**
+
+1. **Tag releases as `v1.4.0` (Recommended)**: When a release goes out, Simple
+   Changes adds a tag such as `v1.4.0` to that exact commit and pushes it, so
+   anyone can find, compare, or check out the released code.
+2. **Don't tag releases**: Releases work exactly as they do now and no tags are
+   created.
+
+When `recommended` differs, replace choice 1 with **Keep your tag style,
+`release-1.4.0` (Recommended)** for an existing style, or **Tag each app
+separately, `web@1.4.0` and `ios@2.1.0` (Recommended)**: each app or package
+gets its own tag, so their tags never collide. For `"none"`, recommend **Don't
+tag releases** with `reason` as one clause. Then say: "A tag is pushed only
+when the release itself goes out, under the approval that release already
+needs, so it never adds a prompt. Earlier releases stay untagged; ask me
+separately if you want them tagged." When `ciTriggers` lists a file, add:
+"Your CI runs when a tag is pushed (`<path>`), so the tag waits for the
+release's production approval, and anything else that CI does is listed for
+your approval."
+
+Recommended setup stores `recommended` without asking and shows it only in
+receipt details. Record an answer with `--release-tags` (`none`, a template,
+or a JSON object per train).
 
 ## Release-note organization and major names
 

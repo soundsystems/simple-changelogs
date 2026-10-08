@@ -1,11 +1,1 @@
-{
-  "schemaVersion": 1,
-  "owner": "Simple Changes",
-  "scope": "The protocol; changelog-provider.json lists the subset a distribution supports.",
-  "ownerRepository": "https://gitlab.com/soundsystems/simple-changes",
-  "sourcePlan": "docs/plans/2026-08-10-public-release-versioning-deploy-orchestration.md",
-  "requestVersions": [1, 2],
-  "receiptVersions": [1, 2, 3],
-  "canonicalJson": "RFC 8785",
-  "digest": "SHA-256"
-}
+{"schemaVersion":1,"owner":"Simple Changes","scope":"The protocol; changelog-provider.json lists the subset a distribution supports.","ownerRepository":"https://gitlab.com/soundsystems/simple-changes","sourcePlan":"docs/plans/2026-08-10-public-release-versioning-deploy-orchestration.md","requestVersions":[1,2,3],"receiptVersions":[1,2,3,4],"canonicalJson":"RFC 8785","digest":"SHA-256"}

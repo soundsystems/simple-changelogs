@@ -146,7 +146,10 @@ Manifest assertions never execute caller-supplied commands. Git inspection and
 other subprocess checks use evaluator-owned argument arrays only.
 `file.changed`, `file.unchanged`, `repo.state` cleanliness, and
 `git.changedPaths` compare the workspace with the runner's baseline commit, so
-a change the agent commits still counts as a change.
+a change the agent commits still counts as a change. `repo.state` may also
+assert `tags`, the exact list of local tags. A fixture that needs tags lists
+them, one per line, in `.fixture-git-tags`; the harness removes that file
+before the baseline commit and creates each lightweight tag on it.
 
 Paths are workspace-relative. Text expectations are regular expressions.
 `text.includesFile` names a second workspace file whose text, ignoring line

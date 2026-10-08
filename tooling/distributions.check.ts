@@ -20,8 +20,16 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // 64,373; support files Web+CMS 215,174, the other Markdown distributions
 // about 198,600, CMS-only 162,615. When the guidance budget binds, trim
 // reference prose before raising it.
+// The support budget rose from 256 KiB to 384 KiB for release tags (approved
+// by the user on 2026-10-07): the protocol schemas each distribution vendors
+// must stay byte-identical with Simple Changes, which ships them minified, and
+// scripts are executed, not read into context. Measured on that branch with
+// minified schemas: support files Web+CMS 282,993 bytes, full 266,362, mobile
+// 266,372, Web 266,361, skill-maintainer 266,422, CMS-only 221,291. When the
+// support budget binds, prefer moving distribution-specific code into a module
+// only those distributions ship before raising again.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
-const MAX_SUPPORT_BYTES = 256 * 1024;
+const MAX_SUPPORT_BYTES = 384 * 1024;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
@@ -90,6 +98,11 @@ const canonicalQueryFiles = new Map(
     )
   )
 );
+// The readable canonical protocol files live in tooling; every distribution
+// ships them minified, exactly JSON.stringify(JSON.parse(text)) plus a
+// newline, the bytes Simple Changes ships for the same schemas.
+const minifiedJson = (text: string): string =>
+  `${JSON.stringify(JSON.parse(text))}\n`;
 const canonicalProtocolFiles = new Map(
   await Promise.all(
     [
@@ -348,9 +361,11 @@ for (const {
           failures.push(
             `skills/${directoryName} is missing pinned protocol schema ${filename}`
           );
-        } else if (readFileSync(protocolPath, "utf8") !== canonical) {
+        } else if (
+          readFileSync(protocolPath, "utf8") !== minifiedJson(canonical)
+        ) {
           failures.push(
-            `skills/${directoryName}/schemas/${filename} diverges from the pinned producer fixture`
+            `skills/${directoryName}/schemas/${filename} is not the minified pinned producer fixture`
           );
         }
       }
@@ -1249,6 +1264,7 @@ for (const { directoryName, source } of cmsPolicySchemas) {
     source.includes("releaseNoteLinks") ||
     source.includes("releaseNoteGrouping") ||
     source.includes("majorReleaseNaming") ||
+    source.includes("releaseTags") ||
     source.includes("sharedVersionLines")
   ) {
     failures.push(

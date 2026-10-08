@@ -4014,6 +4014,219 @@
           ]
         }
       ]
+    },
+    {
+      "id": "behavior-release-tags-existing-style",
+      "suite": "behavior",
+      "fixture": "release-tags-prefix",
+      "tags": ["setup", "versions", "release-tags"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Set up Simple Changelogs for this repository with the recommended setup.\nLeave the released history alone, confirm the receipt, and stop after setup.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/releaseTags",
+              "expected": "release-{version}"
+            },
+            {
+              "kind": "repo.state",
+              "expected": {
+                "tags": ["release-1.0.0", "release-1.1.0"]
+              }
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_TAGS_RECORDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-release-tags-tooling-owns-tags",
+      "suite": "behavior",
+      "fixture": "release-tags-tooling",
+      "tags": ["setup", "versions", "release-tags"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Set up Simple Changelogs for this repository with the recommended setup.\nLeave the released history alone, confirm the receipt, and stop after setup.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/releaseTags",
+              "expected": "none"
+            },
+            {
+              "kind": "repo.state",
+              "expected": {
+                "tags": ["v1.0.0", "v1.1.0"]
+              }
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "package.json",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_TAGS_RECORDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-release-tags-monorepo",
+      "suite": "behavior",
+      "fixture": "release-tags-monorepo",
+      "tags": ["setup", "versions", "mobile", "release-tags"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Set up Simple Changelogs for this repository with the recommended setup.\nKeep mobile release notes in the mobile app and app stores only, the apps keep\nseparate version numbers, confirm the receipt, and stop after setup.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/releaseTags",
+              "expected": {
+                "mobile": "mobile@{version}",
+                "web": "web@{version}"
+              }
+            },
+            {
+              "kind": "repo.state",
+              "expected": {
+                "tags": []
+              }
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/web/package.json",
+              "expected": true
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "apps/mobile/app.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_TAGS_RECORDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-release-tags-date-only",
+      "suite": "behavior",
+      "fixture": "release-tags-dated",
+      "tags": ["setup", "versions", "release-tags"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Set up Simple Changelogs for this repository with the recommended setup.\nLeave the released history alone, confirm the receipt, and stop after setup.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/releaseTags",
+              "expected": "none"
+            },
+            {
+              "kind": "repo.state",
+              "expected": {
+                "tags": []
+              }
+            },
+            {
+              "kind": "file.unchanged",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_TAGS_RECORDED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-release-tags-update-asks-once",
+      "suite": "behavior",
+      "fixture": "release-tags-update",
+      "tags": ["setup", "versions", "guidance", "release-tags"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Record the pending Export CSV change in the changelog.",
+          "assertions": [
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs.json",
+              "expected": true
+            },
+            {
+              "kind": "repo.state",
+              "expected": {
+                "tags": []
+              }
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_TAGS_QUESTION_ASKED"
+            }
+          ]
+        },
+        {
+          "prompt": "Tag releases as v1.4.0 style, keep my other settings, and continue.",
+          "assertions": [
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/releaseTags",
+              "expected": "v{version}"
+            },
+            {
+              "kind": "json.path",
+              "target": ".simple-changelogs.json#/guidance/version",
+              "expected": 25
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## Unreleased\\n[\\s\\S]*(?i:csv)[\\s\\S]*## 1\\.1\\.0"
+            },
+            {
+              "kind": "repo.state",
+              "expected": {
+                "tags": []
+              }
+            },
+            {
+              "kind": "report.decision",
+              "expected": "RELEASE_TAGS_RECORDED"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

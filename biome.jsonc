@@ -9,7 +9,13 @@
     }
   },
   "files": {
-    "includes": ["!docs/superpowers"]
+    // Distributions ship the protocol schemas minified, byte for byte as
+    // Simple Changes ships them; tooling keeps the readable copies.
+    "includes": [
+      "!docs/superpowers",
+      "!skills/*/schemas/changelog-*.schema.json",
+      "!skills/*/schemas/protocol-provenance.json"
+    ]
   },
   "linter": {
     "domains": {

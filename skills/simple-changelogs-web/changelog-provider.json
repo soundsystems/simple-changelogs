@@ -6,13 +6,13 @@
     "multi-train-receipts",
     "guidance-update-notices"
   ],
-  "guidanceVersion": 22,
+  "guidanceVersion": 25,
   "provider": "simple-changelogs",
-  "receiptVersions": [1, 2],
-  "requestVersions": [1],
+  "receiptVersions": [1, 2, 4],
+  "requestVersions": [1, 3],
   "schemaDigests": {
-    "changelogReceipt": "7d3b3734b5831aba1fb8e578a291b998777f59108448e1c57541bfb6d090a29e",
-    "changelogRequest": "b5bbccd66631ead9029834a675ed2144de895b1ee3ef50abedfa424650b0e7e5"
+    "changelogReceipt": "4c3515e4d31d6ae1890848c3bd7ed53d59e4d445fa7d884187c6355a10ef10c0",
+    "changelogRequest": "8a816017d21aacf5ada726d158b5da7169f50d123ad4201737d4e6108aa3569e"
   },
   "schemaVersion": 1
 }

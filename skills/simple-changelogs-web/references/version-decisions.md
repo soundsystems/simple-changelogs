@@ -58,6 +58,10 @@ grants no remote authority. `unknown` always blocks. Exact valid current
 direction overrides saved policy. A public prerelease crosses the same gate;
 internal build counters do not.
 
+When `releaseTags` is set, a tag in its style counts as a released version,
+and a version whose tag name a local tag on another commit already holds is
+never selected: block with `invalid-version-direction` and `choose-version`.
+
 ## Web Production Release Identity
 
 Every production Web deployment must resolve to one product release version.

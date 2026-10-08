@@ -283,123 +283,55 @@ automatically, and record the one-time disposition with
 <!-- simple-changelogs-guidance-update version="16" kinds="capability,behavior,onboarding" backfill="not-needed" summary="Web and CMS setup now verifies public and protected product structure before reusing, proposing, or recording destinations as planned." -->
 ## Guidance 16
 
-First-use setup now begins with a plain-language overview and offers **Walk me
-through it**. The walkthrough explains public customer history, developer
-history, protected CMS history, each relevant destination, unresolved
-preference, consequence, recommended default, and authority boundary one
-question at a time.
-
-Installed-guidance notices now lead with a clear headline and up to three
-practical effects, confirm that saved settings and released history are
-unchanged, and offer **Walk me through what changed — Recommended**, **Keep my
-current settings and continue**, or **View detailed release notes**. Historical
-review remains separate and conditional; setup does not grant deployment,
-operator access, or permission to expose protected CMS content.
-
-Web+CMS onboarding now inventories public Web, protected CMS, Mobile, store,
-workspace, and release-note evidence before destination choices. It reuses
-established public and operator surfaces; absent surfaces remain proposals until
-the owner confirms the exact current destination after a rescan or chooses
-again. Preferences cannot prove routes, authentication, roles, credentials, or
-workspace topology and never authorize exposing protected CMS history.
+First-use setup opens with a plain-language overview and offers **Walk me
+through it**, and guidance notices lead with a headline and up to three
+practical effects, then offer a guided review, continuing, or the detailed
+notes. Web+CMS onboarding inventories public Web, protected CMS, Mobile, store,
+workspace, and release-note evidence, reuses established public and operator
+surfaces, and keeps absent ones as proposals until the owner confirms them
+after a rescan. No choice proves a route, authentication, or role, or
+authorizes exposing protected CMS history.
 
 <!-- simple-changelogs-guidance-update version="17" kinds="behavior,onboarding" backfill="not-needed" summary="Web and CMS setup now offers progressive confirmation receipts, a two-step Web page and audience flow, and separate source-revision and distribution-guidance identity." -->
 ## Guidance 17
 
-Recommended Web+CMS setup now turns public-Web and protected-operator evidence
-into one plain-language receipt and asks only for confirmation or changes.
-Guided setup defines unfamiliar terms when they matter and asks about each
-destination before its placement, environment, links, components, or access
-details.
-
-Install and update reporting now separates the Git source revision, when known,
-from the selected distribution's guidance checkpoint.
-
-Confirmation receipts now show a compact consequential summary first with
-**Confirm**, **Show details**, and **Change something**. The complete receipt
-remains available, and details hidden by default cannot expand setup authority.
-
-Inspection reports scan completeness and marks every surface as detected, not
-detected, or uncertain. Irrelevant Mobile and store questions are hidden only
-after a complete scan supports that result; uncertain topology produces one
-combined confirmation.
-
-Web archive setup now asks **Should I build a Release Notes page?**, defines it
-as the complete history of shipped updates, and offers a dedicated page, an
-existing page, or no page while explaining that building it does not expose it
-live or change the protected CMS destination. It then asks **Who should see
-Release Notes?** and maps developers, preview reviewers, and live visitors to
-the environments where the Web page appears.
-
-Public-Web version setup now explains patch, minor, and major changes with
-concrete SemVer examples and offers automatic patches while minor and major
-releases ask. Normal first-time setup records `ask` for future missing UI and
-waits for an exact proposal; advanced `allow` and `existing-only` policies
-remain supported. This prospective change rewrites no released history and
-grants no public surface, operator access, dependency, deployment, publication,
-or version authority.
+Recommended Web+CMS setup turns public-Web and protected-operator evidence into
+one receipt with **Confirm**, **Show details**, and **Change something**, and
+reports separate the Git source revision from the guidance checkpoint.
+Inspection marks each surface detected, not detected, or uncertain and skips
+Mobile and store questions only after a complete scan. Web archive setup asks
+whether to build a Release Notes page and who should see it without changing
+the protected CMS destination, version setup can automate patches, and new
+setups record `ask` for future release-note surfaces.
 
 <!-- simple-changelogs-guidance-update version="18" kinds="behavior,onboarding" backfill="not-needed" summary="Release notes now group related bullets by product area by default, onboarding confirms stable-major naming, and patch releases use one flat Bug Fixes & Improvements section." -->
 ## Guidance 18
 
-Release notes now group related changes under user-recognizable product areas by
-default, merging repeated categories and leaving sparse releases flat.
-Onboarding confirms whether stable major releases should receive a concise name
-beside the canonical version. Minor releases require no name, and patches always
-use one flat **Bug Fixes & Improvements** section. The preferences are
-prospective and grant no public surface, CMS access, deployment, publication,
-or version authority.
+Release notes group related bullets under user-recognizable product areas by
+default and keep sparse releases flat. Onboarding confirms whether stable major
+releases get a concise name beside the version; minor releases need no name,
+and patches use one flat **Bug Fixes & Improvements** section. Released history
+is unchanged.
 
 <!-- simple-changelogs-guidance-update version="19" kinds="capability,onboarding" backfill="optional" summary="A bundled read-only query CLI now reads releases and entries from the public Markdown histories and lint-checks their structure. Curated public release notes can now derive RELEASE_NOTES.md from the changelog." -->
 ## Guidance 19
 
-Web+CMS repositories gain a queryable public history: agents and maintainers can answer history questions
-directly from `CHANGELOG.md` and `DEVELOPER_CHANGELOG.md` with the bundled
-`scripts/query.ts` helper. It lists release sections, shows one release by
-version, date, or `Unreleased`, filters entries by date, group, agent, or
-pattern, and lint-checks structure with a nonzero exit on problems. Bare
-versions resolve to full ones, duplicate headings are disambiguated by
-occurrence, and ambiguity produces a candidate list rather than a guess.
-
-The helper also understands the legacy `<!-- Agent: ... -->` signature dialect
-used before the canonical signature comment, so older attributed history stays
-queryable. Legacy signatures are reported as notes during lint, never treated
-as errors, and `references/querying.md` documents every subcommand.
-
-This addition is read-only. It changes no saved settings, asks no new
-onboarding questions, writes no cache or index beside the Markdown source of
-truth, and gives released history no reason for a backfill.
-
-Setup state recorded after onboarding — completing a partial released-history
-audit, acknowledging a guidance update, or changing contextual preferences —
-now writes through the same transaction-marked atomic path as initial
-onboarding, and re-recording identical contextual preferences reports the
-repository as already configured without rewriting stored policy. Guidance
-acknowledgments advance the repository and CMS policy guidance blocks
-together, and a pending CMS-track update now surfaces its own notice.
-
-Repositories with a public marketing or web surface may now opt into curated
-public release notes. A new optional `publicReleaseNotes` repository policy
-(`full` by default, `curated` on request) derives a `RELEASE_NOTES.md` at each
-release boundary: a few one-sentence highlights within an optional
-`curationBudget` (default 3-8) plus one rollup line pointing at the complete
-changelog. The curated file is derived, never authored; every changelog entry
-is mechanically accounted as highlighted, rolled up, or omitted, and breaking
-changes and security notices are never omitted or rolled up. The proposed
-section rides the existing release receipt, onboarding asks one evidence-led
-question only when a public destination is detected, and repositories that
-keep the default `full` policy see no change. Backfilling curated sections for
-already-released history is a safe derived operation, offered once, never
-automatic.
+The bundled read-only `scripts/query.ts` lists releases, shows one release,
+filters entries, and lint-checks the Markdown histories, including legacy `<!--
+Agent: ... -->` signatures (`references/querying.md`). Setup writes after
+onboarding use the same atomic transaction as onboarding. Optional
+`publicReleaseNotes: "curated"` derives `RELEASE_NOTES.md` from the changelog
+at each release, accounting every entry as highlighted, rolled up, or omitted
+and never dropping breaking or security notes; a curated backfill is optional.
 
 <!-- simple-changelogs-guidance-update version="20" kinds="behavior" backfill="optional" summary="Reconciliation now keeps one empty Unreleased heading so later merges cannot land in the newest release." -->
 ## Guidance 20
 
-A reconciled release now keeps an empty `## Unreleased` heading in both
-changelogs; removing it let the next merge prepend into the newest release.
-`query.ts check` flags a duplicate or non-leading `Unreleased`. An optional
-audit restores a missing empty heading and reports entries the newest release
-absorbed; moving them needs separate authority.
+A reconciled release keeps an empty `## Unreleased` heading in both changelogs
+so the next merge cannot land in the newest release, and `query.ts check` flags
+a duplicate or non-leading one. An optional audit restores a missing heading
+and reports entries the newest release absorbed; moving them needs separate
+authority.
 
 <!-- simple-changelogs-cms-guidance-update version="2" kinds="capability,onboarding" backfill="optional" summary="CMS changelog entries may now carry curated highlights with a mechanical accounting of every underlying change." -->
 ## CMS Guidance 2
@@ -415,20 +347,34 @@ released operator history is optional and derives only from recorded changes.
 <!-- simple-changelogs-guidance-update version="21" kinds="behavior" backfill="not-needed" summary="New changelog, release-note, and CMS operator entries now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence." -->
 ## Guidance 21
 
-New changelog entries, release-note lines, and the separate CMS operator
-entries use commas, colons, periods, or parentheses instead of em-dashes; a
-sentence that would reach for one is rewritten rather than having the
-character swapped. A repository's documented house style still takes
-precedence. Setup and update questions now present each choice as
-`**Choice (Recommended)**: consequence`, with the choices and their defaults
-unchanged. Released entries keep their wording; no backfill is needed.
+New changelog entries, release-note lines, and CMS operator entries use commas,
+colons, periods, or parentheses instead of em dashes, rewriting the sentence
+rather than swapping the character, and setup and update choices read as
+`**Choice (Recommended)**: consequence`. Released entries keep their wording.
 
 <!-- simple-changelogs-guidance-update version="22" kinds="behavior" backfill="not-needed" summary="New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception." -->
 ## Guidance 22
 
-Web release notes, changelogs, and CMS operator entries now use no em dashes in new or
-edited copy unless the user explicitly requests them. Rewrite the sentence with
-commas, colons, periods, or parentheses as appropriate; do not merely swap the
-character. Repository house style no longer supplies an exception. Released
-history stays unchanged. This update asks no new policy questions and needs no
-backfill.
+Web release notes, changelogs, and CMS operator entries use no em dashes in new
+or edited copy unless the user explicitly requests them, and repository house
+style no longer supplies an exception. Released history stays unchanged.
+
+<!-- simple-changelogs-guidance-update version="25" kinds="capability,onboarding" backfill="not-needed" summary="Each release can now get a Git tag: Simple Changelogs names it in the release receipt, and Simple Changes 0.27.0 or later creates and pushes it. This update asks once how releases should be tagged." -->
+## Guidance 25
+
+Each public release can now get a Git tag on its exact released commit. The
+optional `releaseTags` setting picks the style: `"v{version}"`, another
+`<prefix>{version}` template, one template per release train such as
+`{"web": "web@{version}"}`, or `"none"`. Simple Changelogs names the tag in
+receipt v4; Simple Changes 0.27.0 or later creates and pushes it when the
+release goes out, under the approval that release already needs. Simple
+Changelogs never creates or pushes tags, and earlier releases are never tagged.
+
+Only the public Web release is tagged. CMS operator history has no release, and
+the CMS guidance track stays at 2.
+
+This update asks **Should each release get a Git tag?** once, recommending the
+repository's existing tag style when local tags show one, and no tags when
+release tooling already creates them. No answer records nothing and leaves
+releases untagged. This distribution moves from 22 to 25 because every Simple
+Changelogs distribution now shares one guidance number. No backfill is needed.

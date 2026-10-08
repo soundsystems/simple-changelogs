@@ -32,18 +32,16 @@ self-contained skill directories. Separate repositories are unnecessary unless
 a distribution later needs independent ownership, versioning, or release
 cadence.
 
-### Guidance versions are distribution-specific
+### Guidance versions and releases
 
-The integer in each distribution's `SKILL.md` is a behavior checkpoint for that
-distribution. It is not a Simple Changelogs family release, package version, or
-claim that one distribution contains the others. Different numbers are
-expected because each distribution changes only when its own behavior changes.
-
-[`distribution-manifest.json`](distribution-manifest.json) lists the current
-guidance checkpoint for every sibling distribution and is verified against the
-installable `SKILL.md` files. The Git ref or commit identifies the shared source
-revision. Report an installation with both identities, substituting the
-selected distribution's current checkpoint from the manifest for `<N>`:
+The integer in each distribution's `SKILL.md` is a behavior checkpoint. From
+guidance 25, all six distributions share one guidance number, so a checkpoint
+can leave a distribution's behavior unchanged; its guidance-update notice then
+says so. [`distribution-manifest.json`](distribution-manifest.json) lists the
+current checkpoint for every distribution and is verified against the
+installable `SKILL.md` files. The Git ref or commit identifies the shared
+source revision. Report an installation with both identities, substituting the
+current checkpoint for `<N>`:
 
 ```text
 Installed Simple Changelogs from <git-ref-or-commit>.
@@ -52,9 +50,15 @@ Selected simple-changelogs-skill-maintainer (guidance <N>) for this repository.
 
 Do not shorten that to “Simple Changelogs `<N>`.”
 
-Family releases use SemVer, starting at 0.1.0. One release covers every
-distribution: the root `package.json` `version` names it, and its tag, such as
-`v0.1.0`, is a Git ref you can install or report.
+Family releases cover every distribution, and the root `package.json`
+`version` names them:
+
+- releases are numbered `0.<guidance>.<patch>`, so guidance 25 ships as
+  `0.25.0`;
+- every distribution shares that guidance number;
+- a fix that leaves guidance unchanged is a patch release, such as `0.25.1`;
+- each release is tagged `v<version>`, such as `v0.25.0`, a Git ref you can
+  install or report.
 
 ## Release-note depth and surface isolation
 
@@ -210,7 +214,7 @@ record one of:
   "schemaVersion": 1,
   "distribution": "web",
   "guidance": {
-    "version": 20,
+    "version": 25,
     "backfillStatus": "completed"
   },
   "developerChangelog": "required",
@@ -220,7 +224,8 @@ record one of:
   "newReleaseNoteSurfaces": "ask",
   "crossSurfaceVersioning": "independent",
   "releaseNoteEnvironmentScope": "non-production",
-  "releaseNoteLinks": "when-useful"
+  "releaseNoteLinks": "when-useful",
+  "releaseTags": "v{version}"
 }
 ```
 
@@ -261,6 +266,14 @@ preview only (`non-production`) is recommended for marketing and client sites:
 production does not serve the route or expose an entry point, while development
 and recognized previews keep it available. Generation, archive-data sync,
 deployment, and publication remain separate decisions.
+
+Every versioned distribution may record `releaseTags`: `"v{version}"`, another
+`<prefix>{version}` template, one template per release train such as
+`{ "web": "web@{version}" }`, or `"none"`. Simple Changelogs names each
+release's tag in its release receipt; Simple Changes 0.27.0 or later creates
+and pushes it when the release goes out. Setup recommends the repository's
+existing tag style, one tag per app for several apps, or no tags when release
+tooling already creates them. CMS-only history has no release to tag.
 
 Product distributions may also record `releaseNoteLinks` as `when-useful`
 (recommended), `ask`, or `disabled`. This controls contextual actions from an

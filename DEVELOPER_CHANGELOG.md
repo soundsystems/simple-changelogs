@@ -2,6 +2,76 @@
 
 ## Unreleased
 
+## 0.25.0 - 2026-10-07
+
+- Release tags, implementing the reviewed tags design:
+  - Policy: optional `releaseTags`, either `"none"`, a template with one
+    `{version}` and a valid ref prefix (`"v{version}"`), or an object of train
+    keys to templates. An absent field means `"none"`. `releaseTagNameProblem`,
+    `releaseTagTemplateProblem`, and `releaseTagsErrors` in `setup.ts` and
+    `lib/validate.ts` validate it against the policy schema; the CMS policy
+    schema excludes it. Setup refuses a single template when the repository
+    has two or more release trains, at apply and at every later policy write,
+    and refuses `--release-tags` with run-only scope.
+  - Detection: `inspectReleaseTags` reads local tags and each train's own
+    changelog headings, falling back to the owner manifest version only when
+    no heading names the train; `recommendReleaseTags` recommends the existing
+    convention, or `"none"` when release tooling or CI already creates tags.
+    A package script counts as tag tooling when, with line continuations and
+    quote and escape characters dropped, it names a package manager (`npm`, `pnpm`, `yarn`, or
+    `bun`) and a standalone `version` word (or npm's `verison` alias or a
+    prefix npm resolves to them, from `ve`), or `git` and a standalone `tag`
+    word, anywhere in it. Flags that turn tagging off are not recognized, so
+    such a script recommends no tags with a reason saying it may already
+    create them, and the user can change the choice. Detection only shapes
+    the recommendation: a tool it misses is caught by Simple Changes
+    `release-tag`, which refuses a tag name that exists locally or on the
+    remote at another commit (only a remote tag already on the verified
+    commit counts as done) and never moves or replaces a tag.
+    Trains come from `versionOwnersIn`, which uses the classify owner model:
+    same-named owners in different directories stay separate. The app train
+    that shared version lines know by that name keeps it, or else the first
+    in walk order, where a root product sorts first; the others are keyed by
+    their directory, such as `packages/web`, `./ios`, or `.`. A root or
+    `packages/*` product folds into a native or Tauri app only with a mobile
+    framework dependency, an `@tauri-apps/*` dependency, or an Expo
+    `app.json`. `inventory.versionTrains` and shared version lines are
+    unchanged.
+  - Protocol: request v3 lets Simple Changes accept receipt v4, and receipt v4
+    adds `release.tag` (`{name, message}` or null); the closed request schema
+    carries no tag. Both are advertised beside the earlier versions;
+    `lib/release-handoff.ts` negotiates older Simple Changes down exactly as
+    before. Schemas match Simple Changes 0.27.0 by canonical-JSON digest.
+  - Docs: onboarding, setup, release-handoff, and version-decisions references
+    in the five versioned distributions, with no host-specific commands.
+  - Tests: `release-tags.check.ts` (60 tests), five eval cases with fixture
+    tags (`.fixture-git-tags`) in the eval harness, and 101 mutants of the new
+    guards, all caught.
+- Unified guidance 25: `GUIDANCE_VERSION`, provider markers, the distribution
+  manifest, and all six `SKILL.md` files say 25; the web-cms CMS track stays
+  at 2. `contracts.ts` accepts `## Guidance A to B` range headings and one jump
+  up to 25. The full distribution condenses guidance 1 to 15 into a table, and
+  the full, mobile, Web, and Web+CMS histories summarize each later checkpoint
+  before 25 in one paragraph, with every update marker kept. The CMS and
+  skill-maintainer histories only gain guidance 25.
+- The vendored protocol files ship minified, exactly
+  `JSON.stringify(JSON.parse(text))` plus a newline. The request and receipt
+  schemas are then byte-identical to the ones Simple Changes ships; readable
+  canonical copies stay in tooling, and
+  `distributions.check.ts` enforces the form. Each distribution saves 30,950
+  bytes with canonical digests unchanged.
+- The support budget rose from 256 KiB to 384 KiB, approved by the user on
+  2026-10-07. Measured at release: support files Web+CMS 282,993 bytes, full
+  266,362, mobile 266,372, Web 266,361, skill-maintainer 266,422, CMS-only
+  221,291. The guidance budget stays at 224 KiB (full Markdown 216,599). When
+  the support budget binds again, move distribution-specific code into a
+  module only those distributions ship before raising it.
+- Versioning: releases are numbered `0.<guidance>.<patch>`, so this release
+  jumps from 0.1.0 to 0.25.0 and the root `package.json` follows. The
+  repository records skill-maintainer guidance 25 with `releaseTags:
+  "v{version}"`, matching the existing `v0.1.0` tag.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-07T18:22:00-05:00" -->
+
 ## 0.1.0 - 2026-10-07
 
 - Releases are numbered from 0.1.0. The root `package.json` `version` is the
