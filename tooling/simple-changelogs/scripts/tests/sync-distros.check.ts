@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import {
   cp,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   rm,
   stat,
@@ -12,7 +14,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "bun";
-import { syncDistributions, syncedFiles } from "../../../sync-distros.ts";
+import {
+  type SyncedFile,
+  syncDistributions,
+  syncedFiles,
+  writeSyncedFile,
+} from "../../../sync-distros.ts";
 
 const REPOSITORY_ROOT = join(import.meta.dir, "..", "..", "..", "..");
 const temporaryDirectories: string[] = [];
@@ -237,7 +244,13 @@ describe("sync-distros", () => {
     expect(checked.drifted.map(({ target }) => target)).toEqual([checker]);
     expect(checked.inSync).toBe(54);
 
-    await syncDistributions(root, { write: true });
+    // A restrictive umask must not strip the restored checker's permissions.
+    const umask = process.umask(0o077);
+    try {
+      await syncDistributions(root, { write: true });
+    } finally {
+      process.umask(umask);
+    }
     expect(await read(root, checker)).toBe(
       await read(
         REPOSITORY_ROOT,
@@ -274,12 +287,84 @@ describe("sync-distros", () => {
     await symlink(outside, join(root, scripts));
     await writeFile(join(outside, "setup.ts"), "// outside\n");
 
+    await writeFile(join(root, PROTOCOL_COPY), "{}\n");
+
+    await expect(syncDistributions(root, { write: false })).rejects.toThrow(
+      `Refusing to write through the symlink ${scripts}`
+    );
     await expect(syncDistributions(root, { write: true })).rejects.toThrow(
       `Refusing to write through the symlink ${scripts}`
     );
     expect(await readFile(join(outside, "setup.ts"), "utf8")).toBe(
       "// outside\n"
     );
+    expect(await read(root, PROTOCOL_COPY)).toBe("{}\n");
+  });
+
+  test("writes only the file the checked path names, even if a symlink appears later", async () => {
+    const root = await repositoryCopy();
+    const files = await syncedFiles(root);
+    const setup = files.find(
+      ({ target }) => target === SETUP_COPY
+    ) as SyncedFile;
+    const scripts = `skills/${WEB}/scripts`;
+
+    // A longer copy is truncated to exactly the canonical bytes.
+    await writeFile(join(root, SETUP_COPY), `${setup.expected}// stale tail\n`);
+    await writeSyncedFile(root, setup);
+    expect(await read(root, SETUP_COPY)).toBe(setup.expected);
+
+    // Called directly, the writer meets the symlinks the drift check would
+    // have refused, as if they were swapped in after it ran.
+    const outsideFile = join(root, "outside.ts");
+    await writeFile(outsideFile, "// outside\n");
+    await rm(join(root, SETUP_COPY));
+    await symlink(outsideFile, join(root, SETUP_COPY));
+    await expect(writeSyncedFile(root, setup)).rejects.toThrow(
+      `Refusing to write through the symlink ${SETUP_COPY}`
+    );
+    const missingOutside = join(root, "outside-new.ts");
+    await rm(join(root, SETUP_COPY));
+    await symlink(missingOutside, join(root, SETUP_COPY));
+    await expect(writeSyncedFile(root, setup)).rejects.toThrow(
+      `Refusing to write through the symlink ${SETUP_COPY}`
+    );
+    expect(existsSync(missingOutside)).toBe(false);
+
+    const outsideScripts = join(root, "outside-scripts");
+    await mkdir(outsideScripts);
+    await writeFile(join(outsideScripts, "setup.ts"), "// outside\n");
+    await rm(join(root, scripts), { force: true, recursive: true });
+    await symlink(outsideScripts, join(root, scripts));
+    await expect(writeSyncedFile(root, setup)).rejects.toThrow(
+      `Refusing to write through the symlink ${scripts}`
+    );
+
+    expect(await readFile(outsideFile, "utf8")).toBe("// outside\n");
+    expect(await readFile(join(outsideScripts, "setup.ts"), "utf8")).toBe(
+      "// outside\n"
+    );
+  });
+
+  test("refuses a descriptor that is not the file at the checked path", async () => {
+    const root = await repositoryCopy();
+    const files = await syncedFiles(root);
+    const setup = files.find(
+      ({ target }) => target === SETUP_COPY
+    ) as SyncedFile;
+    const outsideFile = join(root, "outside.ts");
+    await writeFile(outsideFile, "// outside\n");
+    await writeFile(join(root, SETUP_COPY), "// drifted\n");
+
+    // The path was swapped to another file for the open and swapped back
+    // before the check.
+    await expect(
+      writeSyncedFile(root, setup, (_path, flags, mode) =>
+        open(outsideFile, flags, mode)
+      )
+    ).rejects.toThrow(`Refusing to write through the symlink ${SETUP_COPY}`);
+    expect(await readFile(outsideFile, "utf8")).toBe("// outside\n");
+    expect(await read(root, SETUP_COPY)).toBe("// drifted\n");
   });
 
   test("refuses to write through a symlinked copy", async () => {

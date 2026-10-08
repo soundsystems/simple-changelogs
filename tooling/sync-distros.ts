@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 
+import { constants, type Stats } from "node:fs";
 import {
-  chmod,
+  type FileHandle,
   lstat,
   mkdir,
+  open,
   readFile,
   stat,
-  writeFile,
 } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
@@ -65,7 +66,7 @@ export const minifiedJson = (text: string): string =>
 
 export interface SyncedFile {
   expected: string;
-  // The source's permission bits, given to a copy that has to be created.
+  // The source's permission bits, which a written copy takes.
   mode: number;
   // Repository-relative paths.
   source: string;
@@ -182,8 +183,82 @@ export interface SyncReport {
   inSync: number;
 }
 
-// Computes every expected copy before writing any, so an unreadable or
-// malformed canonical source changes nothing.
+// Each segment's metadata below the root, the copy last, with the first
+// symlink among them: one anywhere could redirect a write outside the
+// repository.
+const pathChain = async (
+  root: string,
+  target: string
+): Promise<{ chain: (Stats | null)[]; linked: string | undefined }> => {
+  const segments = target.split("/");
+  const chain = await Promise.all(
+    segments.map((_, index) =>
+      lstat(join(root, ...segments.slice(0, index + 1))).catch(() => null)
+    )
+  );
+  const first = chain.findIndex((metadata) => metadata?.isSymbolicLink());
+  return {
+    chain,
+    linked: first === -1 ? undefined : segments.slice(0, first + 1).join("/"),
+  };
+};
+
+// Opens the copy without truncating it or following a final symlink, then
+// writes only after confirming the descriptor is the file at the checked
+// in-repository path, so a symlink swapped in at any segment after the drift
+// check redirects nothing. A written copy takes its source's permissions,
+// whatever the umask. Tests may substitute `openFile` to stand
+// in for a path swapped between the open and the check.
+export const writeSyncedFile = async (
+  root: string,
+  file: SyncedFile,
+  openFile: typeof open = open
+): Promise<void> => {
+  const target = join(root, file.target);
+  await mkdir(dirname(target), { recursive: true });
+  let handle: FileHandle;
+  try {
+    handle = await openFile(
+      target,
+      // Distinct flag bits, so their sum is their union.
+      constants.O_WRONLY + constants.O_CREAT + constants.O_NOFOLLOW,
+      file.mode
+    );
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "ELOOP") {
+      throw new Error(`Refusing to write through the symlink ${file.target}`, {
+        cause: error,
+      });
+    }
+    throw error;
+  }
+  try {
+    const [opened, { chain, linked }] = await Promise.all([
+      handle.stat(),
+      pathChain(root, file.target),
+    ]);
+    const current = chain.at(-1);
+    if (
+      linked !== undefined ||
+      !current ||
+      current.dev !== opened.dev ||
+      current.ino !== opened.ino
+    ) {
+      throw new Error(
+        `Refusing to write through the symlink ${linked ?? file.target}`
+      );
+    }
+    await handle.truncate(0);
+    await handle.writeFile(file.expected);
+    await handle.chmod(file.mode);
+  } finally {
+    await handle.close();
+  }
+};
+
+// Computes every expected copy and checks every path before writing any, so
+// an unreadable or malformed canonical source or a symlinked path changes
+// nothing.
 export const syncDistributions = async (
   root: string,
   { write }: { write: boolean }
@@ -191,19 +266,9 @@ export const syncDistributions = async (
   const files = await syncedFiles(root);
   const matches = await Promise.all(
     files.map(async (file) => {
-      // A symlink anywhere below the root, the copy or a directory above it,
-      // could redirect the write outside the repository.
-      const segments = file.target.split("/");
-      const chain = await Promise.all(
-        segments.map((_, index) =>
-          lstat(join(root, ...segments.slice(0, index + 1))).catch(() => null)
-        )
-      );
-      const linked = chain.findIndex((metadata) => metadata?.isSymbolicLink());
-      if (linked !== -1) {
-        throw new Error(
-          `Refusing to write through the symlink ${segments.slice(0, linked + 1).join("/")}`
-        );
+      const { chain, linked } = await pathChain(root, file.target);
+      if (linked !== undefined) {
+        throw new Error(`Refusing to write through the symlink ${linked}`);
       }
       return (
         chain.at(-1) !== null &&
@@ -213,22 +278,7 @@ export const syncDistributions = async (
   );
   const drifted = files.filter((_, index) => !matches[index]);
   if (write) {
-    await Promise.all(
-      drifted.map(async (file) => {
-        const target = join(root, file.target);
-        const existed = await lstat(target).then(
-          () => true,
-          () => false
-        );
-        await mkdir(dirname(target), { recursive: true });
-        await writeFile(target, file.expected);
-        // A recreated copy takes the source's permissions, whatever the
-        // umask; an existing copy keeps its own.
-        if (!existed) {
-          await chmod(target, file.mode);
-        }
-      })
-    );
+    await Promise.all(drifted.map((file) => writeSyncedFile(root, file)));
   }
   return { drifted, inSync: files.length - drifted.length };
 };
