@@ -5577,10 +5577,12 @@ const authoringPreconditionErrors = (options: ApplyOptions): string[] => {
   return errors;
 };
 
-// The sidecar's exact bytes, or null when it is absent.
-const rawSidecarBytes = async (path: string): Promise<string | null> => {
+// The sidecar's exact bytes, or null when it is absent. Bytes, never decoded
+// text: invalid UTF-8 decodes to the same replacement character as a literal
+// one, and the comparison must see that difference.
+const rawSidecarBytes = async (path: string): Promise<Buffer | null> => {
   try {
-    return await readFile(path, "utf8");
+    return await readFile(path);
   } catch (error) {
     if (errorCode(error) === "ENOENT") {
       return null;
@@ -5588,6 +5590,9 @@ const rawSidecarBytes = async (path: string): Promise<string | null> => {
     throw error;
   }
 };
+
+const sameBytes = (left: Buffer | null, right: Buffer | null): boolean =>
+  left === null || right === null ? left === right : left.equals(right);
 
 // Stage-and-rename, as the personal preferences file is written. The write
 // holds the setup transaction marker in the target's directory (the same one
@@ -5644,7 +5649,7 @@ export const writeAuthoringFile = async (
         );
       }
       await unchanged();
-      if ((await rawSidecarBytes(path)) !== bytesBefore) {
+      if (!sameBytes(await rawSidecarBytes(path), bytesBefore)) {
         throw new Error(
           `${path} changed while this answer was being written; nothing was replaced. Inspect it and retry.`
         );

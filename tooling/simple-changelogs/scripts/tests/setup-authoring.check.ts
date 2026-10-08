@@ -1167,6 +1167,39 @@ describe("authoring question and inspection", () => {
     expect(
       (await readdir(fixture.repo)).filter((name) => name.startsWith("."))
     ).not.toContain(".simple-changelogs.setup-transaction.json");
+    // Different bytes that decode to the same text (a literal U+FFFD turned
+    // into one invalid byte) are still a change: raw bytes are compared.
+    const replacement = sidecar({ gamma: { model: "kept�" } });
+    await writeJson(target.path, replacement);
+    const decoded = (await inspectFixture(fixture)).authoringFiles.repository;
+    expect(decoded.state).toBe("valid");
+    const text = await readFile(target.path, "utf8");
+    const literal = Buffer.from("�", "utf8");
+    const at = Buffer.from(text, "utf8").indexOf(literal);
+    expect(at).toBeGreaterThan(0);
+    const invalid = Buffer.concat([
+      Buffer.from(text, "utf8").subarray(0, at),
+      Buffer.from([0x80]),
+      Buffer.from(text, "utf8").subarray(at + literal.length),
+    ]);
+    expect(invalid.toString("utf8")).toBe(text);
+    const corrupt = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (path, mode) => {
+        await writeFile(target.path, invalid);
+        return realChmod(path, mode);
+      }
+    );
+    try {
+      await expect(
+        writeAuthoringFile(decoded, sidecar({}), 0o644)
+      ).rejects.toThrow("changed while this answer was being written");
+    } finally {
+      corrupt.mockRestore();
+    }
+    expect((await readFile(target.path)).equals(invalid)).toBe(true);
+    expect(
+      (await readdir(fixture.repo)).filter((name) => name.startsWith("."))
+    ).not.toContain(".simple-changelogs.setup-transaction.json");
     await rm(target.path);
     // A live setup transaction in the same directory holds the write off.
     const marker = join(
