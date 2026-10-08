@@ -1659,10 +1659,13 @@ const hasControlCharacter = (value: string): boolean =>
 const isHarnessId = (value: unknown): value is string =>
   typeof value === "string" && HARNESS_ID.test(value);
 
+// Lengths count Unicode characters (code points), as JSON Schema does.
+const characterCount = (value: string): number => [...value].length;
+
 const isModelName = (value: unknown): value is string =>
   typeof value === "string" &&
-  value.length >= 1 &&
-  value.length <= MODEL_NAME_MAX &&
+  characterCount(value) >= 1 &&
+  characterCount(value) <= MODEL_NAME_MAX &&
   !hasControlCharacter(value);
 
 const keyErrors = (
@@ -1783,20 +1786,23 @@ export const validateAuthoring = (
     : { errors };
 };
 
+// An installed copy reads only its own agents/harnesses.json, so a missing
+// file fails closed instead of borrowing a sibling distribution's. Only the
+// canonical tooling copy, which ships no agents/ directory, reads the full
+// distribution's data.
 const harnessDataPath = (): string => {
-  const packaged = resolve(import.meta.dir, "..", "agents", "harnesses.json");
-  return existsSync(packaged)
-    ? packaged
-    : resolve(
-        import.meta.dir,
-        "..",
+  const packageRoot = resolve(import.meta.dir, "..");
+  return basename(dirname(packageRoot)) === "tooling"
+    ? resolve(
+        packageRoot,
         "..",
         "..",
         "skills",
         DISTRIBUTION_DIRECTORIES.full,
         "agents",
         "harnesses.json"
-      );
+      )
+    : join(packageRoot, "agents", "harnesses.json");
 };
 
 const harnessDefinitionErrors = (id: string, value: unknown): string[] => {
@@ -1813,8 +1819,8 @@ const harnessDefinitionErrors = (id: string, value: unknown): string[] => {
   if (
     !(
       typeof value.name === "string" &&
-      value.name.length >= 1 &&
-      value.name.length <= HARNESS_NAME_MAX &&
+      characterCount(value.name) >= 1 &&
+      characterCount(value.name) <= HARNESS_NAME_MAX &&
       !hasControlCharacter(value.name)
     )
   ) {
@@ -1824,21 +1830,25 @@ const harnessDefinitionErrors = (id: string, value: unknown): string[] => {
   if (
     !(
       Array.isArray(roots) &&
+      new Set(roots).size === roots.length &&
       roots.every((root) => typeof root === "string" && HOME_ROOT.test(root))
     )
   ) {
-    errors.push(`${path}.homeRoots must be relative paths without ..`);
+    errors.push(`${path}.homeRoots must be distinct relative paths without ..`);
   }
   const names = value.sessionEnv;
   if (
     !(
       Array.isArray(names) &&
+      new Set(names).size === names.length &&
       names.every(
         (name) => typeof name === "string" && ENVIRONMENT_NAME.test(name)
       )
     )
   ) {
-    errors.push(`${path}.sessionEnv must list environment variable names`);
+    errors.push(
+      `${path}.sessionEnv must list distinct environment variable names`
+    );
   }
   return errors;
 };
@@ -1982,14 +1992,15 @@ export const resolveAuthoring = (
   const roleSource: AuthoringSourceRef = roleLayer
     ? { layer: roleLayer.layer, path: roleLayer.path }
     : DEFAULT_AUTHORING_SOURCE;
-  const harness =
-    role.harness === RUNNING_HARNESS
-      ? (runningHarness ?? UNKNOWN_HARNESS)
-      : role.harness;
+  // null when the role targets the running harness and nothing identifies
+  // it; a concrete id (even one spelled "unknown") is always looked up.
+  const target =
+    role.harness === RUNNING_HARNESS ? runningHarness : role.harness;
+  const harness = target ?? UNKNOWN_HARNESS;
   const entryLayer =
-    harness === UNKNOWN_HARNESS
+    target === null
       ? undefined
-      : layers.find((layer) => Object.hasOwn(layer.value.harnesses, harness));
+      : layers.find((layer) => Object.hasOwn(layer.value.harnesses, target));
   // undefined: no layer records the harness; null: "do not guide this".
   const entry = entryLayer?.value.harnesses[harness];
   const entrySource: AuthoringSourceRef = entryLayer
@@ -2009,7 +2020,7 @@ export const resolveAuthoring = (
   }
   const model = role.model ?? entry?.model ?? MOST_CAPABLE_MODEL;
   let status: AuthoringRoleResolution["status"] = "resolved";
-  if (harness === UNKNOWN_HARNESS) {
+  if (target === null) {
     status = "unresolved";
   } else if (entry === null) {
     status = "no-delegation";
@@ -5585,20 +5596,24 @@ const writeAuthoringFile = async (
     return { kind: "authoring", path, written: false };
   }
   const staged = await stageFile({ content, kind: "authoring", mode, path });
+  // Everything fallible happens on the staged file; the rename is the last
+  // step, so a failure leaves the existing sidecar untouched.
   try {
+    await chmod(staged.temporaryPath, mode);
+    const check = await readState(staged.temporaryPath, validateAuthoring);
+    if (check.state !== "valid") {
+      throw new Error(
+        [
+          ...check.errors,
+          "The staged authoring sidecar did not validate.",
+        ].join("; ")
+      );
+    }
     await ensureNoSymlink(path);
     await rename(staged.temporaryPath, path);
   } catch (error) {
     await rm(staged.temporaryPath, { force: true });
     throw error;
-  }
-  await chmod(path, mode);
-  const reread = await readState(path, validateAuthoring);
-  if (reread.state !== "valid") {
-    await (prior === null ? rm(path, { force: true }) : writeFile(path, prior));
-    throw new Error(
-      [...reread.errors, "The authoring sidecar did not revalidate."].join("; ")
-    );
   }
   return { kind: "authoring", path, written: true };
 };

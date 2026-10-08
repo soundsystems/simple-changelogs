@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   chmod,
+  cp,
   mkdir,
   mkdtemp,
   readdir,
@@ -155,11 +156,9 @@ const configuredPolicy = {
 
 const EMPTY_SIDECAR = { harnesses: {}, roles: {}, schemaVersion: 1 };
 
-// Each case: a sidecar and whether it is valid. `keyOnly` cases are harness
-// ids the schema cannot check (JSON Schema here validates values, and the
-// validator checks object keys by pattern).
+// Each case: a sidecar and whether it is valid; the packaged schema and the
+// hand-written validator must agree on every one.
 const VALIDATION_TABLE: {
-  keyOnly?: boolean;
   name: string;
   valid: boolean;
   value: unknown;
@@ -231,7 +230,6 @@ const VALIDATION_TABLE: {
     },
   },
   {
-    keyOnly: true,
     name: "invalid harness id key",
     valid: false,
     value: {
@@ -263,6 +261,15 @@ const VALIDATION_TABLE: {
     valid: false,
     value: {
       harnesses: { gamma: { model: "line\nbreak" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "model of 120 astral characters",
+    valid: true,
+    value: {
+      harnesses: { gamma: { model: "\u{1F600}".repeat(120) } },
       roles: {},
       schemaVersion: 1,
     },
@@ -374,12 +381,13 @@ const TYPES: Record<string, (candidate: unknown) => boolean> = {
   string: (candidate) => typeof candidate === "string",
 };
 
+// JSON Schema lengths count code points.
 const stringErrors = (schema: Schema, value: string, path: string): string[] =>
   [
-    typeof schema.minLength === "number" && value.length < schema.minLength
+    typeof schema.minLength === "number" && [...value].length < schema.minLength
       ? `${path} minLength`
       : "",
-    typeof schema.maxLength === "number" && value.length > schema.maxLength
+    typeof schema.maxLength === "number" && [...value].length > schema.maxLength
       ? `${path} maxLength`
       : "",
     typeof schema.pattern === "string" &&
@@ -395,6 +403,13 @@ const propertyErrors: SchemaCheck = (root, schema, value, path) => {
   const errors = ((schema.required as string[] | undefined) ?? [])
     .filter((key) => !Object.hasOwn(value, key))
     .map((key) => `${path}.${key} required`);
+  if (isObject(schema.propertyNames)) {
+    for (const key of Object.keys(value)) {
+      errors.push(
+        ...schemaErrors(root, schema.propertyNames, key, `${path}.${key} name`)
+      );
+    }
+  }
   const properties = (schema.properties as Schema | undefined) ?? {};
   for (const [key, item] of Object.entries(value)) {
     const nested = properties[key] ?? schema.additionalProperties;
@@ -473,10 +488,7 @@ describe("authoring sidecar validation", () => {
 
   test("the packaged schema agrees with the validator on every value case", async () => {
     const schema = JSON.parse(await readFile(SCHEMA_PATH, "utf8")) as Schema;
-    for (const { keyOnly, name, valid, value } of VALIDATION_TABLE) {
-      if (keyOnly) {
-        continue;
-      }
+    for (const { name, valid, value } of VALIDATION_TABLE) {
       expect({
         name,
         valid: schemaErrors(schema, schema, value, "$").length === 0,
@@ -558,6 +570,20 @@ describe("harness data and detection", () => {
         schemaVersion: 1,
       },
       { harnesses: {}, schemaVersion: 2 },
+      {
+        harnesses: {
+          ok: { homeRoots: [".a", ".a"], name: "x", sessionEnv: [] },
+        },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: [], name: "x", sessionEnv: ["A", "A"] } },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: [], name: "x\u0007", sessionEnv: [] } },
+        schemaVersion: 1,
+      },
     ];
     const outcomes = await Promise.all(
       malformedFiles.map(async (malformed, index) => {
@@ -587,6 +613,59 @@ const sidecar = (
   harnesses: AuthoringSidecar["harnesses"],
   roles: AuthoringSidecar["roles"] = {}
 ): AuthoringSidecar => ({ harnesses, roles, schemaVersion: 1 });
+
+describe("installed data file", () => {
+  test("an installed copy without its own data file fails closed, never borrowing a sibling's", async () => {
+    const skills = join(await temporaryDirectory("installed"), "skills");
+    await cp(
+      join(REPOSITORY_ROOT, "skills", "simple-changelogs-mobile"),
+      join(skills, "simple-changelogs-mobile"),
+      { recursive: true }
+    );
+    await rm(
+      join(skills, "simple-changelogs-mobile", "agents", "harnesses.json")
+    );
+    await mkdir(join(skills, "simple-changelogs", "agents"), {
+      recursive: true,
+    });
+    await cp(
+      join(
+        REPOSITORY_ROOT,
+        "skills",
+        "simple-changelogs",
+        "agents",
+        "harnesses.json"
+      ),
+      join(skills, "simple-changelogs", "agents", "harnesses.json")
+    );
+    const fixture = await authoringFixture({ roots: [".claude"] });
+    const child = spawn({
+      cmd: [
+        process.execPath,
+        join(skills, "simple-changelogs-mobile", "scripts", "setup.ts"),
+        "inspect",
+        "--repo",
+        fixture.repo,
+      ],
+      env: {
+        ...process.env,
+        SIMPLE_CHANGELOGS_CONFIG_DIR: fixture.config,
+        SIMPLE_CHANGELOGS_HARNESS_ROOTS: fixture.roots,
+      },
+      stderr: "pipe",
+      stdout: "pipe",
+    });
+    const [, stdout] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+    ]);
+    const result = JSON.parse(stdout) as SetupResult;
+    expect(result.detectedHarnesses).toEqual([]);
+    expect(result.errors.join(" ")).toContain(
+      join(skills, "simple-changelogs-mobile", "agents", "harnesses.json")
+    );
+  });
+});
 
 describe("authoring resolution", () => {
   const repositoryLayer = (value: AuthoringSidecar) => ({
@@ -709,6 +788,34 @@ describe("authoring resolution", () => {
       model: "personal",
       path: "/config/authoring.json",
     });
+  });
+
+  test("a concrete harness id spelled unknown keeps its entry", () => {
+    expect(
+      resolveAuthoring(
+        [
+          repositoryLayer(
+            sidecar(
+              { unknown: { effort: "high", model: "owner-model" } },
+              { "release-notes": { harness: "unknown" } }
+            )
+          ),
+        ],
+        null
+      ).effective["release-notes"]
+    ).toEqual({
+      effort: "high",
+      harness: "unknown",
+      model: "owner-model",
+      status: "resolved",
+    });
+    // A detected running harness whose id is "unknown" resolves the same way.
+    expect(
+      resolveAuthoring(
+        [repositoryLayer(sidecar({ unknown: { model: "owner-model" } }))],
+        "unknown"
+      ).effective["release-notes"]
+    ).toMatchObject({ model: "owner-model", status: "resolved" });
   });
 
   test("a null entry means no delegation, even under a role-level model", () => {

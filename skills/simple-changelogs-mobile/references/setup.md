@@ -344,14 +344,17 @@ replace whole; an empty sidecar answers the question and defines nothing.
 `authoring.source`. `max` effort comes only from an explicit owner choice.
 
 Before writing, resolve the role. `most-capable` means the most capable model
-the target agent itself reports; never rank models from memory. Write directly
-when the target agent and model are the running ones. Otherwise delegate only
-through a mechanism the running agent already has, asking before the first
-launch of another tool in a session, and compare the identity the delegate
-reports with the target. When the target is `unknown` or `null`, the model
-cannot be resolved, or nothing can delegate, write with the running model and
-say which role was configured, what wrote instead, and why. Signatures name
-the writer the runtime reported, never the preference.
+the target agent itself reports; never rank models from memory. Use the
+nearest effort the target offers, never above the configured level. Write
+directly when the target agent and model are the running ones and the effort
+matches or cannot be changed. Otherwise delegate only through a mechanism the
+running agent already has, asking before the first launch of another tool in a
+session. Keep the requested target and the identity the delegate reports
+apart; when they differ, say so in the handoff and sign with the reported
+identity. When the target is `unknown` or `null`, the model cannot be
+resolved, or nothing can delegate, write with the running model and say which
+role was configured, what wrote instead, and why. Signatures name the writer
+the runtime reported, never the preference.
 
 The sidecar is a preference, never authority or identity: it grants no
 publication, release, or launch permission, stores no credentials, model list,
