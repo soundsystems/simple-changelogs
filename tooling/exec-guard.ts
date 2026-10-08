@@ -12,9 +12,11 @@
 //   `/merge` or merge-train endpoint, or a `gh api` call to a pull request's
 //   `/merge` or `/merge-async`, pinned with `-f sha=<head>`; `glab mr merge
 //   --sha <head>`; or `gh pr merge --match-head-commit <head>`, wherever the
-//   subcommand sits among the flags. A merge that pins no head, a mutating
-//   API call that writes refs, commits, or files directly, and a GraphQL
-//   call that merges or writes refs are refused; reads pass;
+//   subcommand sits among the flags. A call counts as a read only with one
+//   explicit GET or HEAD, or with no method and only flags that send no body.
+//   A merge that pins no head or repeats it, one whose body comes from a
+//   file, a mutating call that writes refs, commits, or files directly, and
+//   any GraphQL call but an inline query are refused;
 // - `git push`: Git itself reports what the push would update (`git push
 //   <args> --dry-run --porcelain --no-quiet`, with the same options and
 //   configuration), and every update to the target branch on any remote
@@ -22,15 +24,16 @@
 //   and so is a push whose dry run fails, one with `--`, and one whose last
 //   argument is an option;
 // - `git merge` while the target branch is checked out, for each merged
-//   revision (MERGE_HEAD for --continue, the upstream with no revision), and
-//   `git pull` of a named branch into it;
+//   revision (MERGE_HEAD for --continue, the upstream with no revision); on
+//   the target branch only `git pull --ff-only` runs;
 // - `git send-pack`, `git http-push`, `git subtree push|pull|merge`, and a
 //   Git alias that expands to a push, merge, or pull are refused.
 //
 // Boundary: the guard reads the exec argv. It inherits the environment the
 // command runs with, and it refuses `env` assignments to GIT_ variables and
 // provider merges that repeat their method, sha, or head option rather than
-// model which one the CLI keeps. Another program whose arguments
+// model which one the CLI keeps: anything it cannot read as one plain value
+// is refused. Another program whose arguments
 // read as a Git or provider merge or push (a shell `-c` script, `timeout`,
 // `bunx`) is refused; a merge hidden inside a script or package task is not
 // seen, and only commands run through `loop exec` are guarded at all. Local
@@ -78,7 +81,7 @@ const PORCELAIN_LINE = /^([ +\-*!=])\t([^\t]*)\t/u;
 const MERGING_WORD = /\b(?:push|merge|pull|send-pack)\b/u;
 // GraphQL mutations that merge or move a branch.
 const GRAPHQL_REF_WRITE =
-  /merge|updateRefs?\b|createCommitOnBranch|commitCreate|createRef|deleteRef/iu;
+  /mutation|merge|updateRefs?\b|createCommitOnBranch|commitCreate|createRef|deleteRef/iu;
 // REST endpoints that merge a change request: GitLab merge and merge trains,
 // GitHub merge and asynchronous merge.
 const API_MERGE_PATHS = [
@@ -114,23 +117,6 @@ const MERGE_VALUE_OPTIONS = new Set([
   "--into-name",
   "--strategy",
   "--strategy-option",
-]);
-const PULL_VALUE_OPTIONS = new Set([
-  "-X",
-  "-j",
-  "-o",
-  "-s",
-  "--deepen",
-  "--depth",
-  "--jobs",
-  "--negotiation-tip",
-  "--refmap",
-  "--server-option",
-  "--shallow-exclude",
-  "--shallow-since",
-  "--strategy",
-  "--strategy-option",
-  "--upload-pack",
 ]);
 const API_FIELD_OPTIONS = ["-F", "-f", "--field", "--raw-field"];
 
@@ -189,6 +175,15 @@ const occurrences = (args: string[], names: string[]): number =>
         (name.length === 2 && arg.startsWith(name))
     )
   ).length;
+
+// Every `glab api --form k=v` or `--form=k=v` value, in order.
+const formValues = (args: string[]): string[] =>
+  args.flatMap((arg, index) => {
+    if (args[index - 1] === "--form") {
+      return [arg];
+    }
+    return arg.startsWith("--form=") ? [arg.slice("--form=".length)] : [];
+  });
 
 // Every `-f k=v`, `-fk=v`, or `--raw-field=k=v` value, in order.
 const fieldValues = (args: string[]): string[] =>
@@ -270,11 +265,10 @@ const gitPush = (context: GitContext, args: string[]): Gate => {
 
 const gitMerge = (context: GitContext, args: string[]): Gate => {
   const target = targetBranch(context);
-  if (
-    currentBranch(context) !== target ||
-    args.includes("--abort") ||
-    args.includes("--quit")
-  ) {
+  // Only a lone --abort or --quit is exempt; Git honors a later negation.
+  const stops =
+    args.length === 1 && ["--abort", "--quit"].includes(args[0] ?? "");
+  if (currentBranch(context) !== target || stops) {
     return ALLOW;
   }
   const named = positionals(args, MERGE_VALUE_OPTIONS);
@@ -285,13 +279,17 @@ const gitMerge = (context: GitContext, args: string[]): Gate => {
   return requireReceipts(context, `git merge into ${target}`, revisions);
 };
 
-// Pulling the upstream only syncs; pulling a named branch merges it.
+// On the target branch only a fast-forward-only pull runs; configuration can
+// make any other pull merge another branch, so fetch and git merge instead.
 const gitPull = (context: GitContext, args: string[]): Gate => {
   const target = targetBranch(context);
   return currentBranch(context) === target &&
-    positionals(args, PULL_VALUE_OPTIONS).length > 1
+    !(
+      args.includes("--ff-only") &&
+      !args.some((arg) => arg.startsWith("--no-ff"))
+    )
     ? refuse(
-        `git pull of a named branch merges it into ${target}; fetch it and run git merge instead`
+        `on ${target}, only git pull --ff-only runs; fetch and run git merge, which the guard checks`
       )
     : ALLOW;
 };
@@ -338,49 +336,78 @@ const git = (checkout: string, args: string[]): Gate => {
   }
 };
 
-// The HTTP method of a `glab api` or `gh api` call: explicit, or POST when
-// it sends fields or an input body, as both CLIs default.
-const apiMethod = (args: string[]): string => {
-  const attached = args.find((arg) => arg.startsWith("-X") && arg.length > 2);
-  const method =
-    optionValue(args, "--method") ??
-    optionValue(args, "-X") ??
-    attached?.slice(2);
-  if (method !== undefined) {
-    return method.toUpperCase();
-  }
-  return fieldValues(args).length > 0 ||
-    optionValue(args, "--input") !== undefined
-    ? "POST"
-    : "GET";
-};
-
+// Flags of `glab api` and `gh api` that send no request body.
+const READ_ONLY_FLAGS = new Set([
+  "-i",
+  "--include",
+  "--paginate",
+  "--silent",
+  "--slurp",
+  "--verbose",
+]);
+const READ_ONLY_VALUE_FLAGS = new Set([
+  "-H",
+  "-R",
+  "-p",
+  "-q",
+  "-t",
+  "--cache",
+  "--header",
+  "--hostname",
+  "--jq",
+  "--output",
+  "--preview",
+  "--repo",
+  "--template",
+]);
 const READ_METHODS = new Set(["GET", "HEAD"]);
 const endpointPath = (arg: string): string => arg.split("?")[0] ?? "";
 
+// A read: one explicit GET or HEAD, or no method and nothing but the
+// endpoint and flags that send no body. Anything else may write.
+const isRead = (args: string[], endpoint: string): boolean => {
+  const methods = args.flatMap((arg, index) => {
+    if (arg === "-X" || arg === "--method") {
+      return [args[index + 1] ?? ""];
+    }
+    if (arg.startsWith("--method=")) {
+      return [arg.slice("--method=".length)];
+    }
+    return arg.startsWith("-X") ? [arg.slice(2)] : [];
+  });
+  if (methods.length > 0) {
+    return (
+      methods.length === 1 && READ_METHODS.has((methods[0] ?? "").toUpperCase())
+    );
+  }
+  let value = false;
+  return args.every((arg) => {
+    if (value) {
+      value = false;
+      return true;
+    }
+    value = READ_ONLY_VALUE_FLAGS.has(arg);
+    return (
+      value ||
+      arg === endpoint ||
+      arg === "api" ||
+      READ_ONLY_FLAGS.has(arg) ||
+      [...READ_ONLY_VALUE_FLAGS].some((flag) => arg.startsWith(`${flag}=`))
+    );
+  });
+};
+
 // A provider API call to a merge or ref-writing endpoint: reads pass, a
-// merge must pin one head with a receipt, and a direct ref write is refused.
-// The CLI keeps the last of a repeated option, so a repeated method or sha is
-// refused rather than modeled.
+// merge must pin exactly one visible head with a receipt, and a direct ref
+// write is refused. A body the guard cannot read (`--input`, a field read
+// from a file) and a repeated sha are refused rather than modeled.
 const apiMerge = (
   context: GitContext,
   args: string[],
   endpoint: string,
   label: string
 ): Gate => {
-  const query = new URLSearchParams(endpoint.split("?")[1] ?? "");
-  const shas = fieldValues(args)
-    .filter((field) => field.startsWith("sha="))
-    .map((field) => field.slice(4));
-  if (query.has("sha")) {
-    shas.push(query.get("sha") ?? "");
-  }
-  if (occurrences(args, ["-X", "--method"]) > 1 || shas.length > 1) {
-    return refuse(
-      `a ${label} API merge that repeats its method or sha is not inspected`
-    );
-  }
-  if (READ_METHODS.has(apiMethod(args))) {
+  if (isRead(args, endpoint)) {
     return ALLOW;
   }
   if (
@@ -390,6 +417,24 @@ const apiMerge = (
       `${endpoint} writes refs, commits, or files directly; push through git instead`
     );
   }
+  const fields = [...fieldValues(args), ...formValues(args)];
+  if (
+    optionValue(args, "--input") !== undefined ||
+    fields.some((field) => field.includes("=@"))
+  ) {
+    return refuse(
+      `a ${label} API merge with a body read from a file is not inspected`
+    );
+  }
+  const shas = [
+    ...fields
+      .filter((field) => field.startsWith("sha="))
+      .map((field) => field.slice(4)),
+    ...new URLSearchParams(endpoint.split("?")[1] ?? "").getAll("sha"),
+  ];
+  if (shas.length > 1) {
+    return refuse(`a ${label} API merge that repeats its sha is not inspected`);
+  }
   const [sha] = shas;
   return sha
     ? requireReceipts(context, `a ${label} API merge`, [sha])
@@ -397,6 +442,19 @@ const apiMerge = (
         `a ${label} API merge must pin the head it merges with -f sha=<head>`
       );
 };
+
+// A GraphQL call runs only as an inline query: a mutation, a ref-writing
+// keyword, or a body from a file or standard input is refused.
+const graphqlCall = (args: string[], label: string): Gate =>
+  optionValue(args, "--input") !== undefined ||
+  [...fieldValues(args), ...formValues(args)].some((field) =>
+    field.includes("=@")
+  ) ||
+  args.some((arg) => GRAPHQL_REF_WRITE.test(arg))
+    ? refuse(
+        `a ${label} GraphQL call runs only as an inline query; merge through the REST merge with -f sha=<head>`
+      )
+    : ALLOW;
 
 // A provider merge, wherever its subcommand sits among the flags: a mutating
 // API call to a merge endpoint pinned with `-f sha=<head>` or a `sha` query
@@ -413,13 +471,8 @@ const providerMerge = (
   }
 ): Gate => {
   const context = { checkout, global: [] };
-  if (
-    args.includes("graphql") &&
-    args.some((arg) => GRAPHQL_REF_WRITE.test(arg))
-  ) {
-    return refuse(
-      `a ${provider.label} GraphQL call that merges or writes refs pins no head; use the REST merge with -f sha=<head>`
-    );
+  if (args.includes("graphql")) {
+    return graphqlCall(args, provider.label);
   }
   const endpoint = args.find((arg) =>
     [...API_MERGE_PATHS, ...API_REF_WRITE_PATHS].some((pattern) =>

@@ -167,7 +167,7 @@ describe("exec guard", () => {
       ["rg", "merge", "tooling"],
       ["git", "status"],
       ["git", "fetch", "origin"],
-      ["git", "pull"],
+      ["git", "pull", "--ff-only"],
       ["git", "-c", "alias.lg=log", "lg", "-1"],
       ["git", "push", "origin", "feature"],
       ["git", "push", "origin", "v1.0.0"],
@@ -178,6 +178,8 @@ describe("exec guard", () => {
       ["glab", "api", "-X", "POST", "projects/83469495/merge_requests"],
       ["gh", "api", "repos/o/r/pulls/7/merge"],
       ["gh", "api", "-XGET", "repos/o/r/pulls/7/merge", "-f", "a=b"],
+      ["gh", "api", "--paginate", "-H", "Accept: x", "repos/o/r/pulls/7/merge"],
+      ["gh", "api", "graphql", "-f", "query=query { viewer { login } }"],
       ["gh", "--repo", "o/r", "pr", "view", "3"],
       ["sh", "-c", "echo merged.json"],
       ["env", "A=1", "git", "status"],
@@ -212,12 +214,12 @@ describe("exec guard", () => {
     refused(
       repo,
       ["glab", "api", "graphql", "-f", "query=mutation { mergeRequestAccept }"],
-      "GraphQL"
+      "inline query"
     );
     refused(
       repo,
       ["gh", "api", "graphql", "-f", "query=mutation { updateRef(input: {}) }"],
-      "GraphQL"
+      "inline query"
     );
     refused(
       repo,
@@ -280,8 +282,10 @@ describe("exec guard", () => {
       "PUT",
       `-fsha=${head}`,
     ]);
-    // The CLI keeps the last of a repeated option, so repeats are refused.
-    for (const argv of [
+    // The CLI keeps the last of a repeated option: a repeated method is not
+    // a read, and a repeated sha is refused.
+    refused(
+      repo,
       [
         "gh",
         "api",
@@ -291,9 +295,16 @@ describe("exec guard", () => {
         "-X",
         "PUT",
         "-f",
-        `sha=${head}`,
+        `sha=${sha("main")}`,
       ],
+      "no passing"
+    );
+    refused(
+      repo,
       ["gh", "api", "repos/o/r/pulls/3/merge", "-XGET", "--method=PUT"],
+      "must pin the head"
+    );
+    for (const argv of [
       [
         "gh",
         "api",
@@ -303,8 +314,47 @@ describe("exec guard", () => {
         "-f",
         `sha=${sha("main")}`,
       ],
+      [
+        "gh",
+        "api",
+        `repos/o/r/pulls/3/merge?sha=${head}&sha=${sha("main")}`,
+        "-X",
+        "PUT",
+      ],
     ]) {
-      refused(repo, argv, "repeats its method or sha");
+      refused(repo, argv, "repeats its sha");
+    }
+    // A body the guard cannot read is refused; a form field is a body.
+    refused(
+      repo,
+      [
+        "gh",
+        "api",
+        "-X",
+        "PUT",
+        "repos/o/r/pulls/3/merge",
+        "--input",
+        "x.json",
+      ],
+      "read from a file"
+    );
+    refused(
+      repo,
+      [
+        "glab",
+        "api",
+        "projects/1/merge_trains/merge_requests/7",
+        "--form",
+        `sha=${sha("main")}`,
+      ],
+      "no passing"
+    );
+    for (const argv of [
+      ["gh", "api", "graphql", "--input", "payload.json"],
+      ["gh", "api", "graphql", "-F", "query=@payload.graphql"],
+      ["glab", "api", "graphql", "-f", "query=mutation { x }"],
+    ]) {
+      refused(repo, argv, "inline query");
     }
     refused(
       repo,
@@ -405,7 +455,21 @@ describe("exec guard", () => {
       ["git", "merge", "--no-ff", "-m", "Merge feature", "feature"],
       "git merge into main"
     );
-    refused(repo, ["git", "pull", "origin", "feature"], "git pull of a named");
+    refused(
+      repo,
+      ["git", "pull", "origin", "feature"],
+      "only git pull --ff-only"
+    );
+    refused(
+      repo,
+      ["git", "-c", "branch.main.merge=refs/heads/feature", "pull", "origin"],
+      "only git pull --ff-only"
+    );
+    refused(
+      repo,
+      ["git", "merge", "--abort", "--no-abort", "feature"],
+      "no passing"
+    );
     pass("feature");
     allowed(repo, [
       "git",
