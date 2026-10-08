@@ -719,8 +719,25 @@ describe("exec guard", () => {
     refused(
       repo,
       ["git", "merge", "--abort", "--no-abort", "feature"],
-      "no passing"
+      "not inspected"
     );
+    // An option's value never counts as the revision a merge names.
+    refused(
+      repo,
+      [
+        "git",
+        "-c",
+        "branch.main.remote=.",
+        "-c",
+        "branch.main.merge=refs/heads/feature",
+        "merge",
+        "--message",
+        "HEAD",
+      ],
+      "must name each revision"
+    );
+    refused(repo, ["git", "merge", "--cleanup", "strip", "HEAD"], "no passing");
+    refused(repo, ["git", "merge", "--mess", "HEAD"], "not inspected");
     // Operands that can name another or several commits are refused, even
     // when the upstream and the first fetched head have receipts.
     pass("origin/main");

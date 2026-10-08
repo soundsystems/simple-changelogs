@@ -31,8 +31,10 @@
 //   and so is a push whose dry run fails, one with `--`, and one whose last
 //   argument is an option;
 // - `git merge` while the target branch is checked out, for each named
-//   revision; `-`, no revision, --continue, FETCH_HEAD, and MERGE_HEAD are
-//   refused there, and no `git pull` runs on the target branch;
+//   revision, its flags parsed against git merge's complete flag table (an
+//   unknown or abbreviated flag is refused); `-`, no revision, --continue,
+//   FETCH_HEAD, and MERGE_HEAD are refused there, and no `git pull` runs on
+//   the target branch;
 // - `git send-pack`, `git http-push`, and any `git` subcommand that is not a
 //   built-in command (an alias, chained or not, or an external git-*
 //   command such as `git subtree`) are refused.
@@ -120,17 +122,6 @@ const GIT_VALUE_OPTIONS = new Set([
   "--super-prefix",
   "--work-tree",
 ]);
-const MERGE_VALUE_OPTIONS = new Set([
-  "-F",
-  "-X",
-  "-m",
-  "-s",
-  "--file",
-  "--into-name",
-  "--strategy",
-  "--strategy-option",
-]);
-
 const runGit = (context: GitContext, args: string[]) =>
   spawnSync({
     cmd: ["git", ...context.global, ...args],
@@ -144,22 +135,6 @@ const runGit = (context: GitContext, args: string[]) =>
 const gitText = (context: GitContext, args: string[]): string | null => {
   const result = runGit(context, args);
   return result.success ? result.stdout.toString().trim() : null;
-};
-
-/** Positional arguments, skipping each value option's value. */
-const positionals = (args: string[], valueOptions: Set<string>): string[] => {
-  const found: string[] = [];
-  let value = false;
-  for (const arg of args) {
-    if (value) {
-      value = false;
-    } else if (valueOptions.has(arg)) {
-      value = true;
-    } else if (!arg.startsWith("-")) {
-      found.push(arg);
-    }
-  }
-  return found;
 };
 
 // Full symbolic refs with exact prefixes stripped, never `--short`, which
@@ -242,8 +217,14 @@ const gitMerge = (context: GitContext, args: string[]): Gate => {
     return ALLOW;
   }
   const label = `git merge into ${target}`;
-  const revisions = positionals(args, MERGE_VALUE_OPTIONS);
-  if (args.includes("-") || args.includes("--continue")) {
+  // Parsed against git merge's complete flag table, so an option's value is
+  // never read as a revision; an unknown or abbreviated flag is refused.
+  const parsed = parseFlags(args, GIT_MERGE_FLAGS);
+  if (parsed.unknown.length > 0) {
+    return refuse(`${label} with ${parsed.unknown.join(" ")} is not inspected`);
+  }
+  const revisions = parsed.positionals;
+  if (revisions.includes("-") || args.includes("--continue")) {
     return refuse(
       `${label} with - or --continue is not inspected; name each branch`
     );
@@ -468,6 +449,65 @@ const GLAB_COMMANDS = new Set([
   "variable",
   "version",
 ]);
+// `git merge` flags. -S, --gpg-sign, and --log take a value only attached.
+const GIT_MERGE_FLAGS = table(
+  [
+    "-F",
+    "-X",
+    "-m",
+    "-s",
+    "--cleanup",
+    "--file",
+    "--into-name",
+    "--message",
+    "--strategy",
+    "--strategy-option",
+  ],
+  [
+    "-e",
+    "-n",
+    "-q",
+    "-v",
+    "--abort",
+    "--allow-unrelated-histories",
+    "--autostash",
+    "--commit",
+    "--compact-summary",
+    "--continue",
+    "--edit",
+    "--ff",
+    "--ff-only",
+    "--gpg-sign",
+    "--log",
+    "--no-autostash",
+    "--no-commit",
+    "--no-edit",
+    "--no-ff",
+    "--no-gpg-sign",
+    "--no-log",
+    "--no-overwrite-ignore",
+    "--no-progress",
+    "--no-rerere-autoupdate",
+    "--no-signoff",
+    "--no-squash",
+    "--no-stat",
+    "--no-summary",
+    "--no-verify",
+    "--no-verify-signatures",
+    "--overwrite-ignore",
+    "--progress",
+    "--quiet",
+    "--quit",
+    "--rerere-autoupdate",
+    "--signoff",
+    "--squash",
+    "--stat",
+    "--summary",
+    "--verbose",
+    "--verify",
+    "--verify-signatures",
+  ]
+);
 // Options a provider CLI accepts before its subcommand.
 const PROVIDER_GLOBAL_VALUES = new Set(["-R", "--hostname", "--repo"]);
 const FIELD_FLAGS = ["-F", "-f", "--field", "--form", "--raw-field"];
