@@ -1202,10 +1202,7 @@ describe("release-tag detection", () => {
     const cases: [string, boolean][] = [
       ["npm version patch --no-git-tag-version", false],
       ["bun pm version minor --no-git-tag-version", false],
-      [
-        'npm version patch --message "Release %s; notes" --no-git-tag-version',
-        false,
-      ],
+      ["CI=1 yarn version --patch --no-git-tag-version", false],
       [
         "pnpm version patch --no-git-tag-version && pnpm version minor --no-git-tag-version",
         false,
@@ -1213,9 +1210,21 @@ describe("release-tag detection", () => {
       ["npm run build && npm version minor", true],
       ["npm version patch --no-git-tag-version; npm version minor", true],
       ["npm version patch --no-git-tag-version --git-tag-version=true", true],
+      ["npm version patch --no-git-tag-version=false", true],
       ["npm version patch --no-git-tag-version && git tag v1.2.0", true],
-      // Other spellings count as tagging, so the guess errs toward no tags.
-      ['npm version patch --git-tag-version="false"', true],
+      ["echo --no-git-tag-version && npm version patch", true],
+      ["npm version patch -- --no-git-tag-version", true],
+      ["npx --no-git-tag-version npm version patch", true],
+      ["npm version patch npm version minor --no-git-tag-version", true],
+      // Quotes, variables, and other shell syntax are not parsed, so these
+      // count as tagging and the guess errs toward no tags.
+      ['npm version patch --message "Release %s --no-git-tag-version"', true],
+      [
+        'npm version patch --message "Release %s; notes" --no-git-tag-version',
+        true,
+      ],
+      ["npm version $BUMP --no-git-tag-version", true],
+      ["npm version patch --no-git-tag-version | tee log", true],
       // Only scripts with a version command are considered.
       ["git tag --list", false],
     ];

@@ -2174,8 +2174,14 @@ const TAG_TOOLING_FILES: [RegExp, string][] = [
 ];
 const VERSION_COMMAND =
   /\b(?:npm|pnpm|yarn)\s+version\b|\bbun\s+pm\s+version\b/gu;
-const UNTAGGED_VERSION_FLAG = /--no-git-tag-version\b/gu;
-const TAG_MENTION = /git-tag-version|\bgit\s+tag\b/gu;
+// Plain words joined by `&&` or `;`: no quotes, variables, or other shell
+// syntax, so splitting on the joiners is exact.
+const PLAIN_SCRIPT = /^[\w@%+,./:= \t-]*(?:(?:&&|;)[\w@%+,./:= \t-]*)*$/u;
+const SCRIPT_JOINER = /&&|;/u;
+const SCRIPT_WORD_GAP = /[ \t]+/u;
+const UNTAGGED_VERSION_FLAG = "--no-git-tag-version";
+const TAG_OPTION = /git[-_]tag[-_]version/iu;
+const PACKAGE_MANAGERS = new Set(["npm", "pnpm", "yarn"]);
 const CARGO_RELEASE_METADATA =
   /^\[(?:package|workspace)\.metadata\.release\]/mu;
 const FASTLANE_TAG = /\badd_git_tag\b/u;
@@ -2314,15 +2320,67 @@ const workspaceMembers = async (root: string): Promise<string[]> => [
   ).flat(),
 ];
 
-// A script with a version command tags unless it passes
-// `--no-git-tag-version` once per version command and mentions tagging nowhere
-// else. Any other spelling counts as tagging without parsing shell arguments,
-// so a wrong guess recommends no tags, as before release tags existed.
+// The index after a version command starting at `index`, or -1.
+const versionCommandEnd = (words: string[], index: number): number => {
+  if (
+    PACKAGE_MANAGERS.has(words[index] ?? "") &&
+    words[index + 1] === "version"
+  ) {
+    return index + 2;
+  }
+  return words[index] === "bun" &&
+    words[index + 1] === "pm" &&
+    words[index + 2] === "version"
+    ? index + 3
+    : -1;
+};
+
+// Whether one plain command runs a version command that keeps tagging on, or
+// undefined when it runs none. Only `--no-git-tag-version` itself, after the
+// version command and before any `--`, turns tagging off.
+const plainCommandTags = (words: string[]): boolean | undefined => {
+  const start = words.findIndex(
+    (_, index) => versionCommandEnd(words, index) >= 0
+  );
+  if (start < 0) {
+    return;
+  }
+  const options = words.slice(versionCommandEnd(words, start));
+  const end = options.indexOf("--");
+  return !(end < 0 ? options : options.slice(0, end)).includes(
+    UNTAGGED_VERSION_FLAG
+  );
+};
+
+// A script with a version command counts as tagging unless it is plain words
+// joined by `&&` or `;`, each version command is its command's only one and is
+// followed by `--no-git-tag-version`, and nothing else mentions tagging. Shell
+// arguments are not parsed, so anything less certain counts as tagging and a
+// wrong guess recommends no tags, as before release tags existed.
 const versionScriptTags = (script: string): boolean => {
-  const commands = script.match(VERSION_COMMAND)?.length ?? 0;
-  const untagged = script.match(UNTAGGED_VERSION_FLAG)?.length ?? 0;
-  const mentions = script.match(TAG_MENTION)?.length ?? 0;
-  return commands > 0 && !(untagged === commands && mentions === untagged);
+  const expected = script.match(VERSION_COMMAND)?.length ?? 0;
+  if (expected === 0) {
+    return false;
+  }
+  if (!PLAIN_SCRIPT.test(script)) {
+    return true;
+  }
+  const commands = script
+    .split(SCRIPT_JOINER)
+    .map((command) => command.trim().split(SCRIPT_WORD_GAP).filter(Boolean));
+  const mentionsTagging = commands.some(
+    (words) =>
+      (words.includes("git") && words.includes("tag")) ||
+      words.some(
+        (word) => word !== UNTAGGED_VERSION_FLAG && TAG_OPTION.test(word)
+      )
+  );
+  const results = commands
+    .map(plainCommandTags)
+    .filter((result) => result !== undefined);
+  return (
+    mentionsTagging || results.length !== expected || results.some(Boolean)
+  );
 };
 
 // Release tooling that creates Git tags itself, from manifests, scripts,
