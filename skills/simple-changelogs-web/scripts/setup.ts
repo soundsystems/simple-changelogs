@@ -2173,9 +2173,14 @@ const TAG_TOOLING_FILES: [RegExp, string][] = [
   [/^release\.toml$/u, "cargo-release"],
 ];
 const PACKAGE_MANAGER_WORD = /\b(?:npm|pnpm|yarn|bun)\b/iu;
+// Quote and escape characters are dropped first, so `ver""sion` reads as
+// `version`.
+const SHELL_QUOTING = /["'\\]/gu;
 // A standalone word, so `--version`, `--tags`, and `version-check` do not
-// count; npm also accepts `verison`.
-const VERSION_WORD = /(?<![-\w.:/])ver(?:si|is)on(?![-\w.:])/iu;
+// count: `version`, npm's `verison` alias, or a prefix npm resolves to them,
+// from `ve`.
+const VERSION_WORD =
+  /(?<![-\w.:/])ve(?:r(?:s(?:i(?:on?)?)?|i(?:s(?:on?)?)?)?)?(?![-\w.:])/iu;
 const GIT_WORD = /\bgit\b/iu;
 const TAG_WORD = /(?<![-\w.:/])tag(?![-\w.:])/iu;
 const TAG_SCRIPT_TOOL = "a version or tag script";
@@ -2320,10 +2325,15 @@ const workspaceMembers = async (root: string): Promise<string[]> => [
 // A package script may create tags when it names a package manager and a
 // version command anywhere in it, or `git` and `tag`, whatever lies between
 // or around them. Flags that turn tagging off are not recognized, so such a
-// script recommends no tags, which the user can change.
-const scriptMayTag = (script: string): boolean =>
-  (PACKAGE_MANAGER_WORD.test(script) && VERSION_WORD.test(script)) ||
-  (GIT_WORD.test(script) && TAG_WORD.test(script));
+// script recommends no tags, which the user can change. This only shapes the
+// recommendation: Simple Changes refuses a tag name that already exists.
+const scriptMayTag = (script: string): boolean => {
+  const words = script.replace(SHELL_QUOTING, "");
+  return (
+    (PACKAGE_MANAGER_WORD.test(words) && VERSION_WORD.test(words)) ||
+    (GIT_WORD.test(words) && TAG_WORD.test(words))
+  );
+};
 
 // Release tooling that creates Git tags itself, from manifests, scripts,
 // configuration files, Fastlane, and CI workflow steps.

@@ -17,12 +17,16 @@
     changelog headings, falling back to the owner manifest version only when
     no heading names the train; `recommendReleaseTags` recommends the existing
     convention, or `"none"` when release tooling or CI already creates tags.
-    A package script counts as tag tooling when it names a package manager
-    (`npm`, `pnpm`, `yarn`, or `bun`) and a standalone `version` word, or
-    `git` and a standalone `tag` word, anywhere in it; options, paths, and
-    quotes around them do not matter. Flags that turn tagging off are not
-    recognized, so such a script recommends no tags with a reason saying it
-    may already create them, and the user can change the choice.
+    A package script counts as tag tooling when, with quote and escape
+    characters dropped, it names a package manager (`npm`, `pnpm`, `yarn`, or
+    `bun`) and a standalone `version` word (or npm's `verison` alias or a
+    prefix npm resolves to them, from `ve`), or `git` and a standalone `tag`
+    word, anywhere in it. Flags that turn tagging off are not recognized, so
+    such a script recommends no tags with a reason saying it may already
+    create them, and the user can change the choice. Detection only shapes
+    the recommendation: a tool it misses is caught by Simple Changes
+    `release-tag`, which refuses a tag name that already exists locally or on
+    the remote and never moves or replaces a tag.
     Trains come from `versionOwnersIn`, which uses the classify owner model:
     same-named owners in different directories stay separate. The app train
     that shared version lines know by that name keeps it, or else the first
@@ -55,9 +59,9 @@
   `distributions.check.ts` enforces the form. Each distribution saves 30,950
   bytes with canonical digests unchanged.
 - The support budget rose from 256 KiB to 384 KiB, approved by the user on
-  2026-10-07. Measured at release: support files Web+CMS 282,477 bytes, full
-  265,846, mobile 265,856, Web 265,845, skill-maintainer 265,906, CMS-only
-  220,775. The guidance budget stays at 224 KiB (full Markdown 216,599). When
+  2026-10-07. Measured at release: support files Web+CMS 282,851 bytes, full
+  266,220, mobile 266,230, Web 266,219, skill-maintainer 266,280, CMS-only
+  221,149. The guidance budget stays at 224 KiB (full Markdown 216,599). When
   the support budget binds again, move distribution-specific code into a
   module only those distributions ship before raising it.
 - Versioning: releases are numbered `0.<guidance>.<patch>`, so this release
