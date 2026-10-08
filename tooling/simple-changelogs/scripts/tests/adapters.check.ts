@@ -609,6 +609,21 @@ describe("Codex strict response schema", () => {
         }),
         "required at # must list only names in its own properties",
       ],
+      ...[
+        { type: ["string", "null"] },
+        { enum: ["a", null] },
+        { description: "Anything at all" },
+        { $ref: "#/$defs/loose" },
+      ].map(
+        (value) =>
+          [
+            fixture(
+              { value },
+              { $defs: { loose: { enum: ["a"] } }, required: [] }
+            ),
+            "optional property #/properties/value must declare a type that excludes null",
+          ] as const
+      ),
       [
         fixture(
           { value: { $ref: "#/properties/other" } },

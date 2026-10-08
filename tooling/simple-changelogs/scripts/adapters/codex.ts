@@ -141,6 +141,35 @@ const requireDeclaredRequirements = (schema: Schema, path: string): void => {
   }
 };
 
+// Codex reports an absent optional property as null, which reads back as
+// absent only when the canonical property itself rejects null, so it must
+// declare a type that leaves null out.
+const requireNullFreeOptionals = (
+  root: Schema,
+  schema: Schema,
+  path: string
+): void => {
+  const { properties, required } = schema;
+  if (!isRecord(properties)) {
+    return;
+  }
+  const requiredNames = new Set(Array.isArray(required) ? required : []);
+  for (const [name, property] of Object.entries(properties)) {
+    const resolved =
+      requiredNames.has(name) || !isRecord(property)
+        ? undefined
+        : resolvedSchema(root, property);
+    const types = Array.isArray(resolved?.type)
+      ? resolved.type
+      : [resolved?.type];
+    if (resolved && (resolved.type === undefined || types.includes("null"))) {
+      throw new Error(
+        `Codex response schema optional property ${path}/properties/${name} must declare a type that excludes null`
+      );
+    }
+  }
+};
+
 // Strict mode requires every property, so an optional one becomes a required
 // property that also accepts null.
 const withEveryPropertyRequired = (
@@ -200,6 +229,7 @@ const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
   }
   requireClosedObject(schema, path);
   requireDeclaredRequirements(schema, path);
+  requireNullFreeOptionals(root, schema, path);
   if (Object.hasOwn(schema, "$ref")) {
     const sibling = Object.keys(schema).find(
       (keyword) => !REFERENCE_SIBLING_KEYWORDS.has(keyword)
