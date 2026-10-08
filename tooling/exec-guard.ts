@@ -8,16 +8,19 @@
 // or pushed, and exits 0 for every command it does not gate.
 //
 // Gated:
-// - a provider merge: `glab api .../merge_requests/<iid>/merge` pinned with
-//   `-f sha=<head>`, `glab mr merge --sha <head>`, `gh pr merge
-//   --match-head-commit <head>`, or `gh api .../pulls/<n>/merge` pinned with
-//   `-f sha=<head>`, wherever the subcommand sits among the flags. A merge
-//   that pins no head, or a GraphQL call that mentions a merge, is refused;
+// - a provider merge: a mutating `glab api` call to a merge request's
+//   `/merge` or merge-train endpoint, or a `gh api` call to a pull request's
+//   `/merge` or `/merge-async`, pinned with `-f sha=<head>`; `glab mr merge
+//   --sha <head>`; or `gh pr merge --match-head-commit <head>`, wherever the
+//   subcommand sits among the flags. A merge that pins no head, a mutating
+//   API call that writes refs, commits, or files directly, and a GraphQL
+//   call that merges or writes refs are refused; reads pass;
 // - `git push`: Git itself reports what the push would update (`git push
-//   --dry-run --porcelain` with the same options and configuration), and
-//   every update to the target branch on any remote needs a receipt for the
-//   pushed commit. Deleting the target is refused, and so is a push whose dry
-//   run fails;
+//   <args> --dry-run --porcelain --no-quiet`, with the same options and
+//   configuration), and every update to the target branch on any remote
+//   needs a receipt for the pushed commit. Deleting the target is refused,
+//   and so is a push whose dry run fails, one with `--`, and one whose last
+//   argument is an option;
 // - `git merge` while the target branch is checked out, for each merged
 //   revision (MERGE_HEAD for --continue, the upstream with no revision), and
 //   `git pull` of a named branch into it;
@@ -30,9 +33,10 @@
 // seen, and only commands run through `loop exec` are guarded at all. Local
 // branch moves other than `git merge` and `git pull` (commit, reset, rebase)
 // are not gated; the push that publishes them is. Refs can move between the
-// guard and the command it allowed. A receipt proves the head passed `bun run
-// check`; a merge result equals that head only when the head already
-// contains the target tip.
+// guard and the command it allowed, and host branch protection remains the
+// control for provider API writes the guard does not list. A receipt proves
+// the head passed `bun run check`; a merge result equals that head only when
+// the head already contains the target tip.
 
 import { basename } from "node:path";
 import { spawnSync } from "bun";
@@ -69,13 +73,24 @@ const ENV_ASSIGNMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=/u;
 // One `git push --porcelain` ref line: flag, then `from:to`, then a summary.
 const PORCELAIN_LINE = /^([ +\-*!=])\t([^\t]*)\t/u;
 const MERGING_WORD = /\b(?:push|merge|pull|send-pack)\b/u;
-const GRAPHQL_MERGE = /merge/iu;
-const GITLAB_MERGE_PATH =
-  /(?:^|\/)projects\/[^/]+\/merge_requests\/\d+\/merge$/u;
-const GITHUB_MERGE_PATH = /(?:^|\/)repos\/[^/]+\/[^/]+\/pulls\/\d+\/merge$/u;
+// GraphQL mutations that merge or move a branch.
+const GRAPHQL_REF_WRITE =
+  /merge|updateRefs?\b|createCommitOnBranch|commitCreate|createRef|deleteRef/iu;
+// REST endpoints that merge a change request: GitLab merge and merge trains,
+// GitHub merge and asynchronous merge.
+const API_MERGE_PATHS = [
+  /(?:^|\/)projects\/[^/]+\/merge_requests\/\d+\/merge$/u,
+  /(?:^|\/)projects\/[^/]+\/merge_trains\/merge_requests\/\d+$/u,
+  /(?:^|\/)repos\/[^/]+\/[^/]+\/pulls\/\d+\/merge(?:-async)?$/u,
+];
+// REST endpoints that write branches, commits, or files without a merge.
+const API_REF_WRITE_PATHS = [
+  /(?:^|\/)repos\/[^/]+\/[^/]+\/(?:merges|git\/refs|contents)(?:\/|$)/u,
+  /(?:^|\/)projects\/[^/]+\/repository\/(?:branches|commits|files)(?:\/|$)/u,
+];
 // Another program's arguments, joined, that read as a merge or push.
 const OPAQUE_MERGE_PATTERN =
-  /\b(?:git\b.*\b(?:push|merge|pull|send-pack)|glab\b.*\b(?:merge|accept)|gh\b.*\bmerge)\b|\/merge_requests\/[^/\s]+\/merge\b|\/pulls\/\d+\/merge\b|mergeRequestAccept|mergePullRequest/u;
+  /\b(?:git\b.*\b(?:push|merge|pull|send-pack)|glab\b.*\b(?:merge|accept)|gh\b.*\bmerge)\b|\/merge_requests\/[^/\s]+\/merge\b|\/merge_trains\/|\/pulls\/\d+\/merge\b|\/merges\b|\/git\/refs\b|mergeRequestAccept|mergePullRequest/u;
 
 // Options that take the next argument as their value.
 const GIT_VALUE_OPTIONS = new Set([
@@ -189,21 +204,30 @@ const targetBranch = (context: GitContext): string =>
     .slice(1)
     .join("/") || DEFAULT_TARGET;
 
+// The guard's own --dry-run, --porcelain, and --no-quiet go last, so they
+// override any earlier negation (--no-dry-run, --no-porcelain, -q); a push
+// whose last argument is an option is refused, because that option could
+// take the guard's first flag as its value.
 const gitPush = (context: GitContext, args: string[]): Gate => {
-  if (args.includes("--dry-run") || args.includes("-n")) {
-    return ALLOW;
+  if (args.some((arg) => arg === "--" || arg === "--end-of-options")) {
+    return refuse("a git push with -- or --end-of-options is not inspected");
+  }
+  if ((args.at(-1) ?? "").startsWith("-")) {
+    return refuse(
+      "a git push that ends with an option is not inspected; put options before the remote"
+    );
   }
   const target = `${HEADS_PREFIX}${targetBranch(context)}`;
-  // A trailing --no-quiet undoes -q, which would hide the ref lines.
   const dryRun = runGit(context, [
     "push",
+    ...args,
     "--dry-run",
     "--porcelain",
-    ...args,
     "--no-quiet",
   ]);
-  if (!dryRun.success) {
-    const [reason = "it exited nonzero"] = dryRun.stderr
+  const output = dryRun.stdout.toString().split("\n");
+  if (!(dryRun.success && output.includes("Done"))) {
+    const [reason = "it reported no result"] = dryRun.stderr
       .toString()
       .trim()
       .split("\n");
@@ -212,7 +236,7 @@ const gitPush = (context: GitContext, args: string[]): Gate => {
     );
   }
   const revisions: string[] = [];
-  for (const line of dryRun.stdout.toString().split("\n")) {
+  for (const line of output) {
     const [, flag = "", refs = ""] = PORCELAIN_LINE.exec(line) ?? [];
     const split = refs.lastIndexOf(":");
     const destination = refs.slice(split + 1);
@@ -299,14 +323,34 @@ const git = (checkout: string, args: string[]): Gate => {
   }
 };
 
-// A provider merge, wherever its subcommand sits among the flags: an API
-// merge pinned with `-f sha=<head>` or a `sha` query parameter, or the CLI
-// merge pinned with its head option.
+// The HTTP method of a `glab api` or `gh api` call: explicit, or POST when
+// it sends fields or an input body, as both CLIs default.
+const apiMethod = (args: string[]): string => {
+  const attached = args.find((arg) => arg.startsWith("-X") && arg.length > 2);
+  const method =
+    optionValue(args, "--method") ??
+    optionValue(args, "-X") ??
+    attached?.slice(2);
+  if (method !== undefined) {
+    return method.toUpperCase();
+  }
+  return fieldValues(args).length > 0 ||
+    optionValue(args, "--input") !== undefined
+    ? "POST"
+    : "GET";
+};
+
+const READ_METHODS = new Set(["GET", "HEAD"]);
+const endpointPath = (arg: string): string => arg.split("?")[0] ?? "";
+
+// A provider merge, wherever its subcommand sits among the flags: a mutating
+// API call to a merge endpoint pinned with `-f sha=<head>` or a `sha` query
+// parameter, or the CLI merge pinned with its head option. A mutating API
+// call that writes refs, commits, or files directly is refused.
 const providerMerge = (
   checkout: string,
   args: string[],
   provider: {
-    apiPath: RegExp;
     headOption: string;
     label: string;
     merge: string[];
@@ -314,15 +358,30 @@ const providerMerge = (
   }
 ): Gate => {
   const context = { checkout, global: [] };
-  if (args.includes("graphql") && args.some((arg) => GRAPHQL_MERGE.test(arg))) {
+  if (
+    args.includes("graphql") &&
+    args.some((arg) => GRAPHQL_REF_WRITE.test(arg))
+  ) {
     return refuse(
-      `a ${provider.label} GraphQL merge pins no head; use the REST merge with -f sha=<head>`
+      `a ${provider.label} GraphQL call that merges or writes refs pins no head; use the REST merge with -f sha=<head>`
     );
   }
   const endpoint = args.find((arg) =>
-    provider.apiPath.test(arg.split("?")[0] ?? "")
+    [...API_MERGE_PATHS, ...API_REF_WRITE_PATHS].some((pattern) =>
+      pattern.test(endpointPath(arg))
+    )
   );
   if (endpoint !== undefined) {
+    if (READ_METHODS.has(apiMethod(args))) {
+      return ALLOW;
+    }
+    if (
+      !API_MERGE_PATHS.some((pattern) => pattern.test(endpointPath(endpoint)))
+    ) {
+      return refuse(
+        `${endpoint} writes refs, commits, or files directly; push through git instead`
+      );
+    }
     const sha =
       fieldValues(args)
         .find((field) => field.startsWith("sha="))
@@ -369,7 +428,6 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
     }
     case "glab": {
       return providerMerge(checkout, args, {
-        apiPath: GITLAB_MERGE_PATH,
         headOption: "--sha",
         label: "GitLab",
         merge: ["accept", "merge"],
@@ -378,7 +436,6 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
     }
     case "gh": {
       return providerMerge(checkout, args, {
-        apiPath: GITHUB_MERGE_PATH,
         headOption: "--match-head-commit",
         label: "GitHub",
         merge: ["merge"],

@@ -169,13 +169,15 @@ describe("exec guard", () => {
       ["git", "fetch", "origin"],
       ["git", "pull"],
       ["git", "-c", "alias.lg=log", "lg", "-1"],
-      ["git", "push", "--dry-run", "origin", "main"],
       ["git", "push", "origin", "feature"],
       ["git", "push", "origin", "v1.0.0"],
-      ["git", "push", "origin", "--tags"],
+      ["git", "push", "--tags", "origin"],
       ["git", "merge", "--abort"],
       ["glab", "mr", "view", "7"],
       ["glab", "api", "projects/83469495/merge_requests/7"],
+      ["glab", "api", "-X", "POST", "projects/83469495/merge_requests"],
+      ["gh", "api", "repos/o/r/pulls/7/merge"],
+      ["gh", "api", "-XGET", "repos/o/r/pulls/7/merge", "-f", "a=b"],
       ["gh", "--repo", "o/r", "pr", "view", "3"],
       ["sh", "-c", "echo merged.json"],
       ["env", "A=1", "git", "status"],
@@ -212,6 +214,37 @@ describe("exec guard", () => {
       ["glab", "api", "graphql", "-f", "query=mutation { mergeRequestAccept }"],
       "GraphQL"
     );
+    refused(
+      repo,
+      ["gh", "api", "graphql", "-f", "query=mutation { updateRef(input: {}) }"],
+      "GraphQL"
+    );
+    refused(
+      repo,
+      [
+        "gh",
+        "api",
+        "repos/o/r/pulls/7/merge-async",
+        "-X",
+        "PUT",
+        "-f",
+        "merge_action=direct_merge",
+      ],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      ["glab", "api", "-X", "POST", "projects/1/merge_trains/merge_requests/7"],
+      "must pin the head"
+    );
+    for (const argv of [
+      ["gh", "api", "repos/o/r/merges", "-f", "base=main", "-f", "head=x"],
+      ["gh", "api", "-X", "PATCH", "repos/o/r/git/refs/heads/main"],
+      ["gh", "api", "-X", "PUT", "repos/o/r/contents/README.md"],
+      ["glab", "api", "-X", "POST", "projects/1/repository/commits"],
+    ]) {
+      refused(repo, argv, "writes refs, commits, or files directly");
+    }
     refused(
       repo,
       [
@@ -261,6 +294,10 @@ describe("exec guard", () => {
     for (const [cwd, argv] of [
       [repo, ["git", "push", "origin", "main"]],
       [repo, ["git", "push", "-q", "origin", "main"]],
+      [repo, ["git", "push", "--no-dry-run", "origin", "main"]],
+      [repo, ["git", "push", "--dry-run", "--no-dry-run", "origin", "main"]],
+      [repo, ["git", "push", "--no-porcelain", "origin", "main"]],
+      [repo, ["git", "push", "--dry-run", "origin", "main"]],
       [repo, ["git", "push"]],
       [repo, ["git", "push", "origin", ":"]],
       [repo, ["git", "push", "origin", "+:"]],
@@ -291,6 +328,16 @@ describe("exec guard", () => {
       "would delete"
     );
     refused(repo, ["git", "push", "nowhere", "main"], "--dry-run failed");
+    refused(
+      repo,
+      ["git", "push", "origin", "main", "-o"],
+      "ends with an option"
+    );
+    refused(repo, ["git", "push", "origin", "--", "main"], "with --");
+    // Inspecting never pushed: origin still holds only its first commit.
+    expect(gitIn(join(root, "origin.git"))("rev-parse", "main")).toBe(
+      sha("origin/main")
+    );
     pass("main");
     allowed(repo, ["git", "push", "origin", "main"]);
     allowed(repo, ["git", "push", "--all", "origin"]);
