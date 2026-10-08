@@ -118,6 +118,8 @@ const NON_DESTINATION_FILES = new Set([
   POLICY_FILENAME,
   CMS_POLICY_FILENAME,
   SETUP_TRANSACTION_FILENAME,
+  // Configuration whose name contains "changelogs", never a destination.
+  AUTHORING_FILENAME,
 ]);
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
@@ -5591,8 +5593,10 @@ export const writeAuthoringFile = async (
   const content = json(sidecar);
   await mkdir(dirname(path), { mode: 0o700, recursive: true });
   const markerPath = join(dirname(path), SETUP_TRANSACTION_FILENAME);
-  await acquireTransaction(markerPath);
-  try {
+  // Cooperating writers hold the marker; this compare also catches any other
+  // edit that lands before the rename, short of the instant between the last
+  // compare and the rename itself, which no rename-based write can close.
+  const unchanged = async (): Promise<StateRecord<AuthoringSidecar>> => {
     const current = await readState(path, validateAuthoring);
     if (
       current.state !== target.state ||
@@ -5602,6 +5606,11 @@ export const writeAuthoringFile = async (
         `${path} changed after this run inspected it; inspect again and retry.`
       );
     }
+    return current;
+  };
+  await acquireTransaction(markerPath);
+  try {
+    const current = await unchanged();
     if (current.state === "valid" && json(current.value) === content) {
       return { kind: "authoring", path, written: false };
     }
@@ -5617,6 +5626,7 @@ export const writeAuthoringFile = async (
           ].join("; ")
         );
       }
+      await unchanged();
       await ensureNoSymlink(path);
       await rename(staged.temporaryPath, path);
     } catch (error) {
@@ -5625,7 +5635,9 @@ export const writeAuthoringFile = async (
     }
     return { kind: "authoring", path, written: true };
   } finally {
-    await rm(markerPath, { force: true });
+    // The write is already committed or refused; a marker left behind is
+    // recovered by the next run once this process has exited.
+    await rm(markerPath, { force: true }).catch(() => undefined);
   }
 };
 

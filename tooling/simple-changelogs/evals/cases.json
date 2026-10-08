@@ -4269,6 +4269,21 @@
               "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
             },
             {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"Eval Runtime Writer 7\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
+            },
+            {
               "kind": "file.unchanged",
               "target": ".simple-changelogs-authoring.json",
               "expected": true
@@ -4289,7 +4304,7 @@
       "activationMode": "explicit",
       "turns": [
         {
-          "prompt": "Record the pending Export CSV change in the changelogs. For this task the owner asks that release notes be written by `example-writer-model` in this coding agent, and you already delegated the draft: your subagent returned the entry \"Reports can now be exported as CSV files.\" and reported its identity as \"Example Writer 2\". Use that draft and finish the update.",
+          "prompt": "Record the pending Export CSV change in the changelogs. For this task the owner asks that release notes be written by `example-writer-model` in this coding agent, and you already delegated the draft: your subagent returned the customer entry \"Reports can now be exported as CSV files.\" and the developer entry \"Added a CSV export for the reports table.\" and reported its identity as \"Example Writer 2\". Use that draft and finish the update.",
           "assertions": [
             {
               "kind": "file.changed",
@@ -4324,6 +4339,21 @@
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Example Writer 2\")[^\"]*\""
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"Example Writer 2\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "DEVELOPER_CHANGELOG.md",
               "expected": "simple-changelogs-signature agent=\"(?!Example Writer 2\")[^\"]*\""
             },
             {
@@ -4376,6 +4406,21 @@
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"Eval Runtime Writer 7\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "DEVELOPER_CHANGELOG.md",
               "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
             },
             {
@@ -4434,6 +4479,21 @@
             {
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
+            },
+            {
+              "kind": "file.changed",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "DEVELOPER_CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"Eval Runtime Writer 7\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "DEVELOPER_CHANGELOG.md",
               "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
             },
             {

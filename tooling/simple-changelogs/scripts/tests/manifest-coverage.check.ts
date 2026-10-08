@@ -368,13 +368,24 @@ describe("canonical evaluation manifest", () => {
           "CHANGELOG.md"
         )
       ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.match",
+          `(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent="${writer}"`,
+          "DEVELOPER_CHANGELOG.md"
+        )
+      ).toBe(true);
       const negative = new RegExp(
         `simple-changelogs-signature agent="(?!${writer}")[^"]*"`,
         "u"
       );
-      expect(
-        hasAssertion(item, 0, "text.notMatch", negative.source, "CHANGELOG.md")
-      ).toBe(true);
+      for (const target of ["CHANGELOG.md", "DEVELOPER_CHANGELOG.md"]) {
+        expect(
+          hasAssertion(item, 0, "text.notMatch", negative.source, target)
+        ).toBe(true);
+      }
       expect(
         negative.test(
           '<!-- simple-changelogs-signature agent="Invented Writer 999" -->'

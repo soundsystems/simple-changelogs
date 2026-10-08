@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
+// biome-ignore lint/performance/noNamespaceImport: spyOn patches the namespace setup.ts's named imports read.
+import * as fsPromises from "node:fs/promises";
 import {
   chmod,
   cp,
@@ -791,6 +793,45 @@ describe("authoring resolution", () => {
     });
   });
 
+  test("a role-level model and effort win over the target's entry", () => {
+    expect(
+      resolveAuthoring(
+        [
+          personalLayer(
+            sidecar(
+              { "beta-agent": { effort: "low", model: "entry-model" } },
+              {
+                "release-notes": {
+                  effort: "max",
+                  harness: "beta-agent",
+                  model: "role-model",
+                },
+              }
+            )
+          ),
+        ],
+        "alpha-agent"
+      )
+    ).toEqual({
+      effective: {
+        "release-notes": {
+          effort: "max",
+          harness: "beta-agent",
+          model: "role-model",
+          status: "resolved",
+        },
+      },
+      source: {
+        "release-notes": {
+          effort: "personal",
+          harness: "personal",
+          model: "personal",
+          path: "/config/authoring.json",
+        },
+      },
+    });
+  });
+
   test("a concrete harness id spelled unknown keeps its entry", () => {
     expect(
       resolveAuthoring(
@@ -883,6 +924,18 @@ describe("authoring question and inspection", () => {
     const read = await inspectFixture(fixture, { taskMode: "read" });
     expect(read.authoringQuestion).toBe("not-applicable");
     expect(read.unresolvedQuestions).not.toContain("authoring-models");
+  });
+
+  test("never counts the repository sidecar as a release-note destination", async () => {
+    const fixture = await authoringFixture();
+    await applyAuthoring(fixture, EMPTY_SIDECAR);
+    const inspection = await inspectFixture(fixture);
+    expect(inspection.authoringFiles.repository.state).toBe("valid");
+    expect(inspection.inventory.destinations).toEqual([]);
+    expect(inspection.inventory.adjacentDestinations).toEqual([]);
+    expect(inspection.unresolvedQuestions).not.toContain(
+      "release-note-destination-verification"
+    );
   });
 
   test("reports repair for a malformed or symlinked sidecar and never treats it as answered", async () => {
@@ -1049,6 +1102,24 @@ describe("authoring question and inspection", () => {
     await expect(
       writeAuthoringFile(target, sidecar({}), 0o644)
     ).rejects.toThrow("changed after this run inspected it");
+    expect(await readFile(target.path, "utf8")).toBe("{malformed");
+    await rm(target.path);
+    // An edit that lands while the answer is staged is caught before the
+    // rename: the staged chmod is where this test lets it land.
+    const realChmod = fsPromises.chmod;
+    const spy = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (path, mode) => {
+        await writeFile(target.path, "{malformed");
+        return realChmod(path, mode);
+      }
+    );
+    try {
+      await expect(
+        writeAuthoringFile(target, sidecar({}), 0o644)
+      ).rejects.toThrow("changed after this run inspected it");
+    } finally {
+      spy.mockRestore();
+    }
     expect(await readFile(target.path, "utf8")).toBe("{malformed");
     await rm(target.path);
     // A live setup transaction in the same directory holds the write off.
