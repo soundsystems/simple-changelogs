@@ -4,7 +4,7 @@ metadata:
   internal: true
 description: Publish a canonical skill update through every maintained fork and discovered local install, then prove each change reached its default branch.
 license: Apache-2.0
-compatibility: Requires Git, Bun 1.3 or later (bunx runs the Skills CLI), a POSIX shell for verify-installed-package.sh, and network access to the Git host and package registry
+compatibility: Requires Git, Bun 1.3 or later, Node.js 22.20 or later for the Skills CLI that bunx runs, a POSIX shell for verify-installed-package.sh, and network access to the Git host and package registry
 disable-model-invocation: true
 ---
 
