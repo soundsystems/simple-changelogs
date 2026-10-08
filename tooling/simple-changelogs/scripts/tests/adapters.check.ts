@@ -578,6 +578,39 @@ describe("Codex strict response schema", () => {
       ],
       [
         fixture(
+          { value: { $ref: "#/$defs/a~1b" } },
+          { $defs: { "a/b": { type: "string" }, "a~1b": { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/a~1b",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/a%62" } },
+          { $defs: { "a%62": { type: "string" }, ab: { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/a%62",
+      ],
+      [
+        fixture(
+          { value: { type: "string" } },
+          { required: ["value", "undeclared"] }
+        ),
+        "required at # must list only names in its own properties",
+      ],
+      [
+        fixture({ value: { type: "string" } }, { required: "value" }),
+        "required at # must list only names in its own properties",
+      ],
+      [
+        JSON.stringify({
+          additionalProperties: false,
+          required: [],
+          type: "object",
+        }),
+        "required at # must list only names in its own properties",
+      ],
+      [
+        fixture(
           { value: { $ref: "#/properties/other" } },
           { $defs: { other: { type: "string" } } }
         ),

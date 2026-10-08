@@ -66,9 +66,11 @@ const childPath = (path: string, key: string): string =>
     ? `${path}.${key}`
     : `${path}[${JSON.stringify(key)}]`;
 
-// Only `#/$defs/<name>` references: the strict copy rewrites `properties`, so
-// a reference into them would silently point at the nullable wrapper.
-const DEFINITION_REFERENCE_PATTERN = /^#\/\$defs\/([^/]+)$/u;
+// Only `#/$defs/<name>` references, with a plain name: the strict copy
+// rewrites `properties`, so a reference into them would silently point at the
+// nullable wrapper, and a name needing JSON Pointer or URI decoding could
+// resolve differently here than in a JSON Schema validator.
+const DEFINITION_REFERENCE_PATTERN = /^#\/\$defs\/([A-Za-z0-9_-]+)$/u;
 
 const referencedSchema = (root: Schema, reference: string): Schema => {
   const name = DEFINITION_REFERENCE_PATTERN.exec(reference)?.[1];
@@ -113,6 +115,28 @@ const requireClosedObject = (schema: Schema, path: string): void => {
   ) {
     throw new Error(
       `Codex response schema object at ${path} must set additionalProperties to false`
+    );
+  }
+};
+
+// The copy rewrites `required` to list every property, so a canonical name
+// with no property behind it would silently stop being required.
+const requireDeclaredRequirements = (schema: Schema, path: string): void => {
+  if (!Object.hasOwn(schema, "required")) {
+    return;
+  }
+  const { properties, required } = schema;
+  if (
+    !(
+      Array.isArray(required) &&
+      isRecord(properties) &&
+      required.every(
+        (name) => typeof name === "string" && Object.hasOwn(properties, name)
+      )
+    )
+  ) {
+    throw new Error(
+      `Codex response schema required at ${path} must list only names in its own properties`
     );
   }
 };
@@ -175,6 +199,7 @@ const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
     throw new Error(`Codex response schema at ${path} must be an object`);
   }
   requireClosedObject(schema, path);
+  requireDeclaredRequirements(schema, path);
   if (Object.hasOwn(schema, "$ref")) {
     const sibling = Object.keys(schema).find(
       (keyword) => !REFERENCE_SIBLING_KEYWORDS.has(keyword)
