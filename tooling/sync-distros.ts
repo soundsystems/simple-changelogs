@@ -15,6 +15,7 @@ import {
 } from "node:fs";
 import { lstat, readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { spawnSync } from "bun";
 
 // Every changelog distribution ships the byte-synced setup helper.
 export const changelogDistributions = new Set([
@@ -225,13 +226,10 @@ const pathChain = async (
 
 // The point the writer has reached, for tests: `enter` is after a directory
 // passed its check and before the step into it, `open` is after the held
-// directory is reached and before the copy is opened in it, `restore` is
-// after the step back to the starting directory and before its identity is
-// confirmed.
+// directory is reached and before the copy is opened in it.
 export interface WriteStep {
-  kind: "enter" | "open" | "restore";
-  // Repository-relative path of the directory or copy; for `restore`, the
-  // starting directory as recorded before the walk.
+  kind: "enter" | "open";
+  // Repository-relative path of the directory or copy.
   path: string;
 }
 export type WriteProbe = (step: WriteStep) => void;
@@ -368,23 +366,6 @@ const writeDescriptor = (descriptor: number, file: SyncedFile): void => {
   fchmodSync(descriptor, file.mode);
 };
 
-// Moves back to the directory the walk started in and confirms by device and
-// inode that it is the same directory; the name alone could lead elsewhere,
-// and a step or check that fails counts as not restored.
-const restoredTo = (
-  origin: string,
-  identity: Stats,
-  probe: WriteProbe | undefined
-): boolean => {
-  try {
-    process.chdir(origin);
-    probe?.({ kind: "restore", path: origin });
-    return sameInode(statSync("."), identity);
-  } catch {
-    return false;
-  }
-};
-
 // Writes the copy through a walk the process holds, the openat the fs API
 // lacks: from the repository root, each directory of the target is checked
 // (a directory, not a symlink) and then entered by its one name relative to
@@ -397,65 +378,76 @@ const restoredTo = (
 // its path. The copy is then opened by name in the held directory without
 // following a symlink and written only as a regular file with a single link,
 // so no byte lands outside the directory the walk verified under the root.
-// Every step is synchronous, so nothing else runs while the working directory
-// is moved, and the working directory is restored before returning, by name
-// and confirmed by device and inode; when the directory the walk started in
-// is gone or its name leads elsewhere, the process is left at the repository
-// root and the write fails, after any bytes already reached their copy.
-// Boundary: the bytes reach the directory the walk verified, wherever it sits
-// under the directory held above it; once held, a directory moved elsewhere
-// takes the write with it, as it would with openat, and moving it needs
-// rename rights inside the checkout, which already allow changing it
-// directly. A written copy takes its source's permissions, whatever the
-// umask. Tests may pass `probe` to act between a check and the step it
-// guards.
-export const writeSyncedFile = (
+// The walk moves this process's working directory and leaves it in the held
+// directory, so only the writer process (sync-distros-writer.ts) runs it,
+// never the process a maintainer or a check runs in; tests that call it
+// directly come back to their own directory. Every step is synchronous, so
+// nothing else runs while the directory is moved. Boundary: the bytes reach
+// the directory the walk verified, wherever it sits under the directory held
+// above it; once held, a directory moved elsewhere takes the write with it,
+// as it would with openat, and moving it needs rename rights inside the
+// checkout, which already allow changing it directly. A written copy takes
+// its source's permissions, whatever the umask. Tests may pass `probe` to act
+// between a check and the step it guards.
+export const writeHeldCopy = (
   root: string,
   file: SyncedFile,
   probe?: WriteProbe
 ): void => {
   const { directories, name } = plainSegments(file.target);
-  const anchor = resolve(root);
-  const origin = process.cwd();
-  const identity = statSync(".");
-  let failure: { error: unknown } | undefined;
-  try {
-    process.chdir(anchor);
-    let held = statSync(".");
-    for (const [index, directory] of directories.entries()) {
-      held = enterDirectory(
-        directory,
-        directories.slice(0, index + 1).join("/"),
-        held,
-        probe
-      );
-    }
-    const descriptor = openCopy(name, file, probe);
-    try {
-      writeDescriptor(descriptor, file);
-    } finally {
-      closeSync(descriptor);
-    }
-  } catch (error) {
-    failure = { error };
-  }
-  if (!restoredTo(origin, identity, probe)) {
-    process.chdir(anchor);
-    throw new Error(
-      `The working directory ${origin} changed while ${file.target} was written; the process is now in ${anchor}`,
-      { cause: failure?.error }
+  process.chdir(resolve(root));
+  let held = statSync(".");
+  for (const [index, directory] of directories.entries()) {
+    held = enterDirectory(
+      directory,
+      directories.slice(0, index + 1).join("/"),
+      held,
+      probe
     );
   }
-  if (failure !== undefined) {
-    throw failure.error;
+  const descriptor = openCopy(name, file, probe);
+  try {
+    writeDescriptor(descriptor, file);
+  } finally {
+    closeSync(descriptor);
+  }
+};
+
+// What the writer process reads on stdin: the absolute repository root and
+// the copies to write, in order.
+export interface WritePayload {
+  files: SyncedFile[];
+  root: string;
+}
+
+const WRITER = join(import.meta.dir, "sync-distros-writer.ts");
+
+// Writes the copies in the writer process, which walks and writes them one
+// at a time and stops at the first refusal, so this process's working
+// directory never moves; a refusal arrives here as the message the writer
+// printed, and nothing after the refused copy was written.
+const runWriter = (root: string, files: SyncedFile[]): void => {
+  const payload: WritePayload = { files, root: resolve(root) };
+  const writer = spawnSync({
+    cmd: [process.execPath, WRITER],
+    stderr: "pipe",
+    stdin: Buffer.from(JSON.stringify(payload)),
+    stdout: "pipe",
+  });
+  if (!writer.success) {
+    const message = writer.stderr.toString().trim();
+    throw new Error(
+      message === ""
+        ? `The sync writer stopped with ${writer.signalCode ?? writer.exitCode}`
+        : message
+    );
   }
 };
 
 // Computes every expected copy and checks every path before writing any, so
 // an unreadable or malformed canonical source or a symlinked path changes
 // nothing. The check runs ahead of the writer as a first refusal; the writer
-// holds the boundary. Copies are written one at a time, each holding the
-// working directory for its walk.
+// process holds the boundary and writes the drifted copies one at a time.
 export const syncDistributions = async (
   root: string,
   { write }: { write: boolean }
@@ -474,10 +466,8 @@ export const syncDistributions = async (
     })
   );
   const drifted = files.filter((_, index) => !matches[index]);
-  if (write) {
-    for (const file of drifted) {
-      writeSyncedFile(root, file);
-    }
+  if (write && drifted.length > 0) {
+    runWriter(root, drifted);
   }
   return { drifted, inSync: files.length - drifted.length };
 };

@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  chmodSync,
-  existsSync,
-  renameSync,
-  rmSync,
-  symlinkSync,
-} from "node:fs";
+import { existsSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import {
   cp,
   link,
@@ -13,8 +7,6 @@ import {
   mkdir,
   mkdtemp,
   readFile,
-  realpath,
-  rename,
   rm,
   stat,
   symlink,
@@ -27,8 +19,9 @@ import {
   type SyncedFile,
   syncDistributions,
   syncedFiles,
+  type WriteProbe,
   type WriteStep,
-  writeSyncedFile,
+  writeHeldCopy,
 } from "../../../sync-distros.ts";
 
 const REPOSITORY_ROOT = join(import.meta.dir, "..", "..", "..", "..");
@@ -108,6 +101,7 @@ const CANONICAL_TOOLING_FILES = [
   "tooling/simple-changelogs/evals/schemas/changelog-request.schema.json",
   "tooling/simple-changelogs/evals/schemas/protocol-provenance.json",
   "tooling/sync-distros.ts",
+  "tooling/sync-distros-writer.ts",
 ];
 
 const SCRIPTS = `skills/${WEB}/scripts`;
@@ -162,6 +156,18 @@ const swapDirectoryForLink = (
 ): void => {
   renameSync(path, aside);
   symlinkSync(outside, path);
+};
+
+// Runs the held walk in this process, as the writer process does, and comes
+// back to the directory this test runs in afterwards, wherever the walk
+// stopped.
+const walk = (root: string, file: SyncedFile, probe?: WriteProbe): void => {
+  const origin = process.cwd();
+  try {
+    writeHeldCopy(root, file, probe);
+  } finally {
+    process.chdir(origin);
+  }
 };
 
 // Drifts a plain copy, replaces a minified schema with its readable source,
@@ -378,13 +384,11 @@ describe("sync-distros", () => {
   test("writes only the file the checked path names, even if a symlink appears later", async () => {
     const root = await repositoryCopy();
     const setup = await setupCopy(root);
-    const origin = process.cwd();
 
     // A longer copy is truncated to exactly the canonical bytes.
     await writeFile(join(root, SETUP_COPY), `${setup.expected}// stale tail\n`);
-    writeSyncedFile(root, setup);
+    walk(root, setup);
     expect(await read(root, SETUP_COPY)).toBe(setup.expected);
-    expect(process.cwd()).toBe(origin);
 
     // Called directly, the writer meets the symlinks the drift check would
     // have refused, as if they were swapped in after it ran.
@@ -392,13 +396,13 @@ describe("sync-distros", () => {
     await writeFile(outsideFile, "// outside\n");
     await rm(join(root, SETUP_COPY));
     await symlink(outsideFile, join(root, SETUP_COPY));
-    expect(() => writeSyncedFile(root, setup)).toThrow(
+    expect(() => walk(root, setup)).toThrow(
       `Refusing to write through the symlink ${SETUP_COPY}`
     );
     const missingOutside = join(root, "outside-new.ts");
     await rm(join(root, SETUP_COPY));
     await symlink(missingOutside, join(root, SETUP_COPY));
-    expect(() => writeSyncedFile(root, setup)).toThrow(
+    expect(() => walk(root, setup)).toThrow(
       `Refusing to write through the symlink ${SETUP_COPY}`
     );
     expect(existsSync(missingOutside)).toBe(false);
@@ -408,7 +412,7 @@ describe("sync-distros", () => {
     await writeFile(join(outsideScripts, "setup.ts"), "// outside\n");
     await rm(join(root, SCRIPTS), { force: true, recursive: true });
     await symlink(outsideScripts, join(root, SCRIPTS));
-    expect(() => writeSyncedFile(root, setup)).toThrow(
+    expect(() => walk(root, setup)).toThrow(
       `Refusing to write through the symlink ${SCRIPTS}`
     );
 
@@ -416,7 +420,6 @@ describe("sync-distros", () => {
     expect(await readFile(join(outsideScripts, "setup.ts"), "utf8")).toBe(
       "// outside\n"
     );
-    expect(process.cwd()).toBe(origin);
   });
 
   test("refuses a directory swapped for a symlink between its check and the step into it", async () => {
@@ -427,12 +430,11 @@ describe("sync-distros", () => {
     const setup = await setupCopy(root);
     const aside = join(root, `${SCRIPTS}-aside`);
     const steps: WriteStep[] = [];
-    const origin = process.cwd();
 
     // The real directory passed its check; it is replaced by a symlink to
     // the outside directory before the writer steps into it.
     expect(() =>
-      writeSyncedFile(root, setup, (step) => {
+      walk(root, setup, (step) => {
         steps.push(step);
         if (step.kind === "enter" && step.path === SCRIPTS) {
           swapDirectoryForLink(join(root, SCRIPTS), aside, outside);
@@ -442,7 +444,6 @@ describe("sync-distros", () => {
       `Refusing to write through ${SCRIPTS}, which changed after it was checked`
     );
 
-    expect(process.cwd()).toBe(origin);
     expect(await readFile(join(outside, "setup.ts"), "utf8")).toBe(
       "// outside\n"
     );
@@ -453,7 +454,6 @@ describe("sync-distros", () => {
       { kind: "enter", path: "skills" },
       { kind: "enter", path: `skills/${WEB}` },
       { kind: "enter", path: SCRIPTS },
-      { kind: "restore", path: origin },
     ]);
   });
 
@@ -463,12 +463,11 @@ describe("sync-distros", () => {
     const setup = await setupCopy(root);
     const sibling = join(root, `skills/${WEB}/references`);
     const aside = join(root, `${SCRIPTS}-aside`);
-    const origin = process.cwd();
 
     // A direct child of the held parent, so only the inode gives the swap
     // away.
     expect(() =>
-      writeSyncedFile(root, setup, (step) => {
+      walk(root, setup, (step) => {
         if (step.kind === "enter" && step.path === SCRIPTS) {
           swapDirectoryForLink(join(root, SCRIPTS), aside, sibling);
         }
@@ -477,7 +476,6 @@ describe("sync-distros", () => {
       `Refusing to write through ${SCRIPTS}, which changed after it was checked`
     );
 
-    expect(process.cwd()).toBe(origin);
     expect(existsSync(join(sibling, "setup.ts"))).toBe(false);
     expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
       "// drifted\n"
@@ -490,13 +488,12 @@ describe("sync-distros", () => {
     await writeFile(join(root, SETUP_COPY), "// drifted\n");
     const setup = await setupCopy(root);
     const moved = join(outside, "moved-scripts");
-    const origin = process.cwd();
 
     // The same inode the check saw, so only its parent gives the move away:
     // the link leads into a directory no longer under the one the writer
     // holds.
     expect(() =>
-      writeSyncedFile(root, setup, (step) => {
+      walk(root, setup, (step) => {
         if (step.kind === "enter" && step.path === SCRIPTS) {
           swapDirectoryForLink(join(root, SCRIPTS), moved, moved);
         }
@@ -505,7 +502,6 @@ describe("sync-distros", () => {
       `Refusing to write through ${SCRIPTS}, which changed after it was checked`
     );
 
-    expect(process.cwd()).toBe(origin);
     expect(await readFile(join(moved, "setup.ts"), "utf8")).toBe(
       "// drifted\n"
     );
@@ -516,17 +512,15 @@ describe("sync-distros", () => {
     await writeFile(join(root, SETUP_COPY), "// drifted\n");
     const setup = await setupCopy(root);
     const aside = join(root, `${SCRIPTS}-aside`);
-    const origin = process.cwd();
 
     // Still the checked inode and still a direct child of the held parent,
     // so the bytes reach it under its new name, inside the repository.
-    writeSyncedFile(root, setup, (step) => {
+    walk(root, setup, (step) => {
       if (step.kind === "enter" && step.path === SCRIPTS) {
         swapDirectoryForLink(join(root, SCRIPTS), aside, aside);
       }
     });
 
-    expect(process.cwd()).toBe(origin);
     expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
       setup.expected
     );
@@ -539,18 +533,16 @@ describe("sync-distros", () => {
     await writeFile(join(root, SETUP_COPY), "// drifted\n");
     const setup = await setupCopy(root);
     const aside = join(root, `${SCRIPTS}-aside`);
-    const origin = process.cwd();
 
     // The writer already holds the real directory, so the symlink planted
     // at its path redirects nothing: the bytes reach the moved directory,
     // never the outside one.
-    writeSyncedFile(root, setup, (step) => {
+    walk(root, setup, (step) => {
       if (step.kind === "open") {
         swapDirectoryForLink(join(root, SCRIPTS), aside, outside);
       }
     });
 
-    expect(process.cwd()).toBe(origin);
     expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
       setup.expected
     );
@@ -560,93 +552,12 @@ describe("sync-distros", () => {
     expect((await lstat(join(root, SCRIPTS))).isSymbolicLink()).toBe(true);
   });
 
-  test("restores the working directory it started in by identity, or fails at the repository root", async () => {
-    const root = await repositoryCopy();
-    const outside = await outsideDirectory();
-    await writeFile(join(outside, "setup.ts"), "// outside\n");
-    const setup = await setupCopy(root);
-    const aside = join(root, `${SCRIPTS}-aside`);
-    const origin = process.cwd();
-    const rootPath = await realpath(root);
-    const failure = `changed while ${SETUP_COPY} was written; the process is now in ${root}`;
-    try {
-      // Started inside the repository, the walk comes back to that directory.
-      process.chdir(join(root, SCRIPTS));
-      await writeFile(join(root, SETUP_COPY), "// drifted\n");
-      writeSyncedFile(root, setup);
-      expect(await realpath(process.cwd())).toBe(join(rootPath, SCRIPTS));
-      expect(await read(root, SETUP_COPY)).toBe(setup.expected);
-
-      // The starting directory is renamed during the write: the bytes reach
-      // the copy where the walk holds it, and the process ends at the root.
-      await writeFile(join(root, SETUP_COPY), "// drifted\n");
-      expect(() =>
-        writeSyncedFile(root, setup, (step) => {
-          if (step.kind === "open") {
-            renameSync(join(root, SCRIPTS), aside);
-          }
-        })
-      ).toThrow(failure);
-      expect(await realpath(process.cwd())).toBe(rootPath);
-      expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
-        setup.expected
-      );
-
-      // A symlink planted at the starting directory's name leads outside:
-      // the process ends at the root, not there.
-      await rename(aside, join(root, SCRIPTS));
-      process.chdir(join(root, SCRIPTS));
-      await writeFile(join(root, SETUP_COPY), "// drifted\n");
-      expect(() =>
-        writeSyncedFile(root, setup, (step) => {
-          if (step.kind === "open") {
-            swapDirectoryForLink(join(root, SCRIPTS), aside, outside);
-          }
-        })
-      ).toThrow(failure);
-      expect(await realpath(process.cwd())).toBe(rootPath);
-      expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
-        setup.expected
-      );
-      expect(await readFile(join(outside, "setup.ts"), "utf8")).toBe(
-        "// outside\n"
-      );
-
-      // The name leads outside and that directory stops being searchable
-      // once entered, so the identity check itself fails: the process still
-      // ends at the root.
-      await rm(join(root, SCRIPTS));
-      await rename(aside, join(root, SCRIPTS));
-      process.chdir(join(root, SCRIPTS));
-      await writeFile(join(root, SETUP_COPY), "// drifted\n");
-      expect(() =>
-        writeSyncedFile(root, setup, (step) => {
-          if (step.kind === "open") {
-            swapDirectoryForLink(join(root, SCRIPTS), aside, outside);
-          }
-          if (step.kind === "restore") {
-            chmodSync(outside, 0o000);
-          }
-        })
-      ).toThrow(failure);
-      expect(await realpath(process.cwd())).toBe(rootPath);
-      chmodSync(outside, 0o755);
-      expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
-        setup.expected
-      );
-    } finally {
-      process.chdir(origin);
-      chmodSync(outside, 0o755);
-    }
-  });
-
   test("refuses a copy swapped for a symlink between its check and the open", async () => {
     const root = await repositoryCopy();
     const outside = await outsideDirectory();
     const outsideFile = join(outside, "setup.ts");
     await writeFile(outsideFile, "// outside\n");
     const setup = await setupCopy(root);
-    const origin = process.cwd();
     const swapCopyForLink = (target: string) => (step: WriteStep) => {
       if (step.kind === "open") {
         rmSync(join(root, SETUP_COPY));
@@ -655,19 +566,18 @@ describe("sync-distros", () => {
     };
 
     await writeFile(join(root, SETUP_COPY), "// drifted\n");
-    expect(() =>
-      writeSyncedFile(root, setup, swapCopyForLink(outsideFile))
-    ).toThrow(`Refusing to write through the symlink ${SETUP_COPY}`);
+    expect(() => walk(root, setup, swapCopyForLink(outsideFile))).toThrow(
+      `Refusing to write through the symlink ${SETUP_COPY}`
+    );
     expect(await readFile(outsideFile, "utf8")).toBe("// outside\n");
 
     const missingOutside = join(outside, "missing.ts");
     await rm(join(root, SETUP_COPY));
     await writeFile(join(root, SETUP_COPY), "// drifted\n");
-    expect(() =>
-      writeSyncedFile(root, setup, swapCopyForLink(missingOutside))
-    ).toThrow(`Refusing to write through the symlink ${SETUP_COPY}`);
+    expect(() => walk(root, setup, swapCopyForLink(missingOutside))).toThrow(
+      `Refusing to write through the symlink ${SETUP_COPY}`
+    );
     expect(existsSync(missingOutside)).toBe(false);
-    expect(process.cwd()).toBe(origin);
   });
 
   test("refuses a copy with a second link", async () => {
@@ -678,44 +588,38 @@ describe("sync-distros", () => {
     await rm(join(root, SETUP_COPY));
     await link(outsideFile, join(root, SETUP_COPY));
     const setup = await setupCopy(root);
-    const origin = process.cwd();
 
-    expect(() => writeSyncedFile(root, setup)).toThrow(
+    expect(() => walk(root, setup)).toThrow(
       `Refusing to write ${SETUP_COPY}, which has 2 links`
     );
     await expect(syncDistributions(root, { write: true })).rejects.toThrow(
       `Refusing to write ${SETUP_COPY}, which has 2 links`
     );
     expect(await readFile(outsideFile, "utf8")).toBe("// outside\n");
-    expect(process.cwd()).toBe(origin);
   });
 
   test("refuses a copy that is not a regular file and a directory that is not one", async () => {
     const root = await repositoryCopy();
     const setup = await setupCopy(root);
-    const origin = process.cwd();
 
     await rm(join(root, SETUP_COPY));
     await mkdir(join(root, SETUP_COPY));
-    expect(() => writeSyncedFile(root, setup)).toThrow(
+    expect(() => walk(root, setup)).toThrow(
       `Refusing to write ${SETUP_COPY}, which is not a regular file`
     );
     expect((await lstat(join(root, SETUP_COPY))).isDirectory()).toBe(true);
 
     await rm(join(root, SCRIPTS), { recursive: true });
     await writeFile(join(root, SCRIPTS), "// not a directory\n");
-    expect(() => writeSyncedFile(root, setup)).toThrow(
+    expect(() => walk(root, setup)).toThrow(
       `Refusing to write through ${SCRIPTS}, which is not a directory`
     );
     expect(await read(root, SCRIPTS)).toBe("// not a directory\n");
 
-    expect(() =>
-      writeSyncedFile(root, { ...setup, target: "../outside.ts" })
-    ).toThrow(
+    expect(() => walk(root, { ...setup, target: "../outside.ts" })).toThrow(
       "Refusing to write ../outside.ts, which is not a plain path below the repository root"
     );
     expect(existsSync(join(root, "..", "outside.ts"))).toBe(false);
-    expect(process.cwd()).toBe(origin);
   });
 
   test("creates missing directories below the repository root", async () => {
@@ -742,6 +646,100 @@ describe("sync-distros", () => {
       `Refusing to write through the symlink ${SETUP_COPY}`
     );
     expect(await read(root, "outside.ts")).toBe("// outside\n");
+  });
+
+  test("writes through the writer process and keeps this process's working directory", async () => {
+    const root = await repositoryCopy();
+    await driftCopies(root);
+    const origin = process.cwd();
+
+    const report = await syncDistributions(root, { write: true });
+
+    expect(report.drifted).toHaveLength(3);
+    expect(process.cwd()).toBe(origin);
+    expect(await read(root, SETUP_COPY)).toBe(
+      await read(REPOSITORY_ROOT, SETUP_COPY)
+    );
+    expect(await read(root, MISSING_COPY)).toBe(
+      await read(root, `skills/${CMS}/scripts/lib/schema.ts`)
+    );
+  });
+
+  test("the writer process stops at the first refusal and writes nothing after it", async () => {
+    const root = await repositoryCopy();
+    const files = await syncedFiles(root);
+    const setup = files.find(
+      ({ target }) => target === SETUP_COPY
+    ) as SyncedFile;
+    const protocol = files.find(
+      ({ target }) => target === PROTOCOL_COPY
+    ) as SyncedFile;
+    const runWriter = async (
+      payload: unknown,
+      cwd?: string
+    ): Promise<{ exitCode: number; stderr: string; stdout: string }> => {
+      const subprocess = spawn({
+        cmd: [
+          process.execPath,
+          join(REPOSITORY_ROOT, "tooling", "sync-distros-writer.ts"),
+        ],
+        cwd,
+        stderr: "pipe",
+        stdin: Buffer.from(JSON.stringify(payload)),
+        stdout: "pipe",
+      });
+      const [exitCode, stdout, stderr] = await Promise.all([
+        subprocess.exited,
+        new Response(subprocess.stdout).text(),
+        new Response(subprocess.stderr).text(),
+      ]);
+      return { exitCode, stderr, stdout };
+    };
+
+    // The first copy's directory is a symlink; the second is drifted and
+    // must stay so.
+    const outsideScripts = join(root, "outside-scripts");
+    await cp(join(root, SCRIPTS), outsideScripts, { recursive: true });
+    await rm(join(root, SCRIPTS), { recursive: true });
+    await symlink(outsideScripts, join(root, SCRIPTS));
+    await writeFile(join(outsideScripts, "setup.ts"), "// outside\n");
+    await writeFile(join(root, PROTOCOL_COPY), "{}\n");
+
+    const refused = await runWriter({ files: [setup, protocol], root });
+    expect(refused).toEqual({
+      exitCode: 1,
+      stderr: `Refusing to write through the symlink ${SCRIPTS}\n`,
+      stdout: "",
+    });
+    expect(await readFile(join(outsideScripts, "setup.ts"), "utf8")).toBe(
+      "// outside\n"
+    );
+    expect(await read(root, PROTOCOL_COPY)).toBe("{}\n");
+
+    // Only the payload the parent sends is accepted: an absolute root and
+    // whole copies.
+    const relative = await runWriter({ files: [protocol], root: "." }, root);
+    expect(relative).toEqual({
+      exitCode: 1,
+      stderr: "The sync writer needs an absolute repository root\n",
+      stdout: "",
+    });
+    const partial = await runWriter({
+      files: [{ target: PROTOCOL_COPY }],
+      root,
+    });
+    expect(partial).toEqual({
+      exitCode: 1,
+      stderr: "The sync writer needs a list of copies to write\n",
+      stdout: "",
+    });
+    expect(await read(root, PROTOCOL_COPY)).toBe("{}\n");
+
+    const written = await runWriter({ files: [protocol], root });
+    expect(written).toEqual({ exitCode: 0, stderr: "", stdout: "" });
+    expect(await read(root, PROTOCOL_COPY)).toBe(
+      await read(REPOSITORY_ROOT, PROTOCOL_COPY)
+    );
   });
 
   test("exits 1 on drift with --check, writes without it, and rejects other arguments", async () => {
