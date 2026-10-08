@@ -30,7 +30,7 @@
   and `metadata`, and `distributions.check.ts` requires the exact wording per
   distribution and rejects `model` and `effort`, covering CMS too.
   publish-skill names Node.js 22.20 or later, which the Skills CLI it runs
-  needs.
+  needs, and its compatibility line is identical to the Simple Changes copy.
 - `metadata.models` is removed from every SKILL.md with no replacement; the
   contract tests use neutral example keys. Per-harness authoring preferences
   replace it in a later minor.
