@@ -1109,10 +1109,8 @@ for (const {
 
 // Agents preview the first lines of a reference to decide whether to read on,
 // so every long reference opens with a contents list naming each `##` heading
-// in order. guidance-updates.md is exempt: the setup helper addresses its
-// numbered `## Guidance N` sections by version.
+// in order.
 const CONTENTS_LINE_THRESHOLD = 100;
-const CONTENTS_EXEMPT_REFERENCES = new Set(["references/guidance-updates.md"]);
 const FENCE_PATTERN = /^\s*(```|~~~)/u;
 const CONTENTS_BULLET_PATTERN = /^- (.+)$/u;
 
@@ -1147,10 +1145,7 @@ for (const { directory, directoryName, entries } of distributionSnapshots) {
     continue;
   }
   for (const entry of entries) {
-    if (
-      !(entry.path.startsWith("references/") && entry.path.endsWith(".md")) ||
-      CONTENTS_EXEMPT_REFERENCES.has(entry.path)
-    ) {
+    if (!(entry.path.startsWith("references/") && entry.path.endsWith(".md"))) {
       continue;
     }
     const source = readFileSync(join(directory, entry.path), "utf8");
