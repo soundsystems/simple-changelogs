@@ -1,15 +1,20 @@
 #!/usr/bin/env bun
 
-import { constants, type Stats } from "node:fs";
 import {
-  type FileHandle,
-  lstat,
-  mkdir,
-  open,
-  readFile,
-  stat,
-} from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+  closeSync,
+  constants,
+  fchmodSync,
+  fstatSync,
+  ftruncateSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  type Stats,
+  statSync,
+  writeSync,
+} from "node:fs";
+import { lstat, readFile, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 // Every changelog distribution ships the byte-synced setup helper.
 export const changelogDistributions = new Set([
@@ -218,65 +223,190 @@ const pathChain = async (
   };
 };
 
-// Opens the copy without truncating it or following a final symlink, then
-// writes only after confirming the descriptor is the file at the checked
-// in-repository path, so a symlink already present, or swapped in after the
-// drift check and still there, redirects nothing. Node has no openat, so this
-// cannot rule out another process that keeps swapping directories inside the
-// checkout while the check runs; such a process can already change the
-// checkout directly. A written copy takes its source's permissions, whatever
-// the umask. Tests may substitute `openFile` to stand
-// in for a path swapped between the open and the check.
-export const writeSyncedFile = async (
-  root: string,
+// The point the writer has reached, for tests: `enter` is after a directory
+// passed its check and before the step into it, `open` is after the held
+// directory is reached and before the copy is opened in it.
+export interface WriteStep {
+  kind: "enter" | "open";
+  // Repository-relative path of the directory or copy.
+  path: string;
+}
+export type WriteProbe = (step: WriteStep) => void;
+
+const errorCode = (error: unknown): unknown =>
+  (error as { code?: unknown }).code;
+
+const symlinkRefusal = (path: string, cause?: unknown): Error =>
+  new Error(`Refusing to write through the symlink ${path}`, { cause });
+
+// A target is a plain path below the repository root: no absolute, empty,
+// `.`, or `..` segment, so every step of the walk is one directory entry.
+const plainSegments = (
+  target: string
+): { directories: string[]; name: string } => {
+  const segments = target.split("/");
+  const name = segments.at(-1);
+  if (
+    name === undefined ||
+    segments.some((segment) => ["", ".", ".."].includes(segment))
+  ) {
+    throw new Error(
+      `Refusing to write ${target}, which is not a plain path below the repository root`
+    );
+  }
+  return { directories: segments.slice(0, -1), name };
+};
+
+const entryAt = (name: string): Stats | undefined =>
+  lstatSync(name, { throwIfNoEntry: false });
+
+// The directory entry `name` in the held current directory, created when
+// missing: a directory, never a symlink or anything else.
+const checkedDirectory = (name: string, path: string): Stats => {
+  let entry = entryAt(name);
+  if (entry === undefined) {
+    try {
+      mkdirSync(name);
+    } catch (error) {
+      if (errorCode(error) !== "EEXIST") {
+        throw error;
+      }
+    }
+    entry = entryAt(name);
+  }
+  if (entry?.isSymbolicLink()) {
+    throw symlinkRefusal(path);
+  }
+  if (!entry?.isDirectory()) {
+    throw new Error(
+      `Refusing to write through ${path}, which is not a directory`
+    );
+  }
+  return entry;
+};
+
+// Steps into the checked directory and confirms the directory now held is
+// the one checked, so a swap between the check and the step is caught.
+const enterDirectory = (
+  name: string,
+  path: string,
+  probe: WriteProbe | undefined
+): void => {
+  const checked = checkedDirectory(name, path);
+  probe?.({ kind: "enter", path });
+  process.chdir(name);
+  const held = statSync(".");
+  if (held.dev !== checked.dev || held.ino !== checked.ino) {
+    throw new Error(
+      `Refusing to write through ${path}, which changed after it was checked`
+    );
+  }
+};
+
+// Opens the copy by name in the held directory, creating it when missing and
+// never following a symlink, present before the check or swapped in after.
+const openCopy = (
+  name: string,
   file: SyncedFile,
-  openFile: typeof open = open
-): Promise<void> => {
-  const target = join(root, file.target);
-  await mkdir(dirname(target), { recursive: true });
-  let handle: FileHandle;
+  probe: WriteProbe | undefined
+): number => {
+  const entry = entryAt(name);
+  if (entry?.isSymbolicLink()) {
+    throw symlinkRefusal(file.target);
+  }
+  if (entry !== undefined && !entry.isFile()) {
+    throw new Error(
+      `Refusing to write ${file.target}, which is not a regular file`
+    );
+  }
+  probe?.({ kind: "open", path: file.target });
   try {
-    handle = await openFile(
-      target,
+    return openSync(
+      name,
       // Distinct flag bits, so their sum is their union.
       constants.O_WRONLY + constants.O_CREAT + constants.O_NOFOLLOW,
       file.mode
     );
   } catch (error) {
-    if ((error as { code?: unknown }).code === "ELOOP") {
-      throw new Error(`Refusing to write through the symlink ${file.target}`, {
-        cause: error,
-      });
+    if (errorCode(error) === "ELOOP") {
+      throw symlinkRefusal(file.target, error);
     }
     throw error;
   }
+};
+
+// Truncates and writes the open copy once the descriptor is a regular file
+// with a single link, so the bytes reach no second name of the same inode.
+const writeDescriptor = (descriptor: number, file: SyncedFile): void => {
+  const opened = fstatSync(descriptor);
+  if (!opened.isFile()) {
+    throw new Error(
+      `Refusing to write ${file.target}, which is not a regular file`
+    );
+  }
+  if (opened.nlink !== 1) {
+    throw new Error(
+      `Refusing to write ${file.target}, which has ${opened.nlink} links`
+    );
+  }
+  ftruncateSync(descriptor, 0);
+  const bytes = Buffer.from(file.expected, "utf8");
+  let written = 0;
+  while (written < bytes.length) {
+    written += writeSync(descriptor, bytes, written, bytes.length - written);
+  }
+  fchmodSync(descriptor, file.mode);
+};
+
+// Writes the copy through a walk the process holds, the openat the fs API
+// lacks: from the repository root, each directory of the target is checked
+// (a directory, not a symlink) and then entered by its one name relative to
+// the directory already held, and the directory held after the step must be
+// the one checked (device and inode). A swap between a check and its step is
+// caught there, and a swap of a directory already entered cannot redirect the
+// walk, because the process holds that directory, not its path. The copy is
+// then opened by name in the held directory without following a symlink and
+// written only as a regular file with a single link, so no byte lands outside
+// the directory the walk verified under the root. Every step is synchronous,
+// so nothing else runs while the working directory is moved, and the working
+// directory is restored before returning. Boundary: the bytes reach the
+// directory the walk verified; an actor who can rename that directory
+// elsewhere, like one who can write inside the checkout, can already change
+// the checkout directly. A written copy takes its source's permissions,
+// whatever the umask. Tests may pass `probe` to act between a check and the
+// step it guards.
+export const writeSyncedFile = (
+  root: string,
+  file: SyncedFile,
+  probe?: WriteProbe
+): void => {
+  const { directories, name } = plainSegments(file.target);
+  const origin = process.cwd();
   try {
-    const [opened, { chain, linked }] = await Promise.all([
-      handle.stat(),
-      pathChain(root, file.target),
-    ]);
-    const current = chain.at(-1);
-    if (
-      linked !== undefined ||
-      !current ||
-      current.dev !== opened.dev ||
-      current.ino !== opened.ino
-    ) {
-      throw new Error(
-        `Refusing to write through the symlink ${linked ?? file.target}`
+    process.chdir(resolve(root));
+    for (const [index, directory] of directories.entries()) {
+      enterDirectory(
+        directory,
+        directories.slice(0, index + 1).join("/"),
+        probe
       );
     }
-    await handle.truncate(0);
-    await handle.writeFile(file.expected);
-    await handle.chmod(file.mode);
+    const descriptor = openCopy(name, file, probe);
+    try {
+      writeDescriptor(descriptor, file);
+    } finally {
+      closeSync(descriptor);
+    }
   } finally {
-    await handle.close();
+    process.chdir(origin);
   }
 };
 
 // Computes every expected copy and checks every path before writing any, so
 // an unreadable or malformed canonical source or a symlinked path changes
-// nothing.
+// nothing. The check runs ahead of the writer as a first refusal; the writer
+// holds the boundary. Copies are written one at a time, each holding the
+// working directory for its walk.
 export const syncDistributions = async (
   root: string,
   { write }: { write: boolean }
@@ -296,7 +426,9 @@ export const syncDistributions = async (
   );
   const drifted = files.filter((_, index) => !matches[index]);
   if (write) {
-    await Promise.all(drifted.map((file) => writeSyncedFile(root, file)));
+    for (const file of drifted) {
+      writeSyncedFile(root, file);
+    }
   }
   return { drifted, inSync: files.length - drifted.length };
 };
