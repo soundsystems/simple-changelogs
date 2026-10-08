@@ -1215,6 +1215,8 @@ describe("release-tag detection", () => {
       ["npm ve patch", true],
       ['npm ver""sion patch', true],
       ["git ta''g v1.2.0", true],
+      ["git ta\\\ng v1.2.0", true],
+      ["npm v\\\r\nersion patch", true],
       ["npm run build && npm version minor", true],
       ["git tag v1.2.0", true],
       ["/usr/bin/git -C . tag v1.2.0", true],

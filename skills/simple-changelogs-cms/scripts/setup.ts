@@ -2173,8 +2173,9 @@ const TAG_TOOLING_FILES: [RegExp, string][] = [
   [/^release\.toml$/u, "cargo-release"],
 ];
 const PACKAGE_MANAGER_WORD = /\b(?:npm|pnpm|yarn|bun)\b/iu;
-// Quote and escape characters are dropped first, so `ver""sion` reads as
-// `version`.
+// Line continuations, then quote and escape characters, are dropped first,
+// so `ver""sion` and `ver\` plus a newline and `sion` read as `version`.
+const LINE_CONTINUATION = /\\\r?\n/gu;
 const SHELL_QUOTING = /["'\\]/gu;
 // A standalone word, so `--version`, `--tags`, and `version-check` do not
 // count: `version`, npm's `verison` alias, or a prefix npm resolves to them,
@@ -2328,7 +2329,9 @@ const workspaceMembers = async (root: string): Promise<string[]> => [
 // script recommends no tags, which the user can change. This only shapes the
 // recommendation: Simple Changes refuses a tag name that already exists.
 const scriptMayTag = (script: string): boolean => {
-  const words = script.replace(SHELL_QUOTING, "");
+  const words = script
+    .replace(LINE_CONTINUATION, "")
+    .replace(SHELL_QUOTING, "");
   return (
     (PACKAGE_MANAGER_WORD.test(words) && VERSION_WORD.test(words)) ||
     (GIT_WORD.test(words) && TAG_WORD.test(words))
