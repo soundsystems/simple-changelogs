@@ -205,9 +205,12 @@ const pathChain = async (
 
 // Opens the copy without truncating it or following a final symlink, then
 // writes only after confirming the descriptor is the file at the checked
-// in-repository path, so a symlink swapped in at any segment after the drift
-// check redirects nothing. A written copy takes its source's permissions,
-// whatever the umask. Tests may substitute `openFile` to stand
+// in-repository path, so a symlink already present, or swapped in after the
+// drift check and still there, redirects nothing. Node has no openat, so this
+// cannot rule out another process that keeps swapping directories inside the
+// checkout while the check runs; such a process can already change the
+// checkout directly. A written copy takes its source's permissions, whatever
+// the umask. Tests may substitute `openFile` to stand
 // in for a path swapped between the open and the check.
 export const writeSyncedFile = async (
   root: string,
