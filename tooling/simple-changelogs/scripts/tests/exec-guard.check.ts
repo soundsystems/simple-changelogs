@@ -440,6 +440,50 @@ describe("exec guard", () => {
     );
     refused(repo, ["gh", "--frobnicate", "pr", "merge", "3"], "not inspected");
     refused(repo, ["gh", "pr", "--web", "merge", "3"], "not inspected");
+    // Aliases and extensions can expand to a merge, so only built-ins run.
+    refused(repo, ["gh", "pm", "123", "--merge"], "not a built-in command");
+    refused(repo, ["glab", "mrm", "123", "--yes"], "not a built-in command");
+    refused(repo, ["gh", "extension", "exec", "x"], "not a built-in command");
+    refused(
+      repo,
+      ["gh", "repo", "sync", "o/r", "--branch", "main"],
+      "repo sync"
+    );
+    // GraphQL from URL parameters, and merge endpoints however spelled.
+    refused(
+      repo,
+      [
+        "glab",
+        "api",
+        "https://gitlab.com/api/graphql?query=mutation%20%7B%20x%20%7D",
+        "-X",
+        "POST",
+      ],
+      "inline query"
+    );
+    refused(
+      repo,
+      ["gh", "api", "-X", "PUT", "repos/o/r/pulls/3/merge/"],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      ["glab", "api", "-X", "PUT", "projects/1/merge_requests/7/%6Derge"],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      [
+        "gh",
+        "api",
+        "-X",
+        "POST",
+        "repos/o/r/merge-upstream",
+        "-f",
+        "branch=main",
+      ],
+      "writes refs"
+    );
     // -R and --repo may sit between the subcommand words.
     refused(
       repo,

@@ -15,11 +15,14 @@
 //   `sha` field or query value. Each command is parsed against its complete
 //   flag table, so an option's value never poses as a head, endpoint, or
 //   method; an unknown flag, or an option before or between the subcommand
-//   words other than `-R`/`--repo`/`--hostname`, is refused. An API call is a read only with
+//   words other than `-R`/`--repo`/`--hostname`, is refused, and so is any
+//   command outside each CLI's built-in list (an alias or extension) and
+//   `repo sync`. Endpoints match however they are spelled (a URL, a trailing
+//   slash, percent escapes). An API call is a read only with
 //   one GET or HEAD method, or with no method and no body. A merge that pins
 //   no head or repeats it, one whose body comes from a file, a mutating call
 //   that writes refs, commits, or files directly, and any GraphQL call but
-//   an inline query are refused;
+//   an inline query in its fields are refused;
 // - `git push`: Git itself reports what the push would update (`git push
 //   <args> --dry-run --porcelain --no-quiet`, with the same options and
 //   configuration), and every update to the target branch on any remote
@@ -94,7 +97,8 @@ const API_MERGE_PATHS = [
 ];
 // REST endpoints that write branches, commits, or files without a merge.
 const API_REF_WRITE_PATHS = [
-  /(?:^|\/)repos\/[^/]+\/[^/]+\/(?:merges|git\/refs|contents)(?:\/|$)/u,
+  /(?:^|\/)repos\/[^/]+\/[^/]+\/(?:merges|merge-upstream|git\/refs|contents)(?:\/|$)/u,
+  /(?:^|\/)repos\/[^/]+\/[^/]+\/branches\/.+\/rename$/u,
   /(?:^|\/)projects\/[^/]+\/repository\/(?:branches|commits|files)(?:\/|$)/u,
 ];
 // Another program's arguments, joined, that read as a merge or push.
@@ -370,11 +374,79 @@ const GLAB_MR_MERGE_FLAGS = table(
     "--yes",
   ]
 );
+// The built-in commands of each CLI that may run under the guard; aliases,
+// extensions, and agent commands are left out because they can run anything.
+const GH_COMMANDS = new Set([
+  "alias",
+  "api",
+  "attestation",
+  "auth",
+  "browse",
+  "cache",
+  "co",
+  "completion",
+  "config",
+  "discussion",
+  "gist",
+  "gpg-key",
+  "help",
+  "issue",
+  "label",
+  "org",
+  "pr",
+  "project",
+  "release",
+  "repo",
+  "ruleset",
+  "run",
+  "search",
+  "secret",
+  "ssh-key",
+  "status",
+  "variable",
+  "version",
+  "workflow",
+]);
+const GLAB_COMMANDS = new Set([
+  "alias",
+  "api",
+  "attestation",
+  "auth",
+  "changelog",
+  "check-update",
+  "ci",
+  "completion",
+  "config",
+  "deploy-key",
+  "gpg-key",
+  "help",
+  "incident",
+  "issue",
+  "iteration",
+  "job",
+  "label",
+  "milestone",
+  "mr",
+  "release",
+  "repo",
+  "schedule",
+  "search",
+  "securefile",
+  "snippet",
+  "ssh-key",
+  "todo",
+  "token",
+  "user",
+  "variable",
+  "version",
+]);
 // Options a provider CLI accepts before its subcommand.
 const PROVIDER_GLOBAL_VALUES = new Set(["-R", "--hostname", "--repo"]);
 const FIELD_FLAGS = ["-F", "-f", "--field", "--form", "--raw-field"];
 const READ_METHODS = new Set(["GET", "HEAD"]);
 const LEADING_EQUALS = /^=/u;
+const QUERY_OR_FRAGMENT = /[?#]/u;
+const TRAILING_SLASHES = /\/+$/u;
 // Any spelling of the GraphQL endpoint: `graphql`, `/graphql`, or a URL.
 const GRAPHQL_ENDPOINT = /graphql/iu;
 
@@ -445,7 +517,18 @@ const hiddenBody = (parsed: ParsedFlags): boolean =>
   valuesOf(parsed, ["--input"]).length > 0 ||
   valuesOf(parsed, FIELD_FLAGS).some((field) => field.includes("=@"));
 
-const endpointPath = (endpoint: string): string => endpoint.split("?")[0] ?? "";
+// An endpoint's path without its query or fragment, percent-decoded, and
+// without trailing slashes, so every spelling of one endpoint matches.
+const endpointPath = (endpoint: string): string => {
+  const path = endpoint.split(QUERY_OR_FRAGMENT)[0] ?? "";
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    // A malformed escape keeps the raw path.
+  }
+  return decoded.replace(TRAILING_SLASHES, "");
+};
 
 // A merge or ref-writing endpoint: reads pass, a merge must pin exactly one
 // visible head with a receipt, and a direct ref write is refused.
@@ -463,6 +546,7 @@ const apiCall = (
   const fields = valuesOf(parsed, FIELD_FLAGS);
   if (GRAPHQL_ENDPOINT.test(endpointPath(endpoint))) {
     return hiddenBody(parsed) ||
+      QUERY_OR_FRAGMENT.test(endpoint) ||
       fields.some((field) => GRAPHQL_REF_WRITE.test(field))
       ? refuse(
           `a ${label} GraphQL call runs only as an inline query; merge through the REST merge with -f sha=<head>`
@@ -512,6 +596,8 @@ const providerCommand = (
   checkout: string,
   args: string[],
   provider: {
+    builtins: ReadonlySet<string>;
+    cli: string;
     headOption: string;
     label: string;
     merge: string[];
@@ -546,6 +632,18 @@ const providerCommand = (
   }
   const context = { checkout, global: [] };
   const [noun = "", verb = ""] = words;
+  // An alias or extension can expand to anything, so only built-in commands
+  // run; `gh repo sync` can move a branch through the API.
+  if (noun !== "" && !provider.builtins.has(noun)) {
+    return refuse(
+      `${provider.cli} ${noun} is not a built-in command (an alias or extension); run the underlying command directly`
+    );
+  }
+  if (noun === "repo" && verb === "sync") {
+    return refuse(
+      `${provider.cli} repo sync can move a branch; it is not inspected`
+    );
+  }
   if (noun === "api") {
     return apiCall(
       context,
@@ -596,6 +694,8 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
     }
     case "glab": {
       return providerCommand(checkout, args, {
+        builtins: GLAB_COMMANDS,
+        cli: "glab",
         headOption: "--sha",
         label: "GitLab",
         merge: ["accept", "merge"],
@@ -605,6 +705,8 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
     }
     case "gh": {
       return providerCommand(checkout, args, {
+        builtins: GH_COMMANDS,
+        cli: "gh",
         headOption: "--match-head-commit",
         label: "GitHub",
         merge: ["merge"],
