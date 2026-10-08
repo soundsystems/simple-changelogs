@@ -643,6 +643,15 @@ describe("Codex strict response schema", () => {
       ],
       [fixture({}, { $defs: [] }), "$defs at # must be an object"],
       ["[]", "must be a JSON object"],
+      ['{"type":"string"}', 'root must have type "object"'],
+      [
+        fixture({}, { type: ["object", "null"] }),
+        'root must have type "object"',
+      ],
+      [
+        JSON.stringify({ additionalProperties: false, properties: {} }),
+        'root must have type "object"',
+      ],
     ] as const) {
       expect(() => prepareCodexResponseSchema(schema)).toThrow(message);
     }

@@ -264,6 +264,11 @@ const parsedSchema = (responseSchema: string): Schema => {
 
 export const prepareCodexResponseSchema = (responseSchema: string): string => {
   const root = parsedSchema(responseSchema);
+  // Strict mode accepts only a plain object at the root, never a scalar,
+  // a type list, or a nullable object.
+  if (root.type !== "object") {
+    throw new Error('Codex response schema root must have type "object"');
+  }
   return `${JSON.stringify(strictSchema(root, root, "#"))}\n`;
 };
 
