@@ -14,6 +14,7 @@ audit. These entries do not themselves authorize released-history edits.
 - Guidance 6
 - Guidance 7
 - Guidance 25
+- Guidance 26
 
 ## Guidance 1
 
@@ -130,3 +131,15 @@ release tags the other distributions gained in this checkpoint do not apply.
 Every Simple Changelogs distribution now shares one guidance number, so this
 distribution moves from 7 to 25. No question is asked, no setting changes, and
 no backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="26" kinds="capability,onboarding" backfill="not-needed" summary="You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, and entries are still signed by the model that wrote them. This update asks once." -->
+## Guidance 26
+
+An optional authoring sidecar, `.simple-changelogs-authoring.json` or a
+personal `authoring.json`, records which model and effort should write release
+notes in each coding agent the owner uses, defaulting to the most capable model
+at `xhigh`. Agents match, delegate, or write with the running model and say
+why; signatures always name the actual writer, and the preference grants no
+authority. Until a valid sidecar exists, inspection asks **Which coding agents
+do you use?** and then which model should write in each. Policy files are
+unchanged and no backfill is needed.

@@ -19,7 +19,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 25
+Current guidance version: 26
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports

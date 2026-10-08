@@ -487,7 +487,7 @@ describe("post-onboarding write guards", () => {
     const outcomes = await Promise.all(
       [0, 1].map(async (cmsVersion) => {
         const repo = await temporaryDirectory("repo");
-        await webCmsPolicies(repo, 25, cmsVersion);
+        await webCmsPolicies(repo, 26, cmsVersion);
         return inspectRepository({
           configDirectory: config,
           distribution: "web-cms",

@@ -1552,7 +1552,7 @@ describe("release tags in the guidance-update notice", () => {
 
     for (const [index, [, recorded]] of cases.entries()) {
       expect(inspections[index]?.guidanceUpdate).toMatchObject({
-        currentVersion: 25,
+        currentVersion: 26,
         questions: ["release-tags"],
         recordedVersion: recorded,
         userPrompt: null,
@@ -1591,13 +1591,14 @@ describe("release tags in the guidance-update notice", () => {
       inspect(cms, "cms"),
     ]);
 
-    expect(web.guidanceUpdate?.currentVersion).toBe(25);
+    expect(web.guidanceUpdate?.currentVersion).toBe(26);
     expect(Object.hasOwn(web.guidanceUpdate ?? {}, "questions")).toBe(false);
     expect(operator.guidanceUpdate).toMatchObject({
-      currentVersion: 25,
+      currentVersion: 26,
       recordedVersion: 7,
       summaryBullets: [
         "Nothing changes for CMS repositories; the guidance number now matches the other Simple Changelogs distributions.",
+        "You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, and entries are still signed by the model that wrote them. This update asks once.",
       ],
       userPrompt: null,
     });
@@ -1619,10 +1620,10 @@ describe("release tags in the guidance-update notice", () => {
 
     const inspection = await inspect(repo, "web-cms");
 
-    // Only the CMS track is behind, so the notice exists without the question.
+    // The main track is at 25 or later, so the notice never asks about tags.
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 2,
-      recordedVersion: 1,
+      currentVersion: 26,
+      recordedVersion: 25,
     });
     expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
       false
@@ -1794,13 +1795,13 @@ describe("release tags in the guidance-update notice", () => {
     expect(answeredPolicy.releaseTags).toBe("v{version}");
     expect(answeredPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(withoutAnswer.status).toBe("configured");
     expect(Object.hasOwn(silentPolicy, "releaseTags")).toBe(false);
     expect(silentPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -2272,7 +2273,7 @@ describe("unified guidance 25 and release-tag guidance", () => {
     ) as { distributions: { guidanceVersion: number; name: string }[] };
     expect(
       manifest.distributions.map(({ guidanceVersion }) => guidanceVersion)
-    ).toEqual([25, 25, 25, 25, 25, 25]);
+    ).toEqual([26, 26, 26, 26, 26, 26]);
     const snapshots = await Promise.all(
       Object.entries(DISTRIBUTION_DIRECTORIES).map(
         async ([distribution, directory]) => {
@@ -2292,9 +2293,10 @@ describe("unified guidance 25 and release-tag guidance", () => {
       )
     );
     for (const { inspection, marker, skill, updates } of snapshots) {
-      expect(skill).toContain("Current guidance version: 25\n");
-      expect(JSON.parse(marker).guidanceVersion).toBe(25);
-      expect(inspection.capabilities?.guidanceVersion).toBe(25);
+      // Guidance 26 (authoring preferences) keeps the shared number.
+      expect(skill).toContain("Current guidance version: 26\n");
+      expect(JSON.parse(marker).guidanceVersion).toBe(26);
+      expect(inspection.capabilities?.guidanceVersion).toBe(26);
       expect(updates).toContain(
         '<!-- simple-changelogs-guidance-update version="25"'
       );
@@ -2320,7 +2322,14 @@ describe("unified guidance 25 and release-tag guidance", () => {
             ]);
           return {
             distribution,
-            entry: collapse(updates.slice(updates.indexOf("## Guidance 25"))),
+            entry: collapse(
+              updates.slice(
+                updates.indexOf("## Guidance 25"),
+                updates.indexOf(
+                  '<!-- simple-changelogs-guidance-update version="26"'
+                )
+              )
+            ),
             handoff,
             onboarding,
             setup,

@@ -302,7 +302,7 @@ type SetupStatus =
 
 // Every distribution shares one guidance number, and each family release is
 // numbered 0.<guidance>.<patch>, so a distribution may jump straight to it.
-const GUIDANCE_VERSION = 25;
+const GUIDANCE_VERSION = 26;
 // The web-cms distribution records the CMS side of its policy on a separate
 // guidance track from the standalone CMS distribution.
 const WEB_CMS_CMS_GUIDANCE_VERSION = 2;

@@ -4207,7 +4207,7 @@
             {
               "kind": "json.path",
               "target": ".simple-changelogs.json#/guidance/version",
-              "expected": 25
+              "expected": 26
             },
             {
               "kind": "text.match",

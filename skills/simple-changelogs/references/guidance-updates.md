@@ -19,6 +19,7 @@ an unanswered prompt records nothing and may be asked again later.
 - Guidance 23
 - Guidance 24
 - Guidance 25
+- Guidance 26
 
 ## Guidance 1 to 15
 
@@ -150,3 +151,15 @@ repository's existing tag style when local tags show one, and no tags when
 release tooling already creates them. No answer records nothing and leaves
 releases untagged. Every Simple Changelogs distribution now shares this
 guidance number. No backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="26" kinds="capability,onboarding" backfill="not-needed" summary="You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, and entries are still signed by the model that wrote them. This update asks once." -->
+## Guidance 26
+
+An optional authoring sidecar, `.simple-changelogs-authoring.json` or a
+personal `authoring.json`, records which model and effort should write release
+notes in each coding agent the owner uses, defaulting to the most capable model
+at `xhigh`. Agents match, delegate, or write with the running model and say
+why; signatures always name the actual writer, and the preference grants no
+authority. Until a valid sidecar exists, inspection asks **Which coding agents
+do you use?** and then which model should write in each. Policy files are
+unchanged and no backfill is needed.
