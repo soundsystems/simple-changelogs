@@ -8,15 +8,18 @@
 // or pushed, and exits 0 for every command it does not gate.
 //
 // Gated:
-// - a provider merge: a mutating `glab api` call to a merge request's
-//   `/merge` or merge-train endpoint, or a `gh api` call to a pull request's
-//   `/merge` or `/merge-async`, pinned with `-f sha=<head>`; `glab mr merge
-//   --sha <head>`; or `gh pr merge --match-head-commit <head>`, wherever the
-//   subcommand sits among the flags. A call counts as a read only with one
-//   explicit GET or HEAD, or with no method and only flags that send no body.
-//   A merge that pins no head or repeats it, one whose body comes from a
-//   file, a mutating call that writes refs, commits, or files directly, and
-//   any GraphQL call but an inline query are refused;
+// - a provider merge: `glab mr merge|accept` pinned with `--sha <head>`,
+//   `gh pr merge` pinned with `--match-head-commit <head>`, or a mutating
+//   `glab api`/`gh api` call to a merge request's `/merge` or merge-train
+//   endpoint or a pull request's `/merge` or `/merge-async`, pinned with one
+//   `sha` field or query value. Each command is parsed against its complete
+//   flag table, so an option's value never poses as a head, endpoint, or
+//   method; an unknown flag, or an option before the subcommand other than
+//   `-R`/`--repo`/`--hostname`, is refused. An API call is a read only with
+//   one GET or HEAD method, or with no method and no body. A merge that pins
+//   no head or repeats it, one whose body comes from a file, a mutating call
+//   that writes refs, commits, or files directly, and any GraphQL call but
+//   an inline query are refused;
 // - `git push`: Git itself reports what the push would update (`git push
 //   <args> --dry-run --porcelain --no-quiet`, with the same options and
 //   configuration), and every update to the target branch on any remote
@@ -118,9 +121,6 @@ const MERGE_VALUE_OPTIONS = new Set([
   "--strategy",
   "--strategy-option",
 ]);
-const API_FIELD_OPTIONS = ["-F", "-f", "--field", "--raw-field"];
-// glab and gh options before a subcommand that take a value.
-const PROVIDER_VALUE_OPTIONS = new Set(["-R", "--hostname", "--repo"]);
 
 const runGit = (context: GitContext, args: string[]) =>
   spawnSync({
@@ -152,55 +152,6 @@ const positionals = (args: string[], valueOptions: Set<string>): string[] => {
   }
   return found;
 };
-
-/** The value of `name`, given as `name value` or `name=value`. */
-const optionValue = (args: string[], name: string): string | undefined => {
-  for (const [index, arg] of args.entries()) {
-    if (arg === name) {
-      return args[index + 1];
-    }
-    if (arg.startsWith(`${name}=`)) {
-      return arg.slice(name.length + 1);
-    }
-  }
-  return undefined;
-};
-
-// How many times any of `names` appears: alone, as `name=value`, or, for a
-// short option, with its value attached.
-const occurrences = (args: string[], names: string[]): number =>
-  args.filter((arg) =>
-    names.some(
-      (name) =>
-        arg === name ||
-        arg.startsWith(`${name}=`) ||
-        (name.length === 2 && arg.startsWith(name))
-    )
-  ).length;
-
-// Every `glab api --form k=v` or `--form=k=v` value, in order.
-const formValues = (args: string[]): string[] =>
-  args.flatMap((arg, index) => {
-    if (args[index - 1] === "--form") {
-      return [arg];
-    }
-    return arg.startsWith("--form=") ? [arg.slice("--form=".length)] : [];
-  });
-
-// Every `-f k=v`, `-fk=v`, or `--raw-field=k=v` value, in order.
-const fieldValues = (args: string[]): string[] =>
-  args.flatMap((arg, index) => {
-    if (API_FIELD_OPTIONS.includes(args[index - 1] ?? "")) {
-      return [arg];
-    }
-    const option = API_FIELD_OPTIONS.find((name) =>
-      arg.startsWith(name.length === 2 ? name : `${name}=`)
-    );
-    if (option === undefined || arg === option) {
-      return [];
-    }
-    return [arg.slice(option.length === 2 ? 2 : option.length + 1)];
-  });
 
 const currentBranch = (context: GitContext): string | null =>
   gitText(context, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
@@ -330,92 +281,206 @@ const git = (checkout: string, args: string[]): Gate => {
   }
 };
 
-// Flags of `glab api` and `gh api` that send no request body.
-const READ_ONLY_FLAGS = new Set([
-  "-i",
-  "--include",
-  "--paginate",
-  "--silent",
-  "--slurp",
-  "--verbose",
-]);
-const READ_ONLY_VALUE_FLAGS = new Set([
-  "-H",
-  "-R",
-  "-p",
-  "-q",
-  "-t",
-  "--cache",
-  "--header",
-  "--hostname",
-  "--jq",
-  "--output",
-  "--preview",
-  "--repo",
-  "--template",
-]);
-const READ_METHODS = new Set(["GET", "HEAD"]);
-const endpointPath = (arg: string): string => arg.split("?")[0] ?? "";
+// A provider command's flags, parsed against its complete flag table so an
+// option's value can never pose as an option, endpoint, or method. A flag
+// outside the table is unknown, and the call is refused rather than guessed.
+interface FlagTable {
+  booleans: ReadonlySet<string>;
+  values: ReadonlySet<string>;
+}
 
-// A read: one explicit GET or HEAD, or no method and nothing but the
-// endpoint and flags that send no body. Anything else may write.
-const isRead = (args: string[], endpoint: string): boolean => {
-  const methods = args.flatMap((arg, index) => {
-    if (arg === "-X" || arg === "--method") {
-      return [args[index + 1] ?? ""];
+interface ParsedFlags {
+  positionals: string[];
+  unknown: string[];
+  values: Map<string, string[]>;
+}
+
+const table = (values: string[], booleans: string[]): FlagTable => ({
+  booleans: new Set([...booleans, "-h", "--help"]),
+  values: new Set(values),
+});
+
+// `gh api` and `glab api` flags together; the endpoints of the two differ.
+const API_FLAGS = table(
+  [
+    "-F",
+    "-H",
+    "-R",
+    "-X",
+    "-f",
+    "-p",
+    "-q",
+    "-t",
+    "--cache",
+    "--field",
+    "--form",
+    "--header",
+    "--hostname",
+    "--input",
+    "--jq",
+    "--method",
+    "--output",
+    "--preview",
+    "--raw-field",
+    "--repo",
+    "--template",
+  ],
+  ["-i", "--include", "--paginate", "--silent", "--slurp", "--verbose"]
+);
+const GH_PR_MERGE_FLAGS = table(
+  [
+    "-A",
+    "-F",
+    "-R",
+    "-b",
+    "-t",
+    "--author-email",
+    "--body",
+    "--body-file",
+    "--match-head-commit",
+    "--repo",
+    "--subject",
+  ],
+  [
+    "-d",
+    "-m",
+    "-r",
+    "-s",
+    "--admin",
+    "--auto",
+    "--delete-branch",
+    "--disable-auto",
+    "--merge",
+    "--rebase",
+    "--squash",
+  ]
+);
+const GLAB_MR_MERGE_FLAGS = table(
+  ["-R", "-m", "--message", "--repo", "--sha", "--squash-message"],
+  [
+    "-d",
+    "-r",
+    "-s",
+    "-y",
+    "--auto-merge",
+    "--rebase",
+    "--remove-source-branch",
+    "--squash",
+    "--when-pipeline-succeeds",
+    "--yes",
+  ]
+);
+// Options a provider CLI accepts before its subcommand.
+const PROVIDER_GLOBAL_VALUES = new Set(["-R", "--hostname", "--repo"]);
+const FIELD_FLAGS = ["-F", "-f", "--field", "--form", "--raw-field"];
+const READ_METHODS = new Set(["GET", "HEAD"]);
+const LEADING_EQUALS = /^=/u;
+
+// An option token's name and, for `--name=value`, `-Xvalue`, or `-X=value`,
+// its attached value.
+const optionToken = (
+  arg: string
+): { attached: string | null; long: boolean; name: string } => {
+  if (arg.startsWith("--")) {
+    const [name = arg, ...rest] = arg.split("=");
+    return {
+      attached: rest.length > 0 ? rest.join("=") : null,
+      long: true,
+      name,
+    };
+  }
+  return {
+    attached: arg.length > 2 ? arg.slice(2).replace(LEADING_EQUALS, "") : null,
+    long: false,
+    name: arg.slice(0, 2),
+  };
+};
+
+const parseFlags = (args: string[], flags: FlagTable): ParsedFlags => {
+  const parsed: ParsedFlags = {
+    positionals: [],
+    unknown: [],
+    values: new Map(),
+  };
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? "";
+    if (arg === "--") {
+      parsed.positionals.push(...args.slice(index + 1));
+      break;
     }
-    if (arg.startsWith("--method=")) {
-      return [arg.slice("--method=".length)];
+    if (!arg.startsWith("-") || arg === "-") {
+      parsed.positionals.push(arg);
+      continue;
     }
-    return arg.startsWith("-X") ? [arg.slice(2)] : [];
-  });
+    const { attached, long, name } = optionToken(arg);
+    if (flags.values.has(name)) {
+      const value = attached ?? args[index + 1] ?? "";
+      parsed.values.set(name, [...(parsed.values.get(name) ?? []), value]);
+      index += attached === null ? 1 : 0;
+    } else if (!(flags.booleans.has(name) && (long || attached === null))) {
+      parsed.unknown.push(arg);
+    }
+  }
+  return parsed;
+};
+
+const valuesOf = (parsed: ParsedFlags, names: string[]): string[] =>
+  names.flatMap((name) => parsed.values.get(name) ?? []);
+
+// A read: one GET or HEAD method, or no method and no request body.
+const isRead = (parsed: ParsedFlags): boolean => {
+  const methods = valuesOf(parsed, ["-X", "--method"]);
   if (methods.length > 0) {
     return (
       methods.length === 1 && READ_METHODS.has((methods[0] ?? "").toUpperCase())
     );
   }
-  let value = false;
-  return args.every((arg) => {
-    if (value) {
-      value = false;
-      return true;
-    }
-    value = READ_ONLY_VALUE_FLAGS.has(arg);
-    return (
-      value ||
-      arg === endpoint ||
-      arg === "api" ||
-      READ_ONLY_FLAGS.has(arg) ||
-      [...READ_ONLY_VALUE_FLAGS].some((flag) => arg.startsWith(`${flag}=`))
-    );
-  });
+  return valuesOf(parsed, [...FIELD_FLAGS, "--input"]).length === 0;
 };
 
-// A provider API call to a merge or ref-writing endpoint: reads pass, a
-// merge must pin exactly one visible head with a receipt, and a direct ref
-// write is refused. A body the guard cannot read (`--input`, a field read
-// from a file) and a repeated sha are refused rather than modeled.
-const apiMerge = (
+// A body the guard cannot read: an input file or a field read from a file.
+const hiddenBody = (parsed: ParsedFlags): boolean =>
+  valuesOf(parsed, ["--input"]).length > 0 ||
+  valuesOf(parsed, FIELD_FLAGS).some((field) => field.includes("=@"));
+
+const endpointPath = (endpoint: string): string => endpoint.split("?")[0] ?? "";
+
+// A merge or ref-writing endpoint: reads pass, a merge must pin exactly one
+// visible head with a receipt, and a direct ref write is refused.
+const apiCall = (
   context: GitContext,
-  args: string[],
-  endpoint: string,
+  parsed: ParsedFlags,
   label: string
 ): Gate => {
-  if (isRead(args, endpoint)) {
+  const [endpoint = "", ...extra] = parsed.positionals;
+  if (parsed.unknown.length > 0 || extra.length > 0) {
+    return refuse(
+      `a ${label} API call with ${[...parsed.unknown, ...extra].join(" ")} is not inspected`
+    );
+  }
+  const fields = valuesOf(parsed, FIELD_FLAGS);
+  if (endpoint === "graphql") {
+    return hiddenBody(parsed) ||
+      fields.some((field) => GRAPHQL_REF_WRITE.test(field))
+      ? refuse(
+          `a ${label} GraphQL call runs only as an inline query; merge through the REST merge with -f sha=<head>`
+        )
+      : ALLOW;
+  }
+  const path = endpointPath(endpoint);
+  const merge = API_MERGE_PATHS.some((pattern) => pattern.test(path));
+  if (
+    !(merge || API_REF_WRITE_PATHS.some((pattern) => pattern.test(path))) ||
+    isRead(parsed)
+  ) {
     return ALLOW;
   }
-  if (
-    !API_MERGE_PATHS.some((pattern) => pattern.test(endpointPath(endpoint)))
-  ) {
+  if (!merge) {
     return refuse(
       `${endpoint} writes refs, commits, or files directly; push through git instead`
     );
   }
-  const fields = [...fieldValues(args), ...formValues(args)];
-  if (
-    optionValue(args, "--input") !== undefined ||
-    fields.some((field) => field.includes("=@"))
-  ) {
+  if (hiddenBody(parsed)) {
     return refuse(
       `a ${label} API merge with a body read from a file is not inspected`
     );
@@ -437,67 +502,63 @@ const apiMerge = (
       );
 };
 
-// A GraphQL call runs only as an inline query: a mutation, a ref-writing
-// keyword, or a body from a file or standard input is refused.
-const graphqlCall = (args: string[], label: string): Gate =>
-  optionValue(args, "--input") !== undefined ||
-  [...fieldValues(args), ...formValues(args)].some((field) =>
-    field.includes("=@")
-  ) ||
-  args.some((arg) => GRAPHQL_REF_WRITE.test(arg))
-    ? refuse(
-        `a ${label} GraphQL call runs only as an inline query; merge through the REST merge with -f sha=<head>`
-      )
-    : ALLOW;
-
-// A provider merge, wherever its subcommand sits among the flags: a mutating
-// API call to a merge endpoint pinned with `-f sha=<head>` or a `sha` query
-// parameter, or the CLI merge pinned with its head option. A mutating API
-// call that writes refs, commits, or files directly is refused.
-const providerMerge = (
+// A provider command, read as `<cli> [-R repo] <noun> <verb> ...`: an API
+// call is judged by its endpoint and method, and the CLI merge must pin one
+// head with its head option. Any other option before the subcommand is
+// refused, because it could hide which subcommand runs.
+const providerCommand = (
   checkout: string,
   args: string[],
   provider: {
     headOption: string;
     label: string;
     merge: string[];
+    mergeFlags: FlagTable;
     noun: string;
   }
 ): Gate => {
-  const context = { checkout, global: [] };
-  if (args.includes("graphql")) {
-    return graphqlCall(args, provider.label);
-  }
-  const endpoint = args.find((arg) =>
-    [...API_MERGE_PATHS, ...API_REF_WRITE_PATHS].some((pattern) =>
-      pattern.test(endpointPath(arg))
-    )
-  );
-  if (endpoint !== undefined) {
-    return apiMerge(context, args, endpoint, provider.label);
-  }
-  // The merge subcommand directly follows its noun among the positional
-  // arguments, so `mr list --search merge` is not a merge.
-  const words = positionals(args, PROVIDER_VALUE_OPTIONS);
-  if (
-    words.some(
-      (word, index) =>
-        word === provider.noun &&
-        provider.merge.includes(words[index + 1] ?? "")
-    )
-  ) {
-    const sha = optionValue(args, provider.headOption);
-    const label = `${provider.label} ${provider.noun} merge`;
-    if (occurrences(args, [provider.headOption]) > 1) {
-      return refuse(`${label} repeats ${provider.headOption}`);
+  let index = 0;
+  while ((args[index] ?? "").startsWith("-")) {
+    const arg = args[index] ?? "";
+    if (PROVIDER_GLOBAL_VALUES.has(arg)) {
+      index += 2;
+    } else if (
+      [...PROVIDER_GLOBAL_VALUES].some((name) => arg.startsWith(`${name}=`))
+    ) {
+      index += 1;
+    } else {
+      return refuse(
+        `${arg} before the ${provider.label} subcommand is not inspected`
+      );
     }
-    return sha
-      ? requireReceipts(context, label, [sha])
-      : refuse(
-          `${label} must pin the head it merges with ${provider.headOption} <head>`
-        );
   }
-  return ALLOW;
+  const context = { checkout, global: [] };
+  const [noun = "", verb = ""] = args.slice(index);
+  if (noun === "api") {
+    return apiCall(
+      context,
+      parseFlags(args.slice(index + 1), API_FLAGS),
+      provider.label
+    );
+  }
+  if (noun !== provider.noun || !provider.merge.includes(verb)) {
+    return ALLOW;
+  }
+  const label = `${provider.label} ${noun} merge`;
+  const parsed = parseFlags(args.slice(index + 2), provider.mergeFlags);
+  if (parsed.unknown.length > 0) {
+    return refuse(`${label} with ${parsed.unknown.join(" ")} is not inspected`);
+  }
+  const heads = valuesOf(parsed, [provider.headOption]);
+  if (heads.length > 1) {
+    return refuse(`${label} repeats ${provider.headOption}`);
+  }
+  const [sha] = heads;
+  return sha
+    ? requireReceipts(context, label, [sha])
+    : refuse(
+        `${label} must pin the head it merges with ${provider.headOption} <head>`
+      );
 };
 
 /** Decides whether the exec command is gated, and on which revisions. */
@@ -522,18 +583,20 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
       return git(checkout, args);
     }
     case "glab": {
-      return providerMerge(checkout, args, {
+      return providerCommand(checkout, args, {
         headOption: "--sha",
         label: "GitLab",
         merge: ["accept", "merge"],
+        mergeFlags: GLAB_MR_MERGE_FLAGS,
         noun: "mr",
       });
     }
     case "gh": {
-      return providerMerge(checkout, args, {
+      return providerCommand(checkout, args, {
         headOption: "--match-head-commit",
         label: "GitHub",
         merge: ["merge"],
+        mergeFlags: GH_PR_MERGE_FLAGS,
         noun: "pr",
       });
     }

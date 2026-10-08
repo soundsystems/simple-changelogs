@@ -374,6 +374,67 @@ describe("exec guard", () => {
       ],
       "repeats --match-head-commit"
     );
+    // An option's value never poses as a head, endpoint, or method.
+    refused(
+      repo,
+      [
+        "gh",
+        "pr",
+        "merge",
+        "7",
+        "--merge",
+        "--match-head-commit",
+        sha("main"),
+        "--body",
+        `repos/o/r/pulls/7/merge?sha=${head}`,
+      ],
+      "no passing"
+    );
+    refused(
+      repo,
+      [
+        "gh",
+        "pr",
+        "merge",
+        "7",
+        "--merge",
+        "--body",
+        `--match-head-commit=${head}`,
+      ],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      ["glab", "mr", "merge", "7", "--yes", "--message", `--sha=${head}`],
+      "must pin the head"
+    );
+    refused(
+      repo,
+      [
+        "gh",
+        "api",
+        "repos/o/r/merges",
+        "-f",
+        "base=main",
+        "-f",
+        "head=x",
+        "--template",
+        "-XGET",
+      ],
+      "writes refs, commits, or files directly"
+    );
+    // Flags outside the command's table, or before its subcommand, refuse.
+    refused(
+      repo,
+      ["gh", "pr", "merge", "3", "--match-head-commit", head, "--frobnicate"],
+      "--frobnicate"
+    );
+    refused(repo, ["gh", "--frobnicate", "pr", "merge", "3"], "not inspected");
+    refused(
+      repo,
+      ["glab", "api", "--frobnicate", "projects/1/merge_requests/7/merge"],
+      "not inspected"
+    );
     // A different head than the one that passed is still refused.
     refused(
       repo,
