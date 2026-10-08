@@ -225,10 +225,13 @@ const pathChain = async (
 
 // The point the writer has reached, for tests: `enter` is after a directory
 // passed its check and before the step into it, `open` is after the held
-// directory is reached and before the copy is opened in it.
+// directory is reached and before the copy is opened in it, `restore` is
+// after the step back to the starting directory and before its identity is
+// confirmed.
 export interface WriteStep {
-  kind: "enter" | "open";
-  // Repository-relative path of the directory or copy.
+  kind: "enter" | "open" | "restore";
+  // Repository-relative path of the directory or copy; for `restore`, the
+  // starting directory as recorded before the walk.
   path: string;
 }
 export type WriteProbe = (step: WriteStep) => void;
@@ -366,14 +369,20 @@ const writeDescriptor = (descriptor: number, file: SyncedFile): void => {
 };
 
 // Moves back to the directory the walk started in and confirms by device and
-// inode that it is the same directory; the name alone could lead elsewhere.
-const restoredTo = (origin: string, identity: Stats): boolean => {
+// inode that it is the same directory; the name alone could lead elsewhere,
+// and a step or check that fails counts as not restored.
+const restoredTo = (
+  origin: string,
+  identity: Stats,
+  probe: WriteProbe | undefined
+): boolean => {
   try {
     process.chdir(origin);
+    probe?.({ kind: "restore", path: origin });
+    return sameInode(statSync("."), identity);
   } catch {
     return false;
   }
-  return sameInode(statSync("."), identity);
 };
 
 // Writes the copy through a walk the process holds, the openat the fs API
@@ -430,7 +439,7 @@ export const writeSyncedFile = (
   } catch (error) {
     failure = { error };
   }
-  if (!restoredTo(origin, identity)) {
+  if (!restoredTo(origin, identity, probe)) {
     process.chdir(anchor);
     throw new Error(
       `The working directory ${origin} changed while ${file.target} was written; the process is now in ${anchor}`,

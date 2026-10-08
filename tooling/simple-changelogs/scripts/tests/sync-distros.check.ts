@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, renameSync, rmSync, symlinkSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import {
   cp,
   link,
@@ -447,6 +453,7 @@ describe("sync-distros", () => {
       { kind: "enter", path: "skills" },
       { kind: "enter", path: `skills/${WEB}` },
       { kind: "enter", path: SCRIPTS },
+      { kind: "restore", path: origin },
     ]);
   });
 
@@ -604,8 +611,32 @@ describe("sync-distros", () => {
       expect(await readFile(join(outside, "setup.ts"), "utf8")).toBe(
         "// outside\n"
       );
+
+      // The name leads outside and that directory stops being searchable
+      // once entered, so the identity check itself fails: the process still
+      // ends at the root.
+      await rm(join(root, SCRIPTS));
+      await rename(aside, join(root, SCRIPTS));
+      process.chdir(join(root, SCRIPTS));
+      await writeFile(join(root, SETUP_COPY), "// drifted\n");
+      expect(() =>
+        writeSyncedFile(root, setup, (step) => {
+          if (step.kind === "open") {
+            swapDirectoryForLink(join(root, SCRIPTS), aside, outside);
+          }
+          if (step.kind === "restore") {
+            chmodSync(outside, 0o000);
+          }
+        })
+      ).toThrow(failure);
+      expect(await realpath(process.cwd())).toBe(rootPath);
+      chmodSync(outside, 0o755);
+      expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
+        setup.expected
+      );
     } finally {
       process.chdir(origin);
+      chmodSync(outside, 0o755);
     }
   });
 
