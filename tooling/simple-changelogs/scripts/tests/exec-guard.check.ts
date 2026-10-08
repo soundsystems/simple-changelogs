@@ -42,7 +42,8 @@ const gitIn =
       { encoding: "utf8" }
     ).trim();
 
-// A clone of a bare origin whose HEAD is main, plus a feature branch.
+// A repository whose origin is a local bare repository with HEAD main, plus
+// a feature branch; main has one unpushed commit.
 const fixture = async () => {
   const root = await mkdtemp(join(tmpdir(), "exec-guard-"));
   temporaryDirectories.push(root);
@@ -63,6 +64,9 @@ const fixture = async () => {
   git("add", "-A");
   git("commit", "-qm", "feature");
   git("checkout", "-q", "main");
+  // main is one commit ahead of origin/main, so pushing it updates main.
+  await writeFile(join(repo, "README.md"), "two\n");
+  git("commit", "-qam", "two");
   const common = commonDirectory(repo) ?? "";
   const sha = (revision: string) => git("rev-parse", revision);
   const pass = (revision: string) => writeReceipt(common, sha(revision));
@@ -155,17 +159,24 @@ describe("check receipts", () => {
 
 describe("exec guard", () => {
   test("lets every command it does not gate run", async () => {
-    const { repo } = await fixture();
+    const { git, repo } = await fixture();
+    git("tag", "v1.0.0");
     for (const argv of [
       ["bun", "run", "check"],
+      ["bun", "add", "merge-deep"],
+      ["rg", "merge", "tooling"],
       ["git", "status"],
       ["git", "fetch", "origin"],
+      ["git", "pull"],
+      ["git", "-c", "alias.lg=log", "lg", "-1"],
       ["git", "push", "--dry-run", "origin", "main"],
       ["git", "push", "origin", "feature"],
-      ["git", "push", "origin", "refs/tags/v1.0.0"],
+      ["git", "push", "origin", "v1.0.0"],
+      ["git", "push", "origin", "--tags"],
+      ["git", "merge", "--abort"],
       ["glab", "mr", "view", "7"],
       ["glab", "api", "projects/83469495/merge_requests/7"],
-      ["gh", "pr", "view", "3"],
+      ["gh", "--repo", "o/r", "pr", "view", "3"],
       ["sh", "-c", "echo merged.json"],
       ["env", "A=1", "git", "status"],
     ]) {
@@ -192,7 +203,15 @@ describe("exec guard", () => {
       "must pin the head"
     );
     refused(repo, ["glab", "mr", "merge", "7"], "--sha <head>");
+    refused(repo, ["glab", "--repo", "o/r", "mr", "merge", "7"], "--sha");
+    refused(repo, ["glab", "mr", "accept", "7"], "--sha");
     refused(repo, ["gh", "pr", "merge", "3"], "--match-head-commit <head>");
+    refused(repo, ["gh", "--repo", "o/r", "pr", "merge", "3"], "--match");
+    refused(
+      repo,
+      ["glab", "api", "graphql", "-f", "query=mutation { mergeRequestAccept }"],
+      "GraphQL"
+    );
     refused(
       repo,
       [
@@ -218,7 +237,7 @@ describe("exec guard", () => {
       `--raw-field=sha=${head}`,
       "/projects/1/merge_requests/7/merge",
     ]);
-    allowed(repo, ["glab", "mr", "merge", "7", `--sha=${head}`]);
+    allowed(repo, ["glab", "-R", "o/r", "mr", "merge", "7", `--sha=${head}`]);
     allowed(repo, ["gh", "pr", "merge", "3", "--match-head-commit", head]);
     allowed(repo, [
       "gh",
@@ -236,51 +255,66 @@ describe("exec guard", () => {
     );
   });
 
-  test("gates pushes that update the target branch", async () => {
-    const { git, pass, repo, sha } = await fixture();
-    refused(repo, ["git", "push", "origin", "main"], sha("main"));
-    refused(repo, ["git", "push"], "git push to main");
+  test("gates every push Git reports would update the target branch", async () => {
+    const { git, pass, repo, root, sha } = await fixture();
+    const main = sha("main");
+    for (const [cwd, argv] of [
+      [repo, ["git", "push", "origin", "main"]],
+      [repo, ["git", "push", "-q", "origin", "main"]],
+      [repo, ["git", "push"]],
+      [repo, ["git", "push", "origin", ":"]],
+      [repo, ["git", "push", "origin", "+:"]],
+      [repo, ["git", "push", "--all", "origin"]],
+      [repo, ["git", "push", "origin", "refs/heads/*:refs/heads/*"]],
+      [repo, ["git", "push", "-f", "origin", "+HEAD:refs/heads/main"]],
+      [repo, ["env", "A=1", "git", "push", "origin", "main"]],
+      [root, ["git", "-C", repo, "push", "origin", "main"]],
+      [
+        root,
+        [
+          "git",
+          `--git-dir=${join(repo, ".git")}`,
+          `--work-tree=${repo}`,
+          "push",
+          "origin",
+          "main",
+        ],
+      ],
+    ] as const) {
+      refused(cwd, [...argv], main);
+    }
     refused(repo, ["git", "push", "origin", "feature:main"], sha("feature"));
+    refused(repo, ["git", "push", "origin", ":main"], "would delete");
     refused(
       repo,
-      ["git", "push", "-f", "origin", "+HEAD:refs/heads/main"],
-      "no passing"
+      ["git", "push", "--delete", "origin", "main"],
+      "would delete"
     );
-    refused(repo, ["git", "push", "origin", ":main"], "would delete main");
-    refused(repo, ["git", "push", "--delete", "origin", "main"], "delete main");
-    refused(repo, ["git", "push", "--all", "origin"], "every branch");
-    refused(
-      repo,
-      ["git", "push", "origin", "refs/heads/*:refs/heads/*"],
-      "wildcard"
-    );
-    refused(repo, ["git", "-C", repo, "push", "origin", "main"], "no passing");
-    refused(
-      repo,
-      ["env", "A=1", "git", "push", "origin", "main"],
-      "no passing"
-    );
+    refused(repo, ["git", "push", "nowhere", "main"], "--dry-run failed");
     pass("main");
     allowed(repo, ["git", "push", "origin", "main"]);
-    allowed(repo, ["git", "push"]);
     allowed(repo, ["git", "push", "--all", "origin"]);
+    allowed(repo, ["git", "push", "origin", ":"]);
     refused(repo, ["git", "push", "origin", "feature:main"], "no passing");
+    // Configured push refspecs are Git's to resolve, not the argv's.
+    git("checkout", "-q", "feature");
+    refused(
+      repo,
+      ["git", "-c", "remote.origin.push=HEAD:main", "push", "origin"],
+      sha("feature")
+    );
     pass("feature");
     allowed(repo, ["git", "push", "origin", "feature:main"]);
-    // On another branch, a bare push leaves main alone.
-    git("checkout", "-q", "feature");
-    git("branch", "-q", "--set-upstream-to=origin/main");
-    allowed(repo, ["git", "push", "origin", "HEAD"]);
   });
 
-  test("gates git merge only while the target branch is checked out", async () => {
+  test("gates git merge and named pulls only while the target branch is checked out", async () => {
     const { git, pass, repo } = await fixture();
     refused(
       repo,
       ["git", "merge", "--no-ff", "-m", "Merge feature", "feature"],
       "git merge into main"
     );
-    allowed(repo, ["git", "merge", "--abort"]);
+    refused(repo, ["git", "pull", "origin", "feature"], "git pull of a named");
     pass("feature");
     allowed(repo, [
       "git",
@@ -292,9 +326,10 @@ describe("exec guard", () => {
     ]);
     git("checkout", "-q", "feature");
     allowed(repo, ["git", "merge", "main"]);
+    allowed(repo, ["git", "pull", "origin", "main"]);
   });
 
-  test("refuses a merge or push it cannot inspect", async () => {
+  test("refuses merges and pushes it cannot inspect", async () => {
     const { repo } = await fixture();
     refused(repo, ["sh", "-c", "git push origin main"], "cannot inspect");
     refused(
@@ -303,10 +338,23 @@ describe("exec guard", () => {
       "cannot inspect"
     );
     refused(repo, ["env", "-i", "git", "push"], "cannot inspect");
+    refused(repo, ["bunx", "glab", "mr", "merge", "7"], "cannot inspect");
     refused(
       repo,
-      ["git", "--git-dir=/elsewhere/.git", "push"],
-      "hides which repository"
+      [
+        "curl",
+        "-X",
+        "PUT",
+        "https://gitlab.com/api/v4/projects/1/merge_requests/7/merge",
+      ],
+      "cannot inspect"
+    );
+    refused(repo, ["git", "-c", "alias.ship=push", "ship", "origin"], "alias");
+    refused(repo, ["git", "send-pack", "origin", "main"], "not inspected");
+    refused(
+      repo,
+      ["git", "subtree", "push", "--prefix=docs", "origin", "main"],
+      "not inspected"
     );
   });
 
@@ -330,7 +378,7 @@ describe("exec guard", () => {
       run(["git", "status"]),
     ]);
     expect(push.exitCode).toBe(1);
-    expect(push.stderr).toContain("exec guard: git push to main");
+    expect(push.stderr).toContain("exec guard: git push to refs/heads/main");
     expect(status).toEqual({ exitCode: 0, stderr: "" });
   });
 });

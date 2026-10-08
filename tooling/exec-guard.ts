@@ -8,52 +8,85 @@
 // or pushed, and exits 0 for every command it does not gate.
 //
 // Gated:
-// - a provider merge: `glab api .../merge_requests/<iid>/merge` with
+// - a provider merge: `glab api .../merge_requests/<iid>/merge` pinned with
 //   `-f sha=<head>`, `glab mr merge --sha <head>`, `gh pr merge
-//   --match-head-commit <head>`, or `gh api .../pulls/<n>/merge` with
-//   `-f sha=<head>`; a merge that pins no head is refused;
+//   --match-head-commit <head>`, or `gh api .../pulls/<n>/merge` pinned with
+//   `-f sha=<head>`, wherever the subcommand sits among the flags. A merge
+//   that pins no head, or a GraphQL call that mentions a merge, is refused;
+// - `git push`: Git itself reports what the push would update (`git push
+//   --dry-run --porcelain` with the same options and configuration), and
+//   every update to the target branch on any remote needs a receipt for the
+//   pushed commit. Deleting the target is refused, and so is a push whose dry
+//   run fails;
 // - `git merge` while the target branch is checked out, for each merged
-//   revision (MERGE_HEAD for --continue, the upstream with no revision);
-// - `git push` that updates the target branch on any remote, for the pushed
-//   commit; deleting it or a wildcard refspec is refused.
+//   revision (MERGE_HEAD for --continue, the upstream with no revision), and
+//   `git pull` of a named branch into it;
+// - `git send-pack`, `git http-push`, `git subtree push|pull|merge`, and a
+//   Git alias that expands to a push, merge, or pull are refused.
 //
-// Boundary: the guard reads the exec argv. A merge or push hidden in another
-// program (a shell script, an alias, a wrapper) is refused when an argument
-// reads as one, and otherwise not seen; only commands run through
-// `loop exec` are guarded at all. Local branch moves other than `git merge`
-// (commit, reset, rebase) are not gated; the push that publishes them is. A
-// receipt proves the head passed `bun run check`; the merge result equals
-// that head only when the head already contains the target tip.
+// Boundary: the guard reads the exec argv. Another program whose arguments
+// read as a Git or provider merge or push (a shell `-c` script, `timeout`,
+// `bunx`) is refused; a merge hidden inside a script or package task is not
+// seen, and only commands run through `loop exec` are guarded at all. Local
+// branch moves other than `git merge` and `git pull` (commit, reset, rebase)
+// are not gated; the push that publishes them is. Refs can move between the
+// guard and the command it allowed. A receipt proves the head passed `bun run
+// check`; a merge result equals that head only when the head already
+// contains the target tip.
 
-import { basename, resolve } from "node:path";
-import {
-  commonDirectory,
-  gitOutput,
-  hasPassingReceipt,
-  RECEIPT_COMMAND,
-} from "./check-receipt.ts";
+import { basename } from "node:path";
+import { spawnSync } from "bun";
+import { hasPassingReceipt, RECEIPT_COMMAND } from "./check-receipt.ts";
+
+// Git run as `git <global options> <args>` in the checkout, so `-C`, `-c`,
+// `--git-dir`, and `--work-tree` apply to every lookup the guard makes.
+interface GitContext {
+  checkout: string;
+  global: string[];
+}
 
 type Gate =
   | { kind: "allow" }
   | { kind: "refuse"; reason: string }
-  | { cwd: string; kind: "require"; label: string; revisions: string[] };
+  | {
+      context: GitContext;
+      kind: "require";
+      label: string;
+      revisions: string[];
+    };
 
 const ALLOW: Gate = { kind: "allow" };
 const refuse = (reason: string): Gate => ({ kind: "refuse", reason });
+const requireReceipts = (
+  context: GitContext,
+  label: string,
+  revisions: string[]
+): Gate => ({ context, kind: "require", label, revisions });
 
 const DEFAULT_TARGET = "main";
+const HEADS_PREFIX = "refs/heads/";
 const ENV_ASSIGNMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=/u;
-// "merge" or "push" as a word, or a merge API path ending in /merge.
-const OPAQUE_MERGE_PATTERN = /(?:^|[\s"'/;&|(])(?:merge|push)(?:[\s"';&|)]|$)/u;
+// One `git push --porcelain` ref line: flag, then `from:to`, then a summary.
+const PORCELAIN_LINE = /^([ +\-*!=])\t([^\t]*)\t/u;
+const MERGING_WORD = /\b(?:push|merge|pull|send-pack)\b/u;
+const GRAPHQL_MERGE = /merge/iu;
 const GITLAB_MERGE_PATH =
   /(?:^|\/)projects\/[^/]+\/merge_requests\/\d+\/merge$/u;
 const GITHUB_MERGE_PATH = /(?:^|\/)repos\/[^/]+\/[^/]+\/pulls\/\d+\/merge$/u;
-const HEADS_PREFIX = "refs/heads/";
-const FORCE_PREFIX = /^\+/u;
+// Another program's arguments, joined, that read as a merge or push.
+const OPAQUE_MERGE_PATTERN =
+  /\b(?:git\b.*\b(?:push|merge|pull|send-pack)|glab\b.*\b(?:merge|accept)|gh\b.*\bmerge)\b|\/merge_requests\/[^/\s]+\/merge\b|\/pulls\/\d+\/merge\b|mergeRequestAccept|mergePullRequest/u;
 
 // Options that take the next argument as their value.
-const GIT_VALUE_OPTIONS = new Set(["-c", "--config-env", "--namespace"]);
-const GIT_REPOSITORY_OPTIONS = ["--git-dir", "--work-tree"];
+const GIT_VALUE_OPTIONS = new Set([
+  "-C",
+  "-c",
+  "--config-env",
+  "--git-dir",
+  "--namespace",
+  "--super-prefix",
+  "--work-tree",
+]);
 const MERGE_VALUE_OPTIONS = new Set([
   "-F",
   "-X",
@@ -64,41 +97,39 @@ const MERGE_VALUE_OPTIONS = new Set([
   "--strategy",
   "--strategy-option",
 ]);
-const PUSH_VALUE_OPTIONS = new Set([
-  "-o",
-  "--exec",
-  "--push-option",
-  "--receive-pack",
-  "--repo",
-]);
-const API_VALUE_OPTIONS = new Set([
-  "-F",
-  "-H",
+const PULL_VALUE_OPTIONS = new Set([
   "-X",
-  "-f",
-  "--field",
-  "--header",
-  "--hostname",
-  "--input",
-  "--method",
-  "--raw-field",
+  "-j",
+  "-o",
+  "-s",
+  "--deepen",
+  "--depth",
+  "--jobs",
+  "--negotiation-tip",
+  "--refmap",
+  "--server-option",
+  "--shallow-exclude",
+  "--shallow-since",
+  "--strategy",
+  "--strategy-option",
+  "--upload-pack",
 ]);
 const API_FIELD_OPTIONS = ["-F", "-f", "--field", "--raw-field"];
 
-// Every `-f k=v`, `-fk=v`, or `--raw-field=k=v` value, in order.
-const fieldValues = (args: string[]): string[] =>
-  args.flatMap((arg, index) => {
-    if (API_FIELD_OPTIONS.includes(args[index - 1] ?? "")) {
-      return [arg];
-    }
-    const option = API_FIELD_OPTIONS.find((name) =>
-      arg.startsWith(name.length === 2 ? name : `${name}=`)
-    );
-    if (option === undefined || arg === option) {
-      return [];
-    }
-    return [arg.slice(option.length === 2 ? 2 : option.length + 1)];
+const runGit = (context: GitContext, args: string[]) =>
+  spawnSync({
+    cmd: ["git", ...context.global, ...args],
+    cwd: context.checkout,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    stderr: "pipe",
+    stdin: "ignore",
+    stdout: "pipe",
   });
+
+const gitText = (context: GitContext, args: string[]): string | null => {
+  const result = runGit(context, args);
+  return result.success ? result.stdout.toString().trim() : null;
+};
 
 /** Positional arguments, skipping each value option's value. */
 const positionals = (args: string[], valueOptions: Set<string>): string[] => {
@@ -116,9 +147,6 @@ const positionals = (args: string[], valueOptions: Set<string>): string[] => {
   return found;
 };
 
-const currentBranch = (cwd: string): string | null =>
-  gitOutput(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
-
 /** The value of `name`, given as `name value` or `name=value`. */
 const optionValue = (args: string[], name: string): string | undefined => {
   for (const [index, arg] of args.entries()) {
@@ -132,8 +160,26 @@ const optionValue = (args: string[], name: string): string | undefined => {
   return undefined;
 };
 
-const targetBranch = (cwd: string): string =>
-  gitOutput(cwd, [
+// Every `-f k=v`, `-fk=v`, or `--raw-field=k=v` value, in order.
+const fieldValues = (args: string[]): string[] =>
+  args.flatMap((arg, index) => {
+    if (API_FIELD_OPTIONS.includes(args[index - 1] ?? "")) {
+      return [arg];
+    }
+    const option = API_FIELD_OPTIONS.find((name) =>
+      arg.startsWith(name.length === 2 ? name : `${name}=`)
+    );
+    if (option === undefined || arg === option) {
+      return [];
+    }
+    return [arg.slice(option.length === 2 ? 2 : option.length + 1)];
+  });
+
+const currentBranch = (context: GitContext): string | null =>
+  gitText(context, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+
+const targetBranch = (context: GitContext): string =>
+  gitText(context, [
     "symbolic-ref",
     "--quiet",
     "--short",
@@ -143,14 +189,50 @@ const targetBranch = (cwd: string): string =>
     .slice(1)
     .join("/") || DEFAULT_TARGET;
 
-const branchName = (ref: string): string =>
-  ref.startsWith(HEADS_PREFIX) ? ref.slice(HEADS_PREFIX.length) : ref;
+const gitPush = (context: GitContext, args: string[]): Gate => {
+  if (args.includes("--dry-run") || args.includes("-n")) {
+    return ALLOW;
+  }
+  const target = `${HEADS_PREFIX}${targetBranch(context)}`;
+  // A trailing --no-quiet undoes -q, which would hide the ref lines.
+  const dryRun = runGit(context, [
+    "push",
+    "--dry-run",
+    "--porcelain",
+    ...args,
+    "--no-quiet",
+  ]);
+  if (!dryRun.success) {
+    const [reason = "it exited nonzero"] = dryRun.stderr
+      .toString()
+      .trim()
+      .split("\n");
+    return refuse(
+      `git push --dry-run failed, so the guard cannot tell what the push updates: ${reason}`
+    );
+  }
+  const revisions: string[] = [];
+  for (const line of dryRun.stdout.toString().split("\n")) {
+    const [, flag = "", refs = ""] = PORCELAIN_LINE.exec(line) ?? [];
+    const split = refs.lastIndexOf(":");
+    const destination = refs.slice(split + 1);
+    if (split === -1 || destination !== target || "=!".includes(flag)) {
+      continue;
+    }
+    if (flag === "-") {
+      return refuse(`git push would delete ${target}`);
+    }
+    revisions.push(refs.slice(0, split));
+  }
+  return revisions.length > 0
+    ? requireReceipts(context, `git push to ${target}`, revisions)
+    : ALLOW;
+};
 
-const gitMerge = (cwd: string, args: string[]): Gate => {
-  const target = targetBranch(cwd);
-  const current = currentBranch(cwd);
+const gitMerge = (context: GitContext, args: string[]): Gate => {
+  const target = targetBranch(context);
   if (
-    current !== target ||
+    currentBranch(context) !== target ||
     args.includes("--abort") ||
     args.includes("--quit")
   ) {
@@ -161,178 +243,124 @@ const gitMerge = (cwd: string, args: string[]): Gate => {
   if (args.includes("--continue")) {
     revisions = ["MERGE_HEAD"];
   }
-  return { cwd, kind: "require", label: `git merge into ${target}`, revisions };
+  return requireReceipts(context, `git merge into ${target}`, revisions);
 };
 
-// The pushed source of every refspec whose destination is the target.
-const pushedToTarget = (
-  cwd: string,
-  refspecs: string[],
-  target: string
-): Gate => {
-  const current = currentBranch(cwd);
-  const revisions: string[] = [];
-  for (const refspec of refspecs) {
-    const spec = refspec.replace(FORCE_PREFIX, "");
-    if (spec.includes("*")) {
-      return refuse(`a wildcard refspec (${refspec}) could update ${target}`);
-    }
-    const [source = "", destination = source] = spec.split(":");
-    const named = branchName(
-      destination === "HEAD" ? (current ?? "") : destination
-    );
-    if (named === target) {
-      if (source === "") {
-        return refuse(`${refspec} would delete ${target}`);
-      }
-      revisions.push(source);
-    }
-  }
-  return revisions.length > 0
-    ? { cwd, kind: "require", label: `git push to ${target}`, revisions }
-    : ALLOW;
-};
-
-const gitPush = (cwd: string, args: string[]): Gate => {
-  if (args.includes("--dry-run") || args.includes("-n")) {
-    return ALLOW;
-  }
-  const target = targetBranch(cwd);
-  if (args.some((arg) => ["--all", "--branches", "--mirror"].includes(arg))) {
-    return {
-      cwd,
-      kind: "require",
-      label: `git push of every branch, ${target} included`,
-      revisions: [`${HEADS_PREFIX}${target}`],
-    };
-  }
-  if (args.includes("--delete") || args.includes("-d")) {
-    return positionals(args, PUSH_VALUE_OPTIONS)
-      .slice(1)
-      .some((ref) => branchName(ref) === target)
-      ? refuse(`git push --delete would delete ${target}`)
-      : ALLOW;
-  }
-  const named = positionals(args, PUSH_VALUE_OPTIONS);
-  // With --repo the remote is not positional.
-  const refspecs =
-    optionValue(args, "--repo") === undefined ? named.slice(1) : named;
-  if (refspecs.length > 0) {
-    return pushedToTarget(cwd, refspecs, target);
-  }
-  // No refspec: Git pushes the current branch to its push destination.
-  const destination = gitOutput(cwd, ["rev-parse", "--abbrev-ref", "@{push}"]);
-  const current = currentBranch(cwd);
-  const pushes = destination?.split("/").slice(1).join("/") ?? current;
-  return pushes === target || current === target
-    ? {
-        cwd,
-        kind: "require",
-        label: `git push to ${target}`,
-        revisions: ["HEAD"],
-      }
+// Pulling the upstream only syncs; pulling a named branch merges it.
+const gitPull = (context: GitContext, args: string[]): Gate => {
+  const target = targetBranch(context);
+  return currentBranch(context) === target &&
+    positionals(args, PULL_VALUE_OPTIONS).length > 1
+    ? refuse(
+        `git pull of a named branch merges it into ${target}; fetch it and run git merge instead`
+      )
     : ALLOW;
 };
 
 const git = (checkout: string, args: string[]): Gate => {
-  let cwd = checkout;
   let index = 0;
-  while (index < args.length && (args[index] ?? "").startsWith("-")) {
-    const option = args[index] ?? "";
-    if (option === "-C") {
-      cwd = resolve(cwd, args[index + 1] ?? ".");
-      index += 2;
-    } else if (GIT_REPOSITORY_OPTIONS.some((name) => option.startsWith(name))) {
-      return args.some((arg) => arg === "merge" || arg === "push")
-        ? refuse(`${option} hides which repository is merged or pushed`)
+  while ((args[index] ?? "").startsWith("-")) {
+    index += GIT_VALUE_OPTIONS.has(args[index] ?? "") ? 2 : 1;
+  }
+  const context = { checkout, global: args.slice(0, index) };
+  const subcommand = args[index] ?? "";
+  const rest = args.slice(index + 1);
+  switch (subcommand) {
+    case "push": {
+      return gitPush(context, rest);
+    }
+    case "merge": {
+      return gitMerge(context, rest);
+    }
+    case "pull": {
+      return gitPull(context, rest);
+    }
+    case "http-push":
+    case "send-pack": {
+      return refuse(`git ${subcommand} is not inspected; use git push`);
+    }
+    case "subtree": {
+      return rest.some((arg) => MERGING_WORD.test(arg))
+        ? refuse("git subtree push, pull, and merge are not inspected")
         : ALLOW;
-    } else {
-      index += GIT_VALUE_OPTIONS.has(option) ? 2 : 1;
+    }
+    default: {
+      const alias = gitText(context, [
+        "config",
+        "--get",
+        `alias.${subcommand}`,
+      ]);
+      return alias !== null && MERGING_WORD.test(alias)
+        ? refuse(
+            `git ${subcommand} is an alias for "${alias}"; run the command directly`
+          )
+        : ALLOW;
     }
   }
-  const subcommand = args[index];
-  const rest = args.slice(index + 1);
-  if (subcommand === "merge") {
-    return gitMerge(cwd, rest);
-  }
-  return subcommand === "push" ? gitPush(cwd, rest) : ALLOW;
 };
 
-// A provider API merge call and the head it pins: `-f sha=<head>` or a
-// `sha` query parameter.
-const apiMerge = (
-  cwd: string,
+// A provider merge, wherever its subcommand sits among the flags: an API
+// merge pinned with `-f sha=<head>` or a `sha` query parameter, or the CLI
+// merge pinned with its head option.
+const providerMerge = (
+  checkout: string,
   args: string[],
-  pattern: RegExp,
-  label: string
-): Gate => {
-  const [endpoint = ""] = positionals(args, API_VALUE_OPTIONS);
-  const [path = "", query = ""] = endpoint.split("?");
-  if (!pattern.test(path)) {
-    return ALLOW;
+  provider: {
+    apiPath: RegExp;
+    headOption: string;
+    label: string;
+    merge: string[];
+    noun: string;
   }
-  const sha =
-    fieldValues(args)
-      .find((field) => field.startsWith("sha="))
-      ?.slice(4) ??
-    new URLSearchParams(query).get("sha") ??
-    undefined;
-  return sha
-    ? { cwd, kind: "require", label, revisions: [sha] }
-    : refuse(`${label} must pin the head it merges with -f sha=<head>`);
-};
-
-const pinnedMerge = (
-  cwd: string,
-  args: string[],
-  option: string,
-  label: string
 ): Gate => {
-  const sha = optionValue(args, option);
-  return sha
-    ? { cwd, kind: "require", label, revisions: [sha] }
-    : refuse(`${label} must pin the head it merges with ${option} <head>`);
-};
-
-const glab = (cwd: string, args: string[]): Gate => {
-  if (args[0] === "api") {
-    return apiMerge(
-      cwd,
-      args.slice(1),
-      GITLAB_MERGE_PATH,
-      "a GitLab API merge"
+  const context = { checkout, global: [] };
+  if (args.includes("graphql") && args.some((arg) => GRAPHQL_MERGE.test(arg))) {
+    return refuse(
+      `a ${provider.label} GraphQL merge pins no head; use the REST merge with -f sha=<head>`
     );
   }
-  return args[0] === "mr" && args[1] === "merge"
-    ? pinnedMerge(cwd, args.slice(2), "--sha", "glab mr merge")
-    : ALLOW;
-};
-
-const gh = (cwd: string, args: string[]): Gate => {
-  if (args[0] === "api") {
-    return apiMerge(
-      cwd,
-      args.slice(1),
-      GITHUB_MERGE_PATH,
-      "a GitHub API merge"
-    );
+  const endpoint = args.find((arg) =>
+    provider.apiPath.test(arg.split("?")[0] ?? "")
+  );
+  if (endpoint !== undefined) {
+    const sha =
+      fieldValues(args)
+        .find((field) => field.startsWith("sha="))
+        ?.slice(4) ??
+      new URLSearchParams(endpoint.split("?")[1] ?? "").get("sha") ??
+      undefined;
+    return sha
+      ? requireReceipts(context, `a ${provider.label} API merge`, [sha])
+      : refuse(
+          `a ${provider.label} API merge must pin the head it merges with -f sha=<head>`
+        );
   }
-  return args[0] === "pr" && args[1] === "merge"
-    ? pinnedMerge(cwd, args.slice(2), "--match-head-commit", "gh pr merge")
-    : ALLOW;
+  const noun = args.indexOf(provider.noun);
+  if (
+    noun !== -1 &&
+    args.slice(noun + 1).some((arg) => provider.merge.includes(arg))
+  ) {
+    const sha = optionValue(args, provider.headOption);
+    const label = `${provider.label} ${provider.noun} merge`;
+    return sha
+      ? requireReceipts(context, label, [sha])
+      : refuse(
+          `${label} must pin the head it merges with ${provider.headOption} <head>`
+        );
+  }
+  return ALLOW;
 };
 
 /** Decides whether the exec command is gated, and on which revisions. */
 export const gateFor = (checkout: string, argv: string[]): Gate => {
   let command = argv;
-  // `env NAME=value command`: the command is still direct argv.
+  // `env NAME=value command` still runs the command as direct argv.
   if (basename(command[0] ?? "") === "env") {
     const rest = command.slice(1);
     const start = rest.findIndex((arg) => !ENV_ASSIGNMENT_PATTERN.test(arg));
-    command =
-      start === -1 || (rest[start] ?? "").startsWith("-")
-        ? command
-        : rest.slice(start);
+    if (start !== -1 && !(rest[start] ?? "").startsWith("-")) {
+      command = rest.slice(start);
+    }
   }
   const [program = "", ...args] = command;
   switch (basename(program)) {
@@ -340,14 +368,25 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
       return git(checkout, args);
     }
     case "glab": {
-      return glab(checkout, args);
+      return providerMerge(checkout, args, {
+        apiPath: GITLAB_MERGE_PATH,
+        headOption: "--sha",
+        label: "GitLab",
+        merge: ["accept", "merge"],
+        noun: "mr",
+      });
     }
     case "gh": {
-      return gh(checkout, args);
+      return providerMerge(checkout, args, {
+        apiPath: GITHUB_MERGE_PATH,
+        headOption: "--match-head-commit",
+        label: "GitHub",
+        merge: ["merge"],
+        noun: "pr",
+      });
     }
     default: {
-      // Any other program could wrap a merge; refuse when it reads as one.
-      return args.some((arg) => OPAQUE_MERGE_PATTERN.test(arg))
+      return OPAQUE_MERGE_PATTERN.test(args.join(" "))
         ? refuse(
             `${basename(program)} may run a merge or push the guard cannot inspect; run git, glab, or gh directly`
           )
@@ -365,9 +404,13 @@ export const verdict = (checkout: string, argv: string[]): string | null => {
   if (gate.kind === "refuse") {
     return gate.reason;
   }
-  const common = commonDirectory(gate.cwd);
+  const common = gitText(gate.context, [
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-common-dir",
+  ]);
   for (const revision of gate.revisions) {
-    const head = gitOutput(gate.cwd, [
+    const head = gitText(gate.context, [
       "rev-parse",
       "--verify",
       "--quiet",
