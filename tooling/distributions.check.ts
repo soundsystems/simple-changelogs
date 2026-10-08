@@ -5,6 +5,14 @@ import { lstat, readdir, readFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { YAML } from "bun";
 import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts";
+import {
+  changelogDistributions,
+  holdsBytes,
+  portableContractDistributions,
+  productVersionDistributions,
+  releaseHandoffDistributions,
+  syncedFiles,
+} from "./sync-distros.ts";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
 const skillsRoot = join(repositoryRoot, "skills");
@@ -34,33 +42,23 @@ const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
 
-const changelogDistributions = new Set([
-  "simple-changelogs",
-  "simple-changelogs-cms",
-  "simple-changelogs-mobile",
-  "simple-changelogs-web",
-  "simple-changelogs-web-cms",
-  "simple-changelogs-skill-maintainer",
-]);
 const expectedSkills = new Set([...changelogDistributions, "publish-skill"]);
-const portableContractDistributions = new Set([
-  "simple-changelogs",
-  "simple-changelogs-mobile",
-  "simple-changelogs-web",
-  "simple-changelogs-web-cms",
-  "simple-changelogs-skill-maintainer",
-]);
-// Distributions that take the Simple Changes release handoff: they vendor the
-// pinned protocol schemas, route delegated requests, and advertise request and
-// receipt versions in their marker. The CMS-only distribution takes an
-// entry-only handoff for its version-less operator history, so it ships the
-// schemas and its own release-handoff reference without the Markdown query
-// helpers or the shared public-release copy.
-const releaseHandoffDistributions = new Set([
-  ...portableContractDistributions,
-  "simple-changelogs-cms",
-]);
 const forbiddenNames = new Set(["EVAL.md"]);
+// Agent Skills frontmatter: every package states its license and runtime
+// requirements, a distribution that ships the POSIX fork checker says so, and
+// changelog distributions carry only the specification's portable fields.
+const SKILL_LICENSE = "Apache-2.0";
+const MAX_COMPATIBILITY_LENGTH = 500;
+const BASE_COMPATIBILITY = "Requires Git and Bun 1.3 or later";
+const FORK_CHECKER_COMPATIBILITY = `${BASE_COMPATIBILITY}; check-fork-sync.sh requires a POSIX shell`;
+const PORTABLE_FRONTMATTER_KEYS = new Set([
+  "name",
+  "description",
+  "license",
+  "compatibility",
+  "metadata",
+]);
+const HARNESS_ONLY_FRONTMATTER_KEYS = ["model", "effort"];
 const PROVIDER_MARKER_FILENAME = "changelog-provider.json";
 // Directory name -> the distribution identifier consumers match on. The marker
 // exists so a consumer never has to re-derive this from the directory name.
@@ -84,55 +82,20 @@ const canonicalSetupHelper = await readFile(
   join(toolingRoot, "simple-changelogs", "scripts", "setup.ts"),
   "utf8"
 );
-const canonicalQueryFiles = new Map(
-  await Promise.all(
-    ["query.ts", "lib/changelog-parse.ts"].map(
-      async (filename) =>
-        [
-          filename,
-          await readFile(
-            join(toolingRoot, "simple-changelogs", "scripts", filename),
-            "utf8"
-          ),
-        ] as const
-    )
-  )
-);
-// The readable canonical protocol files live in tooling; every distribution
-// ships them minified, exactly JSON.stringify(JSON.parse(text)) plus a
-// newline, the bytes Simple Changes ships for the same schemas.
-const minifiedJson = (text: string): string =>
-  `${JSON.stringify(JSON.parse(text))}\n`;
-const canonicalProtocolFiles = new Map(
-  await Promise.all(
-    [
-      "changelog-request.schema.json",
-      "changelog-receipt.schema.json",
-      "changelog-capabilities.schema.json",
-      "protocol-provenance.json",
-    ].map(
-      async (filename) =>
-        [
-          filename,
-          await readFile(
-            join(
-              toolingRoot,
-              "simple-changelogs",
-              "evals",
-              "schemas",
-              filename
-            ),
-            "utf8"
-          ),
-        ] as const
-    )
-  )
-);
 
 // protocol-provenance.json describes the Simple Changes protocol; each
 // distribution's marker advertises only the subset it supports.
 const protocolProvenance = JSON.parse(
-  canonicalProtocolFiles.get("protocol-provenance.json") ?? "{}"
+  await readFile(
+    join(
+      toolingRoot,
+      "simple-changelogs",
+      "evals",
+      "schemas",
+      "protocol-provenance.json"
+    ),
+    "utf8"
+  )
 ) as { receiptVersions?: unknown[]; requestVersions?: unknown[] };
 
 interface WalkedEntry {
@@ -187,7 +150,6 @@ for (const actual of skillDirectories) {
 const distributionSnapshots = await Promise.all(
   skillDirectories.map(async (directoryName) => {
     const directory = join(skillsRoot, directoryName);
-    const setupPath = join(directory, "scripts", "setup.ts");
     const backfillPath = join(directory, "references", "backfill.md");
     const guidancePath = join(directory, "references", "guidance-updates.md");
     const onboardingPath = join(directory, "references", "onboarding.md");
@@ -205,10 +167,6 @@ const distributionSnapshots = await Promise.all(
           : Promise.resolve(null),
         readFile(join(directory, "SKILL.md"), "utf8"),
       ]);
-    const setupSource =
-      changelogDistributions.has(directoryName) && existsSync(setupPath)
-        ? await readFile(setupPath, "utf8")
-        : null;
     return {
       backfillSource,
       directory,
@@ -216,7 +174,6 @@ const distributionSnapshots = await Promise.all(
       entries,
       guidanceSource,
       onboardingSource,
-      setupSource,
       source,
     };
   })
@@ -231,7 +188,6 @@ for (const {
   entries,
   guidanceSource,
   onboardingSource,
-  setupSource,
   source,
 } of distributionSnapshots) {
   const skillFiles = entries.filter(
@@ -286,8 +242,10 @@ for (const {
     continue;
   }
   const metadata = YAML.parse(frontmatter) as {
+    compatibility?: unknown;
     "disable-model-invocation"?: unknown;
     description?: unknown;
+    license?: unknown;
     name?: unknown;
   };
   if (metadata.name !== directoryName) {
@@ -308,6 +266,48 @@ for (const {
     );
   } else {
     descriptions.set(metadata.description, directoryName);
+  }
+
+  if (metadata.license !== SKILL_LICENSE) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md must declare license: ${SKILL_LICENSE}`
+    );
+  }
+  if (
+    typeof metadata.compatibility !== "string" ||
+    !metadata.compatibility.trim() ||
+    metadata.compatibility.length > MAX_COMPATIBILITY_LENGTH
+  ) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md needs a compatibility of at most ${MAX_COMPATIBILITY_LENGTH} characters`
+    );
+  }
+  for (const key of HARNESS_ONLY_FRONTMATTER_KEYS) {
+    if (Object.hasOwn(metadata, key)) {
+      failures.push(
+        `skills/${directoryName}/SKILL.md sets the harness-only ${key} key`
+      );
+    }
+  }
+  if (changelogDistributions.has(directoryName)) {
+    const expectedCompatibility = entries.some(
+      (entry) => entry.path === "scripts/check-fork-sync.sh"
+    )
+      ? FORK_CHECKER_COMPATIBILITY
+      : BASE_COMPATIBILITY;
+    if (metadata.compatibility !== expectedCompatibility) {
+      failures.push(
+        `skills/${directoryName}/SKILL.md compatibility must read: ${expectedCompatibility}`
+      );
+    }
+    const extraKeys = Object.keys(metadata).filter(
+      (key) => !PORTABLE_FRONTMATTER_KEYS.has(key)
+    );
+    if (extraKeys.length > 0) {
+      failures.push(
+        `skills/${directoryName}/SKILL.md frontmatter has non-portable keys: ${extraKeys.join(", ")}`
+      );
+    }
   }
 
   // A user-invoked skill must be user-invoked in every harness: Claude Code's
@@ -345,50 +345,13 @@ for (const {
     );
   }
   if (changelogDistributions.has(directoryName)) {
-    const setupPath = join(directory, "scripts", "setup.ts");
-    if (!existsSync(setupPath)) {
-      failures.push(`skills/${directoryName} is missing scripts/setup.ts`);
-    } else if (setupSource !== canonicalSetupHelper) {
+    if (
+      releaseHandoffDistributions.has(directoryName) &&
+      !source.includes("references/release-handoff.md")
+    ) {
       failures.push(
-        `skills/${directoryName}/scripts/setup.ts is out of sync with maintainer tooling`
+        `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
       );
-    }
-
-    if (releaseHandoffDistributions.has(directoryName)) {
-      for (const [filename, canonical] of canonicalProtocolFiles) {
-        const protocolPath = join(directory, "schemas", filename);
-        if (!existsSync(protocolPath)) {
-          failures.push(
-            `skills/${directoryName} is missing pinned protocol schema ${filename}`
-          );
-        } else if (
-          readFileSync(protocolPath, "utf8") !== minifiedJson(canonical)
-        ) {
-          failures.push(
-            `skills/${directoryName}/schemas/${filename} is not the minified pinned producer fixture`
-          );
-        }
-      }
-      if (!source.includes("references/release-handoff.md")) {
-        failures.push(
-          `skills/${directoryName}/SKILL.md does not route delegated release handoffs`
-        );
-      }
-    }
-
-    if (portableContractDistributions.has(directoryName)) {
-      for (const [filename, canonical] of canonicalQueryFiles) {
-        const queryPath = join(directory, "scripts", filename);
-        if (!existsSync(queryPath)) {
-          failures.push(
-            `skills/${directoryName} is missing bundled query helper scripts/${filename}`
-          );
-        } else if (readFileSync(queryPath, "utf8") !== canonical) {
-          failures.push(
-            `skills/${directoryName}/scripts/${filename} is out of sync with maintainer tooling`
-          );
-        }
-      }
     }
 
     if (MARKER_DISTRIBUTIONS.has(directoryName)) {
@@ -1011,12 +974,6 @@ for (const { design, directoryName, skill } of surfaceDesignSnapshots) {
 const collapsed = (source: string): string =>
   source.replace(/\s+/gu, " ").trim();
 
-const productVersionDistributions = [
-  "simple-changelogs",
-  "simple-changelogs-mobile",
-  "simple-changelogs-web",
-  "simple-changelogs-web-cms",
-];
 const versionGuidanceSnapshots = await Promise.all(
   productVersionDistributions.map(async (directoryName) => {
     const referenceRoot = join(skillsRoot, directoryName, "references");
@@ -1027,7 +984,6 @@ const versionGuidanceSnapshots = await Promise.all(
     return { directoryName, surfaces, versions };
   })
 );
-const canonicalVersionGuidance = versionGuidanceSnapshots[0]?.versions;
 for (const { directoryName, surfaces, versions } of versionGuidanceSnapshots) {
   const versionProse = collapsed(versions);
   for (const requiredRule of [
@@ -1043,11 +999,6 @@ for (const { directoryName, surfaces, versions } of versionGuidanceSnapshots) {
         `skills/${directoryName}/references/version-decisions.md is missing identifier-role rule: ${requiredRule}`
       );
     }
-  }
-  if (versions !== canonicalVersionGuidance) {
-    failures.push(
-      `skills/${directoryName}/references/version-decisions.md diverges from the shared product copy`
-    );
   }
 
   const surfaceProse = collapsed(surfaces);
@@ -1093,33 +1044,17 @@ for (const { directoryName, source } of storeCopySnapshots) {
   }
 }
 
-const releaseHandoffCopies = await Promise.all(
-  [...portableContractDistributions]
-    .sort(compareText)
-    .map(async (directoryName) => ({
-      directoryName,
-      source: await readFile(
-        join(skillsRoot, directoryName, "references", "release-handoff.md"),
-        "utf8"
-      ),
-    }))
-);
-const [canonicalReleaseHandoff, ...otherReleaseHandoffs] = releaseHandoffCopies;
-for (const { directoryName, source } of otherReleaseHandoffs) {
-  if (source !== canonicalReleaseHandoff?.source) {
-    failures.push(
-      `skills/${directoryName}/references/release-handoff.md diverges from the shared release-handoff reference`
-    );
-  }
-}
-
 // The CMS-only distribution documents an entry-only handoff of its own: the
 // same three phases on the `none` boundary, never a version, tag, or note.
 const cmsReleaseHandoff = await readFile(
   join(skillsRoot, "simple-changelogs-cms", "references", "release-handoff.md"),
   "utf8"
 );
-if (cmsReleaseHandoff === canonicalReleaseHandoff?.source) {
+const sharedReleaseHandoff = await readFile(
+  join(skillsRoot, "simple-changelogs", "references", "release-handoff.md"),
+  "utf8"
+);
+if (cmsReleaseHandoff === sharedReleaseHandoff) {
   failures.push(
     "skills/simple-changelogs-cms/references/release-handoff.md must describe the entry-only handoff, not the shared public-release copy"
   );
@@ -1175,10 +1110,8 @@ for (const {
 
 // Agents preview the first lines of a reference to decide whether to read on,
 // so every long reference opens with a contents list naming each `##` heading
-// in order. guidance-updates.md is exempt: the setup helper addresses its
-// numbered `## Guidance N` sections by version.
+// in order.
 const CONTENTS_LINE_THRESHOLD = 100;
-const CONTENTS_EXEMPT_REFERENCES = new Set(["references/guidance-updates.md"]);
 const FENCE_PATTERN = /^\s*(```|~~~)/u;
 const CONTENTS_BULLET_PATTERN = /^- (.+)$/u;
 
@@ -1213,10 +1146,7 @@ for (const { directory, directoryName, entries } of distributionSnapshots) {
     continue;
   }
   for (const entry of entries) {
-    if (
-      !(entry.path.startsWith("references/") && entry.path.endsWith(".md")) ||
-      CONTENTS_EXEMPT_REFERENCES.has(entry.path)
-    ) {
+    if (!(entry.path.startsWith("references/") && entry.path.endsWith(".md"))) {
       continue;
     }
     const source = readFileSync(join(directory, entry.path), "utf8");
@@ -1249,14 +1179,6 @@ const cmsPolicySchemas = await Promise.all(
     })
   )
 );
-const [canonicalCmsSchema, ...otherCmsSchemas] = cmsPolicySchemas;
-for (const { directoryName, source } of otherCmsSchemas) {
-  if (source !== canonicalCmsSchema?.source) {
-    failures.push(
-      `skills/${directoryName}/schemas/repo-policy.schema.json diverges from the shared bundled CMS policy schema`
-    );
-  }
-}
 for (const { directoryName, source } of cmsPolicySchemas) {
   if (
     source.includes("crossSurfaceVersioning") ||
@@ -1273,44 +1195,24 @@ for (const { directoryName, source } of cmsPolicySchemas) {
   }
 }
 
-// The Web+CMS package ships copies of the CMS-only validator and data schema.
-// Nothing else catches a drifted copy, such as one with a curation rule removed.
-for (const [canonical, copy] of [
-  [
-    "simple-changelogs-cms/scripts/lib/schema.ts",
-    "simple-changelogs-web-cms/scripts/lib/cms-schema.ts",
-  ],
-  [
-    "simple-changelogs-cms/schemas/cms-changelog.schema.json",
-    "simple-changelogs-web-cms/schemas/cms-changelog.schema.json",
-  ],
-] as const) {
-  if (
-    readFileSync(join(skillsRoot, copy), "utf8") !==
-    readFileSync(join(skillsRoot, canonical), "utf8")
-  ) {
-    failures.push(`skills/${copy} diverges from skills/${canonical}`);
+// Byte-synced copies (the setup, query, and CMS helpers, the minified protocol
+// schemas, the shared references, and every bundled fork checker, which
+// check-fork-sync.check.ts exercises) come from the table `bun run
+// sync-distros` writes, so the check and the writer cannot disagree.
+for (const { expected, source, target } of await syncedFiles(repositoryRoot)) {
+  const path = join(repositoryRoot, target);
+  if (!existsSync(path)) {
+    failures.push(
+      `${target} is missing; run bun run sync-distros to copy it from ${source}`
+    );
+  } else if (!holdsBytes(readFileSync(path), expected)) {
+    failures.push(
+      `${target} is out of sync with ${source}; run bun run sync-distros`
+    );
   }
 }
 
-// Full and mobile ship one tester-instruction reference; nothing else would
-// catch an edit applied to only one copy.
-const TESTING_NOTES = "references/testing-notes.md";
-if (
-  readFileSync(
-    join(skillsRoot, "simple-changelogs-mobile", TESTING_NOTES),
-    "utf8"
-  ) !==
-  readFileSync(join(skillsRoot, "simple-changelogs", TESTING_NOTES), "utf8")
-) {
-  failures.push(
-    `skills/simple-changelogs-mobile/${TESTING_NOTES} diverges from skills/simple-changelogs/${TESTING_NOTES}`
-  );
-}
-
-// Every bundled fork checker is a byte-identical copy of the full
-// distribution's, which check-fork-sync.check.ts exercises, and every
-// fork-maintenance reference matches the full copy apart from the
+// Every fork-maintenance reference matches the full copy apart from the
 // distribution's own name in its pin example and checker paths.
 const FORK_CHECKER = "scripts/check-fork-sync.sh";
 const FORK_MAINTENANCE = "references/fork-maintenance.md";
@@ -1319,10 +1221,6 @@ const withoutDistributionName = (source: string, name: string): string =>
     .replaceAll(`\`${name}\``, "`<distribution>`")
     .replaceAll(`/${name}\``, "/<distribution>`")
     .replaceAll(`/${name}/`, "/<distribution>/");
-const canonicalForkChecker = readFileSync(
-  join(skillsRoot, "simple-changelogs", FORK_CHECKER),
-  "utf8"
-);
 const canonicalForkMaintenance = withoutDistributionName(
   readFileSync(join(skillsRoot, "simple-changelogs", FORK_MAINTENANCE), "utf8"),
   "simple-changelogs"
@@ -1330,13 +1228,6 @@ const canonicalForkMaintenance = withoutDistributionName(
 for (const { directory, directoryName, entries } of distributionSnapshots) {
   if (!entries.some((entry) => entry.path === FORK_CHECKER)) {
     continue;
-  }
-  if (
-    readFileSync(join(directory, FORK_CHECKER), "utf8") !== canonicalForkChecker
-  ) {
-    failures.push(
-      `skills/${directoryName}/${FORK_CHECKER} diverges from skills/simple-changelogs/${FORK_CHECKER}`
-    );
   }
   const maintenancePath = join(directory, FORK_MAINTENANCE);
   if (

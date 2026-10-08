@@ -43,13 +43,18 @@ const POLICY_MARKER = "<!-- simple-changelogs-policy-example -->";
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 const FRONTMATTER_ONLY_PATTERN = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
 const SKILL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-// `metadata` is the Agent Skills specification's optional string-to-string
-// map; every other key stays out so loaders see the same portable shape.
+// The Agent Skills specification's portable fields: `license` and
+// `compatibility` are optional strings, and `metadata` is an optional
+// string-to-string map. Every other key, including harness-only ones such as
+// `model` or `effort`, stays out so loaders see the same portable shape.
 const FRONTMATTER_KEYS = new Set<PropertyKey>([
   "name",
   "description",
+  "license",
+  "compatibility",
   "metadata",
 ]);
+const MAX_COMPATIBILITY_LENGTH = 500;
 const BACKTICK_FENCE_PATTERN = /```[\s\S]*?```/g;
 const TILDE_FENCE_PATTERN = /~~~[\s\S]*?~~~/g;
 const ALL_HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
@@ -141,6 +146,34 @@ const isStringMap = (value: unknown): boolean =>
     (entry) => typeof entry === "string" && entry.trim().length > 0
   );
 
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+const optionalFieldErrors = (
+  keys: PropertyKey[],
+  record: Record<PropertyKey, unknown>
+): string[] => {
+  const errors: string[] = [];
+  if (keys.includes("metadata") && !isStringMap(record.metadata)) {
+    errors.push("Frontmatter metadata must map keys to non-empty strings");
+  }
+  if (keys.includes("license") && !isNonEmptyString(record.license)) {
+    errors.push("Frontmatter license must be a non-empty string");
+  }
+  if (
+    keys.includes("compatibility") &&
+    !(
+      isNonEmptyString(record.compatibility) &&
+      record.compatibility.length <= MAX_COMPATIBILITY_LENGTH
+    )
+  ) {
+    errors.push(
+      `Frontmatter compatibility must be a non-empty string of at most ${MAX_COMPATIBILITY_LENGTH} characters`
+    );
+  }
+  return errors;
+};
+
 const parseFrontmatter = (source: string): FrontmatterResult => {
   const block = FRONTMATTER_PATTERN.exec(source)?.[1];
   if (block === undefined) {
@@ -170,12 +203,10 @@ const parseFrontmatter = (source: string): FrontmatterResult => {
     keys.some((key) => !FRONTMATTER_KEYS.has(key))
   ) {
     errors.push(
-      "Frontmatter must contain name and description, plus optional metadata"
+      "Frontmatter must contain name and description, plus optional license, compatibility, and metadata"
     );
   }
-  if (keys.includes("metadata") && !isStringMap(record.metadata)) {
-    errors.push("Frontmatter metadata must map keys to non-empty strings");
-  }
+  errors.push(...optionalFieldErrors(keys, record));
   if (typeof record.name !== "string" || !record.name.trim()) {
     errors.push("Frontmatter name must be a non-empty string");
   } else if (!SKILL_NAME_PATTERN.test(record.name)) {

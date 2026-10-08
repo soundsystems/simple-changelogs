@@ -298,15 +298,17 @@ export const normalizeVendorFailure = (
   };
 };
 
-export const parseRunnerResponse = (text: string): RunnerResponse => {
-  let input: unknown;
+export const parseVendorJson = (text: string): unknown => {
   try {
-    input = JSON.parse(text);
+    return JSON.parse(text);
   } catch (error) {
     throw new Error("Vendor final response is not valid JSON", {
       cause: error,
     });
   }
+};
+
+export const validatedRunnerResponse = (input: unknown): RunnerResponse => {
   const validation = validateRunnerResponse(input);
   if (!validation.ok) {
     throw new Error(
@@ -315,6 +317,9 @@ export const parseRunnerResponse = (text: string): RunnerResponse => {
   }
   return validation.value;
 };
+
+export const parseRunnerResponse = (text: string): RunnerResponse =>
+  validatedRunnerResponse(parseVendorJson(text));
 
 export const normalizeAdapterResponse = (
   request: RunnerRequest,

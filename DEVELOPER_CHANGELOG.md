@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+## 0.25.1 - 2026-10-08
+
+- Model-backed evals now run on Codex. OpenAI strict structured outputs
+  reject `uniqueItems` and any optional property, so the Codex adapter sends a
+  copy of `runner-response.schema.json`, written outside the workspace, with
+  `uniqueItems` removed and every property required, optional ones also
+  accepting null. After parsing, a null optional property reads as absent,
+  repeated items fail with a uniqueness error, and the existing protocol
+  validator runs as before. Schema shapes the strict-mode probe did not cover
+  are refused as a configuration error before Codex starts. The canonical
+  schema is unchanged.
+- `bun run sync-distros` rewrites the 55 byte-synced installed files from
+  their canonical sources, and `--check` reports drift and exits 1 without
+  writing. The file table lives in `tooling/sync-distros.ts`, and
+  `tooling/distributions.check.ts` reads the same table, so both compare raw
+  bytes against one list. Sources must be valid UTF-8, nothing is written
+  until every copy is computed, and `fork-maintenance.md` is excluded because
+  each copy names its own distribution. Writes run in a separate writer
+  process that steps into each directory of a copy's path one verified name
+  at a time and holds it. A symlink met during those checks is refused, and
+  so is a swap that changes the identity of a verified directory or its
+  parent. Once a directory is held, renaming it or swapping its name for a
+  symlink cannot redirect the write, which stays in the held directory, so no
+  byte lands outside the repository. A copy with a second hard link is
+  refused too, and the maintainer's working directory never moves.
+- Every SKILL.md carries `license: Apache-2.0` and a `compatibility` line. The
+  contract accepts exactly `name`, `description`, `license`, `compatibility`,
+  and `metadata`, and `distributions.check.ts` requires the exact wording per
+  distribution and rejects `model` and `effort`, covering CMS too.
+  publish-skill names Node.js 22.20 or later, which the Skills CLI it runs
+  needs, and its compatibility line is identical to the Simple Changes copy.
+- `metadata.models` is removed from every SKILL.md with no replacement; the
+  contract tests use neutral example keys. Per-harness authoring preferences
+  replace it in a later minor.
+- Each `guidance-updates.md` opens with a Contents list and the exemption in
+  `distributions.check.ts` is gone; all 54 update markers are byte-identical.
+- Toolchain pinned exactly to TypeScript 7.0.2, Biome 2.5.10, and Ultracite
+  7.9.4, matching Simple Changes; `biome.jsonc` moved to `preset:
+  "recommended"` via `biome migrate`. Markdown grew 134 to 402 bytes per
+  distribution (full 216,830 of 229,376); support bytes are unchanged.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-07T22:10:00-05:00" -->
+
 ## 0.25.0 - 2026-10-07
 
 - Release tags, implementing the reviewed tags design:

@@ -21,6 +21,9 @@ import {
 import {
   buildCodexCommand,
   extractCodexFinalResponse,
+  prepareCodexResponseSchema,
+  restoreCodexResponse,
+  runCodexAdapter,
 } from "../adapters/codex.ts";
 import {
   buildCursorCommand,
@@ -43,6 +46,17 @@ import {
 import type { RunnerRequest, RunnerResponse } from "../lib/types.ts";
 
 const temporaryDirectories: string[] = [];
+const runnerResponseSchema = await readFile(
+  join(
+    import.meta.dir,
+    "..",
+    "..",
+    "evals",
+    "schemas",
+    "runner-response.schema.json"
+  ),
+  "utf8"
+);
 
 const request: RunnerRequest = {
   activationMode: "explicit",
@@ -97,7 +111,13 @@ afterEach(async () => {
 
 describe("vendor command builders", () => {
   test("builds the Codex CLI 0.41.0 argument array", () => {
-    expect(buildCodexCommand(request, "/tmp/codex-last-message.json")).toEqual([
+    expect(
+      buildCodexCommand(
+        request,
+        "/tmp/codex-schema.json",
+        "/tmp/codex-last-message.json"
+      )
+    ).toEqual([
       "codex",
       "exec",
       "--config",
@@ -108,7 +128,7 @@ describe("vendor command builders", () => {
       "workspace-write",
       "--json",
       "--output-schema",
-      request.responseSchema,
+      "/tmp/codex-schema.json",
       "--output-last-message",
       "/tmp/codex-last-message.json",
       "-",
@@ -116,6 +136,7 @@ describe("vendor command builders", () => {
     expect(
       buildCodexCommand(
         request,
+        "/tmp/codex-schema.json",
         "/tmp/codex-last-message.json",
         "codex",
         "available-codex-model"
@@ -133,7 +154,7 @@ describe("vendor command builders", () => {
       "workspace-write",
       "--json",
       "--output-schema",
-      request.responseSchema,
+      "/tmp/codex-schema.json",
       "--output-last-message",
       "/tmp/codex-last-message.json",
       "-",
@@ -329,9 +350,9 @@ describe("portable adapter prompt", () => {
 
 describe("vendor response extraction", () => {
   test("extracts Codex's output-last-message response", () => {
-    expect(extractCodexFinalResponse(JSON.stringify(response))).toEqual(
-      response
-    );
+    expect(
+      extractCodexFinalResponse(JSON.stringify(response), runnerResponseSchema)
+    ).toEqual(response);
   });
 
   test("extracts Claude's print-mode result response", () => {
@@ -387,9 +408,575 @@ describe("vendor response extraction", () => {
   test("validates extracted output against the neutral response contract", () => {
     expect(() =>
       extractCodexFinalResponse(
-        JSON.stringify({ ...response, protocolVersion: 3 })
+        JSON.stringify({ ...response, protocolVersion: 3 }),
+        runnerResponseSchema
       )
     ).toThrow("neutral protocol");
+  });
+});
+
+// Every object schema in a prepared copy, with the path that reached it.
+const objectSchemas = (
+  schema: unknown,
+  path = "#"
+): { path: string; schema: Record<string, unknown> }[] => {
+  if (Array.isArray(schema)) {
+    return schema.flatMap((item, index) =>
+      objectSchemas(item, `${path}/${index}`)
+    );
+  }
+  if (typeof schema !== "object" || schema === null) {
+    return [];
+  }
+  const record = schema as Record<string, unknown>;
+  return [
+    { path, schema: record },
+    ...Object.entries(record).flatMap(([key, value]) =>
+      objectSchemas(value, `${path}/${key}`)
+    ),
+  ];
+};
+
+describe("Codex strict response schema", () => {
+  test("strips uniqueItems and makes optional properties required and nullable", () => {
+    const prepared = JSON.parse(
+      prepareCodexResponseSchema(
+        JSON.stringify({
+          $defs: {
+            codes: {
+              items: { pattern: "^[A-Z]+$", type: "string" },
+              type: "array",
+              uniqueItems: true,
+            },
+          },
+          $schema: "https://json-schema.org/draft/2020-12/schema",
+          additionalProperties: false,
+          properties: {
+            codes: { $ref: "#/$defs/codes", description: "Decision codes" },
+            note: { minLength: 1, type: "string" },
+            uniqueItems: {
+              items: { const: 2 },
+              minItems: 1,
+              type: "array",
+              uniqueItems: true,
+            },
+          },
+          required: ["codes", "uniqueItems"],
+          title: "Fixture",
+          type: "object",
+        })
+      )
+    );
+
+    expect(prepared).toEqual({
+      $defs: {
+        codes: {
+          items: { pattern: "^[A-Z]+$", type: "string" },
+          type: "array",
+        },
+      },
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      additionalProperties: false,
+      properties: {
+        codes: { $ref: "#/$defs/codes", description: "Decision codes" },
+        note: { anyOf: [{ minLength: 1, type: "string" }, { type: "null" }] },
+        uniqueItems: { items: { const: 2 }, minItems: 1, type: "array" },
+      },
+      required: ["codes", "note", "uniqueItems"],
+      title: "Fixture",
+      type: "object",
+    });
+  });
+
+  test("sends a strict copy of the runner response schema and leaves the canonical one alone", () => {
+    const prepared: unknown = JSON.parse(
+      prepareCodexResponseSchema(runnerResponseSchema)
+    );
+    const canonical = JSON.parse(runnerResponseSchema) as {
+      $defs: { codeArray: { uniqueItems?: unknown } };
+      required: string[];
+    };
+
+    expect(canonical.$defs.codeArray.uniqueItems).toBe(true);
+    expect(canonical.required).not.toContain("runtimeIdentity");
+    const schemas = objectSchemas(prepared);
+    expect(
+      schemas.filter(({ schema }) => Object.hasOwn(schema, "uniqueItems"))
+    ).toEqual([]);
+    const objects = schemas.filter(
+      ({ path, schema }) =>
+        !path.endsWith("/properties") &&
+        typeof schema.properties === "object" &&
+        schema.properties !== null
+    );
+    expect(objects.length).toBeGreaterThan(5);
+    for (const { schema } of objects) {
+      expect(schema.additionalProperties).toBe(false);
+      expect(schema.required).toEqual(
+        Object.keys(schema.properties as Record<string, unknown>)
+      );
+    }
+    expect(
+      (prepared as { properties: Record<string, unknown> }).properties
+        .runtimeIdentity
+    ).toEqual({
+      anyOf: [{ minLength: 1, type: "string" }, { type: "null" }],
+    });
+  });
+
+  test("refuses schema shapes strict structured outputs would reject", () => {
+    const fixture = (
+      properties: Record<string, unknown>,
+      extra: Record<string, unknown> = {}
+    ): string =>
+      JSON.stringify({
+        additionalProperties: false,
+        properties,
+        required: Object.keys(properties),
+        type: "object",
+        ...extra,
+      });
+
+    for (const [schema, message] of [
+      [
+        fixture({ value: { maxLength: 4, type: "string" } }),
+        "keyword maxLength at #/properties/value is not known to pass strict structured outputs on node kind string",
+      ],
+      [
+        fixture({ value: { oneOf: [{ type: "string" }], type: "string" } }),
+        "keyword oneOf at #/properties/value",
+      ],
+      [
+        fixture({ value: { minLength: 1, type: "array" } }),
+        "keyword minLength at #/properties/value is not known to pass strict structured outputs on node kind array",
+      ],
+      [
+        fixture({ value: { properties: {} } }),
+        "#/properties/value has node kind untyped, which strict structured outputs were not probed to accept",
+      ],
+      [
+        fixture({ value: { type: "integer" } }),
+        "#/properties/value has node kind integer",
+      ],
+      [
+        fixture({ value: { type: ["object", "null"] } }),
+        "#/properties/value has node kind type list",
+      ],
+      [
+        fixture({ value: { properties: {}, type: "object" } }),
+        "object at #/properties/value must set additionalProperties to false",
+      ],
+      [
+        fixture({
+          value: { additionalProperties: true, properties: {}, type: "object" },
+        }),
+        "must set additionalProperties to false",
+      ],
+      [
+        fixture({ value: { type: "object" } }),
+        "must set additionalProperties to false",
+      ],
+      [
+        fixture({ value: { additionalProperties: false, type: "object" } }),
+        "node of kind object at #/properties/value must set properties",
+      ],
+      [
+        fixture({ value: { type: "array" } }),
+        "node of kind array at #/properties/value must set items",
+      ],
+      [
+        fixture({ value: { $defs: {}, type: "string" } }),
+        "keyword $defs at #/properties/value",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/codes", uniqueItems: true } },
+          { $defs: { codes: { items: { type: "string" }, type: "array" } } }
+        ),
+        "keyword uniqueItems at #/properties/value is not known to pass strict structured outputs on node kind $ref",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/__proto__" } },
+          { $defs: { other: { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/__proto__",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/a~1b" } },
+          { $defs: { "a/b": { type: "string" }, "a~1b": { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/a~1b",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/a%62" } },
+          { $defs: { "a%62": { type: "string" }, ab: { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/a%62",
+      ],
+      [
+        fixture(
+          { value: { type: "string" } },
+          { required: ["value", "undeclared"] }
+        ),
+        "required at # must list only names in its own properties",
+      ],
+      [
+        fixture({ value: { type: "string" } }, { required: "value" }),
+        "required at # must list only names in its own properties",
+      ],
+      [
+        JSON.stringify({
+          additionalProperties: false,
+          required: [],
+          type: "object",
+        }),
+        "node of kind object at # must set properties",
+      ],
+      ...[
+        { type: ["string", "null"] },
+        { enum: ["a", null] },
+        { description: "Anything at all" },
+        { $ref: "#/$defs/loose" },
+      ].map(
+        (value) =>
+          [
+            fixture(
+              { value },
+              { $defs: { loose: { enum: ["a"] } }, required: [] }
+            ),
+            "optional property #/properties/value must declare a type that excludes null",
+          ] as const
+      ),
+      [
+        fixture(
+          { value: { $ref: "#/properties/other" } },
+          { $defs: { other: { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/properties/other",
+      ],
+      [
+        fixture({ value: { $ref: "#/$defs/missing" } }),
+        "must name a schema in $defs: #/$defs/missing",
+      ],
+      [fixture({ value: { $ref: 3 } }), "$ref at #/properties/value"],
+      [fixture({ value: true }), "at #/properties/value must be an object"],
+      [
+        fixture({ value: { items: [], type: "array" } }),
+        "#/properties/value/items",
+      ],
+      [fixture({}, { $defs: [] }), "$defs at # must be an object"],
+      ["[]", "must be a JSON object"],
+      ['{"type":"string"}', 'root must have type "object"'],
+      [
+        fixture({}, { type: ["object", "null"] }),
+        'root must have type "object"',
+      ],
+      [
+        JSON.stringify({ additionalProperties: false, properties: {} }),
+        'root must have type "object"',
+      ],
+    ] as const) {
+      expect(() => prepareCodexResponseSchema(schema)).toThrow(message);
+    }
+  });
+
+  test("reads returned nulls as absent optional properties", () => {
+    expect(
+      extractCodexFinalResponse(
+        JSON.stringify({
+          ...response,
+          diagnostics: null,
+          evaluationReport: {
+            ...response.evaluationReport,
+            nativeActivationEvidence: null,
+            versionMap: [
+              {
+                field: null,
+                identifierRole: "canonical-release",
+                path: "package.json",
+                releaseTrain: null,
+                role: "package",
+                version: "1.2.0",
+              },
+            ],
+          },
+          runtimeIdentity: null,
+        }),
+        runnerResponseSchema
+      )
+    ).toEqual({
+      ...response,
+      evaluationReport: {
+        ...response.evaluationReport,
+        versionMap: [
+          {
+            identifierRole: "canonical-release",
+            path: "package.json",
+            role: "package",
+            version: "1.2.0",
+          },
+        ],
+      },
+    });
+  });
+
+  test("keeps a null for a required or unknown property so validation rejects it", () => {
+    expect(() =>
+      extractCodexFinalResponse(
+        JSON.stringify({ ...response, finalResponse: null }),
+        runnerResponseSchema
+      )
+    ).toThrow("$.finalResponse");
+    expect(
+      restoreCodexResponse(
+        { finalResponse: null, unexpected: null },
+        runnerResponseSchema
+      )
+    ).toEqual({ finalResponse: null, unexpected: null });
+  });
+
+  test("keeps an inherited property name as an unknown field", () => {
+    const withPrototypeKey = JSON.stringify(response).replace(
+      "{",
+      '{"__proto__":null,'
+    );
+    expect(() =>
+      extractCodexFinalResponse(withPrototypeKey, runnerResponseSchema)
+    ).toThrow("neutral protocol");
+    const restored = restoreCodexResponse(
+      JSON.parse(withPrototypeKey),
+      runnerResponseSchema
+    ) as Record<string, unknown>;
+    expect(Object.hasOwn(restored, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(restored)).toBe(Object.prototype);
+  });
+
+  test("fails clearly when Codex repeats an item the canonical schema keeps unique", () => {
+    expect(() =>
+      extractCodexFinalResponse(
+        JSON.stringify({
+          ...response,
+          evaluationReport: {
+            ...response.evaluationReport,
+            reasonCodes: ["USER_VISIBLE_CHANGE", "USER_VISIBLE_CHANGE"],
+          },
+        }),
+        runnerResponseSchema
+      )
+    ).toThrow(
+      'Codex CLI final response repeats "USER_VISIBLE_CHANGE" in $.evaluationReport.reasonCodes, which the runner response schema requires to be unique'
+    );
+    const record = { code: "BACKFILL_AUDIT", status: "passed" } as const;
+    expect(
+      extractCodexFinalResponse(
+        JSON.stringify({
+          ...response,
+          evaluationReport: {
+            ...response.evaluationReport,
+            decisionCodes: ["CHANGELOG_UPDATED", "VERSION_SYNCED"],
+            verificationResults: [record, record],
+          },
+        }),
+        runnerResponseSchema
+      ).evaluationReport.verificationResults
+    ).toEqual([record, record]);
+  });
+
+  test("compares unique items structurally after restoring them", () => {
+    const schema = JSON.stringify({
+      $defs: {
+        entry: {
+          additionalProperties: false,
+          properties: { name: { type: "string" }, note: { type: "string" } },
+          required: ["name"],
+          type: "object",
+        },
+      },
+      additionalProperties: false,
+      properties: {
+        entries: {
+          items: { $ref: "#/$defs/entry" },
+          type: "array",
+          uniqueItems: true,
+        },
+      },
+      required: ["entries"],
+      type: "object",
+    });
+
+    expect(() =>
+      restoreCodexResponse(
+        { entries: [{ name: "a" }, { name: "a", note: null }] },
+        schema
+      )
+    ).toThrow('repeats {"name":"a"} in $.entries');
+    expect(() =>
+      restoreCodexResponse(
+        JSON.parse(
+          '{"entries":[{"name":"a","note":"b"},{"note":"b","name":"a"}]}'
+        ),
+        schema
+      )
+    ).toThrow('repeats {"name":"a","note":"b"} in $.entries');
+    expect(
+      restoreCodexResponse(
+        { entries: [{ name: "a" }, { name: "a", note: "b" }] },
+        schema
+      )
+    ).toEqual({ entries: [{ name: "a" }, { name: "a", note: "b" }] });
+  });
+
+  test("follows chained references and refuses circular ones", () => {
+    const chained = JSON.stringify({
+      $defs: {
+        alias: { $ref: "#/$defs/codes" },
+        codes: { items: { type: "string" }, type: "array", uniqueItems: true },
+      },
+      additionalProperties: false,
+      properties: { codes: { $ref: "#/$defs/alias" } },
+      required: ["codes"],
+      type: "object",
+    });
+    expect(() => restoreCodexResponse({ codes: ["A", "A"] }, chained)).toThrow(
+      'repeats "A" in $.codes,'
+    );
+    expect(() =>
+      restoreCodexResponse(
+        { "release-codes": ["A", "A"] },
+        chained.replace('"codes":{"$ref"', '"release-codes":{"$ref"')
+      )
+    ).toThrow('repeats "A" in $["release-codes"],');
+    const circular = JSON.stringify({
+      $defs: { a: { $ref: "#/$defs/b" }, b: { $ref: "#/$defs/a" } },
+      additionalProperties: false,
+      properties: { value: { $ref: "#/$defs/a" } },
+      required: ["value"],
+      type: "object",
+    });
+    expect(() => restoreCodexResponse({ value: "x" }, circular)).toThrow(
+      "circular: #/$defs/a"
+    );
+  });
+});
+
+describe("Codex adapter execution", () => {
+  const codexWorkspace = async (
+    schema = runnerResponseSchema
+  ): Promise<{ responseSchema: string; workspace: string }> => {
+    const directory = await mkdtemp(join(tmpdir(), "codex-adapter-"));
+    temporaryDirectories.push(directory);
+    const workspace = join(directory, "workspace");
+    const responseSchema = join(directory, "runner-response.schema.json");
+    await Promise.all([mkdir(workspace), writeFile(responseSchema, schema)]);
+    return { responseSchema, workspace };
+  };
+
+  const argumentAfter = (spec: VendorProcessSpec, flag: string): string =>
+    spec.cmd[spec.cmd.indexOf(flag) + 1] ?? "";
+
+  test("sends the strict copy from outside the workspace and restores the reply", async () => {
+    const { responseSchema, workspace } = await codexWorkspace();
+    const sentSchemas: string[] = [];
+    const schemaPaths: string[] = [];
+
+    const result = await runCodexAdapter(
+      { ...request, responseSchema, workspace },
+      async (spec) => {
+        const schemaPath = argumentAfter(spec, "--output-schema");
+        schemaPaths.push(schemaPath);
+        sentSchemas.push(await readFile(schemaPath, "utf8"));
+        expect(await readdir(workspace)).toEqual([]);
+        await writeFile(
+          argumentAfter(spec, "--output-last-message"),
+          JSON.stringify({
+            ...response,
+            diagnostics: null,
+            runtimeIdentity: null,
+          })
+        );
+        return { exitCode: 0, ok: true, stderr: "", stdout: "" };
+      }
+    );
+
+    expect(result).toEqual({
+      logs: "",
+      ok: true,
+      response: { ...response, runtimeIdentity: "Codex CLI" },
+    });
+    expect(sentSchemas).toEqual([
+      prepareCodexResponseSchema(runnerResponseSchema),
+    ]);
+    const [schemaPath = ""] = schemaPaths;
+    expect(schemaPath.startsWith(await realpath(workspace))).toBe(false);
+    await expect(lstat(join(schemaPath, ".."))).rejects.toThrow();
+    expect(await readdir(workspace)).toEqual([]);
+    expect(await readFile(responseSchema, "utf8")).toBe(runnerResponseSchema);
+  });
+
+  test("fails a reply that repeats a unique code", async () => {
+    const { responseSchema, workspace } = await codexWorkspace();
+
+    const result = await runCodexAdapter(
+      { ...request, responseSchema, workspace },
+      async (spec) => {
+        await writeFile(
+          argumentAfter(spec, "--output-last-message"),
+          JSON.stringify({
+            ...response,
+            evaluationReport: {
+              ...response.evaluationReport,
+              decisionCodes: ["CHANGELOG_UPDATED", "CHANGELOG_UPDATED"],
+            },
+          })
+        );
+        return { exitCode: 0, ok: true, stderr: "", stdout: "" };
+      }
+    );
+
+    expect(result).toMatchObject({
+      failure: {
+        code: "VENDOR_EXECUTION_FAILED",
+        message: expect.stringContaining(
+          'repeats "CHANGELOG_UPDATED" in $.evaluationReport.decisionCodes'
+        ),
+      },
+      ok: false,
+    });
+    expect(await readdir(workspace)).toEqual([]);
+  });
+
+  test("reports a schema strict mode would reject before starting Codex", async () => {
+    const { responseSchema, workspace } = await codexWorkspace(
+      JSON.stringify({ properties: {}, type: "object" })
+    );
+    let started = false;
+
+    const result = await runCodexAdapter(
+      { ...request, responseSchema, workspace },
+      () => {
+        started = true;
+        return Promise.resolve({
+          exitCode: 0,
+          ok: true,
+          stderr: "",
+          stdout: "",
+        });
+      }
+    );
+
+    expect(started).toBe(false);
+    expect(result).toMatchObject({
+      failure: {
+        code: "INVALID_CONFIGURATION",
+        message: expect.stringContaining(
+          "Unable to prepare the runner response schema for Codex"
+        ),
+      },
+      ok: false,
+    });
   });
 });
 

@@ -433,6 +433,13 @@ distribution's deterministic contract suite, and validates the CMS fixture.
 Every installed skill must contain exactly one root `SKILL.md`; the entire
 `tooling/` tree must contain none.
 
+Some installed files are byte-for-byte copies of one canonical source: the
+setup, query, and CMS helpers, the minified protocol schemas, the shared
+release-handoff, version-decisions, and testing-notes references, and the fork
+checker. Edit the canonical source, then run `bun run sync-distros` to rewrite
+every copy. `bun run sync-distros --check` reports drift without writing, and
+`bun run eval` fails on any drift.
+
 The optional authenticated behavior harness remains repository-only:
 
 ```sh
@@ -524,3 +531,5 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 - `tooling/simple-changelogs-cms/` — CMS fixtures and contributor tests.
 - `tooling/distributions.check.ts` — installed package-shape and discovery
   boundary validator.
+- `tooling/sync-distros.ts` — writes every byte-synced installed copy from its
+  canonical source; `--check` reports drift instead.

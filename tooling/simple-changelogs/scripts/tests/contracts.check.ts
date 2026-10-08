@@ -533,7 +533,29 @@ description: >-
 name: tiny-skill
 description: Use when a tiny fixture needs deterministic changelog checks.
 metadata:
-  models: Model A, Model B
+  author: Example Maintainer
+---`
+      )
+    );
+
+    expect(findingCodes(await evaluateContracts(skillDirectory))).not.toContain(
+      "FRONTMATTER_INVALID"
+    );
+  });
+
+  test("accepts the portable license and compatibility fields", async () => {
+    const skillDirectory = await createValidSkill();
+    const skill = await readFile(join(skillDirectory, "SKILL.md"), "utf8");
+    await writeFixtureFile(
+      skillDirectory,
+      "SKILL.md",
+      skill.replace(
+        FRONTMATTER_REPLACEMENT_PATTERN,
+        `---
+name: tiny-skill
+description: Use when a tiny fixture needs deterministic changelog checks.
+license: Apache-2.0
+compatibility: ${"x".repeat(500)}
 ---`
       )
     );
@@ -548,8 +570,15 @@ metadata:
       "---\nname: [unterminated\ndescription: bad\n---\n",
       "---\n- tiny-skill\n- description\n---\n",
       "---\nname: tiny-skill\ndescription: valid\nextra: forbidden\n---\n",
-      "---\nname: tiny-skill\ndescription: valid\nmetadata: [model-a]\n---\n",
-      "---\nname: tiny-skill\ndescription: valid\nmetadata:\n  models:\n    - model-a\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmetadata: [example]\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmetadata:\n  tags:\n    - example\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmodel: example-model\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\neffort: high\n---\n",
+      '---\nname: tiny-skill\ndescription: valid\nlicense: " "\n---\n',
+      "---\nname: tiny-skill\ndescription: valid\nlicense: [Apache-2.0]\n---\n",
+      '---\nname: tiny-skill\ndescription: valid\ncompatibility: ""\n---\n',
+      "---\nname: tiny-skill\ndescription: valid\ncompatibility: 3\n---\n",
+      `---\nname: tiny-skill\ndescription: valid\ncompatibility: ${"x".repeat(501)}\n---\n`,
     ];
     const results = await Promise.all(
       frontmatterCases.map(async (frontmatter) => {

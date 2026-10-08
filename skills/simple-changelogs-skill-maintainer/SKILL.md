@@ -1,8 +1,8 @@
 ---
 name: simple-changelogs-skill-maintainer
 description: Maintain changelogs and release notes for agent-skill packages, including guidance-version explanations, fork provenance, and installable package boundaries. Use when a skill repository selects the skill-repository Simple Changelogs distribution, not for product apps, CMS, mobile, or store releases.
-metadata:
-  models: Claude Opus 5.5, Claude Fable 5.1
+license: Apache-2.0
+compatibility: Requires Git and Bun 1.3 or later; check-fork-sync.sh requires a POSIX shell
 ---
 
 # Simple Changelogs Skill Maintainer

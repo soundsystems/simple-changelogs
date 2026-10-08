@@ -1,6 +1,6 @@
 {
   "name": "simple-changelogs",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -11,13 +11,14 @@
     "eval": "bun tooling/distributions.check.ts && bun tooling/simple-changelogs/scripts/eval.ts contract && bun skills/simple-changelogs-cms/scripts/validate.ts tooling/simple-changelogs-cms/evals/fixtures/valid-repo",
     "format": "ultracite fix",
     "lint": "ultracite check",
+    "sync-distros": "bun tooling/sync-distros.ts",
     "test": "bun tooling/simple-changelogs/scripts/test.ts && bun tooling/simple-changelogs-cms/scripts/test.ts && bun tooling/publish-skill/scripts/test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.3",
+    "@biomejs/biome": "2.5.10",
     "@types/bun": "1.3.14",
     "typescript": "7.0.2",
-    "ultracite": "7.9.3"
+    "ultracite": "7.9.4"
   }
 }

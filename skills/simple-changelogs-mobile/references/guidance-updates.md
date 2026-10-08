@@ -4,6 +4,31 @@ This is the canonical user-readable change history for the integer declared in
 `SKILL.md`. Use it to explain what changed before asking about a historical
 audit. These entries do not themselves authorize released-history edits.
 
+## Contents
+
+- Guidance 1
+- Guidance 2
+- Guidance 3
+- Guidance 4
+- Guidance 5
+- Guidance 6
+- Guidance 7
+- Guidance 8
+- Guidance 9
+- Guidance 10
+- Guidance 11
+- Guidance 12
+- Guidance 13
+- Guidance 14
+- Guidance 15
+- Guidance 16
+- Guidance 17
+- Guidance 18
+- Guidance 19
+- Guidance 20
+- Guidance 21
+- Guidance 25
+
 ## Guidance 1
 
 Established complementary customer and developer changelogs, outcome-focused

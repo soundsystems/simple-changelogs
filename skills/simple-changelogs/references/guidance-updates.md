@@ -6,6 +6,20 @@ audit. These entries do not themselves authorize released-history edits.
 Guidance prompts stop repeating for a version once a disposition is recorded;
 an unanswered prompt records nothing and may be asked again later.
 
+## Contents
+
+- Guidance 1 to 15
+- Guidance 16
+- Guidance 17
+- Guidance 18
+- Guidance 19
+- Guidance 20
+- Guidance 21
+- Guidance 22
+- Guidance 23
+- Guidance 24
+- Guidance 25
+
 ## Guidance 1 to 15
 
 Earlier checkpoints in brief; the Simple Changelogs `CHANGELOG.md` keeps their
