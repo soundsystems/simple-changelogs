@@ -7,6 +7,8 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
+  rename,
   rm,
   stat,
   symlink,
@@ -549,6 +551,62 @@ describe("sync-distros", () => {
       "// outside\n"
     );
     expect((await lstat(join(root, SCRIPTS))).isSymbolicLink()).toBe(true);
+  });
+
+  test("restores the working directory it started in by identity, or fails at the repository root", async () => {
+    const root = await repositoryCopy();
+    const outside = await outsideDirectory();
+    await writeFile(join(outside, "setup.ts"), "// outside\n");
+    const setup = await setupCopy(root);
+    const aside = join(root, `${SCRIPTS}-aside`);
+    const origin = process.cwd();
+    const rootPath = await realpath(root);
+    const failure = `changed while ${SETUP_COPY} was written; the process is now in ${root}`;
+    try {
+      // Started inside the repository, the walk comes back to that directory.
+      process.chdir(join(root, SCRIPTS));
+      await writeFile(join(root, SETUP_COPY), "// drifted\n");
+      writeSyncedFile(root, setup);
+      expect(await realpath(process.cwd())).toBe(join(rootPath, SCRIPTS));
+      expect(await read(root, SETUP_COPY)).toBe(setup.expected);
+
+      // The starting directory is renamed during the write: the bytes reach
+      // the copy where the walk holds it, and the process ends at the root.
+      await writeFile(join(root, SETUP_COPY), "// drifted\n");
+      expect(() =>
+        writeSyncedFile(root, setup, (step) => {
+          if (step.kind === "open") {
+            renameSync(join(root, SCRIPTS), aside);
+          }
+        })
+      ).toThrow(failure);
+      expect(await realpath(process.cwd())).toBe(rootPath);
+      expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
+        setup.expected
+      );
+
+      // A symlink planted at the starting directory's name leads outside:
+      // the process ends at the root, not there.
+      await rename(aside, join(root, SCRIPTS));
+      process.chdir(join(root, SCRIPTS));
+      await writeFile(join(root, SETUP_COPY), "// drifted\n");
+      expect(() =>
+        writeSyncedFile(root, setup, (step) => {
+          if (step.kind === "open") {
+            swapDirectoryForLink(join(root, SCRIPTS), aside, outside);
+          }
+        })
+      ).toThrow(failure);
+      expect(await realpath(process.cwd())).toBe(rootPath);
+      expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
+        setup.expected
+      );
+      expect(await readFile(join(outside, "setup.ts"), "utf8")).toBe(
+        "// outside\n"
+      );
+    } finally {
+      process.chdir(origin);
+    }
   });
 
   test("refuses a copy swapped for a symlink between its check and the open", async () => {

@@ -365,6 +365,17 @@ const writeDescriptor = (descriptor: number, file: SyncedFile): void => {
   fchmodSync(descriptor, file.mode);
 };
 
+// Moves back to the directory the walk started in and confirms by device and
+// inode that it is the same directory; the name alone could lead elsewhere.
+const restoredTo = (origin: string, identity: Stats): boolean => {
+  try {
+    process.chdir(origin);
+  } catch {
+    return false;
+  }
+  return sameInode(statSync("."), identity);
+};
+
 // Writes the copy through a walk the process holds, the openat the fs API
 // lacks: from the repository root, each directory of the target is checked
 // (a directory, not a symlink) and then entered by its one name relative to
@@ -378,7 +389,10 @@ const writeDescriptor = (descriptor: number, file: SyncedFile): void => {
 // following a symlink and written only as a regular file with a single link,
 // so no byte lands outside the directory the walk verified under the root.
 // Every step is synchronous, so nothing else runs while the working directory
-// is moved, and the working directory is restored before returning.
+// is moved, and the working directory is restored before returning, by name
+// and confirmed by device and inode; when the directory the walk started in
+// is gone or its name leads elsewhere, the process is left at the repository
+// root and the write fails, after any bytes already reached their copy.
 // Boundary: the bytes reach the directory the walk verified, wherever it sits
 // under the directory held above it; once held, a directory moved elsewhere
 // takes the write with it, as it would with openat, and moving it needs
@@ -392,9 +406,12 @@ export const writeSyncedFile = (
   probe?: WriteProbe
 ): void => {
   const { directories, name } = plainSegments(file.target);
+  const anchor = resolve(root);
   const origin = process.cwd();
+  const identity = statSync(".");
+  let failure: { error: unknown } | undefined;
   try {
-    process.chdir(resolve(root));
+    process.chdir(anchor);
     let held = statSync(".");
     for (const [index, directory] of directories.entries()) {
       held = enterDirectory(
@@ -410,8 +427,18 @@ export const writeSyncedFile = (
     } finally {
       closeSync(descriptor);
     }
-  } finally {
-    process.chdir(origin);
+  } catch (error) {
+    failure = { error };
+  }
+  if (!restoredTo(origin, identity)) {
+    process.chdir(anchor);
+    throw new Error(
+      `The working directory ${origin} changed while ${file.target} was written; the process is now in ${anchor}`,
+      { cause: failure?.error }
+    );
+  }
+  if (failure !== undefined) {
+    throw failure.error;
   }
 };
 
