@@ -12,7 +12,7 @@
     "format": "ultracite fix",
     "lint": "ultracite check",
     "sync-distros": "bun tooling/sync-distros.ts",
-    "test": "bun tooling/simple-changelogs/scripts/test.ts && bun tooling/simple-changelogs-cms/scripts/test.ts && bun tooling/publish-skill/scripts/test.ts",
+    "test": "bun tooling/simple-changelogs/scripts/test.ts && bun tooling/simple-changelogs-cms/scripts/test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

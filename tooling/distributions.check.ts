@@ -47,7 +47,7 @@ const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
 
-const expectedSkills = new Set([...changelogDistributions, "publish-skill"]);
+const expectedSkills = new Set(changelogDistributions);
 const forbiddenNames = new Set(["EVAL.md"]);
 // Agent Skills frontmatter: every package states its license and runtime
 // requirements, a distribution that ships the POSIX fork checker says so, and
