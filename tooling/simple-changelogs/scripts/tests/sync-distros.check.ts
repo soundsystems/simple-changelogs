@@ -448,6 +448,54 @@ describe("sync-distros", () => {
     ]);
   });
 
+  test("refuses the checked directory moved outside and linked back at its name before the step", async () => {
+    const root = await repositoryCopy();
+    const outside = await outsideDirectory();
+    await writeFile(join(root, SETUP_COPY), "// drifted\n");
+    const setup = await setupCopy(root);
+    const moved = join(outside, "moved-scripts");
+    const origin = process.cwd();
+
+    // The same inode the check saw, so only its parent gives the move away:
+    // the link leads into a directory no longer under the one the writer
+    // holds.
+    expect(() =>
+      writeSyncedFile(root, setup, (step) => {
+        if (step.kind === "enter" && step.path === SCRIPTS) {
+          swapDirectoryForLink(join(root, SCRIPTS), moved, moved);
+        }
+      })
+    ).toThrow(
+      `Refusing to write through ${SCRIPTS}, which changed after it was checked`
+    );
+
+    expect(process.cwd()).toBe(origin);
+    expect(await readFile(join(moved, "setup.ts"), "utf8")).toBe(
+      "// drifted\n"
+    );
+  });
+
+  test("writes into the checked directory renamed within the directory it holds", async () => {
+    const root = await repositoryCopy();
+    await writeFile(join(root, SETUP_COPY), "// drifted\n");
+    const setup = await setupCopy(root);
+    const aside = join(root, `${SCRIPTS}-aside`);
+    const origin = process.cwd();
+
+    // Still the checked inode and still a direct child of the held parent,
+    // so the bytes reach it under its new name, inside the repository.
+    writeSyncedFile(root, setup, (step) => {
+      if (step.kind === "enter" && step.path === SCRIPTS) {
+        swapDirectoryForLink(join(root, SCRIPTS), aside, aside);
+      }
+    });
+
+    expect(process.cwd()).toBe(origin);
+    expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
+      setup.expected
+    );
+  });
+
   test("writes into the directory it holds when that directory is swapped after the step into it", async () => {
     const root = await repositoryCopy();
     const outside = await outsideDirectory();

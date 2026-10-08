@@ -285,22 +285,29 @@ const checkedDirectory = (name: string, path: string): Stats => {
   return entry;
 };
 
-// Steps into the checked directory and confirms the directory now held is
-// the one checked, so a swap between the check and the step is caught.
+const sameInode = (left: Stats, right: Stats): boolean =>
+  left.dev === right.dev && left.ino === right.ino;
+
+// Steps into the checked directory and confirms that the directory now held
+// is the one checked and is still a direct child of the directory held
+// before, so a swap between the check and the step is caught whether the
+// name now leads to another directory or to the checked one moved elsewhere.
 const enterDirectory = (
   name: string,
   path: string,
+  held: Stats,
   probe: WriteProbe | undefined
-): void => {
+): Stats => {
   const checked = checkedDirectory(name, path);
   probe?.({ kind: "enter", path });
   process.chdir(name);
-  const held = statSync(".");
-  if (held.dev !== checked.dev || held.ino !== checked.ino) {
+  const entered = statSync(".");
+  if (!(sameInode(entered, checked) && sameInode(statSync(".."), held))) {
     throw new Error(
       `Refusing to write through ${path}, which changed after it was checked`
     );
   }
+  return entered;
 };
 
 // Opens the copy by name in the held directory, creating it when missing and
@@ -362,19 +369,23 @@ const writeDescriptor = (descriptor: number, file: SyncedFile): void => {
 // lacks: from the repository root, each directory of the target is checked
 // (a directory, not a symlink) and then entered by its one name relative to
 // the directory already held, and the directory held after the step must be
-// the one checked (device and inode). A swap between a check and its step is
-// caught there, and a swap of a directory already entered cannot redirect the
-// walk, because the process holds that directory, not its path. The copy is
-// then opened by name in the held directory without following a symlink and
-// written only as a regular file with a single link, so no byte lands outside
-// the directory the walk verified under the root. Every step is synchronous,
-// so nothing else runs while the working directory is moved, and the working
-// directory is restored before returning. Boundary: the bytes reach the
-// directory the walk verified; an actor who can rename that directory
-// elsewhere, like one who can write inside the checkout, can already change
-// the checkout directly. A written copy takes its source's permissions,
-// whatever the umask. Tests may pass `probe` to act between a check and the
-// step it guards.
+// the one checked and still a direct child of the directory held before
+// (device and inode of `.` and `..`). A swap between a check and its step is
+// caught there, whether the name now leads to another directory or to the
+// checked one moved elsewhere, and a swap of a directory already entered
+// cannot redirect the walk, because the process holds that directory, not
+// its path. The copy is then opened by name in the held directory without
+// following a symlink and written only as a regular file with a single link,
+// so no byte lands outside the directory the walk verified under the root.
+// Every step is synchronous, so nothing else runs while the working directory
+// is moved, and the working directory is restored before returning.
+// Boundary: the bytes reach the directory the walk verified, wherever it sits
+// under the directory held above it; once held, a directory moved elsewhere
+// takes the write with it, as it would with openat, and moving it needs
+// rename rights inside the checkout, which already allow changing it
+// directly. A written copy takes its source's permissions, whatever the
+// umask. Tests may pass `probe` to act between a check and the step it
+// guards.
 export const writeSyncedFile = (
   root: string,
   file: SyncedFile,
@@ -384,10 +395,12 @@ export const writeSyncedFile = (
   const origin = process.cwd();
   try {
     process.chdir(resolve(root));
+    let held = statSync(".");
     for (const [index, directory] of directories.entries()) {
-      enterDirectory(
+      held = enterDirectory(
         directory,
         directories.slice(0, index + 1).join("/"),
+        held,
         probe
       );
     }
