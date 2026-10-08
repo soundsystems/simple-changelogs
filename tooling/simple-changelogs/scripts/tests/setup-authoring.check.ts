@@ -360,6 +360,24 @@ const VALIDATION_TABLE: {
       schemaVersion: 1,
     },
   },
+  {
+    name: "a harness id spelled like an inherited property",
+    valid: true,
+    value: {
+      harnesses: { constructor: { model: "x" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "a malformed entry under an inherited property name",
+    valid: false,
+    value: {
+      harnesses: { constructor: { extra: true, model: 42 } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
   { name: "not an object", valid: false, value: ["x"] },
 ];
 
@@ -415,7 +433,9 @@ const propertyErrors: SchemaCheck = (root, schema, value, path) => {
   }
   const properties = (schema.properties as Schema | undefined) ?? {};
   for (const [key, item] of Object.entries(value)) {
-    const nested = properties[key] ?? schema.additionalProperties;
+    const nested = Object.hasOwn(properties, key)
+      ? properties[key]
+      : schema.additionalProperties;
     if (isObject(nested)) {
       errors.push(...schemaErrors(root, nested, item, `${path}.${key}`));
     } else if (nested === false) {
