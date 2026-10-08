@@ -353,6 +353,15 @@ describe("exec guard", () => {
       ["gh", "api", "graphql", "--input", "payload.json"],
       ["gh", "api", "graphql", "-F", "query=@payload.graphql"],
       ["glab", "api", "graphql", "-f", "query=mutation { x }"],
+      ["gh", "api", "/graphql", "-f", "query=mutation { mergePullRequest }"],
+      [
+        "gh",
+        "api",
+        "https://api.github.com/graphql",
+        "-f",
+        "query=mutation { mergePullRequest }",
+      ],
+      ["glab", "api", "/api/graphql", "-f", "query=mutation { x }"],
     ]) {
       refused(repo, argv, "inline query");
     }

@@ -375,6 +375,8 @@ const PROVIDER_GLOBAL_VALUES = new Set(["-R", "--hostname", "--repo"]);
 const FIELD_FLAGS = ["-F", "-f", "--field", "--form", "--raw-field"];
 const READ_METHODS = new Set(["GET", "HEAD"]);
 const LEADING_EQUALS = /^=/u;
+// Any spelling of the GraphQL endpoint: `graphql`, `/graphql`, or a URL.
+const GRAPHQL_ENDPOINT = /graphql/iu;
 
 // An option token's name and, for `--name=value`, `-Xvalue`, or `-X=value`,
 // its attached value.
@@ -459,7 +461,7 @@ const apiCall = (
     );
   }
   const fields = valuesOf(parsed, FIELD_FLAGS);
-  if (endpoint === "graphql") {
+  if (GRAPHQL_ENDPOINT.test(endpointPath(endpoint))) {
     return hiddenBody(parsed) ||
       fields.some((field) => GRAPHQL_REF_WRITE.test(field))
       ? refuse(
