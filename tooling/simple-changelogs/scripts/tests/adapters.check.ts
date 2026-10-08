@@ -559,6 +559,24 @@ describe("Codex strict response schema", () => {
         "must set additionalProperties to false",
       ],
       [
+        fixture({ value: { type: ["object", "null"] } }),
+        "must set additionalProperties to false",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/codes", uniqueItems: true } },
+          { $defs: { codes: { items: { type: "string" }, type: "array" } } }
+        ),
+        "may set only description and title beside $ref, not uniqueItems",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/__proto__" } },
+          { $defs: { other: { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/__proto__",
+      ],
+      [
         fixture(
           { value: { $ref: "#/properties/other" } },
           { $defs: { other: { type: "string" } } }
@@ -635,6 +653,22 @@ describe("Codex strict response schema", () => {
         runnerResponseSchema
       )
     ).toEqual({ finalResponse: null, unexpected: null });
+  });
+
+  test("keeps an inherited property name as an unknown field", () => {
+    const withPrototypeKey = JSON.stringify(response).replace(
+      "{",
+      '{"__proto__":null,'
+    );
+    expect(() =>
+      extractCodexFinalResponse(withPrototypeKey, runnerResponseSchema)
+    ).toThrow("neutral protocol");
+    const restored = restoreCodexResponse(
+      JSON.parse(withPrototypeKey),
+      runnerResponseSchema
+    ) as Record<string, unknown>;
+    expect(Object.hasOwn(restored, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(restored)).toBe(Object.prototype);
   });
 
   test("fails clearly when Codex repeats an item the canonical schema keeps unique", () => {

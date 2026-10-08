@@ -222,7 +222,8 @@ required and each optional one also accepting null. The canonical response
 schema is unchanged: the adapter reads a returned null for an optional property
 as absent, fails a response that repeats an item the canonical schema requires
 to be unique, and then validates against the neutral response contract. A
-schema keyword outside the set strict mode is known to accept fails as a
+schema keyword outside the set strict mode is known to accept, an object that
+allows extra properties, or a `$ref` with a constraint beside it fails as a
 configuration error before Codex starts.
 
 The Hermes adapter uses `hermes chat --safe-mode --quiet`, validates its

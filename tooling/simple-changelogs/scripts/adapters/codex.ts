@@ -53,6 +53,9 @@ const STRICT_KEYWORDS = new Set([
   "type",
 ]);
 const SCHEMA_MAP_KEYWORDS = new Set(["$defs", "properties"]);
+// Following a reference must not lose a constraint, so only annotations may
+// sit beside `$ref`.
+const REFERENCE_SIBLING_KEYWORDS = new Set(["$ref", "description", "title"]);
 const JSON_PATH_IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 
 const isRecord = (value: unknown): value is Schema =>
@@ -71,7 +74,11 @@ const referencedSchema = (root: Schema, reference: string): Schema => {
   const name = DEFINITION_REFERENCE_PATTERN.exec(reference)?.[1];
   const definitions = root.$defs;
   const target =
-    name !== undefined && isRecord(definitions) ? definitions[name] : undefined;
+    name !== undefined &&
+    isRecord(definitions) &&
+    Object.hasOwn(definitions, name)
+      ? definitions[name]
+      : undefined;
   if (!isRecord(target)) {
     throw new Error(
       `Codex response schema reference must name a schema in $defs: ${reference}`
@@ -97,8 +104,9 @@ const resolvedSchema = (root: Schema, schema: Schema): Schema => {
 };
 
 const requireClosedObject = (schema: Schema, path: string): void => {
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
   if (
-    (schema.type === "object" ||
+    (types.includes("object") ||
       Object.hasOwn(schema, "properties") ||
       Object.hasOwn(schema, "additionalProperties")) &&
     schema.additionalProperties !== false
@@ -167,6 +175,16 @@ const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
     throw new Error(`Codex response schema at ${path} must be an object`);
   }
   requireClosedObject(schema, path);
+  if (Object.hasOwn(schema, "$ref")) {
+    const sibling = Object.keys(schema).find(
+      (keyword) => !REFERENCE_SIBLING_KEYWORDS.has(keyword)
+    );
+    if (sibling !== undefined) {
+      throw new Error(
+        `Codex response schema at ${path} may set only description and title beside $ref, not ${sibling}`
+      );
+    }
+  }
   const strict: Schema = {};
   for (const [keyword, value] of Object.entries(schema)) {
     if (!STRIPPED_KEYWORDS.has(keyword)) {
@@ -247,16 +265,21 @@ const restoredValue = (
     return value;
   }
   const requiredNames = new Set(Array.isArray(required) ? required : []);
-  const restored: Schema = {};
-  for (const [key, item] of Object.entries(value)) {
-    const property = properties[key];
-    if (!isRecord(property)) {
-      restored[key] = item;
-    } else if (item !== null || requiredNames.has(key)) {
-      restored[key] = restoredValue(root, property, item, childPath(path, key));
-    }
-  }
-  return restored;
+  // Own-property lookups and fromEntries keep a key such as `__proto__` an
+  // ordinary unknown field for the neutral validator to reject.
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, item]) => {
+      const property = Object.hasOwn(properties, key)
+        ? properties[key]
+        : undefined;
+      if (!isRecord(property)) {
+        return [[key, item]];
+      }
+      return item === null && !requiredNames.has(key)
+        ? []
+        : [[key, restoredValue(root, property, item, childPath(path, key))]];
+    })
+  );
 };
 
 export const restoreCodexResponse = (
