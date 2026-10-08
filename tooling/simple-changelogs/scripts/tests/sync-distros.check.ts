@@ -262,6 +262,46 @@ describe("sync-distros", () => {
     );
   });
 
+  test("copies canonical bytes exactly and refuses sources that are not UTF-8", async () => {
+    const root = await repositoryCopy();
+    const source = "tooling/simple-changelogs/scripts/setup.ts";
+    const canonical = Buffer.concat([
+      Buffer.from("\uFEFF", "utf8"),
+      await readFile(join(root, source)),
+      Buffer.from("// \uFFFD\n", "utf8"),
+    ]);
+    await writeFile(join(root, source), canonical);
+
+    await syncDistributions(root, { write: true });
+    expect((await readFile(join(root, SETUP_COPY))).equals(canonical)).toBe(
+      true
+    );
+
+    // Decoded as text, a stray 0x80 reads as the U+FFFD the source holds, so
+    // only a byte comparison sees this copy drift.
+    const strayByte = Buffer.concat([
+      canonical.subarray(0, canonical.length - 4),
+      Buffer.from([0x80, 0x0a]),
+    ]);
+    await writeFile(join(root, SETUP_COPY), strayByte);
+    expect(
+      (await syncDistributions(root, { write: false })).drifted.map(
+        ({ target }) => target
+      )
+    ).toEqual([SETUP_COPY]);
+
+    await writeFile(
+      join(root, source),
+      Buffer.concat([canonical, Buffer.from([0x80, 0x0a])])
+    );
+    await expect(syncDistributions(root, { write: true })).rejects.toThrow(
+      `${source} is not valid UTF-8`
+    );
+    expect((await readFile(join(root, SETUP_COPY))).equals(strayByte)).toBe(
+      true
+    );
+  });
+
   test("writes nothing when a canonical source is malformed", async () => {
     const root = await repositoryCopy();
     await driftCopies(root);

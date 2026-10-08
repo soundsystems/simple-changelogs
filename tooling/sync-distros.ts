@@ -64,6 +64,15 @@ const TOOLING_SCHEMAS = "tooling/simple-changelogs/evals/schemas";
 export const minifiedJson = (text: string): string =>
   `${JSON.stringify(JSON.parse(text))}\n`;
 
+// Copies are compared and written as text, which reproduces a source's bytes
+// only when they are valid UTF-8, so anything else fails before a write. A
+// leading byte order mark is kept, not dropped.
+const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+// True when `contents` are exactly the UTF-8 bytes of `expected`.
+export const holdsBytes = (contents: Uint8Array, expected: string): boolean =>
+  Buffer.from(expected, "utf8").equals(contents);
+
 export interface SyncedFile {
   expected: string;
   // The source's permission bits, which a written copy takes.
@@ -159,10 +168,16 @@ export const syncedFiles = async (root: string): Promise<SyncedFile[]> => {
     await Promise.all(
       [...new Set(rules.map(({ source }) => source))].map(async (source) => {
         const path = join(root, source);
-        const [text, metadata] = await Promise.all([
-          readFile(path, "utf8"),
+        const [bytes, metadata] = await Promise.all([
+          readFile(path),
           stat(path),
         ]);
+        let text: string;
+        try {
+          text = UTF8.decode(bytes);
+        } catch (error) {
+          throw new Error(`${source} is not valid UTF-8`, { cause: error });
+        }
         return [source, { mode: metadata.mode % 0o1000, text }] as const;
       })
     )
@@ -275,7 +290,7 @@ export const syncDistributions = async (
       }
       return (
         chain.at(-1) !== null &&
-        (await readFile(join(root, file.target), "utf8")) === file.expected
+        holdsBytes(await readFile(join(root, file.target)), file.expected)
       );
     })
   );

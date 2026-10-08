@@ -7,6 +7,7 @@ import { YAML } from "bun";
 import { evaluateContracts } from "./simple-changelogs/scripts/lib/contracts.ts";
 import {
   changelogDistributions,
+  holdsBytes,
   portableContractDistributions,
   productVersionDistributions,
   releaseHandoffDistributions,
@@ -1204,7 +1205,7 @@ for (const { expected, source, target } of await syncedFiles(repositoryRoot)) {
     failures.push(
       `${target} is missing; run bun run sync-distros to copy it from ${source}`
     );
-  } else if (readFileSync(path, "utf8") !== expected) {
+  } else if (!holdsBytes(readFileSync(path), expected)) {
     failures.push(
       `${target} is out of sync with ${source}; run bun run sync-distros`
     );
