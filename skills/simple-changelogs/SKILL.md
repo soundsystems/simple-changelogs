@@ -1,8 +1,6 @@
 ---
 name: simple-changelogs
 description: Maintain changelogs and release notes across web, mobile, store, and internal destinations. Update histories, choose versions, finalize releases, and prepare reusable What to Test instructions when finalizing mobile test builds. The default Simple Changelogs distribution unless the repository selects a narrower one.
-metadata:
-  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs

@@ -1,8 +1,6 @@
 ---
 name: simple-changelogs-cms
 description: Maintain an internal CMS operator changelog in `CMS_CHANGELOG.json`, shown only to authenticated operators. Add, backfill, validate, and display operator entries. Use when the repository selects the CMS-only Simple Changelogs distribution, not for public or developer release history.
-metadata:
-  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs CMS

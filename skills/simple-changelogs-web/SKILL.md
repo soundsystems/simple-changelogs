@@ -1,8 +1,6 @@
 ---
 name: simple-changelogs-web
 description: Maintain changelogs and public web release notes. Update customer and developer changelogs, sync established web release-note pages, and finalize web releases. Use when the repository selects the web-only Simple Changelogs distribution or installs it as its only changelog skill, not for mobile, store, or CMS history.
-metadata:
-  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs Web

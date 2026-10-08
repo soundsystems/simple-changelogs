@@ -533,7 +533,7 @@ description: >-
 name: tiny-skill
 description: Use when a tiny fixture needs deterministic changelog checks.
 metadata:
-  models: Model A, Model B
+  author: Example Maintainer
 ---`
       )
     );
@@ -548,8 +548,8 @@ metadata:
       "---\nname: [unterminated\ndescription: bad\n---\n",
       "---\n- tiny-skill\n- description\n---\n",
       "---\nname: tiny-skill\ndescription: valid\nextra: forbidden\n---\n",
-      "---\nname: tiny-skill\ndescription: valid\nmetadata: [model-a]\n---\n",
-      "---\nname: tiny-skill\ndescription: valid\nmetadata:\n  models:\n    - model-a\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmetadata: [example]\n---\n",
+      "---\nname: tiny-skill\ndescription: valid\nmetadata:\n  tags:\n    - example\n---\n",
     ];
     const results = await Promise.all(
       frontmatterCases.map(async (frontmatter) => {

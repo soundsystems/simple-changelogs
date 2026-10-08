@@ -1,8 +1,6 @@
 ---
 name: simple-changelogs-mobile
 description: Maintain mobile changelogs, in-app notes, and App Store or Google Play metadata. Finalize mobile releases and prepare reusable What to Test instructions for TestFlight and Play test builds. Use when the repository selects the mobile-only Simple Changelogs distribution or installs it as its only changelog skill, not for web or CMS history.
-metadata:
-  models: Claude Opus 5.5, Claude Fable 5.1
 ---
 
 # Simple Changelogs Mobile
