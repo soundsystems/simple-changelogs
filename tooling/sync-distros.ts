@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 
-import { existsSync } from "node:fs";
-import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  readFile,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 // Every changelog distribution ships the byte-synced setup helper.
@@ -59,6 +65,8 @@ export const minifiedJson = (text: string): string =>
 
 export interface SyncedFile {
   expected: string;
+  // The source's permission bits, given to a copy that has to be created.
+  mode: number;
   // Repository-relative paths.
   source: string;
   target: string;
@@ -83,89 +91,89 @@ const copies = (
     .filter((rule) => rule.target !== source);
 
 // Every installed file that distributions.check.ts requires to hold exactly
-// its canonical source's bytes. The fork checker set follows the packages
-// that already ship one; fork-maintenance.md copies legitimately differ by
-// their own distribution name, so they stay hand-edited and are compared
-// modulo that name instead.
-const syncRules = async (root: string): Promise<SyncRule[]> => {
-  const skillDirectories = (
-    await readdir(join(root, "skills"), { withFileTypes: true })
-  )
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  return [
-    ...copies(
-      `${TOOLING_SCRIPTS}/setup.ts`,
-      changelogDistributions,
-      "scripts/setup.ts"
-    ),
-    ...PROTOCOL_FILES.flatMap((filename) =>
-      copies(
-        `${TOOLING_SCHEMAS}/${filename}`,
-        releaseHandoffDistributions,
-        `schemas/${filename}`
-      ).map((rule) => ({ ...rule, minify: true }))
-    ),
-    ...QUERY_FILES.flatMap((filename) =>
-      copies(
-        `${TOOLING_SCRIPTS}/${filename}`,
-        portableContractDistributions,
-        `scripts/${filename}`
-      )
-    ),
-    ...copies(
-      skillPath(FULL, "references/release-handoff.md"),
+// its canonical source's bytes. The portable contract requires the fork
+// checker in every portable distribution, so that set is declared, not read
+// from disk, and a deleted copy still counts as drift. fork-maintenance.md
+// copies legitimately differ by their own distribution name, so they stay
+// hand-edited and are compared modulo that name instead.
+const syncRules = (): SyncRule[] => [
+  ...copies(
+    `${TOOLING_SCRIPTS}/setup.ts`,
+    changelogDistributions,
+    "scripts/setup.ts"
+  ),
+  ...PROTOCOL_FILES.flatMap((filename) =>
+    copies(
+      `${TOOLING_SCHEMAS}/${filename}`,
+      releaseHandoffDistributions,
+      `schemas/${filename}`
+    ).map((rule) => ({ ...rule, minify: true }))
+  ),
+  ...QUERY_FILES.flatMap((filename) =>
+    copies(
+      `${TOOLING_SCRIPTS}/${filename}`,
       portableContractDistributions,
-      "references/release-handoff.md"
-    ),
-    ...copies(
-      skillPath(FULL, "references/version-decisions.md"),
-      productVersionDistributions,
-      "references/version-decisions.md"
-    ),
-    ...copies(
-      skillPath(FULL, "references/testing-notes.md"),
-      ["simple-changelogs-mobile"],
-      "references/testing-notes.md"
-    ),
-    ...copies(
-      skillPath(CMS, "schemas/repo-policy.schema.json"),
-      [WEB_CMS],
-      "schemas/repo-policy.schema.json"
-    ),
-    ...copies(
-      skillPath(CMS, "schemas/cms-changelog.schema.json"),
-      [WEB_CMS],
-      "schemas/cms-changelog.schema.json"
-    ),
-    {
-      source: skillPath(CMS, "scripts/lib/schema.ts"),
-      target: skillPath(WEB_CMS, "scripts/lib/cms-schema.ts"),
-    },
-    ...copies(
-      skillPath(FULL, FORK_CHECKER),
-      skillDirectories.filter((directory) =>
-        existsSync(join(root, skillPath(directory, FORK_CHECKER)))
-      ),
-      FORK_CHECKER
-    ),
-  ];
-};
+      `scripts/${filename}`
+    )
+  ),
+  ...copies(
+    skillPath(FULL, "references/release-handoff.md"),
+    portableContractDistributions,
+    "references/release-handoff.md"
+  ),
+  ...copies(
+    skillPath(FULL, "references/version-decisions.md"),
+    productVersionDistributions,
+    "references/version-decisions.md"
+  ),
+  ...copies(
+    skillPath(FULL, "references/testing-notes.md"),
+    ["simple-changelogs-mobile"],
+    "references/testing-notes.md"
+  ),
+  ...copies(
+    skillPath(CMS, "schemas/repo-policy.schema.json"),
+    [WEB_CMS],
+    "schemas/repo-policy.schema.json"
+  ),
+  ...copies(
+    skillPath(CMS, "schemas/cms-changelog.schema.json"),
+    [WEB_CMS],
+    "schemas/cms-changelog.schema.json"
+  ),
+  {
+    source: skillPath(CMS, "scripts/lib/schema.ts"),
+    target: skillPath(WEB_CMS, "scripts/lib/cms-schema.ts"),
+  },
+  ...copies(
+    skillPath(FULL, FORK_CHECKER),
+    portableContractDistributions,
+    FORK_CHECKER
+  ),
+];
 
 export const syncedFiles = async (root: string): Promise<SyncedFile[]> => {
-  const rules = await syncRules(root);
+  const rules = syncRules();
   const sources = new Map(
     await Promise.all(
-      [...new Set(rules.map(({ source }) => source))].map(
-        async (source) =>
-          [source, await readFile(join(root, source), "utf8")] as const
-      )
+      [...new Set(rules.map(({ source }) => source))].map(async (source) => {
+        const path = join(root, source);
+        const [text, metadata] = await Promise.all([
+          readFile(path, "utf8"),
+          stat(path),
+        ]);
+        return [source, { mode: metadata.mode % 0o1000, text }] as const;
+      })
     )
   );
   return rules.map(({ minify, source, target }) => {
-    const text = sources.get(source) ?? "";
-    return { expected: minify ? minifiedJson(text) : text, source, target };
+    const { mode = 0o644, text = "" } = sources.get(source) ?? {};
+    return {
+      expected: minify ? minifiedJson(text) : text,
+      mode,
+      source,
+      target,
+    };
   });
 };
 
@@ -208,8 +216,17 @@ export const syncDistributions = async (
     await Promise.all(
       drifted.map(async (file) => {
         const target = join(root, file.target);
+        const existed = await lstat(target).then(
+          () => true,
+          () => false
+        );
         await mkdir(dirname(target), { recursive: true });
         await writeFile(target, file.expected);
+        // A recreated copy takes the source's permissions, whatever the
+        // umask; an existing copy keeps its own.
+        if (!existed) {
+          await chmod(target, file.mode);
+        }
       })
     );
   }

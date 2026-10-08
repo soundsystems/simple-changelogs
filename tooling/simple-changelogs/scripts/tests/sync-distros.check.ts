@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readFile,
   rm,
+  stat,
   symlink,
   writeFile,
 } from "node:fs/promises";
@@ -224,6 +225,27 @@ describe("sync-distros", () => {
     );
     expect(await read(root, MISSING_COPY)).toBe(
       await read(root, `skills/${CMS}/scripts/lib/schema.ts`)
+    );
+  });
+
+  test("restores a deleted fork checker as an executable copy", async () => {
+    const root = await repositoryCopy();
+    const checker = `skills/${WEB}/scripts/check-fork-sync.sh`;
+    await rm(join(root, checker));
+
+    const checked = await syncDistributions(root, { write: false });
+    expect(checked.drifted.map(({ target }) => target)).toEqual([checker]);
+    expect(checked.inSync).toBe(54);
+
+    await syncDistributions(root, { write: true });
+    expect(await read(root, checker)).toBe(
+      await read(
+        REPOSITORY_ROOT,
+        "skills/simple-changelogs/scripts/check-fork-sync.sh"
+      )
+    );
+    expect((await stat(join(root, checker))).mode % 0o1000).toBe(
+      (await stat(join(REPOSITORY_ROOT, checker))).mode % 0o1000
     );
   });
 
