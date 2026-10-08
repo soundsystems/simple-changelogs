@@ -2172,16 +2172,13 @@ const TAG_TOOLING_FILES: [RegExp, string][] = [
   [/^\.?goreleaser\.ya?ml$/u, "goreleaser"],
   [/^release\.toml$/u, "cargo-release"],
 ];
-const VERSION_COMMAND =
-  /\b(?:npm|pnpm|yarn)\s+version\b|\bbun\s+pm\s+version\b/gu;
-// Plain words joined by `&&` or `;`: no quotes, variables, or other shell
-// syntax, so splitting on the joiners is exact.
-const PLAIN_SCRIPT = /^[\w@%+,./:= \t-]*(?:(?:&&|;)[\w@%+,./:= \t-]*)*$/u;
-const SCRIPT_JOINER = /&&|;/u;
-const SCRIPT_WORD_GAP = /[ \t]+/u;
-const UNTAGGED_VERSION_FLAG = "--no-git-tag-version";
-const TAG_OPTION = /git[-_]tag[-_]version/iu;
-const PACKAGE_MANAGERS = new Set(["npm", "pnpm", "yarn"]);
+const PACKAGE_MANAGER_WORD = /\b(?:npm|pnpm|yarn|bun)\b/iu;
+// A standalone word, so `--version`, `--tags`, and `version-check` do not
+// count; npm also accepts `verison`.
+const VERSION_WORD = /(?<![-\w.:/])ver(?:si|is)on(?![-\w.:])/iu;
+const GIT_WORD = /\bgit\b/iu;
+const TAG_WORD = /(?<![-\w.:/])tag(?![-\w.:])/iu;
+const TAG_SCRIPT_TOOL = "a version or tag script";
 const CARGO_RELEASE_METADATA =
   /^\[(?:package|workspace)\.metadata\.release\]/mu;
 const FASTLANE_TAG = /\badd_git_tag\b/u;
@@ -2320,68 +2317,13 @@ const workspaceMembers = async (root: string): Promise<string[]> => [
   ).flat(),
 ];
 
-// The index after a version command starting at `index`, or -1.
-const versionCommandEnd = (words: string[], index: number): number => {
-  if (
-    PACKAGE_MANAGERS.has(words[index] ?? "") &&
-    words[index + 1] === "version"
-  ) {
-    return index + 2;
-  }
-  return words[index] === "bun" &&
-    words[index + 1] === "pm" &&
-    words[index + 2] === "version"
-    ? index + 3
-    : -1;
-};
-
-// Whether one plain command runs a version command that keeps tagging on, or
-// undefined when it runs none. Only `--no-git-tag-version` itself, after the
-// version command and before any `--`, turns tagging off.
-const plainCommandTags = (words: string[]): boolean | undefined => {
-  const start = words.findIndex(
-    (_, index) => versionCommandEnd(words, index) >= 0
-  );
-  if (start < 0) {
-    return;
-  }
-  const options = words.slice(versionCommandEnd(words, start));
-  const end = options.indexOf("--");
-  return !(end < 0 ? options : options.slice(0, end)).includes(
-    UNTAGGED_VERSION_FLAG
-  );
-};
-
-// A script with a version command counts as tagging unless it is plain words
-// joined by `&&` or `;`, each version command is its command's only one and is
-// followed by `--no-git-tag-version`, and nothing else mentions tagging. Shell
-// arguments are not parsed, so anything less certain counts as tagging and a
-// wrong guess recommends no tags, as before release tags existed.
-const versionScriptTags = (script: string): boolean => {
-  const expected = script.match(VERSION_COMMAND)?.length ?? 0;
-  if (expected === 0) {
-    return false;
-  }
-  if (!PLAIN_SCRIPT.test(script)) {
-    return true;
-  }
-  const commands = script
-    .split(SCRIPT_JOINER)
-    .map((command) => command.trim().split(SCRIPT_WORD_GAP).filter(Boolean));
-  const mentionsTagging = commands.some(
-    (words) =>
-      (words.includes("git") && words.includes("tag")) ||
-      words.some(
-        (word) => word !== UNTAGGED_VERSION_FLAG && TAG_OPTION.test(word)
-      )
-  );
-  const results = commands
-    .map(plainCommandTags)
-    .filter((result) => result !== undefined);
-  return (
-    mentionsTagging || results.length !== expected || results.some(Boolean)
-  );
-};
+// A package script may create tags when it names a package manager and a
+// version command anywhere in it, or `git` and `tag`, whatever lies between
+// or around them. Flags that turn tagging off are not recognized, so such a
+// script recommends no tags, which the user can change.
+const scriptMayTag = (script: string): boolean =>
+  (PACKAGE_MANAGER_WORD.test(script) && VERSION_WORD.test(script)) ||
+  (GIT_WORD.test(script) && TAG_WORD.test(script));
 
 // Release tooling that creates Git tags itself, from manifests, scripts,
 // configuration files, Fastlane, and CI workflow steps.
@@ -2403,10 +2345,10 @@ const tagToolingEvidence = async (
       const scripts = isRecord(manifest?.scripts) ? manifest.scripts : {};
       if (
         Object.values(scripts).some(
-          (script) => typeof script === "string" && versionScriptTags(script)
+          (script) => typeof script === "string" && scriptMayTag(script)
         )
       ) {
-        found.add(`a version script (${manifestPath})`);
+        found.add(`${TAG_SCRIPT_TOOL} (${manifestPath})`);
       }
       const fastfiles = ["fastlane", "ios/fastlane", "android/fastlane"].map(
         (directory) => `${member}${directory}/Fastfile`
@@ -2702,8 +2644,12 @@ const recommendReleaseTags = (
   trains: VersionTrain[]
 ): Pick<ReleaseTagsInspection, "reason" | "recommended"> => {
   if (tooling[0]) {
+    const tool = tooling[0].replace(EVIDENCE_SOURCE, "");
     return {
-      reason: `${tooling[0].replace(EVIDENCE_SOURCE, "")} already creates this repository's tags`,
+      reason:
+        tool === TAG_SCRIPT_TOOL
+          ? `${tool} may already create this repository's tags`
+          : `${tool} already creates this repository's tags`,
       recommended: NO_RELEASE_TAGS,
     };
   }

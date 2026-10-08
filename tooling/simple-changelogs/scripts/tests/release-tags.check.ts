@@ -1165,7 +1165,7 @@ describe("release-tag detection", () => {
         { "ios/fastlane/Fastfile": "lane :beta do\n  add_git_tag\nend\n" },
       ],
       [
-        "a version script",
+        "a version or tag script",
         {
           "apps/web/package.json": JSON.stringify({
             scripts: { release: "npm version minor" },
@@ -1193,40 +1193,35 @@ describe("release-tag detection", () => {
       expect(inspection?.convention).toBe("v{version}");
       expect(inspection?.tooling.join(" ")).toContain(tool);
       expect(inspection?.reason).toEndWith(
-        "already creates this repository's tags"
+        tool === "a version or tag script"
+          ? "may already create this repository's tags"
+          : "already creates this repository's tags"
       );
     }
   });
 
-  test("a version script is tag tooling unless each command turns tagging off", async () => {
+  test("a script naming a version command or git tag is tag tooling", async () => {
     const cases: [string, boolean][] = [
-      ["npm version patch --no-git-tag-version", false],
-      ["bun pm version minor --no-git-tag-version", false],
-      ["CI=1 yarn version --patch --no-git-tag-version", false],
-      [
-        "pnpm version patch --no-git-tag-version && pnpm version minor --no-git-tag-version",
-        false,
-      ],
+      ["npm version minor", true],
+      ["npm -w apps/web version patch", true],
+      ["/usr/local/bin/npm version patch", true],
+      ['npm --message "Release %s; notes" version patch', true],
+      ["pnpm --filter web version patch", true],
+      ["bun pm version minor", true],
+      ["yarn version --new-version 2.0.0", true],
+      ["npm verison patch", true],
       ["npm run build && npm version minor", true],
-      ["npm version patch --no-git-tag-version; npm version minor", true],
-      ["npm version patch --no-git-tag-version --git-tag-version=true", true],
-      ["npm version patch --no-git-tag-version=false", true],
-      ["npm version patch --no-git-tag-version && git tag v1.2.0", true],
-      ["echo --no-git-tag-version && npm version patch", true],
-      ["npm version patch -- --no-git-tag-version", true],
-      ["npx --no-git-tag-version npm version patch", true],
-      ["npm version patch npm version minor --no-git-tag-version", true],
-      // Quotes, variables, and other shell syntax are not parsed, so these
-      // count as tagging and the guess errs toward no tags.
-      ['npm version patch --message "Release %s --no-git-tag-version"', true],
-      [
-        'npm version patch --message "Release %s; notes" --no-git-tag-version',
-        true,
-      ],
-      ["npm version $BUMP --no-git-tag-version", true],
-      ["npm version patch --no-git-tag-version | tee log", true],
-      // Only scripts with a version command are considered.
-      ["git tag --list", false],
+      ["git tag v1.2.0", true],
+      ["/usr/bin/git -C . tag v1.2.0", true],
+      // Turning tagging off is not recognized, so the guess errs toward no
+      // tags, which the user can change.
+      ["npm version patch --no-git-tag-version", true],
+      ["npm --version", false],
+      ["node --version && bun --version", false],
+      ["bun run version-check", false],
+      ["npm run build", false],
+      ["git push --tags", false],
+      ["changeset version", false],
     ];
     const inspections = await Promise.all(
       cases.map(async ([release]) => {
@@ -1245,9 +1240,9 @@ describe("release-tag detection", () => {
       const inspection = inspections[index];
       expect(inspection?.convention).toBe("v{version}");
       expect(inspection?.recommended).toBe(tags ? "none" : "v{version}");
-      expect(inspection?.tooling.join(" ").includes("a version script")).toBe(
-        tags
-      );
+      expect(
+        inspection?.tooling.join(" ").includes("a version or tag script")
+      ).toBe(tags);
     }
   });
 

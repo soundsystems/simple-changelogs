@@ -17,12 +17,12 @@
     changelog headings, falling back to the owner manifest version only when
     no heading names the train; `recommendReleaseTags` recommends the existing
     convention, or `"none"` when release tooling or CI already creates tags.
-    A package script with an `npm`, `pnpm`, `yarn`, or `bun pm` `version`
-    command counts as tag tooling unless it is plain words joined by `&&` or
-    `;`, each version command is followed in its own command by the exact
-    `--no-git-tag-version` token before any `--`, and nothing else mentions
-    tagging. Quotes, variables, and other shell syntax are not parsed, so
-    such a script counts as tagging and a wrong guess recommends no tags.
+    A package script counts as tag tooling when it names a package manager
+    (`npm`, `pnpm`, `yarn`, or `bun`) and a standalone `version` word, or
+    `git` and a standalone `tag` word, anywhere in it; options, paths, and
+    quotes around them do not matter. Flags that turn tagging off are not
+    recognized, so such a script recommends no tags with a reason saying it
+    may already create them, and the user can change the choice.
     Trains come from `versionOwnersIn`, which uses the classify owner model:
     same-named owners in different directories stay separate. The app train
     that shared version lines know by that name keeps it, or else the first
@@ -55,9 +55,9 @@
   `distributions.check.ts` enforces the form. Each distribution saves 30,950
   bytes with canonical digests unchanged.
 - The support budget rose from 256 KiB to 384 KiB, approved by the user on
-  2026-10-07. Measured at release: support files Web+CMS 284,187 bytes, full
-  267,556, mobile 267,566, Web 267,555, skill-maintainer 267,616, CMS-only
-  222,485. The guidance budget stays at 224 KiB (full Markdown 216,599). When
+  2026-10-07. Measured at release: support files Web+CMS 282,477 bytes, full
+  265,846, mobile 265,856, Web 265,845, skill-maintainer 265,906, CMS-only
+  220,775. The guidance budget stays at 224 KiB (full Markdown 216,599). When
   the support budget binds again, move distribution-specific code into a
   module only those distributions ship before raising it.
 - Versioning: releases are numbered `0.<guidance>.<patch>`, so this release

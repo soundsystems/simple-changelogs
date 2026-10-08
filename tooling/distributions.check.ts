@@ -24,8 +24,8 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // by the user on 2026-10-07): the protocol schemas each distribution vendors
 // must stay byte-identical with Simple Changes, which ships them minified, and
 // scripts are executed, not read into context. Measured on that branch with
-// minified schemas: support files Web+CMS 284,187 bytes, full 267,556, mobile
-// 267,566, Web 267,555, skill-maintainer 267,616, CMS-only 222,485. When the
+// minified schemas: support files Web+CMS 282,477 bytes, full 265,846, mobile
+// 265,856, Web 265,845, skill-maintainer 265,906, CMS-only 220,775. When the
 // support budget binds, prefer moving distribution-specific code into a module
 // only those distributions ship before raising again.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
