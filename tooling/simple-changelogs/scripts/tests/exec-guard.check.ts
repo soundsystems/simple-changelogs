@@ -167,7 +167,6 @@ describe("exec guard", () => {
       ["rg", "merge", "tooling"],
       ["git", "status"],
       ["git", "fetch", "origin"],
-      ["git", "pull", "--ff-only"],
       ["git", "-c", "alias.lg=log", "lg", "-1"],
       ["git", "push", "origin", "feature"],
       ["git", "push", "origin", "v1.0.0"],
@@ -181,6 +180,8 @@ describe("exec guard", () => {
       ["gh", "api", "--paginate", "-H", "Accept: x", "repos/o/r/pulls/7/merge"],
       ["gh", "api", "graphql", "-f", "query=query { viewer { login } }"],
       ["gh", "--repo", "o/r", "pr", "view", "3"],
+      ["glab", "mr", "list", "--search", "merge"],
+      ["gh", "pr", "list", "--search", "merge"],
       ["sh", "-c", "echo merged.json"],
       ["env", "A=1", "git", "status"],
     ]) {
@@ -455,16 +456,14 @@ describe("exec guard", () => {
       ["git", "merge", "--no-ff", "-m", "Merge feature", "feature"],
       "git merge into main"
     );
-    refused(
-      repo,
-      ["git", "pull", "origin", "feature"],
-      "only git pull --ff-only"
-    );
-    refused(
-      repo,
+    for (const argv of [
+      ["git", "pull"],
+      ["git", "pull", "--ff-only"],
+      ["git", "pull", "--ff-only", "--ff", "--no-rebase", "origin", "feature"],
       ["git", "-c", "branch.main.merge=refs/heads/feature", "pull", "origin"],
-      "only git pull --ff-only"
-    );
+    ]) {
+      refused(repo, argv, "git pull does not run on main");
+    }
     refused(
       repo,
       ["git", "merge", "--abort", "--no-abort", "feature"],

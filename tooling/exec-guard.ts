@@ -24,25 +24,25 @@
 //   and so is a push whose dry run fails, one with `--`, and one whose last
 //   argument is an option;
 // - `git merge` while the target branch is checked out, for each merged
-//   revision (MERGE_HEAD for --continue, the upstream with no revision); on
-//   the target branch only `git pull --ff-only` runs;
+//   revision (MERGE_HEAD for --continue, the upstream with no revision); no
+//   `git pull` runs on the target branch;
 // - `git send-pack`, `git http-push`, `git subtree push|pull|merge`, and a
 //   Git alias that expands to a push, merge, or pull are refused.
 //
-// Boundary: the guard reads the exec argv. It inherits the environment the
-// command runs with, and it refuses `env` assignments to GIT_ variables and
-// provider merges that repeat their method, sha, or head option rather than
-// model which one the CLI keeps: anything it cannot read as one plain value
-// is refused. Another program whose arguments
-// read as a Git or provider merge or push (a shell `-c` script, `timeout`,
-// `bunx`) is refused; a merge hidden inside a script or package task is not
-// seen, and only commands run through `loop exec` are guarded at all. Local
-// branch moves other than `git merge` and `git pull` (commit, reset, rebase)
-// are not gated; the push that publishes them is. Refs can move between the
-// guard and the command it allowed, and host branch protection remains the
-// control for provider API writes the guard does not list. A receipt proves
-// the head passed `bun run check`; a merge result equals that head only when
-// the head already contains the target tip.
+// Boundary: the guard reads the exec argv and fails safe: whatever it cannot
+// read as one plain value (a repeated method, sha, or head option; an `env`
+// assignment to a GIT_ variable; a body from a file) is refused rather than
+// modeled, and it inherits the environment the command runs with. Another
+// program whose arguments read as a Git or provider merge or push (a shell
+// `-c` script, `timeout`, `bunx`) is refused; a merge hidden inside a script
+// or package task is not seen, and only commands run through `loop exec` are
+// guarded at all. Local branch moves other than `git merge` and `git pull`
+// (commit, reset, rebase) are not gated; the push that publishes them is.
+// Refs can move between the guard and the command it allowed, and host
+// branch protection remains the control for provider API writes the guard
+// does not list. A receipt proves the head passed `bun run check`; a merge
+// result equals that head only when the head already contains the target
+// tip.
 
 import { basename } from "node:path";
 import { spawnSync } from "bun";
@@ -119,6 +119,8 @@ const MERGE_VALUE_OPTIONS = new Set([
   "--strategy-option",
 ]);
 const API_FIELD_OPTIONS = ["-F", "-f", "--field", "--raw-field"];
+// glab and gh options before a subcommand that take a value.
+const PROVIDER_VALUE_OPTIONS = new Set(["-R", "--hostname", "--repo"]);
 
 const runGit = (context: GitContext, args: string[]) =>
   spawnSync({
@@ -279,17 +281,13 @@ const gitMerge = (context: GitContext, args: string[]): Gate => {
   return requireReceipts(context, `git merge into ${target}`, revisions);
 };
 
-// On the target branch only a fast-forward-only pull runs; configuration can
-// make any other pull merge another branch, so fetch and git merge instead.
-const gitPull = (context: GitContext, args: string[]): Gate => {
+// Options and configuration decide what a pull merges, so no pull runs on
+// the target branch; fetch and run git merge, which the guard checks.
+const gitPull = (context: GitContext): Gate => {
   const target = targetBranch(context);
-  return currentBranch(context) === target &&
-    !(
-      args.includes("--ff-only") &&
-      !args.some((arg) => arg.startsWith("--no-ff"))
-    )
+  return currentBranch(context) === target
     ? refuse(
-        `on ${target}, only git pull --ff-only runs; fetch and run git merge, which the guard checks`
+        `git pull does not run on ${target}; fetch and run git merge, which the guard checks`
       )
     : ALLOW;
 };
@@ -310,7 +308,7 @@ const git = (checkout: string, args: string[]): Gate => {
       return gitMerge(context, rest);
     }
     case "pull": {
-      return gitPull(context, rest);
+      return gitPull(context);
     }
     case "http-push":
     case "send-pack": {
@@ -482,10 +480,15 @@ const providerMerge = (
   if (endpoint !== undefined) {
     return apiMerge(context, args, endpoint, provider.label);
   }
-  const noun = args.indexOf(provider.noun);
+  // The merge subcommand directly follows its noun among the positional
+  // arguments, so `mr list --search merge` is not a merge.
+  const words = positionals(args, PROVIDER_VALUE_OPTIONS);
   if (
-    noun !== -1 &&
-    args.slice(noun + 1).some((arg) => provider.merge.includes(arg))
+    words.some(
+      (word, index) =>
+        word === provider.noun &&
+        provider.merge.includes(words[index + 1] ?? "")
+    )
   ) {
     const sha = optionValue(args, provider.headOption);
     const label = `${provider.label} ${provider.noun} merge`;
