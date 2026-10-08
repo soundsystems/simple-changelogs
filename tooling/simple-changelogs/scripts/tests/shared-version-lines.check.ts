@@ -17,6 +17,14 @@ const temporaryPaths: string[] = [];
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
   temporaryPaths.push(path);
+  if (label === "config") {
+    // An answered (empty) personal authoring sidecar keeps the authoring
+    // question out of these notices; setup-authoring.check.ts covers it.
+    await writeFile(
+      join(path, "authoring.json"),
+      `${JSON.stringify({ harnesses: {}, roles: {}, schemaVersion: 1 })}\n`
+    );
+  }
   return path;
 };
 
@@ -416,7 +424,7 @@ describe("guidance 22 version-line notice", () => {
 
     expect(inspection.status).toBe("already-configured");
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 25,
+      currentVersion: 26,
       questions: ["shared-version-lines", "release-tags"],
       recordedVersion: 21,
       userPrompt: null,
@@ -449,7 +457,7 @@ describe("guidance 22 version-line notice", () => {
     );
 
     for (const inspection of inspections) {
-      expect(inspection.guidanceUpdate?.currentVersion).toBe(25);
+      expect(inspection.guidanceUpdate?.currentVersion).toBe(26);
       expect(inspection.guidanceUpdate?.questions).toEqual(["release-tags"]);
     }
   });
@@ -468,7 +476,7 @@ describe("guidance 22 version-line notice", () => {
       repo,
     });
 
-    expect(inspection.guidanceUpdate?.currentVersion).toBe(25);
+    expect(inspection.guidanceUpdate?.currentVersion).toBe(26);
     expect(inspection.guidanceUpdate?.questions).toEqual(["release-tags"]);
   });
 
@@ -504,7 +512,7 @@ describe("guidance 22 version-line notice", () => {
     expect(policy.sharedVersionLines).toEqual(catchUpLine());
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(after.guidanceUpdate).toBeNull();
   });

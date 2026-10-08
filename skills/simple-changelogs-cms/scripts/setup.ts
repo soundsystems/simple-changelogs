@@ -95,12 +95,31 @@ const GUIDANCE_BACKFILL_RECOMMENDATIONS = [
 ] as const;
 const POLICY_FILENAME = ".simple-changelogs.json";
 const CMS_POLICY_FILENAME = ".simple-changelogs-cms.json";
+// Authoring preferences live in sidecars beside the policy, never inside it:
+// the policy and profile validators reject unknown keys, so a new key there
+// would stop every older installed copy.
+const AUTHORING_FILENAME = ".simple-changelogs-authoring.json";
+const PERSONAL_AUTHORING_FILENAME = "authoring.json";
+const AUTHORING_ROLE = "release-notes";
+const AUTHORING_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+const DEFAULT_AUTHORING_EFFORT = "xhigh";
+const MOST_CAPABLE_MODEL = "most-capable";
+const RUNNING_HARNESS = "running";
+const UNKNOWN_HARNESS = "unknown";
+const HARNESS_ID = /^[a-z0-9][a-z0-9-]{0,39}$/u;
+const MODEL_NAME_MAX = 120;
+const HARNESS_NAME_MAX = 60;
+const ENVIRONMENT_NAME = /^[A-Z_][A-Z0-9_]*$/u;
+// A relative path: no leading separator or drive letter and no `..` segment.
+const HOME_ROOT = /^(?![/\\])(?![A-Za-z]:)(?!(?:.*[/\\])?\.\.(?:[/\\]|$)).+$/u;
 const DEFAULT_CMS_CHANGELOG = "CMS_CHANGELOG.json";
 const SETUP_TRANSACTION_FILENAME = ".simple-changelogs.setup-transaction.json";
 const NON_DESTINATION_FILES = new Set([
   POLICY_FILENAME,
   CMS_POLICY_FILENAME,
   SETUP_TRANSACTION_FILENAME,
+  // Configuration whose name contains "changelogs", never a destination.
+  AUTHORING_FILENAME,
 ]);
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
@@ -285,7 +304,7 @@ type SetupStatus =
 
 // Every distribution shares one guidance number, and each family release is
 // numbered 0.<guidance>.<patch>, so a distribution may jump straight to it.
-const GUIDANCE_VERSION = 25;
+const GUIDANCE_VERSION = 26;
 // The web-cms distribution records the CMS side of its policy on a separate
 // guidance track from the standalone CMS distribution.
 const WEB_CMS_CMS_GUIDANCE_VERSION = 2;
@@ -305,6 +324,7 @@ const DISTRIBUTION_DIRECTORIES = {
 const MOBILE_PLACEMENT_MIN_GUIDANCE = 6;
 const SHARED_VERSION_LINES_GUIDANCE = 22;
 const RELEASE_TAGS_GUIDANCE = 25;
+const AUTHORING_GUIDANCE = 26;
 
 export interface CurationBudget {
   max: number;
@@ -460,6 +480,7 @@ type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
 
 interface WriteRecord {
   kind:
+    | "authoring"
     | "changelog"
     | "cms-changelog"
     | "cms-policy"
@@ -471,9 +492,16 @@ interface WriteRecord {
 }
 
 export interface SetupResult {
+  authoring: AuthoringInspection;
+  authoringFiles: {
+    personal: StateRecord<AuthoringSidecar>;
+    repository: StateRecord<AuthoringSidecar>;
+  };
+  authoringQuestion: AuthoringQuestionState;
   capabilities: IntegrationCapabilities | null;
   cmsPolicy: StateRecord<CmsPolicy> | null;
   command: "apply" | "inspect";
+  detectedHarnesses: DetectedHarness[];
   detection: Detection;
   errors: string[];
   globalPreferences: StateRecord<GlobalPreferences>;
@@ -510,7 +538,10 @@ export interface ReleaseTagsInspection {
   trains: string[];
 }
 
-type GuidanceQuestion = "release-tags" | "shared-version-lines";
+type GuidanceQuestion =
+  | "authoring-models"
+  | "release-tags"
+  | "shared-version-lines";
 
 export interface GuidanceUpdateNotice {
   actions: ("walkthrough" | "continue" | "view-release-notes")[];
@@ -538,6 +569,7 @@ export interface OnboardingContribution {
   owner: "simple-changelogs";
   questions: {
     id:
+      | "authoring-models"
       | "major-release-naming"
       | "public-version-actions"
       | "public-version-suggestions"
@@ -559,6 +591,66 @@ export interface OwnerWriteReceipt {
   policyDigest: string | null;
   status: "completed" | "not-requested";
   written: boolean;
+}
+
+type AuthoringEffort = (typeof AUTHORING_EFFORTS)[number];
+type AuthoringLayer = "default" | "personal" | "repository";
+type AuthoringQuestionState =
+  | "answered"
+  | "not-applicable"
+  | "pending"
+  | "repair";
+
+interface AuthoringHarnessEntry {
+  effort?: AuthoringEffort;
+  model: string;
+}
+
+interface AuthoringRoleEntry {
+  effort?: AuthoringEffort;
+  harness: string;
+  model?: string;
+}
+
+export interface AuthoringSidecar {
+  harnesses: Record<string, AuthoringHarnessEntry | null>;
+  roles: { "release-notes"?: AuthoringRoleEntry };
+  schemaVersion: 1;
+}
+
+interface HarnessDefinition {
+  homeRoots: string[];
+  id: string;
+  name: string;
+  sessionEnv: string[];
+}
+
+export interface DetectedHarness {
+  evidence: string[];
+  id: string;
+  name: string;
+}
+
+export interface AuthoringRoleResolution {
+  effort: AuthoringEffort;
+  // A harness id, or "unknown" when the running harness cannot be identified.
+  harness: string;
+  // A model name or the "most-capable" sentinel the agent resolves at run time.
+  model: string;
+  status: "most-capable" | "no-delegation" | "resolved" | "unresolved";
+}
+
+export interface AuthoringInspection {
+  effective: { "release-notes": AuthoringRoleResolution };
+  source: {
+    "release-notes": {
+      effort: AuthoringLayer;
+      harness: AuthoringLayer;
+      model: AuthoringLayer;
+      // The file of the highest layer that supplied any field, or null.
+      path: string | null;
+    };
+  };
 }
 
 // The CMS-only distribution advertises the handoff without the public-version
@@ -589,12 +681,20 @@ export interface IntegrationCapabilities {
 export interface InspectOptions {
   configDirectory?: string;
   distribution?: Distribution | "cms";
+  // Detection inputs, for tests and automation: the environment read for
+  // session variables and SIMPLE_CHANGELOGS_HARNESS_ROOTS, and the harness
+  // data file (the installed agents/harnesses.json by default).
+  environment?: Record<string, string | undefined>;
+  harnessDataPath?: string;
   repo: string;
   taskMode?: TaskMode;
 }
 
 export interface ApplyOptions extends InspectOptions {
   auditVerified?: boolean;
+  // A standalone transaction: JSON text, `@path` to a JSON file, or the
+  // parsed sidecar. It writes only the authoring sidecar for --scope.
+  authoring?: unknown;
   backfillStatus?: BackfillStatus;
   cmsAuthProven?: boolean;
   cmsChangelog?: string;
@@ -1543,6 +1643,475 @@ const readState = async <T>(
       state: "malformed",
     };
   }
+};
+
+// Authoring preferences: which model should write release notes, recorded per
+// coding agent ("harness") in a sidecar. A preference only: it grants no
+// authority, never names the signer, and stores no model list or launch
+// mechanics. Harness names and their detection evidence are data in the
+// installed agents/harnesses.json, so this helper names no harness.
+
+// C0 controls (newlines included), DEL, and C1 controls.
+const hasControlCharacter = (value: string): boolean =>
+  [...value].some((character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
+
+const isHarnessId = (value: unknown): value is string =>
+  typeof value === "string" && HARNESS_ID.test(value);
+
+// Lengths count Unicode characters (code points), as JSON Schema does.
+const characterCount = (value: string): number => [...value].length;
+
+const isModelName = (value: unknown): value is string =>
+  typeof value === "string" &&
+  characterCount(value) >= 1 &&
+  characterCount(value) <= MODEL_NAME_MAX &&
+  !hasControlCharacter(value);
+
+const keyErrors = (
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[],
+  path: string
+): string[] => [
+  ...required
+    .filter((key) => !Object.hasOwn(value, key))
+    .map((key) => `${path}.${key} is required`),
+  ...Object.keys(value)
+    .filter((key) => !(required.includes(key) || optional.includes(key)))
+    .map((key) => `${path}.${key} is not allowed`),
+];
+
+const authoringValueErrors = (
+  value: Record<string, unknown>,
+  path: string
+): string[] => {
+  const errors: string[] = [];
+  if (Object.hasOwn(value, "model") && !isModelName(value.model)) {
+    errors.push(
+      `${path}.model must be a model name of 1 to ${MODEL_NAME_MAX} characters without control characters`
+    );
+  }
+  if (value.effort !== undefined && !oneOf(value.effort, AUTHORING_EFFORTS)) {
+    errors.push(
+      `${path}.effort must be one of ${AUTHORING_EFFORTS.join(", ")}`
+    );
+  }
+  return errors;
+};
+
+const authoringRoleErrors = (role: string, value: unknown): string[] => {
+  const path = `roles.${role}`;
+  if (role !== AUTHORING_ROLE) {
+    return [`${path} is not a Simple Changelogs role (${AUTHORING_ROLE})`];
+  }
+  if (!isRecord(value)) {
+    return [`${path} must be an object`];
+  }
+  const errors = [
+    ...keyErrors(value, ["harness"], ["model", "effort"], path),
+    ...authoringValueErrors(value, path),
+  ];
+  const { harness } = value;
+  if (
+    Object.hasOwn(value, "harness") &&
+    !(harness === RUNNING_HARNESS || isHarnessId(harness))
+  ) {
+    errors.push(`${path}.harness must be "running" or a harness id`);
+  }
+  if (Object.hasOwn(value, "model") && harness === RUNNING_HARNESS) {
+    errors.push(
+      `${path}.model requires a concrete harness id, never "running"`
+    );
+  }
+  return errors;
+};
+
+const authoringHarnessErrors = (id: string, value: unknown): string[] => {
+  const path = `harnesses.${id}`;
+  const errors = isHarnessId(id)
+    ? []
+    : [`${path} is not a harness id (${HARNESS_ID.source})`];
+  if (value === null) {
+    return errors;
+  }
+  if (!isRecord(value)) {
+    return [...errors, `${path} must be null or an object`];
+  }
+  return [
+    ...errors,
+    ...keyErrors(value, ["model"], ["effort"], path),
+    ...authoringValueErrors(value, path),
+  ];
+};
+
+const recordEntryErrors = (
+  value: Record<string, unknown>,
+  key: "harnesses" | "roles",
+  check: (id: string, entry: unknown) => string[]
+): string[] => {
+  if (!Object.hasOwn(value, key)) {
+    return [];
+  }
+  const entries = value[key];
+  return isRecord(entries)
+    ? Object.entries(entries).flatMap(([id, entry]) => check(id, entry))
+    : [`${key} must be an object`];
+};
+
+/**
+ * Validates one authoring sidecar on its own: exact keys at every level,
+ * schemaVersion 1, the release-notes role only, harness ids by pattern, model
+ * names by shape (never against a list), and the effort enum, `max`
+ * included (onboarding is where an explicit choice is enforced). A role-level
+ * model needs a concrete harness id. Every error names its path.
+ */
+export const validateAuthoring = (
+  value: unknown,
+  label = "authoring sidecar"
+): { errors: string[]; value?: AuthoringSidecar } => {
+  if (!isRecord(value)) {
+    return { errors: [`${label} must be a JSON object`] };
+  }
+  const errors = [
+    ...keyErrors(value, ["schemaVersion", "roles", "harnesses"], [], label),
+    ...recordEntryErrors(value, "roles", authoringRoleErrors),
+    ...recordEntryErrors(value, "harnesses", authoringHarnessErrors),
+  ];
+  if (Object.hasOwn(value, "schemaVersion") && value.schemaVersion !== 1) {
+    errors.push(`${label}.schemaVersion must be 1`);
+  }
+  return errors.length === 0
+    ? { errors, value: value as unknown as AuthoringSidecar }
+    : { errors };
+};
+
+// Every copy reads only its own package's agents/harnesses.json (the
+// canonical tooling copy has its own, which sync-distros copies to every
+// distribution), so a missing file fails closed instead of borrowing another.
+const harnessDataPath = (): string =>
+  resolve(import.meta.dir, "..", "agents", "harnesses.json");
+
+const harnessDefinitionErrors = (id: string, value: unknown): string[] => {
+  const path = `harnesses.${id}`;
+  if (!(isHarnessId(id) && isRecord(value))) {
+    return [`${path} must be a harness id with an object value`];
+  }
+  const errors = keyErrors(
+    value,
+    ["name", "homeRoots", "sessionEnv"],
+    [],
+    path
+  );
+  if (
+    !(
+      typeof value.name === "string" &&
+      characterCount(value.name) >= 1 &&
+      characterCount(value.name) <= HARNESS_NAME_MAX &&
+      !hasControlCharacter(value.name)
+    )
+  ) {
+    errors.push(`${path}.name must be 1 to ${HARNESS_NAME_MAX} characters`);
+  }
+  const roots = value.homeRoots;
+  if (
+    !(
+      Array.isArray(roots) &&
+      new Set(roots).size === roots.length &&
+      roots.every((root) => typeof root === "string" && HOME_ROOT.test(root))
+    )
+  ) {
+    errors.push(`${path}.homeRoots must be distinct relative paths without ..`);
+  }
+  const names = value.sessionEnv;
+  if (
+    !(
+      Array.isArray(names) &&
+      new Set(names).size === names.length &&
+      names.every(
+        (name) => typeof name === "string" && ENVIRONMENT_NAME.test(name)
+      )
+    )
+  ) {
+    errors.push(
+      `${path}.sessionEnv must list distinct environment variable names`
+    );
+  }
+  return errors;
+};
+
+/**
+ * Reads and validates the harness data file. It fails closed: a missing or
+ * malformed file throws a clear error and never yields partial data.
+ */
+export const loadHarnesses = async (
+  path: string = harnessDataPath()
+): Promise<HarnessDefinition[]> => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+  } catch (error) {
+    throw new Error(
+      `The harness data file ${path} is missing or unreadable (${stringifyError(error)}); reinstall the skill.`,
+      { cause: error }
+    );
+  }
+  const errors =
+    isRecord(parsed) && isRecord(parsed.harnesses)
+      ? [
+          ...keyErrors(parsed, ["schemaVersion", "harnesses"], [], "data"),
+          ...(parsed.schemaVersion === 1
+            ? []
+            : ["data.schemaVersion must be 1"]),
+          ...Object.entries(parsed.harnesses).flatMap(([id, value]) =>
+            harnessDefinitionErrors(id, value)
+          ),
+        ]
+      : ["it must be an object with schemaVersion 1 and harnesses"];
+  if (errors.length > 0 || !(isRecord(parsed) && isRecord(parsed.harnesses))) {
+    throw new Error(
+      `The harness data file ${path} is malformed: ${errors.join("; ")}`
+    );
+  }
+  return Object.entries(parsed.harnesses).map(([id, value]) => {
+    const entry = value as Omit<HarnessDefinition, "id">;
+    return {
+      homeRoots: entry.homeRoots,
+      id,
+      name: entry.name,
+      sessionEnv: entry.sessionEnv,
+    };
+  });
+};
+
+/**
+ * Read-only detection: the running harness is the first one in data-file
+ * order whose session variable is set; each home root counts only by
+ * existence, and nothing inside it is read. SIMPLE_CHANGELOGS_HARNESS_ROOTS
+ * replaces the home directory for tests and automation. No network, process
+ * list, or other tool's configuration is consulted.
+ */
+export const detectHarnesses = (
+  definitions: HarnessDefinition[],
+  environment: Record<string, string | undefined> = process.env
+): { detected: DetectedHarness[]; running: string | null } => {
+  const override = environment.SIMPLE_CHANGELOGS_HARNESS_ROOTS?.trim();
+  const base = override ? resolve(override) : homedir();
+  const sessionVariable = (definition: HarnessDefinition) =>
+    definition.sessionEnv.find((name) => Boolean(environment[name]?.trim()));
+  const running =
+    definitions.find((definition) => sessionVariable(definition))?.id ?? null;
+  const detected: DetectedHarness[] = [];
+  for (const definition of definitions) {
+    const evidence: string[] = [];
+    const variable = sessionVariable(definition);
+    if (definition.id === running && variable) {
+      evidence.push(`running session (${variable})`);
+    }
+    for (const root of definition.homeRoots) {
+      if (existsSync(join(base, root))) {
+        evidence.push(
+          override
+            ? `harness root (${join(base, root)})`
+            : `home directory (~/${root})`
+        );
+      }
+    }
+    if (evidence.length > 0) {
+      detected.push({ evidence, id: definition.id, name: definition.name });
+    }
+  }
+  return { detected, running };
+};
+
+/**
+ * Both sidecar paths: the repository file beside the policy, and the personal
+ * file in the same directory as preferences.json.
+ */
+export const resolveAuthoringPaths = (
+  repo: string,
+  configDirectory?: string
+): { personal: string; repository: string } => ({
+  personal: join(
+    dirname(resolveGlobalPreferencesPath(configDirectory)),
+    PERSONAL_AUTHORING_FILENAME
+  ),
+  repository: join(resolve(repo), AUTHORING_FILENAME),
+});
+
+interface AuthoringSourceRef {
+  layer: AuthoringLayer;
+  path: string | null;
+}
+
+const DEFAULT_AUTHORING_SOURCE: AuthoringSourceRef = {
+  layer: "default",
+  path: null,
+};
+const AUTHORING_LAYER_RANK: Record<AuthoringLayer, number> = {
+  default: 0,
+  personal: 1,
+  repository: 2,
+};
+
+/**
+ * Resolves the release-notes role from the valid sidecars, highest layer
+ * first (repository, then personal, then the built-in default). The role and
+ * each harness entry replace whole; `running` becomes the running harness or
+ * `unknown`; the model and effort come from the role, else the target's
+ * entry, else `most-capable` at `xhigh`; a `null` entry means no delegation.
+ * Current request direction outranks every layer and is applied by the agent.
+ */
+export const resolveAuthoring = (
+  layers: {
+    layer: "personal" | "repository";
+    path: string;
+    value: AuthoringSidecar;
+  }[],
+  runningHarness: string | null
+): AuthoringInspection => {
+  const roleLayer = layers.find((layer) =>
+    Object.hasOwn(layer.value.roles, AUTHORING_ROLE)
+  );
+  const role: AuthoringRoleEntry = roleLayer?.value.roles[AUTHORING_ROLE] ?? {
+    harness: RUNNING_HARNESS,
+  };
+  const roleSource: AuthoringSourceRef = roleLayer
+    ? { layer: roleLayer.layer, path: roleLayer.path }
+    : DEFAULT_AUTHORING_SOURCE;
+  // null when the role targets the running harness and nothing identifies
+  // it; a concrete id (even one spelled "unknown") is always looked up.
+  const target =
+    role.harness === RUNNING_HARNESS ? runningHarness : role.harness;
+  const harness = target ?? UNKNOWN_HARNESS;
+  const entryLayer =
+    target === null
+      ? undefined
+      : layers.find((layer) => Object.hasOwn(layer.value.harnesses, target));
+  // undefined: no layer records the harness; null: "do not guide this".
+  const entry = entryLayer?.value.harnesses[harness];
+  const entrySource: AuthoringSourceRef = entryLayer
+    ? { layer: entryLayer.layer, path: entryLayer.path }
+    : DEFAULT_AUTHORING_SOURCE;
+  let modelSource = DEFAULT_AUTHORING_SOURCE;
+  if (role.model !== undefined) {
+    modelSource = roleSource;
+  } else if (entry !== undefined) {
+    modelSource = entrySource;
+  }
+  let effortSource = DEFAULT_AUTHORING_SOURCE;
+  if (role.effort !== undefined) {
+    effortSource = roleSource;
+  } else if (entry === null || entry?.effort !== undefined) {
+    effortSource = entrySource;
+  }
+  const model = role.model ?? entry?.model ?? MOST_CAPABLE_MODEL;
+  let status: AuthoringRoleResolution["status"] = "resolved";
+  if (target === null) {
+    status = "unresolved";
+  } else if (entry === null) {
+    status = "no-delegation";
+  } else if (model === MOST_CAPABLE_MODEL) {
+    status = "most-capable";
+  }
+  const sources = [roleSource, modelSource, effortSource];
+  return {
+    effective: {
+      [AUTHORING_ROLE]: {
+        effort: role.effort ?? entry?.effort ?? DEFAULT_AUTHORING_EFFORT,
+        harness,
+        model,
+        status,
+      },
+    },
+    source: {
+      [AUTHORING_ROLE]: {
+        effort: effortSource.layer,
+        harness: roleSource.layer,
+        model: modelSource.layer,
+        path: sources.reduce((best, candidate) =>
+          AUTHORING_LAYER_RANK[candidate.layer] >
+          AUTHORING_LAYER_RANK[best.layer]
+            ? candidate
+            : best
+        ).path,
+      },
+    },
+  };
+};
+
+interface AuthoringState {
+  authoring: AuthoringInspection;
+  authoringFiles: SetupResult["authoringFiles"];
+  authoringQuestion: AuthoringQuestionState;
+  detectedHarnesses: DetectedHarness[];
+  // A missing or malformed harness data file, reported and never guessed.
+  errors: string[];
+}
+
+/**
+ * Pending is a property of validated files, not of guidance: write tasks on
+ * this checkpoint ask until a valid sidecar (an empty one counts) exists at
+ * either scope; a malformed one is reported for repair and never treated as
+ * an answer; read-only tasks never ask.
+ */
+const authoringQuestionFor = (
+  taskMode: TaskMode,
+  files: SetupResult["authoringFiles"]
+): AuthoringQuestionState => {
+  if (taskMode === "read") {
+    return "not-applicable";
+  }
+  const states = [files.repository.state, files.personal.state];
+  if (states.includes("malformed")) {
+    return "repair";
+  }
+  // Every copy that carries this helper is at or above AUTHORING_GUIDANCE,
+  // the checkpoint that introduced the question.
+  return states.includes("valid") ? "answered" : "pending";
+};
+
+const inspectAuthoring = async (
+  root: string,
+  options: InspectOptions,
+  taskMode: TaskMode
+): Promise<AuthoringState> => {
+  let definitions: HarnessDefinition[] = [];
+  const errors: string[] = [];
+  try {
+    definitions = await loadHarnesses(options.harnessDataPath);
+  } catch (error) {
+    errors.push(stringifyError(error));
+  }
+  const { detected, running } = detectHarnesses(
+    definitions,
+    options.environment ?? process.env
+  );
+  const paths = resolveAuthoringPaths(root, options.configDirectory);
+  const [repository, personal] = await Promise.all([
+    readState(paths.repository, (value) =>
+      validateAuthoring(value, "repository authoring sidecar")
+    ),
+    readState(paths.personal, (value) =>
+      validateAuthoring(value, "personal authoring sidecar")
+    ),
+  ]);
+  const authoringFiles = { personal, repository };
+  const layers = [
+    { layer: "repository" as const, record: repository },
+    { layer: "personal" as const, record: personal },
+  ].flatMap(({ layer, record }) =>
+    record.value ? [{ layer, path: record.path, value: record.value }] : []
+  );
+  return {
+    authoring: resolveAuthoring(layers, running),
+    authoringFiles,
+    authoringQuestion: authoringQuestionFor(taskMode, authoringFiles),
+    detectedHarnesses: detected,
+    errors,
+  };
 };
 
 const countReleasedHeadings = async (path: string): Promise<number> => {
@@ -3148,7 +3717,8 @@ const onboardingContributionFor = (
   installed: Distribution | "cms",
   policy: StateRecord<RepoPolicy>,
   recommendation: Recommendation,
-  releaseTags: ReleaseTagsInspection | null
+  releaseTags: ReleaseTagsInspection | null,
+  authoringPending = false
 ): OnboardingContribution | null => {
   if (installed === "cms" || policy.state !== "absent" || !releaseTags) {
     return null;
@@ -3167,6 +3737,10 @@ const onboardingContributionFor = (
     questions.push({ id: "public-version-suggestions", required: true });
   }
   questions.push({ id: "release-tags", required: true });
+  // Optional, so coordinated onboarding forwards it after its own questions.
+  if (authoringPending) {
+    questions.push({ id: "authoring-models", required: false });
+  }
   return {
     destination: POLICY_FILENAME,
     owner: "simple-changelogs",
@@ -3351,7 +3925,8 @@ const guidanceQuestionsFor = (
   notice: GuidanceUpdateNotice,
   inventory: Inventory,
   policy: RepoPolicy | undefined,
-  releaseTags: ReleaseTagsInspection | null
+  releaseTags: ReleaseTagsInspection | null,
+  authoringPending: boolean
 ): GuidanceQuestion[] => {
   const questions: GuidanceQuestion[] = [];
   if (
@@ -3368,7 +3943,31 @@ const guidanceQuestionsFor = (
   ) {
     questions.push("release-tags");
   }
+  // Asked while no valid sidecar exists, never retired by acknowledgement.
+  if (authoringPending) {
+    questions.push("authoring-models");
+  }
   return questions;
+};
+
+// The authoring question is asked before preference scope and, like every
+// other choice, before the released-history question, which stays last.
+const withAuthoringQuestion = (
+  questions: string[],
+  pending: boolean
+): string[] => {
+  if (!pending) {
+    return questions;
+  }
+  const before = ["preference-scope", "released-history-audit"]
+    .map((question) => questions.indexOf(question))
+    .find((index) => index >= 0);
+  const at = before ?? questions.length;
+  return [
+    ...questions.slice(0, at),
+    "authoring-models",
+    ...questions.slice(at),
+  ];
 };
 
 export const inspectRepository = async (
@@ -3385,21 +3984,30 @@ export const inspectRepository = async (
     installed === "cms"
       ? { apps: undefined, releases: null }
       : await versionOwnersIn(root);
-  const [policy, cmsPolicy, globalPreferences, inventory, capabilities] =
-    await Promise.all([
-      readState(join(root, POLICY_FILENAME), validateRepoPolicy),
-      readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
-      readState(
-        resolveGlobalPreferencesPath(options.configDirectory),
-        validateGlobalPreferences
-      ),
-      inspectInventory(
-        root,
-        dependencies,
-        installed === "full" ? owners.apps : undefined
-      ),
-      capabilitiesFor(installed),
-    ]);
+  const [
+    policy,
+    cmsPolicy,
+    globalPreferences,
+    inventory,
+    capabilities,
+    authoringState,
+  ] = await Promise.all([
+    readState(join(root, POLICY_FILENAME), validateRepoPolicy),
+    readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
+    readState(
+      resolveGlobalPreferencesPath(options.configDirectory),
+      validateGlobalPreferences
+    ),
+    inspectInventory(
+      root,
+      dependencies,
+      installed === "full" ? owners.apps : undefined
+    ),
+    capabilitiesFor(installed),
+    inspectAuthoring(root, options, taskMode),
+  ]);
+  const { errors: authoringErrors, ...authoringFields } = authoringState;
+  const authoringPending = authoringState.authoringQuestion === "pending";
   const projectEvidence = inspectProjectEvidence(root, inventory, dependencies);
   const detection = detectDistribution(
     installed,
@@ -3433,15 +4041,26 @@ export const inspectRepository = async (
       guidanceUpdate,
       inventory,
       policy.value,
-      releaseTags
+      releaseTags,
+      authoringPending
     );
     if (questions.length > 0) {
       guidanceUpdate.questions = questions;
     }
   }
-  const unresolvedQuestions = configured
-    ? []
-    : unresolvedFor(installed, inventory, policy, cmsPolicy, detection);
+  const unresolvedQuestions = withAuthoringQuestion(
+    configured
+      ? []
+      : unresolvedFor(installed, inventory, policy, cmsPolicy, detection),
+    authoringPending
+  );
+  const onboardingContribution = onboardingContributionFor(
+    installed,
+    policy,
+    recommendation,
+    releaseTags,
+    authoringPending
+  );
   const onboardingRequired =
     taskMode === "write" &&
     !configured &&
@@ -3455,6 +4074,7 @@ export const inspectRepository = async (
     unresolvedQuestions
   );
   return {
+    ...authoringFields,
     capabilities,
     cmsPolicy:
       installed === "cms" || installed === "web-cms" ? cmsPolicy : null,
@@ -3463,16 +4083,12 @@ export const inspectRepository = async (
     errors: [
       ...relevantPolicy.errors,
       ...(installed === "web-cms" ? cmsPolicy.errors : []),
+      ...authoringErrors,
     ],
     globalPreferences,
     guidanceUpdate,
     inventory,
-    onboardingContribution: onboardingContributionFor(
-      installed,
-      policy,
-      recommendation,
-      releaseTags
-    ),
+    onboardingContribution,
     onboardingRequired,
     ownerWriteReceipt:
       installed === "cms" ? null : ownerWriteReceiptFor(policy.value, false),
@@ -3529,10 +4145,16 @@ const stageFile = async (
   );
   const handle = await open(temporaryPath, "wx", candidate.mode);
   try {
-    await handle.writeFile(candidate.content, "utf8");
-    await handle.sync();
-  } finally {
-    await handle.close();
+    try {
+      await handle.writeFile(candidate.content, "utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch (error) {
+    // A staged file that failed to write, sync, or close is never left behind.
+    await rm(temporaryPath, { force: true });
+    throw error;
   }
   return { candidate, temporaryPath };
 };
@@ -4796,7 +5418,11 @@ const persistSetup = async (
       selection,
       status: "configured",
       summary: `Simple Changelogs ${selectedLabel} is configured.${curatedNote} Repository-specific audiences, destinations, history, and authority remain repository-owned.`,
-      unresolvedQuestions: [],
+      // The authoring answer is its own transaction (apply --authoring).
+      unresolvedQuestions: withAuthoringQuestion(
+        [],
+        inspect.authoringQuestion === "pending"
+      ),
       writes,
     };
   } catch (error) {
@@ -4899,6 +5525,226 @@ const releaseTagsApplyErrors = (
   return releaseTagsErrors(supplied);
 };
 
+// Options that belong to other apply transactions; --authoring refuses them
+// so one call never mixes the sidecar with policy or history writes.
+const AUTHORING_COMPANION_OPTIONS = new Set([
+  "authoring",
+  "configDirectory",
+  "confirm",
+  "distribution",
+  "environment",
+  "harnessDataPath",
+  "repo",
+  "scope",
+  "taskMode",
+]);
+
+const authoringAnswerFrom = async (supplied: unknown): Promise<unknown> => {
+  if (typeof supplied !== "string") {
+    return supplied;
+  }
+  const text = supplied.startsWith("@")
+    ? await readFile(resolve(supplied.slice(1)), "utf8")
+    : supplied;
+  return JSON.parse(text) as unknown;
+};
+
+const authoringPreconditionErrors = (options: ApplyOptions): string[] => {
+  const mixed = Object.entries(options)
+    .filter(
+      ([key, value]) =>
+        !AUTHORING_COMPANION_OPTIONS.has(key) &&
+        value !== undefined &&
+        value !== false
+    )
+    .map(([key]) => key);
+  const errors: string[] = [];
+  if (mixed.length > 0) {
+    errors.push(
+      `apply --authoring is a standalone transaction; record ${mixed.join(", ")} in a separate apply.`
+    );
+  }
+  if (options.scope !== "repository" && options.scope !== "all-projects") {
+    errors.push(
+      "apply --authoring requires --scope repository or --scope all-projects; this-run-only answers write nothing."
+    );
+  }
+  if (!options.confirm) {
+    errors.push(
+      "Confirmation is required before writing authoring preferences."
+    );
+  }
+  return errors;
+};
+
+// The sidecar's exact bytes, or null when it is absent. Bytes, never decoded
+// text: invalid UTF-8 decodes to the same replacement character as a literal
+// one, and the comparison must see that difference.
+const rawSidecarBytes = async (path: string): Promise<Buffer | null> => {
+  try {
+    return await readFile(path);
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+};
+
+const sameBytes = (left: Buffer | null, right: Buffer | null): boolean =>
+  left === null || right === null ? left === right : left.equals(right);
+
+// Stage-and-rename, as the personal preferences file is written. The write
+// holds the setup transaction marker in the target's directory (the same one
+// every repository setup write holds), so cooperating applies serialize; it
+// refuses a target whose stored value changed since inspection read it, or
+// whose bytes changed while the marker was held, so an intervening edit (a
+// malformed or formatting-only one included) is never overwritten; and it
+// does all fallible work on the staged file, so the rename is the last step
+// and a failure leaves the existing sidecar untouched.
+export const writeAuthoringFile = async (
+  target: StateRecord<AuthoringSidecar>,
+  sidecar: AuthoringSidecar,
+  mode: number
+): Promise<WriteRecord> => {
+  const { path } = target;
+  const content = json(sidecar);
+  await mkdir(dirname(path), { mode: 0o700, recursive: true });
+  const markerPath = join(dirname(path), SETUP_TRANSACTION_FILENAME);
+  // Cooperating writers hold the marker; this compare also catches any other
+  // edit that lands before the rename, short of the instant between the last
+  // compare and the rename itself, which no rename-based write can close.
+  const unchanged = async (): Promise<StateRecord<AuthoringSidecar>> => {
+    const current = await readState(path, validateAuthoring);
+    if (
+      current.state !== target.state ||
+      !sameStoredValue(current.value, target.value)
+    ) {
+      throw new Error(
+        `${path} changed after this run inspected it; inspect again and retry.`
+      );
+    }
+    return current;
+  };
+  await acquireTransaction(markerPath);
+  try {
+    const current = await unchanged();
+    // The exact bytes once the marker is held, compared again before the
+    // rename: even a formatting-only edit that lands while the answer is
+    // staged is never replaced.
+    const bytesBefore = await rawSidecarBytes(path);
+    if (current.state === "valid" && json(current.value) === content) {
+      return { kind: "authoring", path, written: false };
+    }
+    const staged = await stageFile({ content, kind: "authoring", mode, path });
+    try {
+      await chmod(staged.temporaryPath, mode);
+      const check = await readState(staged.temporaryPath, validateAuthoring);
+      if (check.state !== "valid") {
+        throw new Error(
+          [
+            ...check.errors,
+            "The staged authoring sidecar did not validate.",
+          ].join("; ")
+        );
+      }
+      await unchanged();
+      if (!sameBytes(await rawSidecarBytes(path), bytesBefore)) {
+        throw new Error(
+          `${path} changed while this answer was being written; nothing was replaced. Inspect it and retry.`
+        );
+      }
+      await ensureNoSymlink(path);
+      await rename(staged.temporaryPath, path);
+    } catch (error) {
+      await rm(staged.temporaryPath, { force: true });
+      throw error;
+    }
+    return { kind: "authoring", path, written: true };
+  } finally {
+    // The write is already committed or refused; a marker left behind is
+    // recovered by the next run once this process has exited.
+    await rm(markerPath, { force: true }).catch(() => undefined);
+  }
+};
+
+/**
+ * Records the owner's authoring answer as a standalone transaction that
+ * writes only the sidecar for the chosen scope. It is independent of the
+ * guidance acknowledgement (either may run first) and is accepted by a
+ * configured repository. A malformed sidecar is never overwritten.
+ */
+const applyAuthoring = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<SetupResult | null> => {
+  if (options.authoring === undefined) {
+    return null;
+  }
+  const preconditions = authoringPreconditionErrors(options);
+  if (preconditions.length > 0) {
+    return blockResult(inspect, preconditions);
+  }
+  try {
+    // Fail closed: no sidecar is written while the package data is broken.
+    await loadHarnesses(options.harnessDataPath);
+  } catch (error) {
+    return blockResult(inspect, [stringifyError(error)]);
+  }
+  let answer: unknown;
+  try {
+    answer = await authoringAnswerFrom(options.authoring);
+  } catch (error) {
+    return blockResult(inspect, [
+      `--authoring must be JSON or @path to a JSON file: ${stringifyError(error)}`,
+    ]);
+  }
+  const validation = validateAuthoring(answer, "authoring answer");
+  if (!validation.value) {
+    return blockResult(inspect, validation.errors);
+  }
+  const target =
+    options.scope === "repository"
+      ? inspect.authoringFiles.repository
+      : inspect.authoringFiles.personal;
+  if (target.state === "malformed") {
+    return blockResult(inspect, [
+      `Refusing to overwrite the malformed ${target.path}; repair or remove it first: ${target.errors.join("; ")}`,
+    ]);
+  }
+  let write: WriteRecord;
+  try {
+    write = await writeAuthoringFile(
+      target,
+      validation.value,
+      options.scope === "repository" ? 0o644 : 0o600
+    );
+  } catch (error) {
+    return blockResult(inspect, [
+      `Authoring write failed: ${stringifyError(error)}`,
+    ]);
+  }
+  // The write is committed; a failed refresh still reports it accurately.
+  const after = await inspectRepository({
+    configDirectory: options.configDirectory,
+    distribution: options.distribution ?? distributionFromInstall(),
+    environment: options.environment,
+    harnessDataPath: options.harnessDataPath,
+    repo: options.repo,
+    taskMode: options.taskMode ?? "write",
+  }).catch(() => inspect);
+  const commit =
+    options.scope === "repository" ? " Commit this file with your policy." : "";
+  return {
+    ...after,
+    command: "apply",
+    summary: write.written
+      ? `Authoring preferences are recorded in ${write.path}.${commit} Simple Changelogs 0.${AUTHORING_GUIDANCE}.0 or later honors them; older copies write with the running model.`
+      : `Authoring preferences in ${write.path} already match; nothing was written.`,
+    writes: [write],
+  };
+};
+
 export const applySetup = async (
   options: ApplyOptions
 ): Promise<SetupResult> => {
@@ -4906,6 +5752,8 @@ export const applySetup = async (
   const inspect = await inspectRepository({
     configDirectory: options.configDirectory,
     distribution: installed,
+    environment: options.environment,
+    harnessDataPath: options.harnessDataPath,
     repo: options.repo,
     taskMode: options.taskMode ?? "write",
   });
@@ -4921,6 +5769,10 @@ export const applySetup = async (
     // Conflicting or malformed state blocks every apply path, including
     // post-onboarding updates, exactly as inspection reports it.
     return { ...inspect, command: "apply" };
+  }
+  const authoringResult = await applyAuthoring(options, inspect);
+  if (authoringResult) {
+    return authoringResult;
   }
   const suppliedVersionActions = [
     options.publicVersionPatch,
@@ -5021,6 +5873,7 @@ interface ParsedCli {
 }
 
 const valueOptionNames = new Set([
+  "--authoring",
   "--backfill",
   "--cms-changelog",
   "--cms-route",
@@ -5136,6 +5989,7 @@ export const parseCli = (argv: string[]): ParsedCli => {
     command,
     options: {
       auditVerified: flags.has("--audit-verified"),
+      authoring: values.get("--authoring"),
       backfillStatus: enumValue("--backfill", BACKFILL_STATUSES),
       cmsAuthProven: flags.has("--cms-auth-proven"),
       cmsChangelog: values.get("--cms-changelog"),

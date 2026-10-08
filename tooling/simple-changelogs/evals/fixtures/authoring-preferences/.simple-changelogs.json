@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "distribution": "web",
+  "guidance": {
+    "version": 26,
+    "backfillStatus": "completed"
+  },
+  "developerChangelog": "required",
+  "releaseNoteGrouping": "product-areas",
+  "majorReleaseNaming": "named",
+  "releaseTags": "none",
+  "signatures": "agent-and-timestamp",
+  "newReleaseNoteSurfaces": "ask"
+}

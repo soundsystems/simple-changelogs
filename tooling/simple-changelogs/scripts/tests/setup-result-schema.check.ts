@@ -345,6 +345,7 @@ describe("setup-result.schema.json", () => {
     expect(notice.guidanceUpdate?.questions).toEqual([
       "shared-version-lines",
       "release-tags",
+      "authoring-models",
     ]);
     expect(recorded.policy?.state).toBe("valid");
     expect([onboarding, notice, recorded].flatMap(check)).toEqual([]);

@@ -223,16 +223,6 @@ export const selectLineVersion = (input: LineInput): LineSelection | null => {
 };
 
 /** Formats the one evidence item a receipt v2 carries for a line decision. */
-export const versionLineEvidence = (decision: VersionLineDecision): string =>
-  `versionLine ${JSON.stringify({
-    members: decision.members,
-    memberVersions: decision.memberVersions,
-    mode: decision.mode,
-    outcome: decision.outcome,
-    sharedVersion: decision.sharedVersion,
-    sharedVersionTrains: decision.sharedVersionTrains,
-  })}`;
-
 /** Returns every violated invariant of a decision and its selected number. */
 export const versionLineViolations = (
   decision: VersionLineDecision,

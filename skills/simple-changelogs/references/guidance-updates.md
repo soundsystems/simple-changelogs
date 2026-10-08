@@ -19,6 +19,7 @@ an unanswered prompt records nothing and may be asked again later.
 - Guidance 23
 - Guidance 24
 - Guidance 25
+- Guidance 26
 
 ## Guidance 1 to 15
 
@@ -150,3 +151,31 @@ repository's existing tag style when local tags show one, and no tags when
 release tooling already creates them. No answer records nothing and leaves
 releases untagged. Every Simple Changelogs distribution now shares this
 guidance number. No backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="26" kinds="capability,behavior,onboarding" backfill="not-needed" summary="You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, entries are still signed by the model that wrote them, and this update asks once. Agents also read changelogs through query.ts instead of whole files, query.ts gaps lists merges since the last release tag without an entry, query.ts check enforces App Store and Google Play note limits, and scripts/handoff.ts computes release receipts." -->
+## Guidance 26
+
+An optional authoring sidecar, `.simple-changelogs-authoring.json` or a
+personal `authoring.json`, records which model and effort should write release
+notes in each coding agent the owner uses, defaulting to the most capable model
+at `xhigh`. Agents match, delegate, or write with the running model and say
+why; signatures always name the actual writer, and the preference grants no
+authority. Until a valid sidecar exists, inspection asks **Which coding agents
+do you use?** and then which model should write in each.
+
+Agents now read changelogs through `scripts/query.ts` instead of opening
+whole files: `releases` for the outline and `show unreleased` for pending
+work. A whole-file read is kept for a backfill or an approved audit. The new
+`query.ts gaps` lists the merges since the last release tag, the newest one
+your `releaseTags` style names, that added no changelog entry.
+
+`query.ts check` now holds App Store notes to 4,000 and Google Play notes to
+500 characters per locale, counted in Unicode code points, for Fastlane and
+Gradle Play Publisher note files.
+
+Delegated release receipts are no longer built by hand: the bundled
+`scripts/handoff.ts` computes the policy, decision, changed-path, and
+prior-receipt digests and assembles the receipt at the negotiated version.
+Simple Changes still validates it.
+
+Policy files are unchanged and no backfill is needed.

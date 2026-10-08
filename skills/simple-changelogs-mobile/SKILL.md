@@ -19,7 +19,7 @@ Requires Git for repository work; bundled TypeScript helpers require Bun 1.3 or
 later, and `scripts/check-fork-sync.sh` requires a POSIX shell. When one is
 missing, report it instead of improvising the helper's work by hand.
 
-Current guidance version: 25
+Current guidance version: 26
 
 Guidance is a distribution-specific behavior checkpoint, not the Simple
 Changelogs family version or installed source revision. Installation reports
@@ -71,7 +71,7 @@ release flow, source of truth, or store boundary.
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
-| Read-only history queries and structure lint | `references/querying.md` |
+| Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification, expert public detail, and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |
 | Pending work, releases, merges, and reconciliation | `references/release-lifecycle.md` |
@@ -97,9 +97,11 @@ public deployment, or a delegated `prepare` or `verify`), copy steps 1–6 into
 your reply as a `- [ ]` checklist and tick each only on fresh evidence. Other
 changelog edits skip the checklist.
 
-1. Inspect repository instructions, Git state, both changelogs, release
-   evidence, mobile package metadata, established in-app/store destinations,
-   each destination's app/platform/release scope, and the task diff.
+1. Inspect repository instructions, Git state, release evidence, mobile
+   package metadata, established in-app/store destinations, each
+   destination's app/platform/release scope, and the task diff. Read both
+   changelogs through `scripts/query.ts` (`releases`, `show unreleased`,
+   `gaps`); open a whole file only for backfill or audit.
 2. Classify each durable mobile outcome as customer, developer, both, or
    neither, then include it in each in-app or store destination only when that
    app and release train are affected.
@@ -130,6 +132,8 @@ waive this rule; preserve untouched released history. See
 - Do not add a new mobile screen, sheet, modal, route, or dismissal store
   without explicit current authority or documented policy.
 - Do not mutate an installed skill to store repository decisions.
+- A configured authoring model is a preference, never authority and never
+  identity; sign with the model that wrote the entry.
 - Name each release's tag in its receipt, but never create or push a tag;
   Simple Changes does. Do not create hosted releases, deployments, or unrelated
   product work.

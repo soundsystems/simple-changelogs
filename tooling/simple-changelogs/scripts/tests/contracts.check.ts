@@ -1515,3 +1515,90 @@ https://example.test/a_(b)/scripts/bare.ts
     expect(policyFinding?.path).toBe("references/A-policy.md");
   });
 });
+
+// Authoring preferences keep every changelog distribution vendor-free outside
+// agents/: the scoped core passes the vendor contract above, and no installed
+// file outside agents/ names a harness or vendor at all. The only place a
+// harness is named is the agents/ interface data (agents/harnesses.json
+// beside the other agent interface files).
+describe("installed packages name no harness outside agents/", () => {
+  const REPOSITORY_ROOT = join(import.meta.dir, "..", "..", "..", "..");
+  const DISTRIBUTIONS = [
+    "simple-changelogs",
+    "simple-changelogs-cms",
+    "simple-changelogs-mobile",
+    "simple-changelogs-skill-maintainer",
+    "simple-changelogs-web",
+    "simple-changelogs-web-cms",
+  ];
+  const VENDOR_PATTERNS = [
+    new RegExp(`\\b${TEST_VENDOR}\\b`, "i"),
+    new RegExp(`\\b${["Claude", " Code"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Cur", "sor"].join("")}\\b`),
+    new RegExp(`\\b${["Open", "AI"].join("")}\\b`, "i"),
+    new RegExp(`\\b${["Anthro", "pic"].join("")}\\b`, "i"),
+  ];
+  const escaped = (value: string): string =>
+    value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+
+  const installedFiles = async (directory: string): Promise<string[]> => {
+    const { readdir } = await import("node:fs/promises");
+    const entries = await readdir(directory, {
+      recursive: true,
+      withFileTypes: true,
+    });
+    return entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => join(entry.parentPath, entry.name));
+  };
+
+  test("every distribution ships the same harness data and names harnesses only there", async () => {
+    const canonical = await readFile(
+      join(
+        REPOSITORY_ROOT,
+        "tooling",
+        "simple-changelogs",
+        "agents",
+        "harnesses.json"
+      ),
+      "utf8"
+    );
+    const data = JSON.parse(canonical) as {
+      harnesses: Record<string, { name: string }>;
+    };
+    const harnessPatterns = Object.entries(data.harnesses).flatMap(
+      ([id, { name }]) => [
+        new RegExp(`(?<![\\w-])${escaped(id)}(?![\\w-])`, "u"),
+        new RegExp(`\\b${escaped(name)}\\b`, "u"),
+      ]
+    );
+    expect(harnessPatterns.length).toBeGreaterThan(0);
+    const offenders = (
+      await Promise.all(
+        DISTRIBUTIONS.map(async (distribution) => {
+          const directory = join(REPOSITORY_ROOT, "skills", distribution);
+          expect(
+            await readFile(join(directory, "agents", "harnesses.json"), "utf8")
+          ).toBe(canonical);
+          const files = (await installedFiles(directory)).filter(
+            (path) => !path.startsWith(join(directory, "agents"))
+          );
+          const sources = await Promise.all(
+            files.map(async (path) => ({
+              path,
+              source: await readFile(path, "utf8"),
+            }))
+          );
+          return sources
+            .filter(({ source }) =>
+              [...VENDOR_PATTERNS, ...harnessPatterns].some((pattern) =>
+                pattern.test(source)
+              )
+            )
+            .map(({ path }) => path.slice(REPOSITORY_ROOT.length + 1));
+        })
+      )
+    ).flat();
+    expect(offenders).toEqual([]);
+  });
+});

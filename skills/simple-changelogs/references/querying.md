@@ -4,6 +4,11 @@ The bundled `scripts/query.ts` CLI answers questions about the raw Markdown
 histories without writing anything. The Markdown files stay the source of
 truth: there is no cache, index, or generated database to refresh.
 
+Inspect history through these subcommands rather than by opening the files:
+`releases` gives the outline and `show unreleased` the pending section. A
+whole-file read belongs to a backfill or an approved audit
+(`references/backfill.md`).
+
 Run this skill's own copy with Bun 1.3 or later from the repository root (or
 pass `--repo PATH`). The paths below assume a repository-local install; for a
 global install, run the installed copy by absolute path
@@ -24,12 +29,24 @@ Subcommands:
 - `entries`: a flat entry list filtered by `--since`/`--until` (release date,
   falling back to the entry's signature timestamp for `Unreleased` work),
   `--group` for `- **Group**:` bullets, `--agent`, and `--grep`.
+- `gaps [--since TAG] [--train NAME]`: merges on the first-parent line since a
+  release tag whose diff adds no line to the selected changelogs. The default
+  tag is the newest one reachable from `HEAD` that the `releaseTags` template
+  names (`v{version}` when none is recorded); a per-train map needs `--train`
+  unless it holds one template. It runs plain Git and writes nothing. A merge
+  whose entry lives in another file is still listed, and integrations without
+  a merge commit (squash, rebase, direct) are counted in a note, not checked.
 - `check`: structure lint for unrecognized or ambiguous release headings,
   duplicate `Unreleased` headings, malformed signature comments, unclosed code
   fences or HTML comments, and unindented or ordered-list lines that are not
   entries. One empty `Unreleased` heading is valid; a missing or non-leading
-  one is a note. Exits nonzero on problems; fix what it reports and rerun it
-  until it exits 0. Legacy `<!-- Agent: ... -->` signatures are notes, not
+  one is a note. It also holds App Store notes (Fastlane
+  `metadata/<locale>/release_notes.txt`, 4,000) and Google Play notes
+  (Fastlane `metadata/android/<locale>/changelogs/*.txt` or Gradle Play
+  Publisher `play/release-notes/<locale>/*.txt`, 500) to their limits in
+  Unicode code points over the whole file, a trailing line break included.
+  Exits nonzero on
+  problems; fix what it reports and rerun it until it exits 0. Legacy `<!-- Agent: ... -->` signatures are notes, not
   problems; they remain valid released history.
 
 For curated release notes (see `references/curation.md`): `entries --ids`

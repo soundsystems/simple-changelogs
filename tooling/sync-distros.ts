@@ -17,7 +17,7 @@ import { lstat, readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawnSync } from "bun";
 
-// Every changelog distribution ships the byte-synced setup helper.
+// Every changelog distribution ships the byte-synced setup and handoff helpers.
 export const changelogDistributions = new Set([
   "simple-changelogs",
   "simple-changelogs-cms",
@@ -61,6 +61,11 @@ const FULL = "simple-changelogs";
 const CMS = "simple-changelogs-cms";
 const WEB_CMS = "simple-changelogs-web-cms";
 const FORK_CHECKER = "scripts/check-fork-sync.sh";
+const HARNESS_DATA = "agents/harnesses.json";
+const AUTHORING_SCHEMAS = [
+  "schemas/authoring.schema.json",
+  "schemas/harnesses.schema.json",
+] as const;
 const TOOLING_SCRIPTS = "tooling/simple-changelogs/scripts";
 const TOOLING_SCHEMAS = "tooling/simple-changelogs/evals/schemas";
 
@@ -118,6 +123,11 @@ const syncRules = (): SyncRule[] => [
     changelogDistributions,
     "scripts/setup.ts"
   ),
+  ...copies(
+    `${TOOLING_SCRIPTS}/handoff.ts`,
+    changelogDistributions,
+    "scripts/handoff.ts"
+  ),
   ...PROTOCOL_FILES.flatMap((filename) =>
     copies(
       `${TOOLING_SCHEMAS}/${filename}`,
@@ -165,6 +175,17 @@ const syncRules = (): SyncRule[] => [
     skillPath(FULL, FORK_CHECKER),
     portableContractDistributions,
     FORK_CHECKER
+  ),
+  // Authoring preferences: the harness data file (the one installed place
+  // that names harnesses, beside the other agents/ interface files) and the
+  // sidecar and data schemas, in every distribution.
+  ...copies(
+    `tooling/simple-changelogs/${HARNESS_DATA}`,
+    changelogDistributions,
+    HARNESS_DATA
+  ),
+  ...AUTHORING_SCHEMAS.flatMap((path) =>
+    copies(skillPath(FULL, path), changelogDistributions, path)
   ),
 ];
 

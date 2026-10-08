@@ -36,13 +36,28 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // 266,372, Web 266,361, skill-maintainer 266,422, CMS-only 221,291. When the
 // support budget binds, prefer moving distribution-specific code into a module
 // only those distributions ship before raising again.
+// Measured for 0.26.0, with scripts/handoff.ts in every distribution and the
+// query.ts gaps and store-note checks: Markdown full 220,916 bytes, Web+CMS
+// 200,200, mobile 191,317, Web 186,669, skill-maintainer 113,488, CMS-only
+// 68,394; support files Web+CMS 318,553, full 301,922, mobile 301,932, Web
+// 301,921, skill-maintainer 301,982, CMS-only 243,272.
+// Measured on release/0.26.0 with authoring preferences merged: Markdown full
+// 226,984 bytes (2,392 under the budget), Web+CMS 206,271, mobile 197,388, Web
+// 192,740, skill-maintainer 119,559, CMS-only 74,438; support files Web+CMS
+// 351,391, skill-maintainer 334,820, mobile 334,770, full 334,760, Web
+// 334,759, CMS-only 276,110.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
 const MAX_SUPPORT_BYTES = 384 * 1024;
+// Claude Code keeps only the first 5,000 tokens of a loaded skill after
+// compaction, so every SKILL.md stays at or under about 5,000 tokens: 17,500
+// bytes at 3.5 bytes per token. The router and invariants come first;
+// everything else belongs in a reference.
+const MAX_SKILL_BYTES = 17_500;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
 
-const expectedSkills = new Set([...changelogDistributions, "publish-skill"]);
+const expectedSkills = new Set(changelogDistributions);
 const forbiddenNames = new Set(["EVAL.md"]);
 // Agent Skills frontmatter: every package states its license and runtime
 // requirements, a distribution that ships the POSIX fork checker says so, and
@@ -225,6 +240,13 @@ for (const {
   const supportBytes = entries
     .filter((entry) => !entry.path.endsWith(".md"))
     .reduce((sum, entry) => sum + entry.bytes, 0);
+  const skillBytes =
+    entries.find((entry) => entry.path === "SKILL.md")?.bytes ?? 0;
+  if (skillBytes > MAX_SKILL_BYTES) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md is ${skillBytes} bytes; the SKILL.md maximum is ${MAX_SKILL_BYTES} (about 5,000 tokens)`
+    );
+  }
   if (guidanceBytes > MAX_GUIDANCE_BYTES) {
     failures.push(
       `skills/${directoryName} Markdown is ${guidanceBytes} bytes; the guidance maximum is ${MAX_GUIDANCE_BYTES}`
@@ -1195,10 +1217,82 @@ for (const { directoryName, source } of cmsPolicySchemas) {
   }
 }
 
-// Byte-synced copies (the setup, query, and CMS helpers, the minified protocol
-// schemas, the shared references, and every bundled fork checker, which
-// check-fork-sync.check.ts exercises) come from the table `bun run
-// sync-distros` writes, so the check and the writer cannot disagree.
+// Authoring preferences: every changelog distribution ships the same
+// generic reference sections (the harness data file and both schemas are
+// byte-synced through the sync-distros table), and SKILL.md keeps the
+// preference-not-identity boundary.
+const authoringChecks = await Promise.all(
+  [...changelogDistributions].map(async (directoryName) => {
+    const directory = join(skillsRoot, directoryName);
+    const [skill, setup] = await Promise.all([
+      readFile(join(directory, "SKILL.md"), "utf8"),
+      readFile(join(directory, "references", "setup.md"), "utf8"),
+    ]);
+    return { directoryName, setup, skill };
+  })
+);
+const sectionOf = (source: string, heading: string): string | null => {
+  const start = source.indexOf(`\n## ${heading}\n`);
+  if (start === -1) {
+    return null;
+  }
+  const end = source.indexOf("\n## ", start + 1);
+  return source.slice(start, end === -1 ? undefined : end);
+};
+const canonicalAuthoring = {
+  onboarding: sectionOf(
+    onboardingChecks.find(
+      (candidate) => candidate.directoryName === "simple-changelogs"
+    )?.source ?? "",
+    "Agents and models"
+  ),
+  setup: sectionOf(
+    authoringChecks.find(
+      (candidate) => candidate.directoryName === "simple-changelogs"
+    )?.setup ?? "",
+    "Authoring preferences"
+  ),
+};
+for (const { directoryName, setup, skill } of authoringChecks) {
+  const onboarding =
+    onboardingChecks.find(
+      (candidate) => candidate.directoryName === directoryName
+    )?.source ?? "";
+  const sections = {
+    onboarding: sectionOf(onboarding, "Agents and models"),
+    setup: sectionOf(setup, "Authoring preferences"),
+  };
+  for (const [name, section] of Object.entries(sections)) {
+    if (
+      section === null ||
+      section !== canonicalAuthoring[name as keyof typeof sections]
+    ) {
+      failures.push(
+        `skills/${directoryName} must carry the shared authoring ${name} section, identical to the full distribution's`
+      );
+    }
+  }
+  if (
+    !(
+      sections.onboarding?.includes("Never pre-select `max`") &&
+      sections.onboarding.includes("at xhigh effort (Recommended)")
+    )
+  ) {
+    failures.push(
+      `skills/${directoryName}/references/onboarding.md must recommend xhigh and never pre-select max`
+    );
+  }
+  if (!collapsed(skill).includes("never authority and never identity")) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md must state that an authoring model is a preference, never authority and never identity`
+    );
+  }
+}
+
+// Byte-synced copies (the setup, handoff, query, and CMS helpers, the
+// minified protocol schemas, the shared references, and every bundled fork
+// checker, which check-fork-sync.check.ts exercises) come from the table `bun
+// run sync-distros` writes, so the check and the writer cannot disagree.
 for (const { expected, source, target } of await syncedFiles(repositoryRoot)) {
   const path = join(repositoryRoot, target);
   if (!existsSync(path)) {

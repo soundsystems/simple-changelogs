@@ -2,6 +2,47 @@
 
 ## Unreleased
 
+## 0.26.0 - 2026-10-08
+
+- **Authoring preferences**
+  - You can now choose which model writes release notes in each coding agent
+    you use. The guidance 26 update asks **Which coding agents do you use?**
+    once, then which model should write in each. The recommended answer is
+    that agent's most capable model at `xhigh` effort, and `max` is saved
+    only when you pick it.
+  - Your answer is saved in `.simple-changelogs-authoring.json` for one
+    repository, or in a personal `authoring.json` for all your projects. It
+    never goes into your existing policy files, so older copies of the skill
+    ignore it and keep working.
+  - A saved model is a preference, never a permission or an identity. The
+    agent writes with that model, hands the writing to it, or writes with
+    its own model and says why, and every entry is still signed by the model
+    that actually wrote it.
+- **Reading less history**
+  - Agents now read changelogs through `scripts/query.ts`, asking for the
+    release outline and pending entries instead of opening whole files, so
+    each task spends less of its context on history. A whole-file read is
+    kept for a backfill or an approved audit. CMS distributions read only
+    the newest entries a task needs.
+  - `query.ts gaps` lists the merges since your last release tag that added
+    no changelog entry, so a missed entry shows up before the release.
+- **Release checks**
+  - In the full and mobile distributions, `query.ts check` now fails App
+    Store notes over 4,000 characters and Google Play notes over 500
+    characters per language, counting each Unicode character once, for
+    Fastlane and Gradle Play Publisher note files.
+  - The bundled `scripts/handoff.ts` computes the digests and assembles the
+    release receipt that Simple Changes checks, so agents no longer build
+    receipts by hand.
+- **publish-skill moves to Simple Changes**
+  - publish-skill now ships only with Simple Changes and is no longer part
+    of this repository. If you installed it from Simple Changelogs,
+    reinstall it from Simple Changes.
+- **Versions and guidance**
+  - All six distributions move to guidance 26. This release is 0.26.0 and is
+    tagged `v0.26.0`.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-08T12:49:30-05:00" -->
+
 ## 0.25.1 - 2026-10-08
 
 - **Bug Fixes & Improvements**:
