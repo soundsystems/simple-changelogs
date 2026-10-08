@@ -18,10 +18,13 @@
   writing. The file table lives in `tooling/sync-distros.ts`, and
   `tooling/distributions.check.ts` reads the same table, so both compare raw
   bytes against one list. Sources must be valid UTF-8, nothing is written
-  until every copy is computed, and writes never follow a symlink;
-  `fork-maintenance.md` is excluded because each copy names its own
-  distribution. Known limit: Node has no `openat`, so a directory swapped
-  in concurrently between the check and the write is not detected.
+  until every copy is computed, and `fork-maintenance.md` is excluded because
+  each copy names its own distribution. Writes run in a separate writer
+  process that steps into each directory of a copy's path one verified name
+  at a time and holds it, so a directory or copy swapped for a symlink at any
+  point during the run is refused and no byte lands outside the repository; a
+  copy with a second hard link is refused too, and the maintainer's working
+  directory never moves.
 - Every SKILL.md carries `license: Apache-2.0` and a `compatibility` line. The
   contract accepts exactly `name`, `description`, `license`, `compatibility`,
   and `metadata`, and `distributions.check.ts` requires the exact wording per
