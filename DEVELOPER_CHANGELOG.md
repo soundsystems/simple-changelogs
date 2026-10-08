@@ -51,10 +51,11 @@
   json|policy|decision|paths` and `receipt --request --findings [--prior]`,
   which assembles the receipt at the highest version the request and the
   installed `changelog-provider.json` share. It writes nothing and leaves
-  protocol validation to Simple Changes. The tooling release-handoff and
-  version-lines libraries import its canonical JSON and digest helpers, so
-  one implementation computes every digest; the pinned digests are
-  unchanged.
+  protocol validation to Simple Changes. The tooling release-handoff library
+  imports its canonical JSON digest, version-line evidence, and reason and
+  action helpers, so one implementation computes every digest, and the
+  duplicate evidence formatter in version-lines.ts is gone; the pinned
+  digests are unchanged.
 - `query.ts gaps [--since TAG] [--train NAME]` walks the first-parent line
   from the tag to HEAD with plain Git and lists each merge whose diff
   against its first parent adds no line to `CHANGELOG.md` or
@@ -65,8 +66,8 @@
 - `query.ts check` finds Fastlane deliver, Fastlane supply, and Gradle Play
   Publisher note files through `git ls-files` (tracked or untracked, never
   ignored), or a scan outside Git, and fails any over 4,000 (App Store) or
-  500 (Google Play) Unicode code points per locale. A byte order mark and
-  trailing line breaks are ignored.
+  500 (Google Play) Unicode code points per locale. The whole file is
+  counted, line breaks and a byte order mark included.
 - Inspect steps read history through `query.ts releases` and `show
   unreleased`, and `querying.md` opens with that rule.
 - `distributions.check.ts` fails any installed SKILL.md over 17,500 bytes,
