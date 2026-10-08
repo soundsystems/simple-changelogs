@@ -2,6 +2,94 @@
 
 ## Unreleased
 
+## 0.26.0 - 2026-10-08
+
+- Authoring preferences, implementing revision 13 of the authoring design:
+  - Sidecars: `.simple-changelogs-authoring.json` at the repository root or
+    a personal `authoring.json` beside `preferences.json`, validated against
+    `schemas/authoring.schema.json`. Neither is a policy or preferences key,
+    whose validators reject unknown keys. One role, `release-notes`, covers
+    all copy; the default is the running agent's most capable model at
+    xhigh, and `max` is stored only from an explicit owner choice.
+  - `setup.ts inspect` reports `detectedHarnesses` (a running session
+    variable or a home-directory root, existence only, overridable with
+    `SIMPLE_CHANGELOGS_HARNESS_ROOTS`), `authoringFiles`,
+    `authoringQuestion` (pending, answered, repair, or not-applicable,
+    computed from validated files, never from the guidance acknowledgement),
+    and `authoring.effective` with each field's layer in `authoring.source`.
+    A pending question joins `unresolvedQuestions`,
+    `guidanceUpdate.questions` while a notice is active, and
+    `onboardingContribution` as optional.
+  - `apply --authoring <json-or-@path> --scope repository|all-projects
+    --confirm` is a standalone transaction. It validates first, holds the
+    setup transaction marker in the sidecar's directory, refuses a sidecar
+    whose stored value changed since inspection, snapshots its raw bytes
+    once the marker is held and compares them again just before the rename,
+    never overwrites a malformed sidecar, and stages and renames only that
+    file. Destination discovery ignores the sidecar.
+  - Harness names and detection roots live only in `agents/harnesses.json`,
+    canonical in `tooling/simple-changelogs/agents/` and byte-synced with
+    `schemas/authoring.schema.json` and `schemas/harnesses.schema.json` to
+    all six distributions. `setup.ts` reads only its own package's copy and
+    fails closed when it is missing or malformed, and a contract test
+    asserts that no installed file outside `agents/` names a harness or
+    vendor.
+  - Every distribution carries the identical "Authoring preferences" setup
+    section and "Agents and models" onboarding questions (xhigh recommended,
+    `max` never pre-selected), and each SKILL.md states that a configured
+    authoring model is a preference, never authority and never identity.
+    Four behavior evals require public and developer entries signed by the
+    exact writer and reject any other signer.
+  - Known limit, recorded as a follow-up in section 11.5 of the design: the
+    setup transaction marker's automatic recovery takes over a marker whose
+    writer is dead or that is older than ten minutes, even under a live
+    writer, so overlapping setup writes are not serialized during recovery.
+    The defect predates this release; the authoring write's byte comparison
+    detects an intervening change it observes but does not fence the
+    rename.
+- `scripts/handoff.ts` ships in every distribution: `digest
+  json|policy|decision|paths` and `receipt --request --findings [--prior]`,
+  which assembles the receipt at the highest version the request and the
+  installed `changelog-provider.json` share. It writes nothing and leaves
+  protocol validation to Simple Changes. The tooling release-handoff and
+  version-lines libraries import its canonical JSON and digest helpers, so
+  one implementation computes every digest; the pinned digests are
+  unchanged.
+- `query.ts gaps [--since TAG] [--train NAME]` walks the first-parent line
+  from the tag to HEAD with plain Git and lists each merge whose diff
+  against its first parent adds no line to `CHANGELOG.md` or
+  `DEVELOPER_CHANGELOG.md` (narrowed by `--log`). The default tag is the
+  newest reachable tag the `releaseTags` template names, by SemVer
+  precedence. First-parent commits that are not merges are counted in a
+  note rather than checked, so it errs toward over-reporting.
+- `query.ts check` finds Fastlane deliver, Fastlane supply, and Gradle Play
+  Publisher note files through `git ls-files` (tracked or untracked, never
+  ignored), or a scan outside Git, and fails any over 4,000 (App Store) or
+  500 (Google Play) Unicode code points per locale. A byte order mark and
+  trailing line breaks are ignored.
+- Inspect steps read history through `query.ts releases` and `show
+  unreleased`, and `querying.md` opens with that rule.
+- `distributions.check.ts` fails any installed SKILL.md over 17,500 bytes,
+  about the 5,000 tokens Claude Code keeps after compaction; the largest is
+  full's 12,032.
+- publish-skill is removed: `skills/publish-skill`, `tooling/publish-skill`,
+  its test script, and its `distributions.check.ts` validation. Simple
+  Changes owns it.
+- Merge gate: `bun run check:receipt` (`tooling/check-receipt.ts`) refuses a
+  dirty checkout, installs from the lockfile, runs `bun run check`, and only
+  on exit 0 writes `<git common dir>/check-receipts/<HEAD>.json`.
+  `.simple-changes.json` registers `tooling/exec-guard.ts` as its
+  `execGuard`: under `simple-changes loop exec`, a provider merge pinned to a
+  head, a `git merge` into `main`, or a `git push` that updates `main` runs
+  only when every such head has a receipt, and input the guard cannot read
+  as one plain value is refused. CONTRIBUTING.md documents both.
+- Guidance 26 in all six distributions: one entry each covering authoring
+  and the tooling changes, kinds capability, behavior, and onboarding, no
+  backfill. `bun run sync-distros` now keeps 77 byte-synced files.
+- Sizes: Markdown full 226,984 bytes of 229,376; support files Web+CMS
+  351,391 of 393,216.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-08T12:49:30-05:00" -->
+
 ## 0.25.1 - 2026-10-08
 
 - Model-backed evals now run on Codex. OpenAI strict structured outputs

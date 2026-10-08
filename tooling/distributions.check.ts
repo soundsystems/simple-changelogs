@@ -41,6 +41,11 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // 200,200, mobile 191,317, Web 186,669, skill-maintainer 113,488, CMS-only
 // 68,394; support files Web+CMS 318,553, full 301,922, mobile 301,932, Web
 // 301,921, skill-maintainer 301,982, CMS-only 243,272.
+// Measured on release/0.26.0 with authoring preferences merged: Markdown full
+// 226,984 bytes (2,392 under the budget), Web+CMS 206,271, mobile 197,388, Web
+// 192,740, skill-maintainer 119,559, CMS-only 74,438; support files Web+CMS
+// 351,391, skill-maintainer 334,820, mobile 334,770, full 334,760, Web
+// 334,759, CMS-only 276,110.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
 const MAX_SUPPORT_BYTES = 384 * 1024;
 // Claude Code keeps only the first 5,000 tokens of a loaded skill after
