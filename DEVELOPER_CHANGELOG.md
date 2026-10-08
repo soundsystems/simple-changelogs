@@ -21,12 +21,12 @@
   until every copy is computed, and `fork-maintenance.md` is excluded because
   each copy names its own distribution. Writes run in a separate writer
   process that steps into each directory of a copy's path one verified name
-  at a time and holds it. A directory or copy swapped for a symlink before
-  the writer reaches it is refused, and once a directory is held, renaming it
-  or swapping its name for a symlink cannot redirect the write, which stays
-  in the held directory, so no byte lands outside the repository. A copy with
-  a second hard link is refused too, and the maintainer's working directory
-  never moves.
+  at a time and holds it. A symlink met during those checks is refused, and
+  so is a swap that changes the identity of a verified directory or its
+  parent. Once a directory is held, renaming it or swapping its name for a
+  symlink cannot redirect the write, which stays in the held directory, so no
+  byte lands outside the repository. A copy with a second hard link is
+  refused too, and the maintainer's working directory never moves.
 - Every SKILL.md carries `license: Apache-2.0` and a `compatibility` line. The
   contract accepts exactly `name`, `description`, `license`, `compatibility`,
   and `metadata`, and `distributions.check.ts` requires the exact wording per
