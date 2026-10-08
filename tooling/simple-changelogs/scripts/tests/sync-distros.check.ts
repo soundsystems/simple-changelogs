@@ -448,6 +448,33 @@ describe("sync-distros", () => {
     ]);
   });
 
+  test("refuses a directory swapped for a symlink to a sibling between its check and the step into it", async () => {
+    const root = await repositoryCopy();
+    await writeFile(join(root, SETUP_COPY), "// drifted\n");
+    const setup = await setupCopy(root);
+    const sibling = join(root, `skills/${WEB}/references`);
+    const aside = join(root, `${SCRIPTS}-aside`);
+    const origin = process.cwd();
+
+    // A direct child of the held parent, so only the inode gives the swap
+    // away.
+    expect(() =>
+      writeSyncedFile(root, setup, (step) => {
+        if (step.kind === "enter" && step.path === SCRIPTS) {
+          swapDirectoryForLink(join(root, SCRIPTS), aside, sibling);
+        }
+      })
+    ).toThrow(
+      `Refusing to write through ${SCRIPTS}, which changed after it was checked`
+    );
+
+    expect(process.cwd()).toBe(origin);
+    expect(existsSync(join(sibling, "setup.ts"))).toBe(false);
+    expect(await readFile(join(aside, "setup.ts"), "utf8")).toBe(
+      "// drifted\n"
+    );
+  });
+
   test("refuses the checked directory moved outside and linked back at its name before the step", async () => {
     const root = await repositoryCopy();
     const outside = await outsideDirectory();
