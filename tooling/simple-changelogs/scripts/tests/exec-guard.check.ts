@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawn } from "bun";
+import { spawn, which } from "bun";
 import {
   commonDirectory,
   hasPassingReceipt,
@@ -16,6 +16,13 @@ import { verdict } from "../../../exec-guard.ts";
 
 const GUARD = join(import.meta.dir, "..", "..", "..", "exec-guard.ts");
 const temporaryDirectories: string[] = [];
+
+// The guard lists glab and gh aliases, so give both CLIs empty configuration
+// directories rather than the developer's own.
+const providerConfig = mkdtempSync(join(tmpdir(), "exec-guard-config-"));
+process.env.GH_CONFIG_DIR = join(providerConfig, "gh");
+process.env.GLAB_CONFIG_DIR = join(providerConfig, "glab");
+afterAll(() => rmSync(providerConfig, { force: true, recursive: true }));
 
 afterEach(async () => {
   await Promise.all(
@@ -441,8 +448,26 @@ describe("exec guard", () => {
     refused(repo, ["gh", "--frobnicate", "pr", "merge", "3"], "not inspected");
     refused(repo, ["gh", "pr", "--web", "merge", "3"], "not inspected");
     // Aliases and extensions can expand to a merge, so only built-ins run.
-    refused(repo, ["gh", "pm", "123", "--merge"], "not a built-in command");
-    refused(repo, ["glab", "mrm", "123", "--yes"], "not a built-in command");
+    // Each CLI gets the temporary configuration explicitly, never the real one.
+    const setAlias = (cli: string, name: string, expansion: string) =>
+      execFileSync(cli, ["alias", "set", name, expansion], {
+        env: {
+          ...process.env,
+          GH_CONFIG_DIR: join(providerConfig, "gh"),
+          GLAB_CONFIG_DIR: join(providerConfig, "glab"),
+        },
+        stdio: "ignore",
+      });
+    if (which("gh")) {
+      setAlias("gh", "pr ship", "pr merge");
+      setAlias("gh", "pv", "pr view");
+      refused(repo, ["gh", "pr", "ship", "123", "--squash"], "is an alias");
+      allowed(repo, ["gh", "pv", "3"]);
+    }
+    if (which("glab")) {
+      setAlias("glab", "mrm", "mr merge");
+      refused(repo, ["glab", "mrm", "123", "--yes"], "is an alias");
+    }
     refused(repo, ["gh", "extension", "exec", "x"], "not a built-in command");
     refused(
       repo,

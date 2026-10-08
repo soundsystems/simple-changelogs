@@ -1200,9 +1200,10 @@ const runGaps = async (options: CliOptions): Promise<string> => {
 
 // Store notes: public update copy in the Fastlane deliver and supply and the
 // Gradle Play Publisher layouts, held to each store's per-locale limit.
-// Counted in Unicode code points, the stricter reading for combining marks,
-// after dropping a byte order mark and trailing line breaks. Other layouts
-// are not detected, and TestFlight What to Test has no documented limit.
+// Counted in Unicode code points over the whole file, as the uploaders send
+// it, so a trailing line break or byte order mark counts and a combining mark
+// counts on its own: the stricter reading. Other layouts are not detected,
+// and TestFlight What to Test has no documented limit.
 const STORE_NOTE_RULES = [
   {
     limit: 4000,
@@ -1223,16 +1224,9 @@ const STORE_NOTE_RULES = [
   },
 ];
 const STORE_NOTE_GLOB = "**/*.txt";
-const BYTE_ORDER_MARK_PATTERN = /^\uFEFF/u;
-const TRAILING_BREAKS_PATTERN = /[\r\n]+$/u;
 
-/** A store note's length in Unicode code points, as the stores count it. */
-export const storeNoteLength = (text: string): number =>
-  [
-    ...text
-      .replace(BYTE_ORDER_MARK_PATTERN, "")
-      .replace(TRAILING_BREAKS_PATTERN, ""),
-  ].length;
+/** A store note's length in Unicode code points, the whole file counted. */
+export const storeNoteLength = (text: string): number => [...text].length;
 
 // Paths under the repository, Git-tracked or untracked but not ignored; a
 // directory outside Git falls back to a scan that skips node_modules.

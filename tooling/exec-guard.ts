@@ -16,8 +16,9 @@
 //   flag table, so an option's value never poses as a head, endpoint, or
 //   method; an unknown flag, or an option before or between the subcommand
 //   words other than `-R`/`--repo`/`--hostname`, is refused, and so is any
-//   command outside each CLI's built-in list (an alias or extension) and
-//   `repo sync`. Endpoints match however they are spelled (a URL, a trailing
+//   command outside each CLI's built-in list (an extension), any alias at
+//   either depth that does not expand to a plain built-in command without a
+//   merge, API call, sync, or shell, and `repo sync`. Endpoints match however they are spelled (a URL, a trailing
 //   slash, percent escapes). An API call is a read only with
 //   one GET or HEAD method, or with no method and no body. A merge that pins
 //   no head or repeats it, one whose body comes from a file, a mutating call
@@ -405,7 +406,6 @@ const GH_COMMANDS = new Set([
   "auth",
   "browse",
   "cache",
-  "co",
   "completion",
   "config",
   "discussion",
@@ -449,6 +449,8 @@ const GLAB_COMMANDS = new Set([
   "label",
   "milestone",
   "mr",
+  "pipe",
+  "pipeline",
   "release",
   "repo",
   "schedule",
@@ -467,6 +469,10 @@ const PROVIDER_GLOBAL_VALUES = new Set(["-R", "--hostname", "--repo"]);
 const FIELD_FLAGS = ["-F", "-f", "--field", "--form", "--raw-field"];
 const READ_METHODS = new Set(["GET", "HEAD"]);
 const LEADING_EQUALS = /^=/u;
+const ALIAS_SEPARATOR = /:\s+/u;
+const SURROUNDING_QUOTES = /^['"]|['"]$/gu;
+const WHITESPACE = /\s+/u;
+const RISKY_ALIAS_WORD = /merge|accept|\bapi\b|\bsync\b/u;
 const AGGREGATE_HEAD = /(?:^|\/)(?:FETCH|MERGE)_HEAD\b/u;
 const QUERY_OR_FRAGMENT = /[?#]/u;
 const TRAILING_SLASHES = /\/+$/u;
@@ -617,74 +623,141 @@ const apiCall = (
       );
 };
 
+// The CLI's configured aliases, name to expansion, from `<cli> alias list`
+// (`name: expansion` or tab-separated lines); empty when the CLI is not
+// installed, since the command cannot run, and null when listing fails.
+const providerAliases = (
+  cli: string,
+  env: Record<string, string>
+): Map<string, string> | null => {
+  let listed: ReturnType<typeof spawnSync>;
+  try {
+    listed = spawnSync({
+      cmd: [cli, "alias", "list"],
+      env: {
+        ...process.env,
+        ...env,
+        GH_NO_UPDATE_NOTIFIER: "1",
+        GH_PROMPT_DISABLED: "1",
+        GLAB_CHECK_UPDATE: "false",
+      },
+      stderr: "pipe",
+      stdin: "ignore",
+      stdout: "pipe",
+    });
+  } catch {
+    return new Map();
+  }
+  if (!listed.success) {
+    return null;
+  }
+  const aliases = new Map<string, string>();
+  for (const line of listed.stdout?.toString().split("\n") ?? []) {
+    const [name = "", expansion = ""] = line.includes("\t")
+      ? line.split("\t")
+      : line.split(ALIAS_SEPARATOR);
+    if (name.trim() !== "" && name !== "Alias" && expansion.trim() !== "") {
+      aliases.set(
+        name.trim(),
+        expansion.trim().replace(SURROUNDING_QUOTES, "")
+      );
+    }
+  }
+  return aliases;
+};
+
+const harmlessAlias = (
+  expansion: string,
+  builtins: ReadonlySet<string>
+): boolean =>
+  !expansion.startsWith("!") &&
+  builtins.has(expansion.split(WHITESPACE)[0] ?? "") &&
+  !RISKY_ALIAS_WORD.test(expansion);
+
 // A provider command, read as `<cli> [-R repo] <noun> <verb> ...`: an API
 // call is judged by its endpoint and method, and the CLI merge must pin one
 // head with its head option. Any other option before the subcommand is
 // refused, because it could hide which subcommand runs.
-const providerCommand = (
-  checkout: string,
+interface Provider {
+  builtins: ReadonlySet<string>;
+  cli: string;
+  headOption: string;
+  label: string;
+  merge: string[];
+  mergeFlags: FlagTable;
+  noun: string;
+}
+
+// The subcommand words, `<noun> <verb>` or `api`, and where its own
+// arguments start, with only -R, --repo, or --hostname allowed before or
+// between the words: any other option there could hide which subcommand runs.
+const subcommandWords = (
   args: string[],
-  provider: {
-    builtins: ReadonlySet<string>;
-    cli: string;
-    headOption: string;
-    label: string;
-    merge: string[];
-    mergeFlags: FlagTable;
-    noun: string;
-  }
-): Gate => {
-  // The subcommand words, `<noun> <verb>` or `api`, with only -R, --repo, or
-  // --hostname allowed before or between them: any other option there could
-  // hide which subcommand runs.
+  label: string
+): { index: number; words: string[] } | Gate => {
   const words: string[] = [];
   let index = 0;
   while (index < args.length && words.length < 2 && words[0] !== "api") {
     const arg = args[index] ?? "";
+    const attached = [...PROVIDER_GLOBAL_VALUES].some(
+      (name) =>
+        arg.startsWith(`${name}=`) || (name === "-R" && arg.startsWith("-R"))
+    );
     if (!arg.startsWith("-")) {
       words.push(arg);
-      index += 1;
     } else if (PROVIDER_GLOBAL_VALUES.has(arg)) {
-      index += 2;
-    } else if (
-      [...PROVIDER_GLOBAL_VALUES].some(
-        (name) =>
-          arg.startsWith(`${name}=`) || (name === "-R" && arg.startsWith("-R"))
-      )
-    ) {
       index += 1;
-    } else {
-      return refuse(
-        `${arg} before the ${provider.label} subcommand is not inspected`
-      );
+    } else if (!attached) {
+      return refuse(`${arg} before the ${label} subcommand is not inspected`);
     }
+    index += 1;
   }
-  const context = { checkout, env: {}, global: [] };
+  return { index, words };
+};
+
+// A configured alias, at either depth, runs only when it expands to a
+// built-in command that names no merge, API call, sync, or shell; an
+// extension can run anything, so other commands must be built in. `repo
+// sync` can move a branch through the API. Null lets the command through to
+// the merge and API checks.
+const commandGate = (
+  provider: Provider,
+  words: string[],
+  env: Record<string, string>
+): Gate | null => {
   const [noun = "", verb = ""] = words;
-  // An alias or extension can expand to anything, so only built-in commands
-  // run; `gh repo sync` can move a branch through the API.
+  const aliases = providerAliases(provider.cli, env);
+  if (aliases === null) {
+    return refuse(
+      `${provider.cli} alias list failed, so aliases cannot be checked`
+    );
+  }
+  const expansion = aliases.get(`${noun} ${verb}`) ?? aliases.get(noun);
+  if (expansion !== undefined) {
+    return harmlessAlias(expansion, provider.builtins)
+      ? ALLOW
+      : refuse(
+          `${provider.cli} ${noun} is an alias for "${expansion}"; run the underlying command directly`
+        );
+  }
   if (noun !== "" && !provider.builtins.has(noun)) {
     return refuse(
-      `${provider.cli} ${noun} is not a built-in command (an alias or extension); run the underlying command directly`
+      `${provider.cli} ${noun} is not a built-in command (an extension); run the underlying command directly`
     );
   }
-  if (noun === "repo" && verb === "sync") {
-    return refuse(
-      `${provider.cli} repo sync can move a branch; it is not inspected`
-    );
-  }
-  if (noun === "api") {
-    return apiCall(
-      context,
-      parseFlags(args.slice(index), API_FLAGS),
-      provider.label
-    );
-  }
-  if (noun !== provider.noun || !provider.merge.includes(verb)) {
-    return ALLOW;
-  }
-  const label = `${provider.label} ${noun} merge`;
-  const parsed = parseFlags(args.slice(index), provider.mergeFlags);
+  return noun === "repo" && verb === "sync"
+    ? refuse(`${provider.cli} repo sync can move a branch; it is not inspected`)
+    : null;
+};
+
+// The CLI merge must pin exactly one head with its head option.
+const cliMerge = (
+  context: GitContext,
+  provider: Provider,
+  args: string[]
+): Gate => {
+  const label = `${provider.label} ${provider.noun} merge`;
+  const parsed = parseFlags(args, provider.mergeFlags);
   if (parsed.unknown.length > 0) {
     return refuse(`${label} with ${parsed.unknown.join(" ")} is not inspected`);
   }
@@ -698,6 +771,35 @@ const providerCommand = (
     : refuse(
         `${label} must pin the head it merges with ${provider.headOption} <head>`
       );
+};
+
+const providerCommand = (
+  checkout: string,
+  args: string[],
+  env: Record<string, string>,
+  provider: Provider
+): Gate => {
+  const located = subcommandWords(args, provider.label);
+  if ("kind" in located) {
+    return located;
+  }
+  const { index, words } = located;
+  const gate = commandGate(provider, words, env);
+  if (gate !== null) {
+    return gate;
+  }
+  const context = { checkout, env: {}, global: [] };
+  const [noun = "", verb = ""] = words;
+  if (noun === "api") {
+    return apiCall(
+      context,
+      parseFlags(args.slice(index), API_FLAGS),
+      provider.label
+    );
+  }
+  return noun === provider.noun && provider.merge.includes(verb)
+    ? cliMerge(context, provider, args.slice(index))
+    : ALLOW;
 };
 
 /** Decides whether the exec command is gated, and on which revisions. */
@@ -730,7 +832,7 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
       return git(checkout, args, env);
     }
     case "glab": {
-      return providerCommand(checkout, args, {
+      return providerCommand(checkout, args, env, {
         builtins: GLAB_COMMANDS,
         cli: "glab",
         headOption: "--sha",
@@ -741,7 +843,7 @@ export const gateFor = (checkout: string, argv: string[]): Gate => {
       });
     }
     case "gh": {
-      return providerCommand(checkout, args, {
+      return providerCommand(checkout, args, env, {
         builtins: GH_COMMANDS,
         cli: "gh",
         headOption: "--match-head-commit",

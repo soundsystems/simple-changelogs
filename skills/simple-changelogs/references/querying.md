@@ -44,7 +44,8 @@ Subcommands:
   `metadata/<locale>/release_notes.txt`, 4,000) and Google Play notes
   (Fastlane `metadata/android/<locale>/changelogs/*.txt` or Gradle Play
   Publisher `play/release-notes/<locale>/*.txt`, 500) to their limits in
-  Unicode code points, ignoring trailing line breaks. Exits nonzero on
+  Unicode code points over the whole file, a trailing line break included.
+  Exits nonzero on
   problems; fix what it reports and rerun it until it exits 0. Legacy `<!-- Agent: ... -->` signatures are notes, not
   problems; they remain valid released history.
 

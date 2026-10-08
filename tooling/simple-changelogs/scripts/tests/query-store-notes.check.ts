@@ -19,6 +19,7 @@ afterEach(async () => {
 
 const ASTRAL = "\u{1F680}";
 const COMBINED = "é";
+const BYTE_ORDER_MARK = String.fromCodePoint(0xfe_ff);
 
 const runCheck = async (
   repo: string,
@@ -71,11 +72,12 @@ describe("store-note length", () => {
     expect(storeNoteLength("\u{1F1FA}\u{1F1F8}")).toBe(2);
   });
 
-  test("ignores a byte order mark and trailing line breaks, not interior ones", () => {
-    expect(storeNoteLength("﻿Fixes\n")).toBe(5);
-    expect(storeNoteLength("Fixes\r\n\r\n")).toBe(5);
-    expect(storeNoteLength("One\nTwo\n")).toBe(7);
-    expect(storeNoteLength("  Lead\n")).toBe(6);
+  test("counts the whole file, line breaks and a byte order mark included", () => {
+    // Fastlane supply uploads the text unchanged, so nothing is trimmed.
+    expect(storeNoteLength(`${BYTE_ORDER_MARK}Fixes\n`)).toBe(7);
+    expect(storeNoteLength("Fixes\r\n\r\n")).toBe(9);
+    expect(storeNoteLength("One\nTwo\n")).toBe(8);
+    expect(storeNoteLength("  Lead")).toBe(6);
   });
 });
 
@@ -83,8 +85,9 @@ describe("query check store notes", () => {
   test("holds App Store and Google Play notes to their per-locale limits", async () => {
     const repo = await fixture({
       ".gitignore": "ignored/\n",
+      "app/src/main/play/release-notes/de-DE/production.txt": `${"w".repeat(500)}\n`,
       "app/src/main/play/release-notes/en-US/default.txt": "x".repeat(501),
-      "app/src/main/play/release-notes/fr-FR/production.txt": `${"y".repeat(500)}\n`,
+      "app/src/main/play/release-notes/fr-FR/production.txt": "y".repeat(500),
       "fastlane/metadata/android/en-US/changelogs/120.txt": ASTRAL.repeat(500),
       "fastlane/metadata/android/ja-JP/changelogs/default.txt":
         COMBINED.repeat(251),
@@ -100,7 +103,7 @@ describe("query check store notes", () => {
     ]);
     expect(text.exitCode).toBe(1);
     expect(text.stdout).toContain(
-      "Store notes: 6 checked, 3 over their limit."
+      "Store notes: 7 checked, 4 over their limit."
     );
     expect(text.stdout).toContain(
       "Google Play release notes allows 500 characters per locale; this note has 501"
@@ -129,6 +132,7 @@ describe("query check store notes", () => {
         file.storeNote?.limit,
       ])
     ).toEqual([
+      ["app/src/main/play/release-notes/de-DE/production.txt", 501, 500],
       ["app/src/main/play/release-notes/en-US/default.txt", 501, 500],
       ["app/src/main/play/release-notes/fr-FR/production.txt", 500, 500],
       ["fastlane/metadata/android/en-US/changelogs/120.txt", 500, 500],
@@ -136,7 +140,7 @@ describe("query check store notes", () => {
       ["fastlane/metadata/de-DE/release_notes.txt", 4001, 4000],
       ["fastlane/metadata/en-US/release_notes.txt", 4000, 4000],
     ]);
-    expect(report.problems).toBe(3);
+    expect(report.problems).toBe(4);
   });
 
   test("scans a directory outside Git, skipping node_modules", async () => {
