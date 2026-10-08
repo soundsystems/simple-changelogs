@@ -35,8 +35,12 @@ Subcommands:
   duplicate `Unreleased` headings, malformed signature comments, unclosed code
   fences or HTML comments, and unindented or ordered-list lines that are not
   entries. One empty `Unreleased` heading is valid; a missing or non-leading
-  one is a note. Exits nonzero on problems; fix what it reports and rerun it
-  until it exits 0. Legacy `<!-- Agent: ... -->` signatures are notes, not
+  one is a note. It also holds App Store notes (Fastlane
+  `metadata/<locale>/release_notes.txt`, 4,000) and Google Play notes
+  (Fastlane `metadata/android/<locale>/changelogs/*.txt` or Gradle Play
+  Publisher `play/release-notes/<locale>/*.txt`, 500) to their limits in
+  Unicode code points, ignoring trailing line breaks. Exits nonzero on
+  problems; fix what it reports and rerun it until it exits 0. Legacy `<!-- Agent: ... -->` signatures are notes, not
   problems; they remain valid released history.
 
 For curated release notes (see `references/curation.md`): `entries --ids`

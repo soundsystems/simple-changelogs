@@ -386,7 +386,9 @@ bun skills/simple-changelogs-web/scripts/query.ts gaps --since v2.1.0 --repo .
 
 `check` lints structure (unrecognized release headings, malformed signature
 comments, parser diagnostics) and exits nonzero on problems so it can join
-verification checklists. Both the canonical
+verification checklists. It also holds Fastlane and Gradle Play Publisher
+store notes to the App Store's 4,000 and Google Play's 500 characters per
+locale, counted in Unicode code points. Both the canonical
 `<!-- simple-changelogs-signature ... -->` comment and the older
 `<!-- Agent: ... -->` dialect are recognized when attributing entries. In
 curated repositories, `entries --ids` prints the entry identities that

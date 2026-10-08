@@ -6,7 +6,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { spawnSync } from "bun";
+import { Glob, spawnSync } from "bun";
 import {
   type ChangelogEntry,
   type ChangelogRelease,
@@ -32,7 +32,9 @@ Commands:
                                releaseTags) that add no changelog lines.
   check                        Lint changelog structure; nonzero on problems.
                                Under a curated policy, also verifies
-                               RELEASE_NOTES.md against the changelog.
+                               RELEASE_NOTES.md against the changelog. Also
+                               holds App Store and Google Play release-note
+                               files to their per-locale character limits.
   help                         Print this text.
 
 Options:
@@ -775,6 +777,8 @@ interface CheckFileReport {
   malformedSignatures: string[];
   notes?: string[];
   path: string;
+  // A store note's length in code points and its store's per-locale limit.
+  storeNote?: { characters: number; limit: number; store: string };
   unanchored?: boolean;
   unrecognizedHeadings: string[];
 }
@@ -874,12 +878,14 @@ const runCheck = (
   options: CliOptions,
   logs: LoadedLog[],
   notes: ParsedReleaseNotes | null,
-  policy: Policy | string
+  policy: Policy | string,
+  storeNotes: CheckFileReport[] = []
 ): { exitCode: number; output: string } => {
   const customer = logs.find((loaded) => loaded.log === "customer")?.parsed;
   const files = [
     ...logs.map(checkFileReport),
     ...curationReports(options.repo, customer, notes, policy),
+    ...storeNotes,
   ];
   const problems = files.reduce(
     (sum, report) => sum + checkProblemCount(report),
@@ -895,9 +901,20 @@ const runCheck = (
   const summary = ok
     ? "Structure check passed."
     : `Structure check found ${problems} problem(s).`;
+  // Store notes within their limits collapse into one line.
+  const shown = files.filter(
+    (report) => !report.storeNote || checkProblemCount(report) > 0
+  );
+  const over = storeNotes.filter((report) => checkProblemCount(report) > 0);
+  const storeLine =
+    storeNotes.length > 0
+      ? [
+          `Store notes: ${storeNotes.length} checked, ${over.length} over their limit.`,
+        ]
+      : [];
   return {
     exitCode: ok ? 0 : 1,
-    output: `${files.map(describeCheckFile).join("\n")}\n${summary}`,
+    output: [...shown.map(describeCheckFile), ...storeLine, summary].join("\n"),
   };
 };
 
@@ -1181,6 +1198,103 @@ const runGaps = async (options: CliOptions): Promise<string> => {
   return lines.join("\n");
 };
 
+// Store notes: public update copy in the Fastlane deliver and supply and the
+// Gradle Play Publisher layouts, held to each store's per-locale limit.
+// Counted in Unicode code points, the stricter reading for combining marks,
+// after dropping a byte order mark and trailing line breaks. Other layouts
+// are not detected, and TestFlight What to Test has no documented limit.
+const STORE_NOTE_RULES = [
+  {
+    limit: 4000,
+    pattern:
+      /(?:^|\/)fastlane\/metadata\/(?!android\/)[^/]+\/release_notes\.txt$/u,
+    store: "App Store What's New",
+  },
+  {
+    limit: 500,
+    pattern:
+      /(?:^|\/)fastlane\/metadata\/android\/[^/]+\/changelogs\/[^/]+\.txt$/u,
+    store: "Google Play release notes",
+  },
+  {
+    limit: 500,
+    pattern: /(?:^|\/)play\/release-notes\/[^/]+\/[^/]+\.txt$/u,
+    store: "Google Play release notes",
+  },
+];
+const STORE_NOTE_GLOB = "**/*.txt";
+const BYTE_ORDER_MARK_PATTERN = /^\uFEFF/u;
+const TRAILING_BREAKS_PATTERN = /[\r\n]+$/u;
+
+/** A store note's length in Unicode code points, as the stores count it. */
+export const storeNoteLength = (text: string): number =>
+  [
+    ...text
+      .replace(BYTE_ORDER_MARK_PATTERN, "")
+      .replace(TRAILING_BREAKS_PATTERN, ""),
+  ].length;
+
+// Paths under the repository, Git-tracked or untracked but not ignored; a
+// directory outside Git falls back to a scan that skips node_modules.
+const candidatePaths = async (repo: string): Promise<string[]> => {
+  const listed = spawnSync({
+    cmd: [
+      "git",
+      "-C",
+      repo,
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+    ],
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  if (listed.success) {
+    return listed.stdout.toString().split("\0").filter(Boolean);
+  }
+  const scanned: string[] = [];
+  for await (const path of new Glob(STORE_NOTE_GLOB).scan({ cwd: repo })) {
+    if (!path.split("/").includes("node_modules")) {
+      scanned.push(path);
+    }
+  }
+  return scanned;
+};
+
+const storeNoteReports = async (repo: string): Promise<CheckFileReport[]> => {
+  const notes = (await candidatePaths(repo))
+    .flatMap((path) => {
+      const rule = STORE_NOTE_RULES.find(({ pattern }) => pattern.test(path));
+      return rule ? [{ path, rule }] : [];
+    })
+    .sort((left, right) => (left.path < right.path ? -1 : 1));
+  const reports = await Promise.all(
+    notes.map(async ({ path, rule: { limit, store } }) => {
+      const absolute = join(repo, path);
+      if (!existsSync(absolute)) {
+        return [];
+      }
+      const characters = storeNoteLength(await readFile(absolute, "utf8"));
+      return [
+        {
+          ...extraReport(
+            absolute,
+            characters > limit
+              ? [
+                  `${store} allows ${limit} characters per locale; this note has ${characters}`,
+                ]
+              : []
+          ),
+          storeNote: { characters, limit, store },
+        },
+      ];
+    })
+  );
+  return reports.flat();
+};
+
 const run = async (argv: string[]): Promise<number> => {
   if (["help", "--help", "-h"].includes(argv[0] ?? "")) {
     process.stdout.write(`${USAGE}\n`);
@@ -1209,11 +1323,18 @@ const run = async (argv: string[]): Promise<number> => {
       return 0;
     }
     case "check": {
-      const [notes, policy] = await Promise.all([
+      const [notes, policy, storeNotes] = await Promise.all([
         loadReleaseNotes(options.repo),
         readRepoPolicy(options.repo),
+        storeNoteReports(options.repo),
       ]);
-      const { exitCode, output } = runCheck(options, logs, notes, policy);
+      const { exitCode, output } = runCheck(
+        options,
+        logs,
+        notes,
+        policy,
+        storeNotes
+      );
       process.stdout.write(`${output}\n`);
       return exitCode;
     }
