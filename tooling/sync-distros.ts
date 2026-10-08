@@ -183,13 +183,23 @@ export const syncDistributions = async (
   const files = await syncedFiles(root);
   const matches = await Promise.all(
     files.map(async (file) => {
-      const target = join(root, file.target);
-      const metadata = await lstat(target).catch(() => null);
-      if (metadata?.isSymbolicLink()) {
-        throw new Error(`Refusing to write through the symlink ${file.target}`);
+      // A symlink anywhere below the root, the copy or a directory above it,
+      // could redirect the write outside the repository.
+      const segments = file.target.split("/");
+      const chain = await Promise.all(
+        segments.map((_, index) =>
+          lstat(join(root, ...segments.slice(0, index + 1))).catch(() => null)
+        )
+      );
+      const linked = chain.findIndex((metadata) => metadata?.isSymbolicLink());
+      if (linked !== -1) {
+        throw new Error(
+          `Refusing to write through the symlink ${segments.slice(0, linked + 1).join("/")}`
+        );
       }
       return (
-        metadata !== null && (await readFile(target, "utf8")) === file.expected
+        chain.at(-1) !== null &&
+        (await readFile(join(root, file.target), "utf8")) === file.expected
       );
     })
   );

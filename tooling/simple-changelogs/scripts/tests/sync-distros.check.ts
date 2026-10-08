@@ -243,6 +243,23 @@ describe("sync-distros", () => {
     await expect(read(root, MISSING_COPY)).rejects.toThrow();
   });
 
+  test("refuses to write through a symlinked directory above a copy", async () => {
+    const root = await repositoryCopy();
+    const scripts = `skills/${WEB}/scripts`;
+    const outside = join(root, "outside-scripts");
+    await cp(join(root, scripts), outside, { recursive: true });
+    await rm(join(root, scripts), { recursive: true });
+    await symlink(outside, join(root, scripts));
+    await writeFile(join(outside, "setup.ts"), "// outside\n");
+
+    await expect(syncDistributions(root, { write: true })).rejects.toThrow(
+      `Refusing to write through the symlink ${scripts}`
+    );
+    expect(await readFile(join(outside, "setup.ts"), "utf8")).toBe(
+      "// outside\n"
+    );
+  });
+
   test("refuses to write through a symlinked copy", async () => {
     const root = await repositoryCopy();
     const outside = join(root, "outside.ts");
