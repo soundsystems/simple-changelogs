@@ -84,6 +84,15 @@ const shippedCapabilities = async (directoryName: string): Promise<unknown> => {
   }
 };
 
+// The protocol schema digests as of guidance 25; a guidance bump that
+// changes no protocol must leave them unchanged.
+const PROTOCOL_SCHEMA_DIGESTS = {
+  changelogReceipt:
+    "4c3515e4d31d6ae1890848c3bd7ed53d59e4d445fa7d884187c6355a10ef10c0",
+  changelogRequest:
+    "8a816017d21aacf5ada726d158b5da7169f50d123ad4201737d4e6108aa3569e",
+};
+
 describe("changelog-provider marker", () => {
   test("each shipped helper advertises its marker from its own minified schemas", async () => {
     const directories = [
@@ -142,6 +151,10 @@ describe("changelog-provider marker", () => {
       expect(marker.receiptVersions).toEqual(full ? [1, 2, 3, 4] : [1, 2, 4]);
       expect(marker.guidanceVersion).toBe(26);
       expect(marker.features).not.toContain("shared-version-lines");
+      // Guidance 26 (authoring preferences) changes no protocol: request and
+      // receipt versions above and the schema digests stay as they were, so
+      // discovery negotiates exactly the same versions with Simple Changes.
+      expect(marker.schemaDigests).toEqual(PROTOCOL_SCHEMA_DIGESTS);
     });
   }
 
@@ -181,6 +194,7 @@ describe("changelog-provider marker", () => {
     expect(marker.requestVersions).toEqual([1]);
     expect(marker.receiptVersions).toEqual([2]);
     expect(marker.guidanceVersion).toBe(26);
+    expect(marker.schemaDigests).toEqual(PROTOCOL_SCHEMA_DIGESTS);
     expect(marker.schemaDigests).toEqual(
       (await providerMarkerFor("full")).schemaDigests
     );

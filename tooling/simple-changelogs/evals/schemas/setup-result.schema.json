@@ -16,6 +16,10 @@
     "publicVersioning",
     "cmsPolicy",
     "globalPreferences",
+    "detectedHarnesses",
+    "authoringFiles",
+    "authoringQuestion",
+    "authoring",
     "guidanceUpdate",
     "inventory",
     "onboardingContribution",
@@ -61,6 +65,23 @@
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/cmsPolicyState" }]
     },
     "globalPreferences": { "$ref": "#/$defs/globalPreferencesState" },
+    "detectedHarnesses": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/detectedHarness" }
+    },
+    "authoringFiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "personal"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/authoringState" },
+        "personal": { "$ref": "#/$defs/authoringState" }
+      }
+    },
+    "authoringQuestion": {
+      "enum": ["pending", "answered", "repair", "not-applicable"]
+    },
+    "authoring": { "$ref": "#/$defs/authoringInspection" },
     "guidanceUpdate": {
       "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/guidanceUpdate" }]
     },
@@ -178,9 +199,11 @@
         "questions": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 2,
+          "maxItems": 3,
           "uniqueItems": true,
-          "items": { "enum": ["shared-version-lines", "release-tags"] }
+          "items": {
+            "enum": ["shared-version-lines", "release-tags", "authoring-models"]
+          }
         }
       }
     },
@@ -814,7 +837,8 @@
                   "major-release-naming",
                   "public-version-actions",
                   "public-version-suggestions",
-                  "release-tags"
+                  "release-tags",
+                  "authoring-models"
                 ]
               },
               "required": { "type": "boolean" }
@@ -895,6 +919,7 @@
       "properties": {
         "kind": {
           "enum": [
+            "authoring",
             "changelog",
             "cms-changelog",
             "cms-policy",
@@ -905,6 +930,146 @@
         },
         "path": { "type": "string", "minLength": 1 },
         "written": { "type": "boolean" }
+      }
+    },
+    "detectedHarness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,39}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "authoringEffort": { "enum": ["low", "medium", "high", "xhigh", "max"] },
+    "authoringLayer": { "enum": ["repository", "personal", "default"] },
+    "authoringSidecar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "roles", "harnesses"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "roles": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "release-notes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["harness"],
+              "properties": {
+                "harness": { "type": "string", "minLength": 1 },
+                "model": { "type": "string", "minLength": 1 },
+                "effort": { "$ref": "#/$defs/authoringEffort" }
+              }
+            }
+          }
+        },
+        "harnesses": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["model"],
+                "properties": {
+                  "model": { "type": "string", "minLength": 1 },
+                  "effort": { "$ref": "#/$defs/authoringEffort" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "authoringState": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "enum": ["absent", "malformed"] },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "state", "errors", "value"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "state": { "const": "valid" },
+            "errors": { "type": "array", "maxItems": 0 },
+            "value": { "$ref": "#/$defs/authoringSidecar" }
+          }
+        }
+      ]
+    },
+    "authoringInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effective", "source"],
+      "properties": {
+        "effective": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release-notes"],
+          "properties": {
+            "release-notes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["harness", "model", "effort", "status"],
+              "properties": {
+                "harness": { "type": "string", "minLength": 1 },
+                "model": { "type": "string", "minLength": 1 },
+                "effort": { "$ref": "#/$defs/authoringEffort" },
+                "status": {
+                  "enum": [
+                    "resolved",
+                    "most-capable",
+                    "unresolved",
+                    "no-delegation"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release-notes"],
+          "properties": {
+            "release-notes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["harness", "model", "effort", "path"],
+              "properties": {
+                "harness": { "$ref": "#/$defs/authoringLayer" },
+                "model": { "$ref": "#/$defs/authoringLayer" },
+                "effort": { "$ref": "#/$defs/authoringLayer" },
+                "path": {
+                  "oneOf": [
+                    { "type": "null" },
+                    { "type": "string", "minLength": 1 }
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

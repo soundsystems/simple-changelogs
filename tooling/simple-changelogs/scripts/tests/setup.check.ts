@@ -245,13 +245,14 @@ describe("setup inspection", () => {
       backfillRecommendation: "optional",
       currentVersion: 26,
       headline: "Simple Changelogs has recently been updated.",
-      questions: ["release-tags"],
+      // No authoring sidecar exists yet, so the models question rides along.
+      questions: ["release-tags", "authoring-models"],
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
         "New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception.",
         "Each release can now get a Git tag: Simple Changelogs names it in the release receipt, and Simple Changes 0.27.0 or later creates and pushes it. This update asks once how releases should be tagged.",
-        "Agents read changelogs through query.ts instead of whole files, query.ts gaps lists merges since the last release tag without an entry, and scripts/handoff.ts computes release receipts.",
+        "You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, entries are still signed by the model that wrote them, and this update asks once. Agents also read changelogs through query.ts instead of whole files, query.ts gaps lists merges since the last release tag without an entry, and scripts/handoff.ts computes release receipts.",
       ],
       userPrompt:
         "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
@@ -605,6 +606,7 @@ describe("setup inspection", () => {
       "release-note-surface-components",
       "major-release-naming",
       "release-tags",
+      "authoring-models",
       "preference-scope",
       "released-history-audit",
     ]);
@@ -1439,6 +1441,7 @@ describe("setup application", () => {
         { id: "major-release-naming", required: true },
         { id: "public-version-actions", required: true },
         { id: "release-tags", required: true },
+        { id: "authoring-models", required: false },
       ],
       resolvedPolicy: {
         major: "automatic",
@@ -2081,10 +2084,9 @@ describe("distribution and CMS boundaries", () => {
       currentVersion: 26,
       recordedVersion: 1,
     });
-    // CMS history has no release, so the notice never asks about tags.
-    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
-      false
-    );
+    // CMS history has no release, so the notice never asks about tags; it
+    // asks only the authoring question, which no sidecar has answered yet.
+    expect(inspection.guidanceUpdate?.questions).toEqual(["authoring-models"]);
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2502,10 +2504,9 @@ describe("post-onboarding update paths", () => {
       currentVersion: 2,
       recordedVersion: 1,
     });
-    // The main track is current, so the release-tag question is not asked.
-    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
-      false
-    );
+    // The main track is current, so the release-tag question is not asked;
+    // the unanswered authoring question is.
+    expect(inspection.guidanceUpdate?.questions).toEqual(["authoring-models"]);
     expect(inspection.guidanceUpdate?.changes).toEqual([
       {
         backfillRecommendation: "optional",

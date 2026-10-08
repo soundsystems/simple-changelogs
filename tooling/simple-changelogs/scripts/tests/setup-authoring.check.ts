@@ -1,0 +1,1314 @@
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
+// biome-ignore lint/performance/noNamespaceImport: spyOn patches the namespace setup.ts's named imports read.
+import * as fsPromises from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawn } from "bun";
+import {
+  type AuthoringSidecar,
+  applySetup,
+  detectHarnesses,
+  inspectRepository,
+  loadHarnesses,
+  resolveAuthoring,
+  resolveAuthoringPaths,
+  type SetupResult,
+  validateAuthoring,
+  writeAuthoringFile,
+} from "../setup.ts";
+
+// Authoring preferences (design section 4): the sidecar validator, harness
+// detection from the data file, resolution with provenance, the pending
+// question, and the standalone apply --authoring transaction. Detection uses
+// a fixture data file with neutral harness ids, so nothing here depends on
+// the machine's real home directory or on the harness running the tests.
+
+const REPOSITORY_ROOT = join(import.meta.dir, "..", "..", "..", "..");
+const SETUP = join(import.meta.dir, "..", "setup.ts");
+const SCHEMA_PATH = join(
+  REPOSITORY_ROOT,
+  "skills",
+  "simple-changelogs",
+  "schemas",
+  "authoring.schema.json"
+);
+const temporaryPaths: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryPaths
+      .splice(0)
+      .map((path) => rm(path, { force: true, recursive: true }))
+  );
+});
+
+const temporaryDirectory = async (label: string): Promise<string> => {
+  const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
+  temporaryPaths.push(path);
+  return path;
+};
+
+const writeJson = async (path: string, value: unknown): Promise<void> => {
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+};
+
+const FIXTURE_HARNESSES = {
+  harnesses: {
+    "alpha-agent": {
+      homeRoots: [".alpha"],
+      name: "Alpha Agent",
+      sessionEnv: ["ALPHA_SESSION_ID"],
+    },
+    "beta-agent": {
+      homeRoots: [".beta", ".beta-legacy"],
+      name: "Beta Agent",
+      sessionEnv: ["BETA_THREAD_ID"],
+    },
+    gamma: { homeRoots: [".gamma"], name: "Gamma", sessionEnv: [] },
+  },
+  schemaVersion: 1,
+};
+
+interface AuthoringFixture {
+  config: string;
+  dataPath: string;
+  environment: Record<string, string | undefined>;
+  repo: string;
+  roots: string;
+}
+
+const authoringFixture = async (
+  options: { running?: "alpha" | "beta" | null; roots?: string[] } = {}
+): Promise<AuthoringFixture> => {
+  const [config, repo, roots, data] = await Promise.all([
+    temporaryDirectory("config"),
+    temporaryDirectory("repo"),
+    temporaryDirectory("roots"),
+    temporaryDirectory("data"),
+  ]);
+  const dataPath = join(data, "harnesses.json");
+  await writeJson(dataPath, FIXTURE_HARNESSES);
+  await Promise.all(
+    (options.roots ?? []).map((root) =>
+      mkdir(join(roots, root), { recursive: true })
+    )
+  );
+  const environment: Record<string, string | undefined> = {
+    SIMPLE_CHANGELOGS_HARNESS_ROOTS: roots,
+  };
+  if (options.running === "alpha") {
+    environment.ALPHA_SESSION_ID = "session-a";
+  } else if (options.running === "beta") {
+    environment.BETA_THREAD_ID = "thread-b";
+  }
+  return { config, dataPath, environment, repo, roots };
+};
+
+const inspectFixture = (
+  fixture: AuthoringFixture,
+  overrides: Partial<Parameters<typeof inspectRepository>[0]> = {}
+): Promise<SetupResult> =>
+  inspectRepository({
+    configDirectory: fixture.config,
+    distribution: "web",
+    environment: fixture.environment,
+    harnessDataPath: fixture.dataPath,
+    repo: fixture.repo,
+    taskMode: "write",
+    ...overrides,
+  });
+
+const applyAuthoring = (
+  fixture: AuthoringFixture,
+  authoring: unknown,
+  overrides: Partial<Parameters<typeof applySetup>[0]> = {}
+): Promise<SetupResult> =>
+  applySetup({
+    authoring,
+    configDirectory: fixture.config,
+    confirm: true,
+    distribution: "web",
+    environment: fixture.environment,
+    harnessDataPath: fixture.dataPath,
+    repo: fixture.repo,
+    scope: "repository",
+    ...overrides,
+  });
+
+const configuredPolicy = {
+  developerChangelog: "required",
+  distribution: "web",
+  guidance: { backfillStatus: "not-applicable", version: 24 },
+  newReleaseNoteSurfaces: "ask",
+  releaseTags: "none",
+  schemaVersion: 1,
+  signatures: "agent-and-timestamp",
+};
+
+const EMPTY_SIDECAR = { harnesses: {}, roles: {}, schemaVersion: 1 };
+
+// Each case: a sidecar and whether it is valid; the packaged schema and the
+// hand-written validator must agree on every one.
+const VALIDATION_TABLE: {
+  name: string;
+  valid: boolean;
+  value: unknown;
+}[] = [
+  { name: "empty sidecar", valid: true, value: EMPTY_SIDECAR },
+  {
+    name: "recommended answer",
+    valid: true,
+    value: {
+      harnesses: { "alpha-agent": { effort: "xhigh", model: "most-capable" } },
+      roles: { "release-notes": { harness: "running" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "unknown but valid harness id",
+    valid: true,
+    value: {
+      harnesses: { "my-own-agent-2": { model: "house-model" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "null entry",
+    valid: true,
+    value: { harnesses: { gamma: null }, roles: {}, schemaVersion: 1 },
+  },
+  {
+    name: "explicit max effort",
+    valid: true,
+    value: {
+      harnesses: { gamma: { effort: "max", model: "big-model" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "role-level model with a concrete harness",
+    valid: true,
+    value: {
+      harnesses: {},
+      roles: {
+        "release-notes": {
+          effort: "high",
+          harness: "beta-agent",
+          model: "writer-1",
+        },
+      },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "role-level effort without a model on running",
+    valid: true,
+    value: {
+      harnesses: {},
+      roles: { "release-notes": { effort: "medium", harness: "running" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "role-level model with running",
+    valid: false,
+    value: {
+      harnesses: {},
+      roles: { "release-notes": { harness: "running", model: "writer-1" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "invalid harness id key",
+    valid: false,
+    value: {
+      harnesses: { "Bad Id": { model: "x" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "invalid harness id as a role target",
+    valid: false,
+    value: {
+      harnesses: {},
+      roles: { "release-notes": { harness: "-dash-first" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "unknown effort",
+    valid: false,
+    value: {
+      harnesses: { gamma: { effort: "ultra", model: "x" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "model with a newline",
+    valid: false,
+    value: {
+      harnesses: { gamma: { model: "line\nbreak" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "model of 120 astral characters",
+    valid: true,
+    value: {
+      harnesses: { gamma: { model: "\u{1F600}".repeat(120) } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "model longer than 120 characters",
+    valid: false,
+    value: {
+      harnesses: { gamma: { model: "m".repeat(121) } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "empty model",
+    valid: false,
+    value: { harnesses: { gamma: { model: "" } }, roles: {}, schemaVersion: 1 },
+  },
+  {
+    name: "harness entry without a model",
+    valid: false,
+    value: {
+      harnesses: { gamma: { effort: "high" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "nested unknown key in a harness entry",
+    valid: false,
+    value: {
+      harnesses: { gamma: { launch: "cmd", model: "x" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "nested unknown key in a role",
+    valid: false,
+    value: {
+      harnesses: {},
+      roles: { "release-notes": { harness: "running", sign: true } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "review-only flag on the release-notes role",
+    valid: false,
+    value: {
+      harnesses: {},
+      roles: { "release-notes": { adversarial: true, harness: "gamma" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "a Simple Changes role",
+    valid: false,
+    value: {
+      harnesses: {},
+      roles: { review: { harness: "running" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "unknown top-level key",
+    valid: false,
+    value: { ...EMPTY_SIDECAR, models: ["x"] },
+  },
+  {
+    name: "missing harnesses",
+    valid: false,
+    value: { roles: {}, schemaVersion: 1 },
+  },
+  {
+    name: "schema version 2",
+    valid: false,
+    value: { ...EMPTY_SIDECAR, schemaVersion: 2 },
+  },
+  {
+    name: "a role without a harness",
+    valid: false,
+    value: {
+      harnesses: {},
+      roles: { "release-notes": { model: "x" } },
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "a harness id spelled like an inherited property",
+    valid: true,
+    value: {
+      harnesses: { constructor: { model: "x" } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  {
+    name: "a malformed entry under an inherited property name",
+    valid: false,
+    value: {
+      harnesses: { constructor: { extra: true, model: 42 } },
+      roles: {},
+      schemaVersion: 1,
+    },
+  },
+  { name: "not an object", valid: false, value: ["x"] },
+];
+
+type Schema = Record<string, unknown>;
+const isObject = (value: unknown): value is Schema =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+// The JSON Schema subset the authoring schema uses: local $ref, const, enum,
+// type, anyOf, if/then, required, properties, additionalProperties, pattern,
+// minLength, and maxLength.
+type SchemaCheck = (
+  root: Schema,
+  schema: Schema,
+  value: unknown,
+  path: string
+) => string[];
+
+const TYPES: Record<string, (candidate: unknown) => boolean> = {
+  boolean: (candidate) => typeof candidate === "boolean",
+  null: (candidate) => candidate === null,
+  object: isObject,
+  string: (candidate) => typeof candidate === "string",
+};
+
+// JSON Schema lengths count code points.
+const stringErrors = (schema: Schema, value: string, path: string): string[] =>
+  [
+    typeof schema.minLength === "number" && [...value].length < schema.minLength
+      ? `${path} minLength`
+      : "",
+    typeof schema.maxLength === "number" && [...value].length > schema.maxLength
+      ? `${path} maxLength`
+      : "",
+    typeof schema.pattern === "string" &&
+    !new RegExp(schema.pattern, "u").test(value)
+      ? `${path} pattern`
+      : "",
+  ].filter(Boolean);
+
+const propertyErrors: SchemaCheck = (root, schema, value, path) => {
+  if (!isObject(value)) {
+    return [];
+  }
+  const errors = ((schema.required as string[] | undefined) ?? [])
+    .filter((key) => !Object.hasOwn(value, key))
+    .map((key) => `${path}.${key} required`);
+  if (isObject(schema.propertyNames)) {
+    for (const key of Object.keys(value)) {
+      errors.push(
+        ...schemaErrors(root, schema.propertyNames, key, `${path}.${key} name`)
+      );
+    }
+  }
+  const properties = (schema.properties as Schema | undefined) ?? {};
+  for (const [key, item] of Object.entries(value)) {
+    const nested = Object.hasOwn(properties, key)
+      ? properties[key]
+      : schema.additionalProperties;
+    if (isObject(nested)) {
+      errors.push(...schemaErrors(root, nested, item, `${path}.${key}`));
+    } else if (nested === false) {
+      errors.push(`${path}.${key} additional`);
+    }
+  }
+  const applies =
+    isObject(schema.if) &&
+    schemaErrors(root, schema.if, value, path).length === 0;
+  if (applies && isObject(schema.then)) {
+    errors.push(...schemaErrors(root, schema.then, value, path));
+  }
+  return errors;
+};
+
+const resolveReference = (root: Schema, reference: string): Schema =>
+  reference
+    .slice(2)
+    .split("/")
+    .reduce<unknown>(
+      (node, part) => (isObject(node) ? node[part] : undefined),
+      root
+    ) as Schema;
+
+const schemaErrors: SchemaCheck = (root, schema, value, path) => {
+  if (typeof schema.$ref === "string") {
+    return schemaErrors(root, resolveReference(root, schema.$ref), value, path);
+  }
+  if (typeof schema.type === "string" && !TYPES[schema.type]?.(value)) {
+    return [`${path} type`];
+  }
+  const errors = [
+    "const" in schema && value !== schema.const ? `${path} const` : "",
+    Array.isArray(schema.enum) && !schema.enum.includes(value)
+      ? `${path} enum`
+      : "",
+    Array.isArray(schema.anyOf) &&
+    !schema.anyOf.some(
+      (branch) => schemaErrors(root, branch as Schema, value, path).length === 0
+    )
+      ? `${path} anyOf`
+      : "",
+  ].filter(Boolean);
+  if (typeof value === "string") {
+    errors.push(...stringErrors(schema, value, path));
+  }
+  return [...errors, ...propertyErrors(root, schema, value, path)];
+};
+
+describe("authoring sidecar validation", () => {
+  test("accepts and rejects every case of the validation table, naming paths", () => {
+    for (const { name, valid, value } of VALIDATION_TABLE) {
+      const result = validateAuthoring(value);
+      expect({ name, valid: result.value !== undefined }).toEqual({
+        name,
+        valid,
+      });
+      if (!valid) {
+        expect(result.errors.length).toBeGreaterThan(0);
+      }
+    }
+    expect(
+      validateAuthoring({
+        harnesses: { gamma: { launch: "cmd", model: "x" } },
+        roles: { "release-notes": { harness: "running", model: "y" } },
+        schemaVersion: 1,
+      }).errors
+    ).toEqual([
+      'roles.release-notes.model requires a concrete harness id, never "running"',
+      "harnesses.gamma.launch is not allowed",
+    ]);
+  });
+
+  test("the packaged schema agrees with the validator on every value case", async () => {
+    const schema = JSON.parse(await readFile(SCHEMA_PATH, "utf8")) as Schema;
+    for (const { name, valid, value } of VALIDATION_TABLE) {
+      expect({
+        name,
+        valid: schemaErrors(schema, schema, value, "$").length === 0,
+      }).toEqual({ name, valid });
+    }
+  });
+});
+
+describe("harness data and detection", () => {
+  test("loads the packaged data file and detects only existing roots and set session variables", async () => {
+    const packaged = await loadHarnesses();
+    expect(packaged.length).toBeGreaterThan(0);
+    const fixture = await authoringFixture({
+      roots: [".beta-legacy", ".gamma"],
+      running: "alpha",
+    });
+    const definitions = await loadHarnesses(fixture.dataPath);
+    expect(detectHarnesses(definitions, fixture.environment)).toEqual({
+      detected: [
+        {
+          evidence: ["running session (ALPHA_SESSION_ID)"],
+          id: "alpha-agent",
+          name: "Alpha Agent",
+        },
+        {
+          evidence: [`harness root (${join(fixture.roots, ".beta-legacy")})`],
+          id: "beta-agent",
+          name: "Beta Agent",
+        },
+        {
+          evidence: [`harness root (${join(fixture.roots, ".gamma")})`],
+          id: "gamma",
+          name: "Gamma",
+        },
+      ],
+      running: "alpha-agent",
+    });
+    // An empty session variable identifies nothing.
+    expect(
+      detectHarnesses(definitions, {
+        ALPHA_SESSION_ID: "  ",
+        SIMPLE_CHANGELOGS_HARNESS_ROOTS: fixture.roots,
+      }).running
+    ).toBeNull();
+  });
+
+  test("fails closed on a missing or malformed data file", async () => {
+    const fixture = await authoringFixture();
+    await expect(
+      loadHarnesses(join(fixture.roots, "absent.json"))
+    ).rejects.toThrow("missing or unreadable");
+    const malformedFiles = [
+      {
+        harnesses: { "Bad Id": { homeRoots: [], name: "x", sessionEnv: [] } },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: {
+          ok: { homeRoots: ["../escape"], name: "x", sessionEnv: [] },
+        },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: ["/abs"], name: "x", sessionEnv: [] } },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: [], name: "", sessionEnv: [] } },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: [], name: "x", sessionEnv: ["lower"] } },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: {
+          ok: { extra: 1, homeRoots: [], name: "x", sessionEnv: [] },
+        },
+        schemaVersion: 1,
+      },
+      { harnesses: {}, schemaVersion: 2 },
+      {
+        harnesses: {
+          ok: { homeRoots: [".a", ".a"], name: "x", sessionEnv: [] },
+        },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: [], name: "x", sessionEnv: ["A", "A"] } },
+        schemaVersion: 1,
+      },
+      {
+        harnesses: { ok: { homeRoots: [], name: "x\u0007", sessionEnv: [] } },
+        schemaVersion: 1,
+      },
+    ];
+    const outcomes = await Promise.all(
+      malformedFiles.map(async (malformed, index) => {
+        const path = join(fixture.roots, `malformed-${index}.json`);
+        await writeJson(path, malformed);
+        return loadHarnesses(path).then(
+          () => "loaded",
+          (error: Error) => error.message
+        );
+      })
+    );
+    for (const outcome of outcomes) {
+      expect(outcome).toContain("is malformed");
+    }
+    await writeJson(fixture.dataPath, malformedFiles[0]);
+    const inspection = await inspectFixture(fixture);
+    expect(inspection.detectedHarnesses).toEqual([]);
+    expect(inspection.errors.join(" ")).toContain("harness data file");
+    const refused = await applyAuthoring(fixture, EMPTY_SIDECAR);
+    expect(refused.status).toBe("blocked");
+    expect(refused.writes).toEqual([]);
+    expect(refused.authoringFiles.repository.state).toBe("absent");
+  });
+});
+
+const sidecar = (
+  harnesses: AuthoringSidecar["harnesses"],
+  roles: AuthoringSidecar["roles"] = {}
+): AuthoringSidecar => ({ harnesses, roles, schemaVersion: 1 });
+
+describe("installed data file", () => {
+  test("an installed copy without its own data file fails closed, never borrowing a sibling's", async () => {
+    const skills = join(await temporaryDirectory("installed"), "skills");
+    await cp(
+      join(REPOSITORY_ROOT, "skills", "simple-changelogs-mobile"),
+      join(skills, "simple-changelogs-mobile"),
+      { recursive: true }
+    );
+    await rm(
+      join(skills, "simple-changelogs-mobile", "agents", "harnesses.json")
+    );
+    await mkdir(join(skills, "simple-changelogs", "agents"), {
+      recursive: true,
+    });
+    await cp(
+      join(
+        REPOSITORY_ROOT,
+        "skills",
+        "simple-changelogs",
+        "agents",
+        "harnesses.json"
+      ),
+      join(skills, "simple-changelogs", "agents", "harnesses.json")
+    );
+    const fixture = await authoringFixture({ roots: [".claude"] });
+    const child = spawn({
+      cmd: [
+        process.execPath,
+        join(skills, "simple-changelogs-mobile", "scripts", "setup.ts"),
+        "inspect",
+        "--repo",
+        fixture.repo,
+      ],
+      env: {
+        ...process.env,
+        SIMPLE_CHANGELOGS_CONFIG_DIR: fixture.config,
+        SIMPLE_CHANGELOGS_HARNESS_ROOTS: fixture.roots,
+      },
+      stderr: "pipe",
+      stdout: "pipe",
+    });
+    const [, stdout] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+    ]);
+    const result = JSON.parse(stdout) as SetupResult;
+    expect(result.detectedHarnesses).toEqual([]);
+    expect(result.errors.join(" ")).toContain(
+      join(skills, "simple-changelogs-mobile", "agents", "harnesses.json")
+    );
+  });
+});
+
+describe("authoring resolution", () => {
+  const repositoryLayer = (value: AuthoringSidecar) => ({
+    layer: "repository" as const,
+    path: "/repo/.simple-changelogs-authoring.json",
+    value,
+  });
+  const personalLayer = (value: AuthoringSidecar) => ({
+    layer: "personal" as const,
+    path: "/config/authoring.json",
+    value,
+  });
+
+  test("falls back to the running harness, most capable, at xhigh", () => {
+    expect(resolveAuthoring([], "alpha-agent")).toEqual({
+      effective: {
+        "release-notes": {
+          effort: "xhigh",
+          harness: "alpha-agent",
+          model: "most-capable",
+          status: "most-capable",
+        },
+      },
+      source: {
+        "release-notes": {
+          effort: "default",
+          harness: "default",
+          model: "default",
+          path: null,
+        },
+      },
+    });
+    expect(resolveAuthoring([], null).effective["release-notes"]).toEqual({
+      effort: "xhigh",
+      harness: "unknown",
+      model: "most-capable",
+      status: "unresolved",
+    });
+  });
+
+  test("each Question B answer changes the effective role", () => {
+    const role = { "release-notes": { harness: "running" } };
+    const answers = [
+      [
+        { effort: "xhigh", model: "most-capable" },
+        "most-capable",
+        "xhigh",
+        "most-capable",
+      ],
+      [
+        { effort: "max", model: "named-model-2" },
+        "named-model-2",
+        "max",
+        "resolved",
+      ],
+      [null, "most-capable", "xhigh", "no-delegation"],
+    ] as const;
+    for (const [entry, model, effort, status] of answers) {
+      expect(
+        resolveAuthoring(
+          [personalLayer(sidecar({ "alpha-agent": entry }, role))],
+          "alpha-agent"
+        ).effective["release-notes"]
+      ).toEqual({ effort, harness: "alpha-agent", model, status });
+    }
+  });
+
+  test("replaces whole per layer and reports each field's layer and path", () => {
+    const personal = personalLayer(
+      sidecar(
+        {
+          "alpha-agent": { effort: "high", model: "personal-model" },
+          "beta-agent": { model: "beta-model" },
+        },
+        { "release-notes": { effort: "low", harness: "running" } }
+      )
+    );
+    const repository = repositoryLayer(
+      sidecar({ "alpha-agent": { model: "repo-model" } })
+    );
+    // The repository entry for alpha-agent replaces the personal one whole,
+    // so the personal effort does not leak through; the role still comes
+    // from the personal layer.
+    expect(resolveAuthoring([repository, personal], "alpha-agent")).toEqual({
+      effective: {
+        "release-notes": {
+          effort: "low",
+          harness: "alpha-agent",
+          model: "repo-model",
+          status: "resolved",
+        },
+      },
+      source: {
+        "release-notes": {
+          effort: "personal",
+          harness: "personal",
+          model: "repository",
+          path: "/repo/.simple-changelogs-authoring.json",
+        },
+      },
+    });
+    // The same sidecars read from another running harness.
+    expect(
+      resolveAuthoring([repository, personal], "beta-agent").effective[
+        "release-notes"
+      ]
+    ).toEqual({
+      effort: "low",
+      harness: "beta-agent",
+      model: "beta-model",
+      status: "resolved",
+    });
+    // An empty repository sidecar defines nothing, so personal entries stay.
+    expect(
+      resolveAuthoring([repositoryLayer(sidecar({})), personal], "beta-agent")
+        .source["release-notes"]
+    ).toEqual({
+      effort: "personal",
+      harness: "personal",
+      model: "personal",
+      path: "/config/authoring.json",
+    });
+  });
+
+  test("a role-level model and effort win over the target's entry", () => {
+    expect(
+      resolveAuthoring(
+        [
+          personalLayer(
+            sidecar(
+              { "beta-agent": { effort: "low", model: "entry-model" } },
+              {
+                "release-notes": {
+                  effort: "max",
+                  harness: "beta-agent",
+                  model: "role-model",
+                },
+              }
+            )
+          ),
+        ],
+        "alpha-agent"
+      )
+    ).toEqual({
+      effective: {
+        "release-notes": {
+          effort: "max",
+          harness: "beta-agent",
+          model: "role-model",
+          status: "resolved",
+        },
+      },
+      source: {
+        "release-notes": {
+          effort: "personal",
+          harness: "personal",
+          model: "personal",
+          path: "/config/authoring.json",
+        },
+      },
+    });
+  });
+
+  test("a concrete harness id spelled unknown keeps its entry", () => {
+    expect(
+      resolveAuthoring(
+        [
+          repositoryLayer(
+            sidecar(
+              { unknown: { effort: "high", model: "owner-model" } },
+              { "release-notes": { harness: "unknown" } }
+            )
+          ),
+        ],
+        null
+      ).effective["release-notes"]
+    ).toEqual({
+      effort: "high",
+      harness: "unknown",
+      model: "owner-model",
+      status: "resolved",
+    });
+    // A detected running harness whose id is "unknown" resolves the same way.
+    expect(
+      resolveAuthoring(
+        [repositoryLayer(sidecar({ unknown: { model: "owner-model" } }))],
+        "unknown"
+      ).effective["release-notes"]
+    ).toMatchObject({ model: "owner-model", status: "resolved" });
+  });
+
+  test("a null entry means no delegation, even under a role-level model", () => {
+    expect(
+      resolveAuthoring(
+        [
+          repositoryLayer(
+            sidecar(
+              { gamma: null },
+              { "release-notes": { harness: "gamma", model: "writer" } }
+            )
+          ),
+        ],
+        "alpha-agent"
+      ).effective["release-notes"]
+    ).toEqual({
+      effort: "xhigh",
+      harness: "gamma",
+      model: "writer",
+      status: "no-delegation",
+    });
+    // A concrete harness with no entry anywhere resolves to most-capable.
+    expect(
+      resolveAuthoring(
+        [
+          repositoryLayer(
+            sidecar({}, { "release-notes": { harness: "gamma" } })
+          ),
+        ],
+        null
+      ).effective["release-notes"]
+    ).toEqual({
+      effort: "xhigh",
+      harness: "gamma",
+      model: "most-capable",
+      status: "most-capable",
+    });
+  });
+});
+
+describe("authoring question and inspection", () => {
+  test("is pending without a valid sidecar and orders before preference scope", async () => {
+    const fixture = await authoringFixture({
+      roots: [".gamma"],
+      running: "beta",
+    });
+    const inspection = await inspectFixture(fixture);
+    expect(inspection.authoringQuestion).toBe("pending");
+    expect(inspection.detectedHarnesses.map(({ id }) => id)).toEqual([
+      "beta-agent",
+      "gamma",
+    ]);
+    expect(inspection.authoring.effective["release-notes"].harness).toBe(
+      "beta-agent"
+    );
+    const { unresolvedQuestions } = inspection;
+    expect(unresolvedQuestions.indexOf("authoring-models")).toBe(
+      unresolvedQuestions.indexOf("preference-scope") - 1
+    );
+    expect(inspection.onboardingContribution?.questions.at(-1)).toEqual({
+      id: "authoring-models",
+      required: false,
+    });
+    const read = await inspectFixture(fixture, { taskMode: "read" });
+    expect(read.authoringQuestion).toBe("not-applicable");
+    expect(read.unresolvedQuestions).not.toContain("authoring-models");
+  });
+
+  test("never counts the repository sidecar as a release-note destination", async () => {
+    const fixture = await authoringFixture();
+    await applyAuthoring(fixture, EMPTY_SIDECAR);
+    const inspection = await inspectFixture(fixture);
+    expect(inspection.authoringFiles.repository.state).toBe("valid");
+    expect(inspection.inventory.destinations).toEqual([]);
+    expect(inspection.inventory.adjacentDestinations).toEqual([]);
+    expect(inspection.unresolvedQuestions).not.toContain(
+      "release-note-destination-verification"
+    );
+  });
+
+  test("reports repair for a malformed or symlinked sidecar and never treats it as answered", async () => {
+    const fixture = await authoringFixture();
+    const paths = resolveAuthoringPaths(fixture.repo, fixture.config);
+    await writeJson(paths.personal, { ...EMPTY_SIDECAR, extra: true });
+    const malformed = await inspectFixture(fixture);
+    expect(malformed.authoringQuestion).toBe("repair");
+    expect(malformed.authoringFiles.personal.errors).toEqual([
+      "personal authoring sidecar.extra is not allowed",
+    ]);
+    expect(malformed.unresolvedQuestions).not.toContain("authoring-models");
+    const refused = await applyAuthoring(fixture, EMPTY_SIDECAR, {
+      scope: "all-projects",
+    });
+    expect(refused.status).toBe("blocked");
+    expect(JSON.parse(await readFile(paths.personal, "utf8"))).toEqual({
+      ...EMPTY_SIDECAR,
+      extra: true,
+    });
+    await rm(paths.personal);
+    const target = join(fixture.roots, "elsewhere.json");
+    await writeJson(target, EMPTY_SIDECAR);
+    await symlink(target, paths.repository);
+    expect((await inspectFixture(fixture)).authoringQuestion).toBe("repair");
+  });
+
+  test("an empty sidecar answers the question; a configured repository accepts apply --authoring", async () => {
+    const fixture = await authoringFixture();
+    await writeJson(
+      join(fixture.repo, ".simple-changelogs.json"),
+      configuredPolicy
+    );
+    const before = await inspectFixture(fixture);
+    expect(before.status).toBe("already-configured");
+    expect(before.unresolvedQuestions).toEqual(["authoring-models"]);
+    expect(before.guidanceUpdate?.questions).toEqual(["authoring-models"]);
+
+    const result = await applyAuthoring(fixture, JSON.stringify(EMPTY_SIDECAR));
+    expect(result.command).toBe("apply");
+    expect(result.status).toBe("already-configured");
+    expect(result.authoringQuestion).toBe("answered");
+    expect(result.unresolvedQuestions).toEqual([]);
+    expect(result.writes).toEqual([
+      {
+        kind: "authoring",
+        path: join(fixture.repo, ".simple-changelogs-authoring.json"),
+        written: true,
+      },
+    ]);
+    expect(result.summary).toContain("Commit this file with your policy");
+    expect(result.summary).toContain("0.26.0 or later");
+    expect(Object.hasOwn(result.guidanceUpdate ?? {}, "questions")).toBe(false);
+    // The policy is untouched; only the sidecar was written.
+    expect(
+      JSON.parse(
+        await readFile(join(fixture.repo, ".simple-changelogs.json"), "utf8")
+      )
+    ).toEqual(configuredPolicy);
+    const again = await applyAuthoring(fixture, EMPTY_SIDECAR);
+    expect(again.writes).toEqual([
+      {
+        kind: "authoring",
+        path: join(fixture.repo, ".simple-changelogs-authoring.json"),
+        written: false,
+      },
+    ]);
+  });
+
+  test("the guidance acknowledgement and the authoring answer are independent, in either order", async () => {
+    const runOrder = async (authoringFirst: boolean): Promise<void> => {
+      const fixture = await authoringFixture();
+      await writeJson(
+        join(fixture.repo, ".simple-changelogs.json"),
+        configuredPolicy
+      );
+      const acknowledge = () =>
+        applySetup({
+          configDirectory: fixture.config,
+          confirm: true,
+          distribution: "web",
+          environment: fixture.environment,
+          guidanceBackfill: "not-applicable",
+          harnessDataPath: fixture.dataPath,
+          repo: fixture.repo,
+        });
+      if (authoringFirst) {
+        expect((await applyAuthoring(fixture, EMPTY_SIDECAR)).status).toBe(
+          "already-configured"
+        );
+        const acknowledged = await acknowledge();
+        expect(acknowledged.status).toBe("configured");
+        expect(acknowledged.authoringQuestion).toBe("answered");
+      } else {
+        const acknowledged = await acknowledge();
+        expect(acknowledged.status).toBe("configured");
+        // Acknowledging records the disposition and never answers authoring.
+        expect(acknowledged.authoringQuestion).toBe("pending");
+        expect(acknowledged.unresolvedQuestions).toEqual(["authoring-models"]);
+        const later = await inspectFixture(fixture);
+        expect(later.guidanceUpdate).toBeNull();
+        expect(later.authoringQuestion).toBe("pending");
+        expect(later.unresolvedQuestions).toEqual(["authoring-models"]);
+        expect(
+          (await applyAuthoring(fixture, EMPTY_SIDECAR)).authoringQuestion
+        ).toBe("answered");
+      }
+    };
+    await Promise.all([runOrder(false), runOrder(true)]);
+  });
+
+  test("a failed authoring transaction leaves files untouched and the question pending", async () => {
+    const fixture = await authoringFixture();
+    const invalid = await applyAuthoring(fixture, {
+      ...EMPTY_SIDECAR,
+      roles: { "release-notes": { harness: "running", model: "x" } },
+    });
+    expect(invalid.status).toBe("blocked");
+    expect(invalid.authoringQuestion).toBe("pending");
+    expect(invalid.authoringFiles.repository.state).toBe("absent");
+    const refusals = [
+      [{ scope: "run-only" }, "--scope repository or --scope all-projects"],
+      [{ confirm: false }, "Confirmation is required"],
+      [{ signatures: "none" }, "standalone transaction; record signatures"],
+    ] as const;
+    const refused = await Promise.all(
+      refusals.map(([overrides]) =>
+        applyAuthoring(fixture, EMPTY_SIDECAR, overrides)
+      )
+    );
+    for (const [index, [, message]] of refusals.entries()) {
+      expect(refused[index]?.status).toBe("blocked");
+      expect(refused[index]?.errors.join(" ")).toContain(message);
+    }
+    const unparsable = await applyAuthoring(fixture, "{not json");
+    expect(unparsable.errors.join(" ")).toContain("--authoring must be JSON");
+
+    const paths = resolveAuthoringPaths(fixture.repo, fixture.config);
+    const prior = sidecar({ gamma: { model: "kept" } });
+    await writeJson(paths.personal, prior);
+    await chmod(fixture.config, 0o500);
+    try {
+      const failed = await applyAuthoring(fixture, EMPTY_SIDECAR, {
+        scope: "all-projects",
+      });
+      expect(failed.status).toBe("blocked");
+      expect(failed.errors.join(" ")).toContain("Authoring write failed");
+    } finally {
+      await chmod(fixture.config, 0o700);
+    }
+    expect(JSON.parse(await readFile(paths.personal, "utf8"))).toEqual(prior);
+    expect(
+      (await readdir(fixture.config)).filter((name) => name.startsWith("."))
+    ).toEqual([]);
+  });
+
+  test("refuses a target edited after inspection and serializes with other setup writes", async () => {
+    const fixture = await authoringFixture();
+    const inspection = await inspectFixture(fixture);
+    const target = inspection.authoringFiles.repository;
+    expect(target.state).toBe("absent");
+    // An edit lands between inspection and the write: never overwritten.
+    await writeFile(target.path, "{malformed");
+    await expect(
+      writeAuthoringFile(target, sidecar({}), 0o644)
+    ).rejects.toThrow("changed after this run inspected it");
+    expect(await readFile(target.path, "utf8")).toBe("{malformed");
+    await rm(target.path);
+    // An edit that lands while the answer is staged is caught before the
+    // rename: the staged chmod is where this test lets it land.
+    const realChmod = fsPromises.chmod;
+    const spy = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (path, mode) => {
+        await writeFile(target.path, "{malformed");
+        return realChmod(path, mode);
+      }
+    );
+    try {
+      await expect(
+        writeAuthoringFile(target, sidecar({}), 0o644)
+      ).rejects.toThrow("changed after this run inspected it");
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await readFile(target.path, "utf8")).toBe("{malformed");
+    await rm(target.path);
+    // A formatting-only edit of a valid sidecar (same stored value, other
+    // bytes) that lands while the answer is staged is refused too: the bytes
+    // held under the marker are compared again before the rename.
+    const prior = sidecar({ gamma: { model: "kept" } });
+    await writeJson(target.path, prior);
+    const inspected = (await inspectFixture(fixture)).authoringFiles.repository;
+    expect(inspected.state).toBe("valid");
+    const compact = `${JSON.stringify(prior)}\n\n`;
+    const reformat = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (path, mode) => {
+        await writeFile(target.path, compact);
+        return realChmod(path, mode);
+      }
+    );
+    try {
+      await expect(
+        writeAuthoringFile(inspected, sidecar({}), 0o644)
+      ).rejects.toThrow("changed while this answer was being written");
+    } finally {
+      reformat.mockRestore();
+    }
+    expect(await readFile(target.path, "utf8")).toBe(compact);
+    expect(
+      (await readdir(fixture.repo)).filter((name) => name.startsWith("."))
+    ).not.toContain(".simple-changelogs.setup-transaction.json");
+    // Different bytes that decode to the same text (a literal U+FFFD turned
+    // into one invalid byte) are still a change: raw bytes are compared.
+    const replacement = sidecar({ gamma: { model: "kept�" } });
+    await writeJson(target.path, replacement);
+    const decoded = (await inspectFixture(fixture)).authoringFiles.repository;
+    expect(decoded.state).toBe("valid");
+    const text = await readFile(target.path, "utf8");
+    const literal = Buffer.from("�", "utf8");
+    const at = Buffer.from(text, "utf8").indexOf(literal);
+    expect(at).toBeGreaterThan(0);
+    const invalid = Buffer.concat([
+      Buffer.from(text, "utf8").subarray(0, at),
+      Buffer.from([0x80]),
+      Buffer.from(text, "utf8").subarray(at + literal.length),
+    ]);
+    expect(invalid.toString("utf8")).toBe(text);
+    const corrupt = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (path, mode) => {
+        await writeFile(target.path, invalid);
+        return realChmod(path, mode);
+      }
+    );
+    try {
+      await expect(
+        writeAuthoringFile(decoded, sidecar({}), 0o644)
+      ).rejects.toThrow("changed while this answer was being written");
+    } finally {
+      corrupt.mockRestore();
+    }
+    expect((await readFile(target.path)).equals(invalid)).toBe(true);
+    expect(
+      (await readdir(fixture.repo)).filter((name) => name.startsWith("."))
+    ).not.toContain(".simple-changelogs.setup-transaction.json");
+    await rm(target.path);
+    // A live setup transaction in the same directory holds the write off.
+    const marker = join(
+      fixture.repo,
+      ".simple-changelogs.setup-transaction.json"
+    );
+    await writeFile(
+      marker,
+      `${JSON.stringify({ pid: process.pid, schemaVersion: 2, targets: {} })}\n`
+    );
+    await expect(
+      writeAuthoringFile(target, sidecar({}), 0o644)
+    ).rejects.toThrow("Another setup run holds");
+    await rm(marker);
+    expect(await writeAuthoringFile(target, sidecar({}), 0o644)).toEqual({
+      kind: "authoring",
+      path: target.path,
+      written: true,
+    });
+    expect(
+      (await readdir(fixture.repo)).filter((name) => name.includes("setup"))
+    ).toEqual([]);
+  });
+
+  test("writes the personal sidecar beside preferences.json for any override directory", async () => {
+    const writeUnder = async (nested: string): Promise<void> => {
+      const fixture = await authoringFixture();
+      const config = nested ? join(fixture.config, nested) : fixture.config;
+      const result = await applyAuthoring(
+        { ...fixture, config },
+        sidecar({ gamma: { model: "personal-model" } }),
+        { scope: "all-projects" }
+      );
+      const path = join(config, "authoring.json");
+      expect(result.writes).toEqual([
+        { kind: "authoring", path, written: true },
+      ]);
+      expect((await stat(path)).mode % 0o1000).toBe(0o600);
+      expect(result.authoringFiles.personal).toMatchObject({
+        path,
+        state: "valid",
+      });
+      expect(result.authoring.source["release-notes"].path).toBeNull();
+    };
+    await Promise.all([writeUnder(""), writeUnder("simple-changelogs")]);
+    const fixture = await authoringFixture();
+    await applyAuthoring(fixture, EMPTY_SIDECAR);
+    expect(
+      (await stat(join(fixture.repo, ".simple-changelogs-authoring.json")))
+        .mode % 0o1000
+    ).toBe(0o644);
+  });
+
+  test("the CLI takes --authoring as JSON or @path and honors SIMPLE_CHANGELOGS_CONFIG_DIR", async () => {
+    const fixture = await authoringFixture();
+    const answer = join(fixture.roots, "answer.json");
+    await writeJson(
+      answer,
+      sidecar({ gamma: { effort: "high", model: "cli" } })
+    );
+    const run = async (args: string[]) => {
+      const child = spawn({
+        cmd: [process.execPath, SETUP, ...args],
+        env: {
+          ...process.env,
+          SIMPLE_CHANGELOGS_CONFIG_DIR: fixture.config,
+          SIMPLE_CHANGELOGS_HARNESS_ROOTS: fixture.roots,
+        },
+        stderr: "pipe",
+        stdout: "pipe",
+      });
+      const [exitCode, stdout] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+      ]);
+      return { exitCode, result: JSON.parse(stdout) as SetupResult };
+    };
+    const written = await run([
+      "apply",
+      "--authoring",
+      `@${answer}`,
+      "--scope",
+      "all-projects",
+      "--confirm",
+      "--repo",
+      fixture.repo,
+    ]);
+    expect(written.exitCode).toBe(0);
+    expect(written.result.writes).toEqual([
+      {
+        kind: "authoring",
+        path: join(fixture.config, "authoring.json"),
+        written: true,
+      },
+    ]);
+    const inspected = await run(["inspect", "--repo", fixture.repo]);
+    expect(inspected.result.authoringQuestion).toBe("answered");
+    expect(inspected.result.authoringFiles.personal.state).toBe("valid");
+    const blocked = await run([
+      "apply",
+      "--authoring",
+      '{"schemaVersion":1}',
+      "--scope",
+      "repository",
+      "--confirm",
+      "--repo",
+      fixture.repo,
+    ]);
+    expect(blocked.exitCode).toBe(1);
+    expect(blocked.result.status).toBe("blocked");
+  });
+});

@@ -190,6 +190,9 @@ Do not invent agent identity, model version, timestamp, timezone, release
 version, shipped state, audience, or repository policy. Use the documented
 unknown value or report the missing evidence.
 
+A configured authoring model is a preference, never authority and never
+identity; sign with the model that wrote the entry.
+
 Do not mutate a globally installed or packaged skill to remember repository
 decisions. All durable guidance and authorization state belongs in the target
 repository.

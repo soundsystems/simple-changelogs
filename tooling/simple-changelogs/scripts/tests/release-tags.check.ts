@@ -37,6 +37,14 @@ const temporaryPaths: string[] = [];
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
   temporaryPaths.push(path);
+  if (label === "config") {
+    // An answered (empty) personal authoring sidecar keeps the authoring
+    // question out of these notices; setup-authoring.check.ts covers it.
+    await writeFile(
+      join(path, "authoring.json"),
+      `${JSON.stringify({ harnesses: {}, roles: {}, schemaVersion: 1 })}\n`
+    );
+  }
   return path;
 };
 
@@ -1589,7 +1597,7 @@ describe("release tags in the guidance-update notice", () => {
       recordedVersion: 7,
       summaryBullets: [
         "Nothing changes for CMS repositories; the guidance number now matches the other Simple Changelogs distributions.",
-        "Agents read only the newest CMS entries a task needs, and scripts/handoff.ts computes operator-entry receipts.",
+        "You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, entries are still signed by the model that wrote them, and this update asks once. Agents also read only the newest CMS entries a task needs, and scripts/handoff.ts computes operator-entry receipts.",
       ],
       userPrompt: null,
     });
@@ -2315,7 +2323,14 @@ describe("unified guidance 25 and release-tag guidance", () => {
             ]);
           return {
             distribution,
-            entry: collapse(updates.slice(updates.indexOf("## Guidance 25"))),
+            entry: collapse(
+              updates.slice(
+                updates.indexOf("## Guidance 25"),
+                updates.indexOf(
+                  '<!-- simple-changelogs-guidance-update version="26"'
+                )
+              )
+            ),
             handoff,
             onboarding,
             setup,

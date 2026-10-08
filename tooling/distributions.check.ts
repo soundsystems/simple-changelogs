@@ -1212,6 +1212,78 @@ for (const { directoryName, source } of cmsPolicySchemas) {
   }
 }
 
+// Authoring preferences: every changelog distribution ships the same
+// generic reference sections (the harness data file and both schemas are
+// byte-synced through the sync-distros table), and SKILL.md keeps the
+// preference-not-identity boundary.
+const authoringChecks = await Promise.all(
+  [...changelogDistributions].map(async (directoryName) => {
+    const directory = join(skillsRoot, directoryName);
+    const [skill, setup] = await Promise.all([
+      readFile(join(directory, "SKILL.md"), "utf8"),
+      readFile(join(directory, "references", "setup.md"), "utf8"),
+    ]);
+    return { directoryName, setup, skill };
+  })
+);
+const sectionOf = (source: string, heading: string): string | null => {
+  const start = source.indexOf(`\n## ${heading}\n`);
+  if (start === -1) {
+    return null;
+  }
+  const end = source.indexOf("\n## ", start + 1);
+  return source.slice(start, end === -1 ? undefined : end);
+};
+const canonicalAuthoring = {
+  onboarding: sectionOf(
+    onboardingChecks.find(
+      (candidate) => candidate.directoryName === "simple-changelogs"
+    )?.source ?? "",
+    "Agents and models"
+  ),
+  setup: sectionOf(
+    authoringChecks.find(
+      (candidate) => candidate.directoryName === "simple-changelogs"
+    )?.setup ?? "",
+    "Authoring preferences"
+  ),
+};
+for (const { directoryName, setup, skill } of authoringChecks) {
+  const onboarding =
+    onboardingChecks.find(
+      (candidate) => candidate.directoryName === directoryName
+    )?.source ?? "";
+  const sections = {
+    onboarding: sectionOf(onboarding, "Agents and models"),
+    setup: sectionOf(setup, "Authoring preferences"),
+  };
+  for (const [name, section] of Object.entries(sections)) {
+    if (
+      section === null ||
+      section !== canonicalAuthoring[name as keyof typeof sections]
+    ) {
+      failures.push(
+        `skills/${directoryName} must carry the shared authoring ${name} section, identical to the full distribution's`
+      );
+    }
+  }
+  if (
+    !(
+      sections.onboarding?.includes("Never pre-select `max`") &&
+      sections.onboarding.includes("at xhigh effort (Recommended)")
+    )
+  ) {
+    failures.push(
+      `skills/${directoryName}/references/onboarding.md must recommend xhigh and never pre-select max`
+    );
+  }
+  if (!collapsed(skill).includes("never authority and never identity")) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md must state that an authoring model is a preference, never authority and never identity`
+    );
+  }
+}
+
 // Byte-synced copies (the setup, handoff, query, and CMS helpers, the
 // minified protocol schemas, the shared references, and every bundled fork
 // checker, which check-fork-sync.check.ts exercises) come from the table `bun

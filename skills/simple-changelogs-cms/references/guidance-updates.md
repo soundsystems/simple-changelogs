@@ -132,13 +132,21 @@ Every Simple Changelogs distribution now shares one guidance number, so this
 distribution moves from 7 to 25. No question is asked, no setting changes, and
 no backfill is needed.
 
-<!-- simple-changelogs-guidance-update version="26" kinds="behavior,capability" backfill="not-needed" summary="Agents read only the newest CMS entries a task needs, and scripts/handoff.ts computes operator-entry receipts." -->
+<!-- simple-changelogs-guidance-update version="26" kinds="capability,behavior,onboarding" backfill="not-needed" summary="You can now choose which model writes release notes in each coding agent you use; the preference guides delegation, entries are still signed by the model that wrote them, and this update asks once. Agents also read only the newest CMS entries a task needs, and scripts/handoff.ts computes operator-entry receipts." -->
 ## Guidance 26
+
+An optional authoring sidecar, `.simple-changelogs-authoring.json` or a
+personal `authoring.json`, records which model and effort should write release
+notes in each coding agent the owner uses, defaulting to the most capable model
+at `xhigh`. Agents match, delegate, or write with the running model and say
+why; signatures always name the actual writer, and the preference grants no
+authority. Until a valid sidecar exists, inspection asks **Which coding agents
+do you use?** and then which model should write in each.
 
 Agents now read only the newest `CMS_CHANGELOG.json` entries a task needs
 instead of the whole file, which is kept for a backfill or an audit. The
 bundled `scripts/handoff.ts` computes the policy, decision, changed-path, and
 prior-receipt digests of the entry-only handoff and assembles its receipt, so
 receipts are no longer built by hand; Simple Changes still validates them.
-Entries, policy, and the operator surface are unchanged. No question is asked,
-no setting changes, and no backfill is needed.
+Entries, policy, and the operator surface are unchanged, and no backfill is
+needed.

@@ -58,6 +58,7 @@ const REQUIRED_POINTER_PHRASES = [
 ];
 
 const FIXTURE_IDS = new Set([
+  "authoring-preferences",
   "dual-changelog",
   "editorial-updates-app",
   "expert-release",
@@ -145,7 +146,15 @@ const TRIGGER_CASE_IDS = new Set([
   "trigger-negative-ui-spacing",
 ]);
 
+const AUTHORING_CASE_IDS = [
+  "behavior-authoring-match-writes",
+  "behavior-authoring-delegates",
+  "behavior-authoring-unavailable-says-so",
+  "behavior-authoring-most-capable-unresolved",
+];
+
 const BEHAVIOR_CASE_IDS = new Set([
+  ...AUTHORING_CASE_IDS,
   "behavior-release-tags-existing-style",
   "behavior-release-tags-tooling-owns-tags",
   "behavior-release-tags-monorepo",
@@ -272,8 +281,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(85);
-    expect(new Set(ids).size).toBe(85);
+    expect(ids).toHaveLength(89);
+    expect(new Set(ids).size).toBe(89);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -304,6 +313,87 @@ describe("canonical evaluation manifest", () => {
 
     for (const tag of REQUIRED_COVERAGE_TAGS) {
       expect(tags.has(tag)).toBe(true);
+    }
+  });
+
+  test("signs every authoring case with the actual writer, never the preference", async () => {
+    const manifest = await loadManifest();
+    for (const id of AUTHORING_CASE_IDS) {
+      const item = caseById(manifest, id);
+      expect(item.fixture).toBe("authoring-preferences");
+      const { assertions } = turnByIndex(item, 0);
+      expect(
+        assertions.some(
+          (assertion) =>
+            assertion.kind === "text.match" &&
+            assertion.target === "CHANGELOG.md" &&
+            String(assertion.expected).includes("simple-changelogs-signature")
+        )
+      ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.notMatch",
+          'agent="(?:most-capable|running|example-writer-model)"',
+          "CHANGELOG.md"
+        )
+      ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "file.unchanged",
+          true,
+          ".simple-changelogs-authoring.json"
+        )
+      ).toBe(true);
+    }
+    // Each case names the exact writer: the delegate's reported identity, or
+    // the runtime identity the turn establishes, and rejects any other name.
+    const writers: Record<string, string> = {
+      "behavior-authoring-delegates": "Example Writer 2",
+      "behavior-authoring-match-writes": "Eval Runtime Writer 7",
+      "behavior-authoring-most-capable-unresolved": "Eval Runtime Writer 7",
+      "behavior-authoring-unavailable-says-so": "Eval Runtime Writer 7",
+    };
+    for (const [id, writer] of Object.entries(writers)) {
+      const item = caseById(manifest, id);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.match",
+          `simple-changelogs-signature agent="${writer}"`,
+          "CHANGELOG.md"
+        )
+      ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.match",
+          `(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent="${writer}"`,
+          "DEVELOPER_CHANGELOG.md"
+        )
+      ).toBe(true);
+      const negative = new RegExp(
+        `simple-changelogs-signature agent="(?!${writer}")[^"]*"`,
+        "u"
+      );
+      for (const target of ["CHANGELOG.md", "DEVELOPER_CHANGELOG.md"]) {
+        expect(
+          hasAssertion(item, 0, "text.notMatch", negative.source, target)
+        ).toBe(true);
+      }
+      expect(
+        negative.test(
+          '<!-- simple-changelogs-signature agent="Invented Writer 999" -->'
+        )
+      ).toBe(true);
+      expect(
+        negative.test(`<!-- simple-changelogs-signature agent="${writer}" -->`)
+      ).toBe(false);
     }
   });
 

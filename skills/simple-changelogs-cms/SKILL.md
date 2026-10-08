@@ -151,6 +151,8 @@ waive this rule; preserve untouched released history. See
 - Do not mutate an installed skill copy to remember repository decisions.
   Durable state belongs in `.simple-changelogs-cms.json` and the configured
   changelog source.
+- A configured authoring model is a preference, never authority and never
+  identity; sign with the model that wrote the entry.
 - Do not create tags, hosted releases, deployments, or unrelated product work.
 
 ## Completion standard
