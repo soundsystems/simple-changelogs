@@ -51,6 +51,13 @@ const EXPECTED_TABLE: Record<string, string[]> = {
   "skills/simple-changelogs-cms/scripts/lib/schema.ts": [
     `skills/${WEB_CMS}/scripts/lib/cms-schema.ts`,
   ],
+  "skills/simple-changelogs/agents/harnesses.json": [
+    CMS,
+    MOBILE,
+    SKILL_MAINTAINER,
+    WEB,
+    WEB_CMS,
+  ].map((name) => `skills/${name}/agents/harnesses.json`),
   "skills/simple-changelogs/references/release-handoff.md": [
     MOBILE,
     SKILL_MAINTAINER,
@@ -65,6 +72,20 @@ const EXPECTED_TABLE: Record<string, string[]> = {
     WEB,
     WEB_CMS,
   ].map((name) => `skills/${name}/references/version-decisions.md`),
+  "skills/simple-changelogs/schemas/authoring.schema.json": [
+    CMS,
+    MOBILE,
+    SKILL_MAINTAINER,
+    WEB,
+    WEB_CMS,
+  ].map((name) => `skills/${name}/schemas/authoring.schema.json`),
+  "skills/simple-changelogs/schemas/harnesses.schema.json": [
+    CMS,
+    MOBILE,
+    SKILL_MAINTAINER,
+    WEB,
+    WEB_CMS,
+  ].map((name) => `skills/${name}/schemas/harnesses.schema.json`),
   "skills/simple-changelogs/scripts/check-fork-sync.sh": [
     MOBILE,
     SKILL_MAINTAINER,
@@ -251,7 +272,7 @@ describe("sync-distros", () => {
     expect(sorted(report.drifted.map(({ target }) => target))).toEqual(
       sorted([MISSING_COPY, PROTOCOL_COPY, SETUP_COPY])
     );
-    expect(report.inSync).toBe(52);
+    expect(report.inSync).toBe(67);
     expect(await read(root, SETUP_COPY)).toBe("// drifted\n");
     await expect(read(root, MISSING_COPY)).rejects.toThrow();
   });
@@ -264,7 +285,7 @@ describe("sync-distros", () => {
     const second = await syncDistributions(root, { write: true });
 
     expect(first.drifted).toHaveLength(3);
-    expect(second).toEqual({ drifted: [], inSync: 55 });
+    expect(second).toEqual({ drifted: [], inSync: 70 });
     expect(await read(root, SETUP_COPY)).toBe(
       await read(REPOSITORY_ROOT, SETUP_COPY)
     );
@@ -283,7 +304,7 @@ describe("sync-distros", () => {
 
     const checked = await syncDistributions(root, { write: false });
     expect(checked.drifted.map(({ target }) => target)).toEqual([checker]);
-    expect(checked.inSync).toBe(54);
+    expect(checked.inSync).toBe(69);
 
     // A restrictive umask must not strip the restored checker's permissions.
     const umask = process.umask(0o077);
@@ -765,7 +786,7 @@ describe("sync-distros", () => {
       `Out of sync: ${SETUP_COPY} (from tooling/simple-changelogs/scripts/setup.ts)`
     );
     expect(checked.stdout).toContain(
-      "52 byte-synced files already matched; 3 drifted."
+      "67 byte-synced files already matched; 3 drifted."
     );
     expect(await read(root, SETUP_COPY)).toBe("// drifted\n");
 
@@ -776,7 +797,7 @@ describe("sync-distros", () => {
     const clean = await runCli(root, "--check");
     expect(clean).toMatchObject({
       exitCode: 0,
-      stdout: "55 byte-synced files already matched; 0 drifted.\n",
+      stdout: "70 byte-synced files already matched; 0 drifted.\n",
     });
 
     const misuse = await runCli(root, "--write");

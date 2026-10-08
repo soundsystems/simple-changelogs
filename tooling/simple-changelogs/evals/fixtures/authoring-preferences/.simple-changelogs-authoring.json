@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "roles": {
+    "release-notes": { "harness": "running" }
+  },
+  "harnesses": {
+    "claude-code": { "model": "most-capable", "effort": "xhigh" },
+    "codex": { "model": "most-capable", "effort": "xhigh" },
+    "cursor": { "model": "most-capable", "effort": "xhigh" },
+    "hermes": { "model": "most-capable", "effort": "xhigh" },
+    "grok": { "model": "most-capable", "effort": "xhigh" }
+  }
+}

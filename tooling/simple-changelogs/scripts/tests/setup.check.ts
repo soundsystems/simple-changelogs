@@ -245,7 +245,8 @@ describe("setup inspection", () => {
       backfillRecommendation: "optional",
       currentVersion: 25,
       headline: "Simple Changelogs has recently been updated.",
-      questions: ["release-tags"],
+      // No authoring sidecar exists yet, so the models question rides along.
+      questions: ["release-tags", "authoring-models"],
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
@@ -605,6 +606,7 @@ describe("setup inspection", () => {
       "release-note-surface-components",
       "major-release-naming",
       "release-tags",
+      "authoring-models",
       "preference-scope",
       "released-history-audit",
     ]);
@@ -1439,6 +1441,7 @@ describe("setup application", () => {
         { id: "major-release-naming", required: true },
         { id: "public-version-actions", required: true },
         { id: "release-tags", required: true },
+        { id: "authoring-models", required: false },
       ],
       resolvedPolicy: {
         major: "automatic",
@@ -2081,10 +2084,9 @@ describe("distribution and CMS boundaries", () => {
       currentVersion: 25,
       recordedVersion: 1,
     });
-    // CMS history has no release, so the notice never asks about tags.
-    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
-      false
-    );
+    // CMS history has no release, so the notice never asks about tags; it
+    // asks only the authoring question, which no sidecar has answered yet.
+    expect(inspection.guidanceUpdate?.questions).toEqual(["authoring-models"]);
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2502,10 +2504,9 @@ describe("post-onboarding update paths", () => {
       currentVersion: 2,
       recordedVersion: 1,
     });
-    // The main track is current, so the release-tag question is not asked.
-    expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
-      false
-    );
+    // The main track is current, so the release-tag question is not asked;
+    // the unanswered authoring question is.
+    expect(inspection.guidanceUpdate?.questions).toEqual(["authoring-models"]);
     expect(inspection.guidanceUpdate?.changes).toEqual([
       {
         backfillRecommendation: "optional",

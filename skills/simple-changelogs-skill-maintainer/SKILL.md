@@ -131,6 +131,8 @@ waive this rule; preserve untouched released history. See
 - Do not put model adapters, credentials, eval fixtures, tests, or contributor
   protocols into a public skill merely because they test it.
 - Do not mutate globally installed skills to remember repository decisions.
+- A configured authoring model is a preference, never authority and never
+  identity; sign with the model that wrote the entry.
 - Name each release's tag in its receipt, but never create or push a tag;
   Simple Changes does. Do not publish packages, create hosted releases, or
   synchronize forks unless the current request separately authorizes those

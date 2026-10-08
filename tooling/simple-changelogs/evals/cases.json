@@ -4227,6 +4227,192 @@
           ]
         }
       ]
+    },
+    {
+      "id": "behavior-authoring-match-writes",
+      "suite": "behavior",
+      "fixture": "authoring-preferences",
+      "tags": ["authoring", "signatures", "setup"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Record the pending Export CSV change in the changelogs. You are running the most capable model this coding agent offers, at the effort the authoring preference asks for.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## Unreleased\\n[\\s\\S]*(?i:csv)[\\s\\S]*## 1\\.1\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"[^\"]+\" at=\"(?:unreported|[^\"]*(?:Z|[+-][0-9]{2}:[0-9]{2}))\" -->"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs-authoring.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "AUTHORING_MATCHED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-authoring-delegates",
+      "suite": "behavior",
+      "fixture": "authoring-preferences",
+      "tags": ["authoring", "signatures", "setup"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Record the pending Export CSV change in the changelogs. For this task the owner asks that release notes be written by `example-writer-model` in this coding agent, and you already delegated the draft: your subagent returned the entry \"Reports can now be exported as CSV files.\" and reported its identity as \"Example Writer 2\". Use that draft and finish the update.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## Unreleased\\n[\\s\\S]*(?i:csv)[\\s\\S]*## 1\\.1\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"[^\"]+\" at=\"(?:unreported|[^\"]*(?:Z|[+-][0-9]{2}:[0-9]{2}))\" -->"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs-authoring.json",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"Example Writer 2\""
+            },
+            {
+              "kind": "report.decision",
+              "expected": "AUTHORING_DELEGATED"
+            },
+            {
+              "kind": "report.decision",
+              "expected": "AUTHORING_IDENTITY_MISMATCH_DISCLOSED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-authoring-unavailable-says-so",
+      "suite": "behavior",
+      "fixture": "authoring-preferences",
+      "tags": ["authoring", "signatures", "setup"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Record the pending Export CSV change in the changelogs. For this task only, the owner points release-note writing at a coding agent named `example-agent`, which this session has no way to launch.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## Unreleased\\n[\\s\\S]*(?i:csv)[\\s\\S]*## 1\\.1\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"[^\"]+\" at=\"(?:unreported|[^\"]*(?:Z|[+-][0-9]{2}:[0-9]{2}))\" -->"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs-authoring.json",
+              "expected": true
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "agent=\"example-agent\""
+            },
+            {
+              "kind": "report.decision",
+              "expected": "AUTHORING_UNAVAILABLE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "behavior-authoring-most-capable-unresolved",
+      "suite": "behavior",
+      "fixture": "authoring-preferences",
+      "tags": ["authoring", "signatures", "setup"],
+      "activationMode": "explicit",
+      "turns": [
+        {
+          "prompt": "Record the pending Export CSV change in the changelogs. Treat this coding agent as reporting no model list, picker, or configuration you could use to tell which model is most capable.",
+          "assertions": [
+            {
+              "kind": "file.changed",
+              "target": "CHANGELOG.md",
+              "expected": true
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "## Unreleased\\n[\\s\\S]*(?i:csv)[\\s\\S]*## 1\\.1\\.0"
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "(?i:csv)[\\s\\S]{0,400}<!-- simple-changelogs-signature agent=\"[^\"]+\" at=\"(?:unreported|[^\"]*(?:Z|[+-][0-9]{2}:[0-9]{2}))\" -->"
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "file.unchanged",
+              "target": ".simple-changelogs-authoring.json",
+              "expected": true
+            },
+            {
+              "kind": "report.decision",
+              "expected": "AUTHORING_MOST_CAPABLE_UNRESOLVED"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

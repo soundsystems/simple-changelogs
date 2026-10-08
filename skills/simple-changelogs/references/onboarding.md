@@ -19,6 +19,7 @@ inside the original task, not a separate task.
 - Public release-note layer
 - Contextual product-surface choice
 - Component-source choice
+- Agents and models
 - Preference scope
 - Repository-instruction pointer
 - Final history question
@@ -593,6 +594,55 @@ Name every package the recommended option would add. A dependency is a product
 change, so the later receipt must include it. Follow the component library's
 current documentation instead of embedding version-sensitive imports or props
 in the guidance.
+
+## Agents and models
+
+Inspection reports `detectedHarnesses` (a running session variable or a
+home-directory root named in `agents/harnesses.json`; nothing inside is read)
+and `authoringQuestion`. While it is `pending`, ask here in **Customize** and
+**Walk me through it**; **Use recommended setup** records the default below for
+every detected agent without asking and shows it in the receipt. When it is
+`repair`, show the file's errors and ask the owner to repair or remove it.
+
+Explain first: the skill can hand release-note writing to a specific model, but
+only inside the coding agents the owner actually uses. Fill `<names>` and
+`<agent>` with the reported display names; an unknown id shows as itself.
+
+**Which coding agents do you use? Choose one:**
+
+1. **The ones I found: `<names>` (Recommended)**: Record these; the next
+   question asks about each.
+2. **Edit the list**: Add or remove agents by name, for tools I did not
+   detect.
+3. **Only the agent running now**: Record just this one.
+
+When nothing is detected beyond the running agent, option 1 names only that
+agent and option 3 is omitted; with nothing detected, offer only option 2.
+Then ask once per selected agent **In `<agent>`, which model should write
+release notes? Choose one:**
+
+1. **The most capable model available, at xhigh effort (Recommended)**:
+   Records `{ "model": "most-capable", "effort": "xhigh" }` for `<agent>`.
+2. **A specific model**: Name it, then choose `low`, `medium`, `high`,
+   `xhigh` (default), or `max`, the slowest and most expensive setting, for
+   when every release note must get the longest deliberation. Records
+   `{ "model": "<name>", "effort": "<level>" }`.
+3. **Do not guide this**: Records `null` for `<agent>`; whatever model is
+   running writes, with no delegation.
+
+Never pre-select `max`. Then say: "This is a preference, not a permission. The
+agent still asks before launching another tool for the first time, and every
+entry is signed by the model that actually wrote it."
+
+The answer is `"roles": { "release-notes": { "harness": "running" } }` plus one
+`harnesses` entry per selected agent. Record it with the helper's
+`apply --authoring '<json>' --scope repository --confirm` (or
+`--scope all-projects`; `@path` reads a file) as its own transaction, before or
+after the policy write; run-only writes nothing. An explicit "no preference"
+writes `{"schemaVersion":1,"roles":{},"harnesses":{}}`; silence writes nothing,
+so the question returns until a valid sidecar exists. A configured repository
+gets it as `authoring-models` in `guidanceUpdate.questions`, then in
+`unresolvedQuestions`; acknowledging the guidance never answers it.
 
 ## Preference scope
 

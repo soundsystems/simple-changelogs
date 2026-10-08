@@ -14,6 +14,7 @@ scope, confirmation receipt, and helper commands, follow
 - One Prompt per Guidance Version
 - Surface Authorization State
 - Raw-Markdown Signatures
+- Authoring preferences
 
 ## Policy File
 
@@ -313,3 +314,46 @@ Use only identity and time data exposed by the runtime:
 These comments are informational audit metadata, not cryptographic proof of
 authorship or mutation. Renderers should ignore HTML comments generally so raw
 attribution never becomes release-note copy.
+
+## Authoring preferences
+
+An optional sidecar records which coding agent, model, and effort should write
+release notes: `.simple-changelogs-authoring.json` at the repository root, or
+`authoring.json` beside the personal `preferences.json`. Onboarding writes it
+(`references/onboarding.md`, "Agents and models"): repository scope writes the
+repository file, all-projects scope the personal one, run-only nothing. It is
+never a key in the policy or preferences file, whose validators reject unknown
+keys, so older copies simply write with the running model. Commit the
+repository file with the policy; until then it is ordinary untracked work.
+
+```json
+{
+  "schemaVersion": 1,
+  "roles": { "release-notes": { "harness": "running" } },
+  "harnesses": { "<agent id>": { "model": "most-capable", "effort": "xhigh" } }
+}
+```
+
+One role, `release-notes`, covers all copy this skill writes. Its `harness` is
+`running` or an agent id, and a role-level `model` needs an agent id. A
+`null` entry means "do not guide this agent". Precedence, highest first: the
+current request, the repository sidecar, the personal sidecar, then the
+running agent's most capable model at `xhigh`. The role and each agent entry
+replace whole; an empty sidecar answers the question and defines nothing.
+`inspect` reports `authoring.effective` and each field's layer in
+`authoring.source`. `max` effort comes only from an explicit owner choice.
+
+Before writing, resolve the role. `most-capable` means the most capable model
+the target agent itself reports; never rank models from memory. Write directly
+when the target agent and model are the running ones. Otherwise delegate only
+through a mechanism the running agent already has, asking before the first
+launch of another tool in a session, and compare the identity the delegate
+reports with the target. When the target is `unknown` or `null`, the model
+cannot be resolved, or nothing can delegate, write with the running model and
+say which role was configured, what wrote instead, and why. Signatures name
+the writer the runtime reported, never the preference.
+
+The sidecar is a preference, never authority or identity: it grants no
+publication, release, or launch permission, stores no credentials, model list,
+or launch command, and never joins the effective-policy digest of release
+handoffs.

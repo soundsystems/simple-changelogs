@@ -17,6 +17,14 @@ const temporaryPaths: string[] = [];
 const temporaryDirectory = async (label: string): Promise<string> => {
   const path = await mkdtemp(join(tmpdir(), `simple-changelogs-${label}-`));
   temporaryPaths.push(path);
+  if (label === "config") {
+    // An answered (empty) personal authoring sidecar keeps the authoring
+    // question out of these notices; setup-authoring.check.ts covers it.
+    await writeFile(
+      join(path, "authoring.json"),
+      `${JSON.stringify({ harnesses: {}, roles: {}, schemaVersion: 1 })}\n`
+    );
+  }
   return path;
 };
 

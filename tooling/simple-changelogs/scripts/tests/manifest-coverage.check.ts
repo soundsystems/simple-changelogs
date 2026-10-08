@@ -58,6 +58,7 @@ const REQUIRED_POINTER_PHRASES = [
 ];
 
 const FIXTURE_IDS = new Set([
+  "authoring-preferences",
   "dual-changelog",
   "editorial-updates-app",
   "expert-release",
@@ -145,7 +146,15 @@ const TRIGGER_CASE_IDS = new Set([
   "trigger-negative-ui-spacing",
 ]);
 
+const AUTHORING_CASE_IDS = [
+  "behavior-authoring-match-writes",
+  "behavior-authoring-delegates",
+  "behavior-authoring-unavailable-says-so",
+  "behavior-authoring-most-capable-unresolved",
+];
+
 const BEHAVIOR_CASE_IDS = new Set([
+  ...AUTHORING_CASE_IDS,
   "behavior-release-tags-existing-style",
   "behavior-release-tags-tooling-owns-tags",
   "behavior-release-tags-monorepo",
@@ -272,8 +281,8 @@ describe("canonical evaluation manifest", () => {
     );
 
     expect(manifest.manifestVersion).toBe(1);
-    expect(ids).toHaveLength(85);
-    expect(new Set(ids).size).toBe(85);
+    expect(ids).toHaveLength(89);
+    expect(new Set(ids).size).toBe(89);
     expect(triggerIds).toEqual(TRIGGER_CASE_IDS);
     expect(behaviorIds).toEqual(BEHAVIOR_CASE_IDS);
   });
@@ -305,6 +314,50 @@ describe("canonical evaluation manifest", () => {
     for (const tag of REQUIRED_COVERAGE_TAGS) {
       expect(tags.has(tag)).toBe(true);
     }
+  });
+
+  test("signs every authoring case with the actual writer, never the preference", async () => {
+    const manifest = await loadManifest();
+    for (const id of AUTHORING_CASE_IDS) {
+      const item = caseById(manifest, id);
+      expect(item.fixture).toBe("authoring-preferences");
+      const { assertions } = turnByIndex(item, 0);
+      expect(
+        assertions.some(
+          (assertion) =>
+            assertion.kind === "text.match" &&
+            assertion.target === "CHANGELOG.md" &&
+            String(assertion.expected).includes("simple-changelogs-signature")
+        )
+      ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.notMatch",
+          'agent="(?:most-capable|running|example-writer-model)"',
+          "CHANGELOG.md"
+        )
+      ).toBe(true);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "file.unchanged",
+          true,
+          ".simple-changelogs-authoring.json"
+        )
+      ).toBe(true);
+    }
+    expect(
+      hasAssertion(
+        caseById(manifest, "behavior-authoring-delegates"),
+        0,
+        "text.match",
+        'simple-changelogs-signature agent="Example Writer 2"',
+        "CHANGELOG.md"
+      )
+    ).toBe(true);
   });
 
   test("requires native activation evidence for every trigger and local fork selection", async () => {

@@ -122,6 +122,8 @@ waive this rule; preserve untouched released history. See
 - Do not add a new web route, page, modal, panel, navigation item, or
   notification without explicit current authority or documented policy.
 - Do not mutate an installed skill to store repository decisions.
+- A configured authoring model is a preference, never authority and never
+  identity; sign with the model that wrote the entry.
 - Name each release's tag in its receipt, but never create or push a tag;
   Simple Changes does. Do not create hosted releases, deployments, or unrelated
   product work.

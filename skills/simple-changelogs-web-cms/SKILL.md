@@ -138,6 +138,8 @@ waive this rule; preserve untouched released history. See
   notification without explicit current authority or documented policy.
 - Do not create or update mobile/store notes or submission metadata.
 - Do not mutate an installed skill to remember repository decisions.
+- A configured authoring model is a preference, never authority and never
+  identity; sign with the model that wrote the entry.
 - Name each release's tag in its receipt, but never create or push a tag;
   Simple Changes does. Do not create hosted releases, deployments, or unrelated
   product work.
