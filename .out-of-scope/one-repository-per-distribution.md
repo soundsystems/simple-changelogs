@@ -1,6 +1,6 @@
 # Distributions are not split into separate repositories
 
-The six changelog distributions and `publish-skill` live in one repository. Requests to give each distribution its own repository are out of scope while they share ownership, versioning, and release cadence.
+The six changelog distributions live in one repository. Requests to give each distribution its own repository are out of scope while they share ownership, versioning, and release cadence.
 
 ## Why this is out of scope
 

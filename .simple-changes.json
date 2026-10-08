@@ -2,6 +2,7 @@
   "changelogHandling": "delegate-if-available",
   "concurrentWork": "allow-claimed",
   "defaultFinish": "ship",
+  "execGuard": ["bun", "tooling/exec-guard.ts"],
   "guidance": {
     "disposition": "accepted",
     "version": 26

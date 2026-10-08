@@ -106,6 +106,27 @@ An explicit approval must reference the prior decision digest. Any policy,
 target, classification input, version owner, negotiation, or selected-version
 change invalidates approval and returns to `classify`.
 
+Compute digests and receipts with `scripts/handoff.ts`, never by hand. It
+writes nothing and leaves validation to Simple Changes:
+
+- `digest policy FILE`: the effective-policy input, `automationOwner`,
+  `policy`, `releaseTrain`, `source`, `versionConvention`, `versionOwner`,
+  plus `releaseTags` when the policy records it.
+- `digest decision FILE`: `transactionId`, `boundary`, `releaseTrain`,
+  `inputTargetRevision`, `impact`, `currentVersion`, `suggestedVersion`,
+  `selectedVersion`, `versionOwner`, `effectivePolicyDigest`, and any
+  `versionLine`.
+- `digest json FILE` gives a receipt's `priorReceiptDigest`;
+  `digest paths [--rev REV] PATH...` gives changed-path digests.
+- `receipt --request FILE --findings FILE [--prior FILE]` assembles the
+  receipt at the negotiated version. Findings hold `status`, `releaseImpact`,
+  and `policy` (the effective-policy input), and may hold `checks`,
+  `evidence`, `decision` (`currentVersion`, `suggestedVersion`,
+  `selectedVersion`, `policyAction`, `resolution`, `source`, and optional
+  `bumpLevel` and `versionLine`), `release` (`version`, `date`, `tag`),
+  `paths`, `reconciliationHeadRevision`, `reasonCode`, and `reason`. Verify
+  reuses the prepared release and reconciliation head from `--prior`.
+
 ## Prepare
 
 `prepare` is the only mutation phase. Re-inspect the exact target and approval

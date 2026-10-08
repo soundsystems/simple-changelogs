@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "bun";
-import { digestCanonicalJson } from "../lib/release-handoff.ts";
+import { digestCanonicalJson } from "../handoff.ts";
 import {
   applySetup,
   guidanceBackfillRecommendationFor,
@@ -243,15 +243,15 @@ describe("setup inspection", () => {
     expect(inspection.guidanceUpdate).toMatchObject({
       actions: ["walkthrough", "continue", "view-release-notes"],
       backfillRecommendation: "optional",
-      currentVersion: 25,
+      currentVersion: 26,
       headline: "Simple Changelogs has recently been updated.",
       questions: ["release-tags"],
       recordedVersion: 15,
       releaseNotesPath: "references/guidance-updates.md",
       summaryBullets: [
-        "New changelog entries and release-note lines now avoid em-dashes, and setup and update choices read as Choice (Recommended): consequence.",
         "New or edited release notes use no em dashes unless the user explicitly requests them; repository house style no longer supplies an exception.",
         "Each release can now get a Git tag: Simple Changelogs names it in the release receipt, and Simple Changes 0.27.0 or later creates and pushes it. This update asks once how releases should be tagged.",
+        "Agents read changelogs through query.ts instead of whole files, query.ts gaps lists merges since the last release tag without an entry, and scripts/handoff.ts computes release receipts.",
       ],
       userPrompt:
         "Would you like to preview the affected released history and run a backfill, defer it, or skip it?",
@@ -313,7 +313,7 @@ describe("setup inspection", () => {
     expect(recorded.guidanceUpdate).toBeNull();
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(Object.hasOwn(policy, "releaseTags")).toBe(false);
     expect(after.guidanceUpdate).toBeNull();
@@ -1479,15 +1479,15 @@ describe("setup application", () => {
     expect(blocked.errors.join(" ")).toContain("--mobile-placement");
     expect(configured.status).toBe("configured");
     expect(fullPolicy.mobileReleaseNotePlacement).toBe("store-only");
-    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(25);
+    expect((fullPolicy.guidance as Record<string, unknown>).version).toBe(26);
     expect(fullPolicy.releaseTags).toBe("v{version}");
 
     // Every distribution shares one guidance number.
     const distributionVersions = [
-      ["web", 25],
-      ["mobile", 25],
-      ["web-cms", 25],
-      ["skill-repository", 25],
+      ["web", 26],
+      ["mobile", 26],
+      ["web-cms", 26],
+      ["skill-repository", 26],
     ] as const;
     const versions = await Promise.all(
       distributionVersions.map(async ([distribution]) => {
@@ -2078,7 +2078,7 @@ describe("distribution and CMS boundaries", () => {
     const policy = await readJson(join(repo, ".simple-changelogs-cms.json"));
 
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 25,
+      currentVersion: 26,
       recordedVersion: 1,
     });
     // CMS history has no release, so the notice never asks about tags.
@@ -2088,7 +2088,7 @@ describe("distribution and CMS boundaries", () => {
     expect(recorded.status).toBe("configured");
     expect(policy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(Object.hasOwn(policy, "releaseTags")).toBe(false);
   });
@@ -2487,7 +2487,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 25 },
+      { backfillStatus: "completed", version: 26 },
       { backfillStatus: "completed", version: 1 }
     );
 
@@ -2536,7 +2536,7 @@ describe("post-onboarding update paths", () => {
     const cmsPolicy = await readJson(join(repo, ".simple-changelogs-cms.json"));
     expect(repoPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(cmsPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
@@ -2556,7 +2556,7 @@ describe("post-onboarding update paths", () => {
     const { config, repo } = await fixture();
     await writeWebCmsFixture(
       repo,
-      { backfillStatus: "completed", version: 25 },
+      { backfillStatus: "completed", version: 26 },
       { backfillStatus: "completed", version: 2 }
     );
 

@@ -14,6 +14,7 @@ audit. These entries do not themselves authorize released-history edits.
 - Guidance 6
 - Guidance 7
 - Guidance 25
+- Guidance 26
 
 ## Guidance 1
 
@@ -130,3 +131,14 @@ release tags the other distributions gained in this checkpoint do not apply.
 Every Simple Changelogs distribution now shares one guidance number, so this
 distribution moves from 7 to 25. No question is asked, no setting changes, and
 no backfill is needed.
+
+<!-- simple-changelogs-guidance-update version="26" kinds="behavior,capability" backfill="not-needed" summary="Agents read only the newest CMS entries a task needs, and scripts/handoff.ts computes operator-entry receipts." -->
+## Guidance 26
+
+Agents now read only the newest `CMS_CHANGELOG.json` entries a task needs
+instead of the whole file, which is kept for a backfill or an audit. The
+bundled `scripts/handoff.ts` computes the policy, decision, changed-path, and
+prior-receipt digests of the entry-only handoff and assembles its receipt, so
+receipts are no longer built by hand; Simple Changes still validates them.
+Entries, policy, and the operator surface are unchanged. No question is asked,
+no setting changes, and no backfill is needed.

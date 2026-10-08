@@ -17,7 +17,7 @@ import { lstat, readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawnSync } from "bun";
 
-// Every changelog distribution ships the byte-synced setup helper.
+// Every changelog distribution ships the byte-synced setup and handoff helpers.
 export const changelogDistributions = new Set([
   "simple-changelogs",
   "simple-changelogs-cms",
@@ -117,6 +117,11 @@ const syncRules = (): SyncRule[] => [
     `${TOOLING_SCRIPTS}/setup.ts`,
     changelogDistributions,
     "scripts/setup.ts"
+  ),
+  ...copies(
+    `${TOOLING_SCRIPTS}/handoff.ts`,
+    changelogDistributions,
+    "scripts/handoff.ts"
   ),
   ...PROTOCOL_FILES.flatMap((filename) =>
     copies(

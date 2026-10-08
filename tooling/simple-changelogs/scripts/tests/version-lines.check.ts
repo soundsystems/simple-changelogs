@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { versionLineEvidence } from "../handoff.ts";
 import type { SharedVersionLineMode } from "../lib/types.ts";
 import {
   bumpSharedCollision,
@@ -11,7 +12,6 @@ import {
   latestStableVersion,
   nextVersion,
   selectLineVersion,
-  versionLineEvidence,
   versionLineViolations,
 } from "../lib/version-lines.ts";
 

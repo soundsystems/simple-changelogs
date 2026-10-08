@@ -1,18 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import {
-  type ChangelogReceiptV2,
-  type ChangelogRequest,
   canonicalJson,
   decisionDigest,
   digestCanonicalJson,
   effectivePolicyDigest,
+  versionLineEvidence,
+} from "../handoff.ts";
+import {
+  type ChangelogReceiptV2,
+  type ChangelogRequest,
   receiptVersionFor,
   shapeReceipt,
   validateChangelogReceipt,
   validateChangelogReleaseSet,
   validateChangelogRequest,
 } from "../lib/release-handoff.ts";
-import { versionLineEvidence } from "../lib/version-lines.ts";
 
 const revision = "0123456789abcdef0123456789abcdef01234567";
 const digest = "a".repeat(64);

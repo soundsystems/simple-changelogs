@@ -362,6 +362,8 @@ template; omit raw Markdown, HTML, attribution comments, and test instructions.
 | Apple App Store, What's New in this Version | 4,000 characters per localization. Describe specific features, improvements, and fixes. The field is unavailable for the first version and required for subsequent updates. | App, platform, public app version, and locale; use app-version metadata, not TestFlight build notes or App Review instructions. |
 | Google Play production, What's new in this release? | 500 Unicode characters per language. Describe changes without promotional content or requests for user actions. Play Console places language tags on separate lines around each translation; API `releaseNotes` uses language/text entries without those tags. | Package, production track, release versionCodes, and locale; the release name alone does not identify the artifact. |
 
+`scripts/query.ts check` counts each Fastlane or Gradle Play Publisher note
+file against these limits in Unicode code points and fails over-limit copy.
 Verify current limits and the destination's editability/review state against
 [Apple's version properties](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/),
 [Apple's editable properties](https://developer.apple.com/help/app-store-connect/reference/app-information/required-localizable-and-editable-properties/),

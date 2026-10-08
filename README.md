@@ -20,12 +20,10 @@ lists choices. The table below provides the same selection guide.
 | `simple-changelogs-web-cms` | Public web history and a separate authenticated CMS operator history in one repository | Mobile/store destinations |
 | `simple-changelogs-skill-maintainer` | Skill-development repositories: changelogs, packaged notes, guidance versions, fork provenance, and installable package boundaries | Product-app, CMS, mobile, and store workflows |
 
-`publish-skill` is maintainer tooling for synchronizing a canonical skill
-through maintained forks and a real Skills CLI consumer installation. It is
-marked internal, so it is not part of the public package, and it does not claim
-changelog ownership. It is user-invoked: run it by name (`/publish-skill`),
-because agents do not start a publication across forks on their own. The same
-workflow ships in Simple Changes; change both copies together.
+`publish-skill`, the maintainer workflow that carries a canonical skill
+through its maintained forks and a real Skills CLI consumer installation, now
+lives only in [Simple Changes](https://github.com/soundsystems/simple-changes)
+(`skills/publish-skill`). Install it from there.
 
 The distributions live in one repository because Skills CLI selects
 self-contained skill directories. Separate repositories are unnecessary unless
@@ -258,6 +256,17 @@ handoff is entry-only: Simple Changes delegates on the `none` boundary and the
 target. No phase selects a version, creates a tag, or produces a public note;
 see `skills/simple-changelogs-cms/references/release-handoff.md`.
 
+Every distribution ships `scripts/handoff.ts` for these handoffs. It computes
+the canonical-JSON SHA-256 policy, decision, changed-path, and prior-receipt
+digests and assembles a receipt from the request and the agent's findings, so
+no one builds a receipt by hand. It writes nothing; Simple Changes validates
+the result:
+
+```sh
+bun skills/simple-changelogs-web/scripts/handoff.ts digest json prepared.json
+bun skills/simple-changelogs-web/scripts/handoff.ts receipt --request request.json --findings findings.json
+```
+
 For an approved public Web archive, `releaseNoteEnvironmentScope` can expose
 the complete surface in `all-environments`, `non-production`,
 `production-only`, or `disabled`. The gate includes the route or page,
@@ -367,11 +376,17 @@ bun skills/simple-changelogs-web/scripts/query.ts releases --repo .
 bun skills/simple-changelogs-web/scripts/query.ts show unreleased --log customer --repo .
 bun skills/simple-changelogs-web/scripts/query.ts entries --since 2026-07-01 --grep "release" --repo . --json
 bun skills/simple-changelogs-web/scripts/query.ts show 2.1.0 --log customer --omitted --repo .
+bun skills/simple-changelogs-web/scripts/query.ts gaps --since v2.1.0 --repo .
 ```
+
+`gaps` lists the merges since a release tag (by default the newest one the
+`releaseTags` template names) that add no changelog lines, using plain Git.
 
 `check` lints structure (unrecognized release headings, malformed signature
 comments, parser diagnostics) and exits nonzero on problems so it can join
-verification checklists. Both the canonical
+verification checklists. It also holds Fastlane and Gradle Play Publisher
+store notes to the App Store's 4,000 and Google Play's 500 characters per
+locale, counted in Unicode code points. Both the canonical
 `<!-- simple-changelogs-signature ... -->` comment and the older
 `<!-- Agent: ... -->` dialect are recognized when attributing entries. In
 curated repositories, `entries --ids` prints the entry identities that
@@ -434,9 +449,9 @@ Every installed skill must contain exactly one root `SKILL.md`; the entire
 `tooling/` tree must contain none.
 
 Some installed files are byte-for-byte copies of one canonical source: the
-setup, query, and CMS helpers, the minified protocol schemas, the shared
-release-handoff, version-decisions, and testing-notes references, and the fork
-checker. Edit the canonical source, then run `bun run sync-distros` to rewrite
+setup, handoff, query, and CMS helpers, the minified protocol schemas, the
+shared release-handoff, version-decisions, and testing-notes references, and
+the fork checker. Edit the canonical source, then run `bun run sync-distros` to rewrite
 every copy. `bun run sync-distros --check` reports drift without writing, and
 `bun run eval` fails on any drift.
 
@@ -524,8 +539,6 @@ Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 - `skills/simple-changelogs-web-cms/` — combined public-web and protected-CMS
   runtime distribution.
 - `skills/simple-changelogs-skill-maintainer/` — lean distribution for repositories that develop or distribute skills.
-- `skills/publish-skill/` — maintainer-internal, user-invoked production
-  propagation workflow; change it together with the Simple Changes copy.
 - `tooling/simple-changelogs/` — full contract and behavior harness, fixtures,
   schemas, tests, and Codex, Claude Code, Hermes, Cursor, and Grok adapters.
 - `tooling/simple-changelogs-cms/` — CMS fixtures and contributor tests.

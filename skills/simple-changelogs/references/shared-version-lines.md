@@ -67,7 +67,8 @@ Answer with the highest receipt version in the request's
 v4 echo the request's `releaseSetTrains` exactly; `versionLine` is null off a
 line. On a
 line, the decision digest also covers `mode`, `members`, `memberVersions`, and
-`sharedVersion`, and the effective-policy digest covers `sharedVersionLines`.
+`sharedVersion`, and the effective-policy digest covers `sharedVersionLines`
+(pass both to `scripts/handoff.ts`).
 `releaseImpact` is the train's own impact, the bump level is the jump from its
 own version, and v2 evidence carries, for example, `versionLine {"members":["mobile","web"],"memberVersions":{"mobile":"0.21.3","web":"1.0.0"},"mode":"catch-up","outcome":"catch-up","sharedVersion":"1.0.0","sharedVersionTrains":["web"]}`.
 

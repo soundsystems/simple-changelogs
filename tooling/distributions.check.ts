@@ -36,13 +36,23 @@ const toolingRoot = join(repositoryRoot, "tooling");
 // 266,372, Web 266,361, skill-maintainer 266,422, CMS-only 221,291. When the
 // support budget binds, prefer moving distribution-specific code into a module
 // only those distributions ship before raising again.
+// Measured for 0.26.0, with scripts/handoff.ts in every distribution and the
+// query.ts gaps and store-note checks: Markdown full 220,916 bytes, Web+CMS
+// 200,200, mobile 191,317, Web 186,669, skill-maintainer 113,488, CMS-only
+// 68,394; support files Web+CMS 318,553, full 301,922, mobile 301,932, Web
+// 301,921, skill-maintainer 301,982, CMS-only 243,272.
 const MAX_GUIDANCE_BYTES = 224 * 1024;
 const MAX_SUPPORT_BYTES = 384 * 1024;
+// Claude Code keeps only the first 5,000 tokens of a loaded skill after
+// compaction, so every SKILL.md stays at or under about 5,000 tokens: 17,500
+// bytes at 3.5 bytes per token. The router and invariants come first;
+// everything else belongs in a reference.
+const MAX_SKILL_BYTES = 17_500;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u;
 const LOCAL_ROUTE_PATTERN =
   /(?:`|\]\()((?:references|scripts|schemas)\/[^`\s)#]+)(?:`|\))/gu;
 
-const expectedSkills = new Set([...changelogDistributions, "publish-skill"]);
+const expectedSkills = new Set(changelogDistributions);
 const forbiddenNames = new Set(["EVAL.md"]);
 // Agent Skills frontmatter: every package states its license and runtime
 // requirements, a distribution that ships the POSIX fork checker says so, and
@@ -225,6 +235,13 @@ for (const {
   const supportBytes = entries
     .filter((entry) => !entry.path.endsWith(".md"))
     .reduce((sum, entry) => sum + entry.bytes, 0);
+  const skillBytes =
+    entries.find((entry) => entry.path === "SKILL.md")?.bytes ?? 0;
+  if (skillBytes > MAX_SKILL_BYTES) {
+    failures.push(
+      `skills/${directoryName}/SKILL.md is ${skillBytes} bytes; the SKILL.md maximum is ${MAX_SKILL_BYTES} (about 5,000 tokens)`
+    );
+  }
   if (guidanceBytes > MAX_GUIDANCE_BYTES) {
     failures.push(
       `skills/${directoryName} Markdown is ${guidanceBytes} bytes; the guidance maximum is ${MAX_GUIDANCE_BYTES}`
@@ -1195,10 +1212,10 @@ for (const { directoryName, source } of cmsPolicySchemas) {
   }
 }
 
-// Byte-synced copies (the setup, query, and CMS helpers, the minified protocol
-// schemas, the shared references, and every bundled fork checker, which
-// check-fork-sync.check.ts exercises) come from the table `bun run
-// sync-distros` writes, so the check and the writer cannot disagree.
+// Byte-synced copies (the setup, handoff, query, and CMS helpers, the
+// minified protocol schemas, the shared references, and every bundled fork
+// checker, which check-fork-sync.check.ts exercises) come from the table `bun
+// run sync-distros` writes, so the check and the writer cannot disagree.
 for (const { expected, source, target } of await syncedFiles(repositoryRoot)) {
   const path = join(repositoryRoot, target);
   if (!existsSync(path)) {

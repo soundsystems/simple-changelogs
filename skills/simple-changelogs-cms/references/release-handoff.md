@@ -92,6 +92,17 @@ The decision digest covers the transaction, the `none` boundary, the
 Any policy, target, or classification change invalidates the digest and
 returns to `classify`.
 
+Compute them with `scripts/handoff.ts`, never by hand; it writes nothing and
+leaves validation to Simple Changes. `receipt --request FILE --findings FILE
+[--prior FILE]` assembles the receipt. Its findings hold `status`,
+`releaseImpact`, `checks`, `evidence`, `paths`, the orchestrator's
+`reconciliationHeadRevision`, and `policy`: the CMS policy and changelog path
+as `policy`, `cms-operators` as `releaseTrain`, `none` as `versionConvention`,
+`CMS_CHANGELOG.json` as `versionOwner`, `null` as `automationOwner`, and
+`repository-policy` as `source`. `decision` is null or the `none` record with
+`bumpLevel: "none"` and null versions. `digest json FILE` gives a receipt's
+`priorReceiptDigest`; run `help` for the other digests.
+
 ## Prepare
 
 `prepare` is the only mutation phase. Re-inspect the exact target and the

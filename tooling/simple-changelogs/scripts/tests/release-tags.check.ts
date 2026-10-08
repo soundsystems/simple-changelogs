@@ -5,11 +5,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
+import { digestCanonicalJson, effectivePolicyDigest } from "../handoff.ts";
 import {
   type ChangelogReceiptV2,
   type ChangelogRequest,
-  digestCanonicalJson,
-  effectivePolicyDigest,
   NARROW_RECEIPT_VERSIONS,
   type ReleaseTag,
   receiptVersionFor,
@@ -1544,7 +1543,7 @@ describe("release tags in the guidance-update notice", () => {
 
     for (const [index, [, recorded]] of cases.entries()) {
       expect(inspections[index]?.guidanceUpdate).toMatchObject({
-        currentVersion: 25,
+        currentVersion: 26,
         questions: ["release-tags"],
         recordedVersion: recorded,
         userPrompt: null,
@@ -1583,13 +1582,14 @@ describe("release tags in the guidance-update notice", () => {
       inspect(cms, "cms"),
     ]);
 
-    expect(web.guidanceUpdate?.currentVersion).toBe(25);
+    expect(web.guidanceUpdate?.currentVersion).toBe(26);
     expect(Object.hasOwn(web.guidanceUpdate ?? {}, "questions")).toBe(false);
     expect(operator.guidanceUpdate).toMatchObject({
-      currentVersion: 25,
+      currentVersion: 26,
       recordedVersion: 7,
       summaryBullets: [
         "Nothing changes for CMS repositories; the guidance number now matches the other Simple Changelogs distributions.",
+        "Agents read only the newest CMS entries a task needs, and scripts/handoff.ts computes operator-entry receipts.",
       ],
       userPrompt: null,
     });
@@ -1611,10 +1611,11 @@ describe("release tags in the guidance-update notice", () => {
 
     const inspection = await inspect(repo, "web-cms");
 
-    // Only the CMS track is behind, so the notice exists without the question.
+    // Both tracks are behind a later checkpoint, so the notice exists, but a
+    // policy already at 25 is never asked the release-tag question again.
     expect(inspection.guidanceUpdate).toMatchObject({
-      currentVersion: 2,
-      recordedVersion: 1,
+      currentVersion: 26,
+      recordedVersion: 25,
     });
     expect(Object.hasOwn(inspection.guidanceUpdate ?? {}, "questions")).toBe(
       false
@@ -1786,13 +1787,13 @@ describe("release tags in the guidance-update notice", () => {
     expect(answeredPolicy.releaseTags).toBe("v{version}");
     expect(answeredPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(withoutAnswer.status).toBe("configured");
     expect(Object.hasOwn(silentPolicy, "releaseTags")).toBe(false);
     expect(silentPolicy.guidance).toEqual({
       backfillStatus: "not-applicable",
-      version: 25,
+      version: 26,
     });
     expect(after.guidanceUpdate).toBeNull();
   });
@@ -2255,7 +2256,7 @@ const HOST_OR_EM_DASH = /GitHub|GitLab|Bitbucket|\u2014/u;
 const collapse = (text: string): string => text.replace(WHITESPACE, " ");
 
 describe("unified guidance 25 and release-tag guidance", () => {
-  test("every distribution, marker, manifest entry, and notice shares guidance 25", async () => {
+  test("every distribution, marker, manifest entry, and notice shares the current guidance", async () => {
     const manifest = JSON.parse(
       await readFile(
         join(REPOSITORY_ROOT, "distribution-manifest.json"),
@@ -2264,7 +2265,7 @@ describe("unified guidance 25 and release-tag guidance", () => {
     ) as { distributions: { guidanceVersion: number; name: string }[] };
     expect(
       manifest.distributions.map(({ guidanceVersion }) => guidanceVersion)
-    ).toEqual([25, 25, 25, 25, 25, 25]);
+    ).toEqual([26, 26, 26, 26, 26, 26]);
     const snapshots = await Promise.all(
       Object.entries(DISTRIBUTION_DIRECTORIES).map(
         async ([distribution, directory]) => {
@@ -2284,13 +2285,15 @@ describe("unified guidance 25 and release-tag guidance", () => {
       )
     );
     for (const { inspection, marker, skill, updates } of snapshots) {
-      expect(skill).toContain("Current guidance version: 25\n");
-      expect(JSON.parse(marker).guidanceVersion).toBe(25);
-      expect(inspection.capabilities?.guidanceVersion).toBe(25);
-      expect(updates).toContain(
-        '<!-- simple-changelogs-guidance-update version="25"'
-      );
-      expect(updates).toContain("## Guidance 25\n");
+      expect(skill).toContain("Current guidance version: 26\n");
+      expect(JSON.parse(marker).guidanceVersion).toBe(26);
+      expect(inspection.capabilities?.guidanceVersion).toBe(26);
+      for (const version of [25, 26]) {
+        expect(updates).toContain(
+          `<!-- simple-changelogs-guidance-update version="${version}"`
+        );
+        expect(updates).toContain(`## Guidance ${version}\n`);
+      }
     }
   });
 

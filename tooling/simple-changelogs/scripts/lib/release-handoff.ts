@@ -1,14 +1,15 @@
-import { createHash } from "node:crypto";
+import {
+  digestCanonicalJson,
+  REASON_ACTIONS,
+  versionLineEvidence,
+} from "../handoff.ts";
 import {
   type ReleaseTagsSetting,
   releaseTagNameProblem,
   releaseTagsErrors,
 } from "../setup.ts";
-import { SHARED_VERSION_LINE_MODES, type SharedVersionLine } from "./types.ts";
-import {
-  type VersionLineDecision,
-  versionLineEvidence,
-} from "./version-lines.ts";
+import { SHARED_VERSION_LINE_MODES } from "./types.ts";
+import type { VersionLineDecision } from "./version-lines.ts";
 
 export const RELEASE_BOUNDARIES = [
   "release-bearing-merge",
@@ -51,20 +52,6 @@ const DECISION_SOURCES = [
   "run-only",
   "repository-convention",
 ] as const;
-const REASON_ACTIONS = {
-  "final-verification-failed": "review-finalization",
-  "invalid-version-direction": "choose-version",
-  "malformed-policy": "repair-policy",
-  "malformed-request": "repair-request",
-  "policy-changed": "refresh-and-reclassify",
-  "release-train-ambiguous": "resolve-release-train",
-  "schema-digest-mismatch": "repair-integration",
-  "target-moved": "refresh-and-reclassify",
-  "unsupported-consumer": "upgrade-consumer",
-  "unsupported-protocol": "upgrade-producer",
-  "version-direction-required": "choose-version",
-  "version-owner-ambiguous": "resolve-version-owner",
-} as const;
 const REVISION_PATTERN = /^[0-9a-f]{40,64}$/u;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/u;
 const VERSION_BOUNDARY_PATTERN = /[0-9.]$/u;
@@ -326,34 +313,6 @@ const compareStable = (left: string, right: string): number => {
   }
   return (a[index] ?? 0n) < (b[index] ?? 0n) ? -1 : 1;
 };
-
-export const canonicalJson = (value: unknown): string => {
-  if (value === null || typeof value === "boolean") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
-      throw new Error("Canonical JSON does not support non-finite numbers");
-    }
-    return JSON.stringify(value);
-  }
-  if (typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(",")}]`;
-  }
-  if (isRecord(value)) {
-    return `{${Object.keys(value)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
-      .join(",")}}`;
-  }
-  throw new Error("Canonical JSON supports JSON values only");
-};
-
-export const digestCanonicalJson = (value: unknown): string =>
-  createHash("sha256").update(canonicalJson(value)).digest("hex");
 
 // As in the schema, only schemaVersion 2 or 3 selects request v2 or v3; any
 // other value is checked, unchanged, as request v1. Request v3 is request v2
@@ -1700,59 +1659,3 @@ export const validateChangelogReleaseSet = (
         },
       };
 };
-
-// Resolved shared version lines join the digest only when there is at least
-// one, and the train's resolved release-tag template (`none` included) only
-// when the policy records releaseTags, so every earlier digest is unchanged.
-export const effectivePolicyDigest = ({
-  releaseTags,
-  sharedVersionLines,
-  ...input
-}: {
-  automationOwner: string | null;
-  policy: unknown;
-  releaseTags?: string;
-  releaseTrain: string;
-  sharedVersionLines?: SharedVersionLine[];
-  source: string;
-  versionConvention: string;
-  versionOwner: string;
-}): string =>
-  digestCanonicalJson({
-    ...input,
-    ...(releaseTags !== undefined && { releaseTags }),
-    ...(sharedVersionLines?.length && { sharedVersionLines }),
-  });
-
-// On a line, the decision digest covers the line state (mode, members,
-// memberVersions, and sharedVersion) but not the outcome; without a line it
-// is unchanged.
-export const decisionDigest = ({
-  versionLine,
-  ...input
-}: {
-  boundary: Boundary;
-  currentVersion: string | null;
-  effectivePolicyDigest: string;
-  impact: Impact;
-  inputTargetRevision: string;
-  releaseTrain: string;
-  selectedVersion: string | null;
-  suggestedVersion: string | null;
-  transactionId: string;
-  versionLine?: VersionLine | null;
-  versionOwner: string;
-}): string =>
-  digestCanonicalJson(
-    versionLine
-      ? {
-          ...input,
-          versionLine: {
-            members: versionLine.members,
-            memberVersions: versionLine.memberVersions,
-            mode: versionLine.mode,
-            sharedVersion: versionLine.sharedVersion,
-          },
-        }
-      : input
-  );
