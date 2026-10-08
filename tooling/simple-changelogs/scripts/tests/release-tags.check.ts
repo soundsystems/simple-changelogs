@@ -5,11 +5,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
+import { digestCanonicalJson, effectivePolicyDigest } from "../handoff.ts";
 import {
   type ChangelogReceiptV2,
   type ChangelogRequest,
-  digestCanonicalJson,
-  effectivePolicyDigest,
   NARROW_RECEIPT_VERSIONS,
   type ReleaseTag,
   receiptVersionFor,

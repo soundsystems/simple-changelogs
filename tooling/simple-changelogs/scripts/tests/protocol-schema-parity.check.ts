@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { file } from "bun";
+import { digestCanonicalJson } from "../handoff.ts";
 import {
-  digestCanonicalJson,
   validateChangelogReceipt,
   validateChangelogRequest,
 } from "../lib/release-handoff.ts";

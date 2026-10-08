@@ -258,6 +258,17 @@ handoff is entry-only: Simple Changes delegates on the `none` boundary and the
 target. No phase selects a version, creates a tag, or produces a public note;
 see `skills/simple-changelogs-cms/references/release-handoff.md`.
 
+Every distribution ships `scripts/handoff.ts` for these handoffs. It computes
+the canonical-JSON SHA-256 policy, decision, changed-path, and prior-receipt
+digests and assembles a receipt from the request and the agent's findings, so
+no one builds a receipt by hand. It writes nothing; Simple Changes validates
+the result:
+
+```sh
+bun skills/simple-changelogs-web/scripts/handoff.ts digest json prepared.json
+bun skills/simple-changelogs-web/scripts/handoff.ts receipt --request request.json --findings findings.json
+```
+
 For an approved public Web archive, `releaseNoteEnvironmentScope` can expose
 the complete surface in `all-environments`, `non-production`,
 `production-only`, or `disabled`. The gate includes the route or page,
@@ -434,9 +445,9 @@ Every installed skill must contain exactly one root `SKILL.md`; the entire
 `tooling/` tree must contain none.
 
 Some installed files are byte-for-byte copies of one canonical source: the
-setup, query, and CMS helpers, the minified protocol schemas, the shared
-release-handoff, version-decisions, and testing-notes references, and the fork
-checker. Edit the canonical source, then run `bun run sync-distros` to rewrite
+setup, handoff, query, and CMS helpers, the minified protocol schemas, the
+shared release-handoff, version-decisions, and testing-notes references, and
+the fork checker. Edit the canonical source, then run `bun run sync-distros` to rewrite
 every copy. `bun run sync-distros --check` reports drift without writing, and
 `bun run eval` fails on any drift.
 

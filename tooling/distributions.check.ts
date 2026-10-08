@@ -1195,10 +1195,10 @@ for (const { directoryName, source } of cmsPolicySchemas) {
   }
 }
 
-// Byte-synced copies (the setup, query, and CMS helpers, the minified protocol
-// schemas, the shared references, and every bundled fork checker, which
-// check-fork-sync.check.ts exercises) come from the table `bun run
-// sync-distros` writes, so the check and the writer cannot disagree.
+// Byte-synced copies (the setup, handoff, query, and CMS helpers, the
+// minified protocol schemas, the shared references, and every bundled fork
+// checker, which check-fork-sync.check.ts exercises) come from the table `bun
+// run sync-distros` writes, so the check and the writer cannot disagree.
 for (const { expected, source, target } of await syncedFiles(repositoryRoot)) {
   const path = join(repositoryRoot, target);
   if (!existsSync(path)) {

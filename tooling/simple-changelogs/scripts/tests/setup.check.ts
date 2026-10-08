@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "bun";
-import { digestCanonicalJson } from "../lib/release-handoff.ts";
+import { digestCanonicalJson } from "../handoff.ts";
 import {
   applySetup,
   guidanceBackfillRecommendationFor,
