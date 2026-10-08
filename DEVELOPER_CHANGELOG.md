@@ -25,9 +25,9 @@
     such a script recommends no tags with a reason saying it may already
     create them, and the user can change the choice. Detection only shapes
     the recommendation: a tool it misses is caught by Simple Changes
-    `release-tag`, which refuses a tag name already used locally or on the
-    remote for another commit (a tag already on the verified commit counts as
-    done) and never moves or replaces a tag.
+    `release-tag`, which refuses a tag name that exists locally or on the
+    remote at another commit (only a remote tag already on the verified
+    commit counts as done) and never moves or replaces a tag.
     Trains come from `versionOwnersIn`, which uses the classify owner model:
     same-named owners in different directories stay separate. The app train
     that shared version lines know by that name keeps it, or else the first
@@ -54,9 +54,10 @@
   the full, mobile, Web, and Web+CMS histories summarize each later checkpoint
   before 25 in one paragraph, with every update marker kept. The CMS and
   skill-maintainer histories only gain guidance 25.
-- The vendored protocol schemas ship minified, exactly
-  `JSON.stringify(JSON.parse(text))` plus a newline, the bytes Simple Changes
-  ships; readable canonical copies stay in tooling, and
+- The vendored protocol files ship minified, exactly
+  `JSON.stringify(JSON.parse(text))` plus a newline. The request and receipt
+  schemas are then byte-identical to the ones Simple Changes ships; readable
+  canonical copies stay in tooling, and
   `distributions.check.ts` enforces the form. Each distribution saves 30,950
   bytes with canonical digests unchanged.
 - The support budget rose from 256 KiB to 384 KiB, approved by the user on
