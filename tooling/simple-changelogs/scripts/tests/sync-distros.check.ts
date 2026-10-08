@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import {
   cp,
@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { spawn } from "bun";
 import {
   type SyncedFile,
+  type SyncReport,
   syncDistributions,
   syncedFiles,
   type WriteProbe,
@@ -648,13 +649,25 @@ describe("sync-distros", () => {
     expect(await read(root, "outside.ts")).toBe("// outside\n");
   });
 
-  test("writes through the writer process and keeps this process's working directory", async () => {
+  test("writes through the writer process and never moves this process's working directory", async () => {
     const root = await repositoryCopy();
     await driftCopies(root);
     const origin = process.cwd();
 
-    const report = await syncDistributions(root, { write: true });
+    // Only the writer process may call chdir; a walk run here and then
+    // restored would leave the final directory intact but still move it.
+    const chdir = spyOn(process, "chdir");
+    let report: SyncReport;
+    let moves = -1;
+    try {
+      report = await syncDistributions(root, { write: true });
+    } finally {
+      // Read before the restore, which also clears the recorded calls.
+      moves = chdir.mock.calls.length;
+      chdir.mockRestore();
+    }
 
+    expect(moves).toBe(0);
     expect(report.drifted).toHaveLength(3);
     expect(process.cwd()).toBe(origin);
     expect(await read(root, SETUP_COPY)).toBe(
