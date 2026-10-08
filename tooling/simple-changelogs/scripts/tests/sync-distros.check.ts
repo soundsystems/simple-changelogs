@@ -71,6 +71,9 @@ const EXPECTED_TABLE: Record<string, string[]> = {
     WEB,
     WEB_CMS,
   ].map((name) => `skills/${name}/scripts/check-fork-sync.sh`),
+  "tooling/simple-changelogs/scripts/handoff.ts": EVERY_CHANGELOG.map(
+    (name) => `skills/${name}/scripts/handoff.ts`
+  ),
   "tooling/simple-changelogs/scripts/lib/changelog-parse.ts": PORTABLE.map(
     (name) => `skills/${name}/scripts/lib/changelog-parse.ts`
   ),
@@ -79,9 +82,6 @@ const EXPECTED_TABLE: Record<string, string[]> = {
   ),
   "tooling/simple-changelogs/scripts/setup.ts": EVERY_CHANGELOG.map(
     (name) => `skills/${name}/scripts/setup.ts`
-  ),
-  "tooling/simple-changelogs/scripts/handoff.ts": EVERY_CHANGELOG.map(
-    (name) => `skills/${name}/scripts/handoff.ts`
   ),
   ...Object.fromEntries(
     [
