@@ -14,6 +14,16 @@ the GitHub mirror is read-only, so open issues and merge requests on GitLab.
 4. Add a credential-free fixture and test for every behavior change.
 5. Run `bun run check` before opening a merge request; it runs `bun run
    typecheck`, `bun run lint`, `bun run test`, and `bun run eval`.
+6. Before merging, run `bun run check:receipt` on a clean checkout of the
+   exact head. It installs from the lockfile, runs `bun run check`, and only
+   when that exits 0 writes `<git common dir>/check-receipts/<HEAD>.json`:
+   `{"command": "bun run check", "exitCode": 0, "finishedAt": "<UTC>",
+   "head": "<40-hex HEAD>", "schemaVersion": 1}`. The repository has no CI,
+   so `.simple-changes.json` registers `tooling/exec-guard.ts` as its
+   `execGuard`: under `simple-changes loop exec`, a provider merge pinned to
+   a head (`glab api .../merge_requests/<iid>/merge -f sha=<head>`, `glab mr
+   merge --sha`), a `git merge` into `main`, or a `git push` that updates
+   `main` runs only when that head has a receipt. Every other command passes.
 
 Distribution boundaries are evidence-based. A distribution owns only the
 audiences and release surfaces its `SKILL.md` claims; shared behavior lives in
