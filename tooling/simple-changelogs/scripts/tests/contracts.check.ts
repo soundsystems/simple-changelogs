@@ -1556,7 +1556,7 @@ describe("installed packages name no harness outside agents/", () => {
     const canonical = await readFile(
       join(
         REPOSITORY_ROOT,
-        "skills",
+        "tooling",
         "simple-changelogs",
         "agents",
         "harnesses.json"

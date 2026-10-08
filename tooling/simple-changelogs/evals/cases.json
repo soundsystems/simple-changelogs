@@ -4236,7 +4236,7 @@
       "activationMode": "explicit",
       "turns": [
         {
-          "prompt": "Record the pending Export CSV change in the changelogs. You are running the most capable model this coding agent offers, at the effort the authoring preference asks for.",
+          "prompt": "Record the pending Export CSV change in the changelogs. You are running the most capable model this coding agent offers, at the effort the authoring preference asks for. For this evaluation, treat \"Eval Runtime Writer 7\" as the identity your runtime reports for you.",
           "assertions": [
             {
               "kind": "file.changed",
@@ -4257,6 +4257,16 @@
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
               "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"Eval Runtime Writer 7\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
             },
             {
               "kind": "file.unchanged",
@@ -4312,6 +4322,11 @@
               "expected": "simple-changelogs-signature agent=\"Example Writer 2\""
             },
             {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Example Writer 2\")[^\"]*\""
+            },
+            {
               "kind": "report.decision",
               "expected": "AUTHORING_DELEGATED"
             },
@@ -4331,7 +4346,7 @@
       "activationMode": "explicit",
       "turns": [
         {
-          "prompt": "Record the pending Export CSV change in the changelogs. For this task only, the owner points release-note writing at a coding agent named `example-agent`, which this session has no way to launch.",
+          "prompt": "Record the pending Export CSV change in the changelogs. For this task only, the owner points release-note writing at a coding agent named `example-agent`, which this session has no way to launch. For this evaluation, treat \"Eval Runtime Writer 7\" as the identity your runtime reports for you.",
           "assertions": [
             {
               "kind": "file.changed",
@@ -4352,6 +4367,16 @@
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
               "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"Eval Runtime Writer 7\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
             },
             {
               "kind": "file.unchanged",
@@ -4379,7 +4404,7 @@
       "activationMode": "explicit",
       "turns": [
         {
-          "prompt": "Record the pending Export CSV change in the changelogs. Treat this coding agent as reporting no model list, picker, or configuration you could use to tell which model is most capable.",
+          "prompt": "Record the pending Export CSV change in the changelogs. Treat this coding agent as reporting no model list, picker, or configuration you could use to tell which model is most capable. For this evaluation, treat \"Eval Runtime Writer 7\" as the identity your runtime reports for you.",
           "assertions": [
             {
               "kind": "file.changed",
@@ -4400,6 +4425,16 @@
               "kind": "text.notMatch",
               "target": "CHANGELOG.md",
               "expected": "agent=\"(?:most-capable|running|example-writer-model)\""
+            },
+            {
+              "kind": "text.match",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"Eval Runtime Writer 7\""
+            },
+            {
+              "kind": "text.notMatch",
+              "target": "CHANGELOG.md",
+              "expected": "simple-changelogs-signature agent=\"(?!Eval Runtime Writer 7\")[^\"]*\""
             },
             {
               "kind": "file.unchanged",

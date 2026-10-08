@@ -436,9 +436,9 @@ Every installed skill must contain exactly one root `SKILL.md`; the entire
 Some installed files are byte-for-byte copies of one canonical source: the
 setup, query, and CMS helpers, the minified protocol schemas, the shared
 release-handoff, version-decisions, and testing-notes references, the fork
-checker, and the authoring preferences data (`agents/harnesses.json` and the
-authoring and harness schemas, canonical in the full distribution). Edit the
-canonical source, then run `bun run sync-distros` to rewrite
+checker, and the authoring preferences data (`agents/harnesses.json`,
+canonical in `tooling/simple-changelogs/agents/`, and the authoring and harness
+schemas, canonical in the full distribution). Edit the canonical source, then run `bun run sync-distros` to rewrite
 every copy. `bun run sync-distros --check` reports drift without writing, and
 `bun run eval` fails on any drift.
 

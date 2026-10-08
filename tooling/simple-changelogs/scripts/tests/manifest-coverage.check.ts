@@ -349,15 +349,41 @@ describe("canonical evaluation manifest", () => {
         )
       ).toBe(true);
     }
-    expect(
-      hasAssertion(
-        caseById(manifest, "behavior-authoring-delegates"),
-        0,
-        "text.match",
-        'simple-changelogs-signature agent="Example Writer 2"',
-        "CHANGELOG.md"
-      )
-    ).toBe(true);
+    // Each case names the exact writer: the delegate's reported identity, or
+    // the runtime identity the turn establishes, and rejects any other name.
+    const writers: Record<string, string> = {
+      "behavior-authoring-delegates": "Example Writer 2",
+      "behavior-authoring-match-writes": "Eval Runtime Writer 7",
+      "behavior-authoring-most-capable-unresolved": "Eval Runtime Writer 7",
+      "behavior-authoring-unavailable-says-so": "Eval Runtime Writer 7",
+    };
+    for (const [id, writer] of Object.entries(writers)) {
+      const item = caseById(manifest, id);
+      expect(
+        hasAssertion(
+          item,
+          0,
+          "text.match",
+          `simple-changelogs-signature agent="${writer}"`,
+          "CHANGELOG.md"
+        )
+      ).toBe(true);
+      const negative = new RegExp(
+        `simple-changelogs-signature agent="(?!${writer}")[^"]*"`,
+        "u"
+      );
+      expect(
+        hasAssertion(item, 0, "text.notMatch", negative.source, "CHANGELOG.md")
+      ).toBe(true);
+      expect(
+        negative.test(
+          '<!-- simple-changelogs-signature agent="Invented Writer 999" -->'
+        )
+      ).toBe(true);
+      expect(
+        negative.test(`<!-- simple-changelogs-signature agent="${writer}" -->`)
+      ).toBe(false);
+    }
   });
 
   test("requires native activation evidence for every trigger and local fork selection", async () => {

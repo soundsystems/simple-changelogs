@@ -1786,24 +1786,11 @@ export const validateAuthoring = (
     : { errors };
 };
 
-// An installed copy reads only its own agents/harnesses.json, so a missing
-// file fails closed instead of borrowing a sibling distribution's. Only the
-// canonical tooling copy, which ships no agents/ directory, reads the full
-// distribution's data.
-const harnessDataPath = (): string => {
-  const packageRoot = resolve(import.meta.dir, "..");
-  return basename(dirname(packageRoot)) === "tooling"
-    ? resolve(
-        packageRoot,
-        "..",
-        "..",
-        "skills",
-        DISTRIBUTION_DIRECTORIES.full,
-        "agents",
-        "harnesses.json"
-      )
-    : join(packageRoot, "agents", "harnesses.json");
-};
+// Every copy reads only its own package's agents/harnesses.json (the
+// canonical tooling copy has its own, which sync-distros copies to every
+// distribution), so a missing file fails closed instead of borrowing another.
+const harnessDataPath = (): string =>
+  resolve(import.meta.dir, "..", "agents", "harnesses.json");
 
 const harnessDefinitionErrors = (id: string, value: unknown): string[] => {
   const path = `harnesses.${id}`;
@@ -4156,10 +4143,16 @@ const stageFile = async (
   );
   const handle = await open(temporaryPath, "wx", candidate.mode);
   try {
-    await handle.writeFile(candidate.content, "utf8");
-    await handle.sync();
-  } finally {
-    await handle.close();
+    try {
+      await handle.writeFile(candidate.content, "utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch (error) {
+    // A staged file that failed to write, sync, or close is never left behind.
+    await rm(temporaryPath, { force: true });
+    throw error;
   }
   return { candidate, temporaryPath };
 };
@@ -5582,40 +5575,58 @@ const authoringPreconditionErrors = (options: ApplyOptions): string[] => {
   return errors;
 };
 
-// Stage-and-rename, as the personal preferences file is written: the staged
-// file is renamed over the target only after it validated, never through a
-// symlink, and a failed write leaves the existing file untouched.
-const writeAuthoringFile = async (
-  path: string,
+// Stage-and-rename, as the personal preferences file is written. The write
+// holds the setup transaction marker in the target's directory (the same one
+// every repository setup write holds), so cooperating applies serialize; it
+// refuses a target whose bytes changed since inspection read them, so an
+// intervening edit (a malformed one included) is never overwritten; and it
+// does all fallible work on the staged file, so the rename is the last step
+// and a failure leaves the existing sidecar untouched.
+export const writeAuthoringFile = async (
+  target: StateRecord<AuthoringSidecar>,
   sidecar: AuthoringSidecar,
   mode: number
 ): Promise<WriteRecord> => {
+  const { path } = target;
   const content = json(sidecar);
-  const prior = existsSync(path) ? await readFile(path, "utf8") : null;
-  if (prior === content) {
-    return { kind: "authoring", path, written: false };
-  }
-  const staged = await stageFile({ content, kind: "authoring", mode, path });
-  // Everything fallible happens on the staged file; the rename is the last
-  // step, so a failure leaves the existing sidecar untouched.
+  await mkdir(dirname(path), { mode: 0o700, recursive: true });
+  const markerPath = join(dirname(path), SETUP_TRANSACTION_FILENAME);
+  await acquireTransaction(markerPath);
   try {
-    await chmod(staged.temporaryPath, mode);
-    const check = await readState(staged.temporaryPath, validateAuthoring);
-    if (check.state !== "valid") {
+    const current = await readState(path, validateAuthoring);
+    if (
+      current.state !== target.state ||
+      !sameStoredValue(current.value, target.value)
+    ) {
       throw new Error(
-        [
-          ...check.errors,
-          "The staged authoring sidecar did not validate.",
-        ].join("; ")
+        `${path} changed after this run inspected it; inspect again and retry.`
       );
     }
-    await ensureNoSymlink(path);
-    await rename(staged.temporaryPath, path);
-  } catch (error) {
-    await rm(staged.temporaryPath, { force: true });
-    throw error;
+    if (current.state === "valid" && json(current.value) === content) {
+      return { kind: "authoring", path, written: false };
+    }
+    const staged = await stageFile({ content, kind: "authoring", mode, path });
+    try {
+      await chmod(staged.temporaryPath, mode);
+      const check = await readState(staged.temporaryPath, validateAuthoring);
+      if (check.state !== "valid") {
+        throw new Error(
+          [
+            ...check.errors,
+            "The staged authoring sidecar did not validate.",
+          ].join("; ")
+        );
+      }
+      await ensureNoSymlink(path);
+      await rename(staged.temporaryPath, path);
+    } catch (error) {
+      await rm(staged.temporaryPath, { force: true });
+      throw error;
+    }
+    return { kind: "authoring", path, written: true };
+  } finally {
+    await rm(markerPath, { force: true });
   }
-  return { kind: "authoring", path, written: true };
 };
 
 /**
@@ -5665,7 +5676,7 @@ const applyAuthoring = async (
   let write: WriteRecord;
   try {
     write = await writeAuthoringFile(
-      target.path,
+      target,
       validation.value,
       options.scope === "repository" ? 0o644 : 0o600
     );
@@ -5674,6 +5685,7 @@ const applyAuthoring = async (
       `Authoring write failed: ${stringifyError(error)}`,
     ]);
   }
+  // The write is committed; a failed refresh still reports it accurately.
   const after = await inspectRepository({
     configDirectory: options.configDirectory,
     distribution: options.distribution ?? distributionFromInstall(),
@@ -5681,7 +5693,7 @@ const applyAuthoring = async (
     harnessDataPath: options.harnessDataPath,
     repo: options.repo,
     taskMode: options.taskMode ?? "write",
-  });
+  }).catch(() => inspect);
   const commit =
     options.scope === "repository" ? " Commit this file with your policy." : "";
   return {

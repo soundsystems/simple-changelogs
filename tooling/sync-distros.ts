@@ -175,7 +175,7 @@ const syncRules = (): SyncRule[] => [
   // that names harnesses, beside the other agents/ interface files) and the
   // sidecar and data schemas, in every distribution.
   ...copies(
-    skillPath(FULL, HARNESS_DATA),
+    `tooling/simple-changelogs/${HARNESS_DATA}`,
     changelogDistributions,
     HARNESS_DATA
   ),

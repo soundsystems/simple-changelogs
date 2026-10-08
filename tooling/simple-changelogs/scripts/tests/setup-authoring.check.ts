@@ -24,6 +24,7 @@ import {
   resolveAuthoringPaths,
   type SetupResult,
   validateAuthoring,
+  writeAuthoringFile,
 } from "../setup.ts";
 
 // Authoring preferences (design section 4): the sidecar validator, harness
@@ -1035,6 +1036,41 @@ describe("authoring question and inspection", () => {
     expect(JSON.parse(await readFile(paths.personal, "utf8"))).toEqual(prior);
     expect(
       (await readdir(fixture.config)).filter((name) => name.startsWith("."))
+    ).toEqual([]);
+  });
+
+  test("refuses a target edited after inspection and serializes with other setup writes", async () => {
+    const fixture = await authoringFixture();
+    const inspection = await inspectFixture(fixture);
+    const target = inspection.authoringFiles.repository;
+    expect(target.state).toBe("absent");
+    // An edit lands between inspection and the write: never overwritten.
+    await writeFile(target.path, "{malformed");
+    await expect(
+      writeAuthoringFile(target, sidecar({}), 0o644)
+    ).rejects.toThrow("changed after this run inspected it");
+    expect(await readFile(target.path, "utf8")).toBe("{malformed");
+    await rm(target.path);
+    // A live setup transaction in the same directory holds the write off.
+    const marker = join(
+      fixture.repo,
+      ".simple-changelogs.setup-transaction.json"
+    );
+    await writeFile(
+      marker,
+      `${JSON.stringify({ pid: process.pid, schemaVersion: 2, targets: {} })}\n`
+    );
+    await expect(
+      writeAuthoringFile(target, sidecar({}), 0o644)
+    ).rejects.toThrow("Another setup run holds");
+    await rm(marker);
+    expect(await writeAuthoringFile(target, sidecar({}), 0o644)).toEqual({
+      kind: "authoring",
+      path: target.path,
+      written: true,
+    });
+    expect(
+      (await readdir(fixture.repo)).filter((name) => name.includes("setup"))
     ).toEqual([]);
   });
 
