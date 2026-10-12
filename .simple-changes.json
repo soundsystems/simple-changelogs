@@ -5,7 +5,7 @@
   "execGuard": ["bun", "tooling/exec-guard.ts"],
   "guidance": {
     "disposition": "accepted",
-    "version": 26
+    "version": 28
   },
   "handoffTiming": "automatic",
   "productionDeploy": "ask",
