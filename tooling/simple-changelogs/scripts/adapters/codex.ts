@@ -34,10 +34,19 @@ type Schema = Record<string, unknown>;
 const STRIPPED_KEYWORDS = new Set(["uniqueItems"]);
 // The node shapes the same probe showed strict mode accepts, each with the
 // keywords it may carry and those it must carry. `description` and `title` may
-// annotate any node, and `$defs` and `$schema` only the root. A schema outside
-// these shapes fails before Codex runs instead of reaching the API untried, so
-// widen a shape only after probing it. Only annotations sit beside `$ref`,
-// because following a reference must not lose a constraint.
+// annotate any node of the canonical schema, and `$defs` and `$schema` only the
+// root. A schema outside these shapes fails before Codex runs instead of
+// reaching the API untried, so widen a shape only after probing it.
+//
+// A `$ref` node in the strict copy carries only `$ref`. On 2026-10-12, 11 of
+// 30 `codex exec` runs (codex-cli 0.160.1, gpt-6.1-sol) failed before any
+// model call with "$ref cannot have keywords {'description'}", for a
+// byte-identical schema the API accepted on the other 19. Strict mode applies
+// that rule inconsistently, so the copy never puts a sibling beside `$ref`: it
+// drops the annotations there and keeps them on every other node. The prompt
+// still carries the canonical schema, annotations included. Any other keyword
+// beside `$ref` still fails before Codex runs, because following a reference
+// must not lose a constraint.
 const NODE_SHAPES: Record<string, { allowed: string[]; required: string[] }> = {
   $ref: { allowed: ["$ref"], required: ["$ref"] },
   array: {
@@ -258,6 +267,11 @@ const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
     throw new Error(`Codex response schema at ${path} must be an object`);
   }
   requireProbedShape(schema, path);
+  // The probed shape leaves only annotations beside `$ref`, and the copy
+  // drops them: see NODE_SHAPES.
+  if (Object.hasOwn(schema, "$ref")) {
+    return { $ref: strictKeywordValue(root, "$ref", schema.$ref, path) };
+  }
   requireDeclaredRequirements(schema, path);
   requireNullFreeOptionals(root, schema, path);
   const strict: Schema = {};

@@ -478,7 +478,7 @@ describe("Codex strict response schema", () => {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       additionalProperties: false,
       properties: {
-        codes: { $ref: "#/$defs/codes", description: "Decision codes" },
+        codes: { $ref: "#/$defs/codes" },
         note: { anyOf: [{ minLength: 1, type: "string" }, { type: "null" }] },
         uniqueItems: { items: { const: 2 }, minItems: 1, type: "array" },
       },
@@ -486,6 +486,142 @@ describe("Codex strict response schema", () => {
       title: "Fixture",
       type: "object",
     });
+  });
+
+  test("drops annotations beside every $ref and keeps them everywhere else", () => {
+    const canonical = {
+      $defs: {
+        alias: { $ref: "#/$defs/codes", title: "Alias" },
+        code: { description: "A code", pattern: "^[A-Z]+$", type: "string" },
+        codes: {
+          description: "Uppercase codes",
+          items: {
+            $ref: "#/$defs/code",
+            description: "One code",
+            title: "Code",
+          },
+          type: "array",
+          uniqueItems: true,
+        },
+        record: {
+          additionalProperties: false,
+          properties: {
+            code: { $ref: "#/$defs/code", description: "Record code" },
+            history: {
+              items: { $ref: "#/$defs/alias", description: "Past codes" },
+              type: "array",
+            },
+          },
+          required: ["code"],
+          type: "object",
+        },
+      },
+      additionalProperties: false,
+      description: "Fixture root",
+      properties: {
+        codes: { $ref: "#/$defs/alias", description: "Decision codes" },
+        note: { description: "A note", type: "string" },
+        record: { $ref: "#/$defs/record", title: "Optional record" },
+      },
+      required: ["codes"],
+      title: "Fixture",
+      type: "object",
+    };
+    const text = JSON.stringify(canonical);
+    const prepared: unknown = JSON.parse(prepareCodexResponseSchema(text));
+
+    expect(prepared).toEqual({
+      $defs: {
+        alias: { $ref: "#/$defs/codes" },
+        code: { description: "A code", pattern: "^[A-Z]+$", type: "string" },
+        codes: {
+          description: "Uppercase codes",
+          items: { $ref: "#/$defs/code" },
+          type: "array",
+        },
+        record: {
+          additionalProperties: false,
+          properties: {
+            code: { $ref: "#/$defs/code" },
+            history: {
+              anyOf: [
+                { items: { $ref: "#/$defs/alias" }, type: "array" },
+                { type: "null" },
+              ],
+            },
+          },
+          required: ["code", "history"],
+          type: "object",
+        },
+      },
+      additionalProperties: false,
+      description: "Fixture root",
+      properties: {
+        codes: { $ref: "#/$defs/alias" },
+        note: {
+          anyOf: [{ description: "A note", type: "string" }, { type: "null" }],
+        },
+        record: { anyOf: [{ $ref: "#/$defs/record" }, { type: "null" }] },
+      },
+      required: ["codes", "note", "record"],
+      title: "Fixture",
+      type: "object",
+    });
+    // Restoring still reads the canonical schema through the annotated
+    // references.
+    expect(() =>
+      restoreCodexResponse({ codes: ["A", "A"], record: null }, text)
+    ).toThrow('repeats "A" in $.codes,');
+    expect(
+      restoreCodexResponse({ codes: ["A"], note: null, record: null }, text)
+    ).toEqual({ codes: ["A"] });
+  });
+
+  test("sends every $ref in the runner response schema with no sibling", () => {
+    const preparedRoot: unknown = JSON.parse(
+      prepareCodexResponseSchema(runnerResponseSchema)
+    );
+    const references = objectSchemas(preparedRoot).filter(({ schema }) =>
+      Object.hasOwn(schema, "$ref")
+    );
+    expect(
+      references.filter(({ schema }) => Object.keys(schema).length !== 1)
+    ).toEqual([]);
+
+    // Each canonical reference survives, alone, at the same path once every
+    // optional property on the way is read through its nullable wrapper.
+    const canonicalReferences = objectSchemas(
+      JSON.parse(runnerResponseSchema)
+    ).filter(({ schema }) => Object.hasOwn(schema, "$ref"));
+    expect(canonicalReferences.length).toBeGreaterThan(0);
+    expect(references.length).toBe(canonicalReferences.length);
+    const preparedAt = (path: string): unknown =>
+      path
+        .split("/")
+        .slice(1)
+        .reduce<unknown>((node, segment) => {
+          const child = (node as Record<string, unknown> | undefined)?.[
+            segment
+          ];
+          const wrapped = (child as { anyOf?: unknown[] } | undefined)?.anyOf;
+          return Array.isArray(wrapped) ? wrapped[0] : child;
+        }, preparedRoot);
+    for (const { path, schema } of canonicalReferences) {
+      expect(preparedAt(path)).toEqual({ $ref: schema.$ref });
+    }
+    // The three nodes strict mode rejected on 2026-10-12.
+    const annotated = new Map(
+      canonicalReferences
+        .filter(({ schema }) => Object.keys(schema).length > 1)
+        .map(({ path, schema }) => [path, Object.keys(schema).sort()])
+    );
+    for (const path of [
+      "#/$defs/authorizationRecord/properties/code",
+      "#/$defs/verificationResult/properties/code",
+      "#/$defs/evaluationReport/properties/decisionCodes",
+    ]) {
+      expect(annotated.get(path)).toEqual(["$ref", "description"]);
+    }
   });
 
   test("sends a strict copy of the runner response schema and leaves the canonical one alone", () => {
@@ -594,6 +730,65 @@ describe("Codex strict response schema", () => {
           { $defs: { codes: { items: { type: "string" }, type: "array" } } }
         ),
         "keyword uniqueItems at #/properties/value is not known to pass strict structured outputs on node kind $ref",
+      ],
+      [
+        fixture(
+          {
+            value: {
+              $ref: "#/$defs/codes",
+              description: "Codes",
+              uniqueItems: true,
+            },
+          },
+          { $defs: { codes: { items: { type: "string" }, type: "array" } } }
+        ),
+        "keyword uniqueItems at #/properties/value is not known to pass strict structured outputs on node kind $ref",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/code", title: "Code", type: "string" } },
+          { $defs: { code: { type: "string" } } }
+        ),
+        "keyword type at #/properties/value is not known to pass strict structured outputs on node kind $ref",
+      ],
+      [
+        fixture(
+          {
+            value: {
+              items: { $ref: "#/$defs/code", minLength: 1 },
+              type: "array",
+            },
+          },
+          { $defs: { code: { type: "string" } } }
+        ),
+        "keyword minLength at #/properties/value/items is not known to pass strict structured outputs on node kind $ref",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/alias" } },
+          {
+            $defs: {
+              alias: {
+                $ref: "#/$defs/codes",
+                description: "Alias",
+                minItems: 1,
+              },
+              codes: { items: { type: "string" }, type: "array" },
+            },
+          }
+        ),
+        "keyword minItems at #/$defs/alias is not known to pass strict structured outputs on node kind $ref",
+      ],
+      [
+        fixture(
+          { value: { $ref: "#/$defs/missing", description: "Missing" } },
+          { $defs: { other: { type: "string" } } }
+        ),
+        "must name a schema in $defs: #/$defs/missing",
+      ],
+      [
+        fixture({ value: { $ref: 3, description: "Not text" } }),
+        "$ref at #/properties/value must be text",
       ],
       [
         fixture(
@@ -946,6 +1141,56 @@ describe("Codex adapter execution", () => {
       ok: false,
     });
     expect(await readdir(workspace)).toEqual([]);
+  });
+
+  test("sends lone references while the prompt keeps the canonical annotations", async () => {
+    const marker = "Annotation beside the evaluationReport reference";
+    const canonical = JSON.parse(runnerResponseSchema) as {
+      properties: { evaluationReport: Record<string, unknown> };
+    };
+    canonical.properties.evaluationReport = {
+      ...canonical.properties.evaluationReport,
+      description: marker,
+      title: "Evaluation report",
+    };
+    const canonicalText = `${JSON.stringify(canonical, null, 2)}\n`;
+    const { responseSchema, workspace } = await codexWorkspace(canonicalText);
+    const prompts: string[] = [];
+    const sentSchemas: unknown[] = [];
+
+    const result = await runCodexAdapter(
+      { ...request, responseSchema, workspace },
+      async (spec) => {
+        prompts.push(spec.input);
+        sentSchemas.push(
+          JSON.parse(
+            await readFile(argumentAfter(spec, "--output-schema"), "utf8")
+          )
+        );
+        await writeFile(
+          argumentAfter(spec, "--output-last-message"),
+          JSON.stringify(response)
+        );
+        return { exitCode: 0, ok: true, stderr: "", stdout: "" };
+      }
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    const [sent] = sentSchemas as [
+      { properties: { evaluationReport: unknown } },
+    ];
+    expect(sent.properties.evaluationReport).toEqual({
+      $ref: "#/$defs/evaluationReport",
+    });
+    expect(
+      objectSchemas(sent).filter(
+        ({ schema }) =>
+          Object.hasOwn(schema, "$ref") && Object.keys(schema).length !== 1
+      )
+    ).toEqual([]);
+    expect(JSON.stringify(sent)).not.toContain(marker);
+    expect(prompts).toEqual([expect.stringContaining(canonicalText)]);
+    expect(await readFile(responseSchema, "utf8")).toBe(canonicalText);
   });
 
   test("reports a schema strict mode would reject before starting Codex", async () => {
