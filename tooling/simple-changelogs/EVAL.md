@@ -218,14 +218,20 @@ The Codex adapter uses `codex exec --json --output-schema`. OpenAI structured
 outputs apply that schema in strict mode, which rejects `uniqueItems` and any
 property missing from `required`, so the adapter sends a temporary copy,
 written outside the workspace, without `uniqueItems`, with every property
-required and each optional one also accepting null. The canonical response
-schema is unchanged: the adapter reads a returned null for an optional property
-as absent, fails a response that repeats an item the canonical schema requires
-to be unique, and then validates against the neutral response contract. A
-schema node outside the shapes strict mode was probed to accept (closed objects
-with properties, arrays with items, strings, booleans, enums, constants, and
-references with only annotations beside them), or an optional property whose
-type admits null, fails as a configuration error before Codex starts.
+required and each optional one also accepting null. Every `$ref` in the copy
+stands alone, because strict mode intermittently rejects a `description` or
+`title` beside one; the prompt still carries the canonical schema with those
+annotations. Every `const` and `enum` in the copy also declares the scalar type
+its values share, with a null among them moved to its own `anyOf` branch,
+because strict mode intermittently requires a `type` on each. The canonical
+response schema is unchanged: the adapter reads a returned null for an optional
+property as absent, fails a response that repeats an item the canonical schema
+requires to be unique, and then validates against the neutral response
+contract. A schema node outside the shapes strict mode was probed to accept
+(closed objects with properties, arrays with items, strings, booleans, enums,
+constants, and references with only annotations beside them), or an optional
+property whose type admits null, fails as a configuration error before Codex
+starts.
 
 The Hermes adapter uses `hermes chat --safe-mode --quiet`, validates its
 plain one-shot output against the neutral response schema, and requires the

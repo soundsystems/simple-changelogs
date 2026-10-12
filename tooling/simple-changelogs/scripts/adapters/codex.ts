@@ -34,10 +34,28 @@ type Schema = Record<string, unknown>;
 const STRIPPED_KEYWORDS = new Set(["uniqueItems"]);
 // The node shapes the same probe showed strict mode accepts, each with the
 // keywords it may carry and those it must carry. `description` and `title` may
-// annotate any node, and `$defs` and `$schema` only the root. A schema outside
-// these shapes fails before Codex runs instead of reaching the API untried, so
-// widen a shape only after probing it. Only annotations sit beside `$ref`,
-// because following a reference must not lose a constraint.
+// annotate any node of the canonical schema, and `$defs` and `$schema` only the
+// root. A schema outside these shapes fails before Codex runs instead of
+// reaching the API untried, so widen a shape only after probing it.
+//
+// A `$ref` node in the strict copy carries only `$ref`. On 2026-10-12, 11 of
+// 30 `codex exec` runs (codex-cli 0.160.1, gpt-6.1-sol) failed before any
+// model call with "$ref cannot have keywords {'description'}", for a
+// byte-identical schema the API accepted on the other 19. Strict mode applies
+// that rule inconsistently, so the copy never puts a sibling beside `$ref`: it
+// drops the annotations there and keeps them on every other node. The prompt
+// still carries the canonical schema, annotations included. Any other keyword
+// beside `$ref` still fails before Codex runs, because following a reference
+// must not lose a constraint.
+//
+// Every `const` and `enum` node in the strict copy declares the one scalar
+// type its values share, `number` when integers and fractions mix. On
+// 2026-10-12, bundled codex-cli 0.162.0-alpha.17.2 (gpt-6.1-sol) saw strict
+// mode reject the copy once in three with "schema must have a 'type' key" for
+// the untyped `const` at `protocolVersion`, a byte-identical schema it
+// accepted on the other two. A null among the values moves into a separate
+// `{ type: "null" }` branch of an `anyOf`, the shape of the nullable wrapper
+// below, and values of mixed or non-scalar types fail before Codex runs.
 const NODE_SHAPES: Record<string, { allowed: string[]; required: string[] }> = {
   $ref: { allowed: ["$ref"], required: ["$ref"] },
   array: {
@@ -253,11 +271,61 @@ const strictKeywordValue = (
   return value;
 };
 
+// The JSON type of a non-null scalar literal: see NODE_SHAPES. A number too
+// large for a double parses as Infinity, which JSON.stringify would send as
+// null, so it has no type here and fails before Codex runs.
+const literalType = (value: unknown): string | undefined => {
+  if (typeof value === "string" || typeof value === "boolean") {
+    return typeof value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Number.isInteger(value) ? "integer" : "number";
+  }
+};
+
+const withLiteralType = (strict: Schema, path: string): Schema => {
+  const kind = nodeKind(strict);
+  if (kind !== "const" && kind !== "enum") {
+    return strict;
+  }
+  const { const: constant, enum: choices, ...annotations } = strict;
+  const values = kind === "const" ? [constant] : choices;
+  if (!Array.isArray(values)) {
+    throw new Error(`Codex response schema enum at ${path} must be an array`);
+  }
+  const scalars = values.filter((value) => value !== null);
+  if (values.length > 0 && scalars.length === 0) {
+    return { ...annotations, type: "null" };
+  }
+  const types = new Set(scalars.map(literalType));
+  if (types.has("integer") && types.has("number")) {
+    types.delete("integer");
+  }
+  const [type] = types;
+  if (types.size !== 1 || type === undefined) {
+    throw new Error(
+      `Codex response schema ${kind} at ${path} must hold values of one scalar type`
+    );
+  }
+  const typed =
+    kind === "const"
+      ? { ...annotations, const: constant, type }
+      : { ...annotations, enum: scalars, type };
+  return scalars.length === values.length
+    ? typed
+    : { anyOf: [typed, { type: "null" }] };
+};
+
 const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
   if (!isRecord(schema)) {
     throw new Error(`Codex response schema at ${path} must be an object`);
   }
   requireProbedShape(schema, path);
+  // The probed shape leaves only annotations beside `$ref`, and the copy
+  // drops them: see NODE_SHAPES.
+  if (Object.hasOwn(schema, "$ref")) {
+    return { $ref: strictKeywordValue(root, "$ref", schema.$ref, path) };
+  }
   requireDeclaredRequirements(schema, path);
   requireNullFreeOptionals(root, schema, path);
   const strict: Schema = {};
@@ -271,7 +339,7 @@ const strictSchema = (root: Schema, schema: unknown, path: string): Schema => {
     strict.properties = withEveryPropertyRequired(properties, schema.required);
     strict.required = Object.keys(properties);
   }
-  return strict;
+  return withLiteralType(strict, path);
 };
 
 const parsedSchema = (responseSchema: string): Schema => {

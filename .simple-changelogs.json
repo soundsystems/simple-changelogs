@@ -3,7 +3,7 @@
   "distribution": "skill-repository",
   "guidance": {
     "backfillStatus": "not-applicable",
-    "version": 25
+    "version": 26
   },
   "developerChangelog": "required",
   "signatures": "agent-and-timestamp",
