@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+## 0.26.1 - 2026-10-12
+
+- Codex eval adapter, strict schema copy:
+  - Every `$ref` is sent alone. On 2026-10-12 strict mode rejected the
+    runner-response schema with HTTP 400 "$ref cannot have keywords
+    {'description'}" on 11 of 30 runs (codex-cli 0.160.1, gpt-6.1-sol),
+    before any model call, although the schema bytes never changed. The copy
+    now drops `description` and `title` beside a `$ref`; the canonical schema
+    and the prompt keep them. A non-annotation keyword beside a `$ref` still
+    fails as a configuration error before Codex starts.
+  - Every `const` and `enum` declares the one scalar type its values share,
+    after strict mode rejected the untyped `protocolVersion` const with
+    "schema must have a 'type' key" (codex-cli 0.162.0-alpha.17.2). A null
+    among the values moves to its own `{ "type": "null" }` branch of an
+    `anyOf`. Mixed, non-scalar, or non-finite values fail before Codex
+    starts, and optional literal properties are still refused.
+  - New tests walk the generated strict copy for `$ref` siblings and untyped
+    nodes, and cover annotated references in properties, items, `$defs`
+    aliases, and nullable wrappers, null splits, and number edge cases. Six
+    live probes of the typed schema were all accepted.
+- Trigger evals on 2026-10-12, full distribution only: Codex (gpt-6.1-sol)
+  scored 19 of 19 cases unsupported, and Haiku 5.5 passed 2 with 17
+  unsupported. There was no scored miss or false trigger. Neither runtime
+  reports a native activation trace, and discover mode reads the whole
+  SKILL.md, so the suite cannot yet measure description-only routing; the
+  description is unchanged. Inside the Claude adapter's sandbox `git` fails
+  with "Operation not permitted" and `bun` is often missing from PATH, which
+  also affects the behavior suite.
+- This repository's policy records Simple Changes guidance 28 and Simple
+  Changelogs guidance 26 with current settings.
+- Reviews (GPT-6.1 Sol): the `$ref` change was clean at high. The literal
+  typing took one high round (a should-fix for non-finite numbers) and two
+  xhigh rounds (a nit, then clean).
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-12T15:24:00-05:00" -->
+
 ## 0.26.0 - 2026-10-08
 
 - Authoring preferences, implementing revision 13 of the authoring design:

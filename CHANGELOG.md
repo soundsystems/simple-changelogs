@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.26.1 - 2026-10-12
+
+- **Bug Fixes & Improvements**:
+  - The installed skills are unchanged in this release; it fixes this
+    repository's evaluation tooling.
+  - Evals run through Codex no longer fail at random before the model
+    starts. Strict structured outputs sometimes refused the response schema
+    the eval adapter sends, so the adapter now sends every reference and
+    fixed value in the exact form strict mode requires.
+  - This release is 0.26.1 and is tagged `v0.26.1`. All six distributions
+    stay on guidance 26.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-12T15:24:00-05:00" -->
+
 ## 0.26.0 - 2026-10-08
 
 - **Authoring preferences**
