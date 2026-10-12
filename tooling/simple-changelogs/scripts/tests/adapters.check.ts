@@ -480,7 +480,11 @@ describe("Codex strict response schema", () => {
       properties: {
         codes: { $ref: "#/$defs/codes" },
         note: { anyOf: [{ minLength: 1, type: "string" }, { type: "null" }] },
-        uniqueItems: { items: { const: 2 }, minItems: 1, type: "array" },
+        uniqueItems: {
+          items: { const: 2, type: "integer" },
+          minItems: 1,
+          type: "array",
+        },
       },
       required: ["codes", "note", "uniqueItems"],
       title: "Fixture",
@@ -575,6 +579,247 @@ describe("Codex strict response schema", () => {
     expect(
       restoreCodexResponse({ codes: ["A"], note: null, record: null }, text)
     ).toEqual({ codes: ["A"] });
+  });
+
+  test("gives every node of the runner response schema a type, $ref, or anyOf", () => {
+    const visited: { path: string; schema: Record<string, unknown> }[] = [];
+    const visit = (schema: unknown, path: string): void => {
+      const node = schema as Record<string, unknown>;
+      visited.push({ path, schema: node });
+      for (const keyword of ["$defs", "properties"]) {
+        for (const [name, child] of Object.entries(
+          (node[keyword] ?? {}) as Record<string, unknown>
+        )) {
+          visit(child, `${path}/${keyword}/${name}`);
+        }
+      }
+      if (node.items !== undefined) {
+        visit(node.items, `${path}/items`);
+      }
+      for (const [index, branch] of (
+        (node.anyOf ?? []) as unknown[]
+      ).entries()) {
+        visit(branch, `${path}/anyOf/${index}`);
+      }
+    };
+    visit(JSON.parse(prepareCodexResponseSchema(runnerResponseSchema)), "#");
+
+    expect(
+      visited.filter(
+        ({ schema }) =>
+          !["$ref", "anyOf", "type"].some((keyword) =>
+            Object.hasOwn(schema, keyword)
+          )
+      )
+    ).toEqual([]);
+    const literals = visited.filter(
+      ({ schema }) =>
+        Object.hasOwn(schema, "const") || Object.hasOwn(schema, "enum")
+    );
+    expect(literals.length).toBeGreaterThan(0);
+    expect(literals.filter(({ schema }) => schema.type === undefined)).toEqual(
+      []
+    );
+    // The canonical literals stay untyped.
+    expect(
+      objectSchemas(JSON.parse(runnerResponseSchema)).filter(
+        ({ schema }) =>
+          (Object.hasOwn(schema, "const") || Object.hasOwn(schema, "enum")) &&
+          Object.hasOwn(schema, "type")
+      )
+    ).toEqual([]);
+  });
+
+  test("types each const and enum by the scalar type its values share", () => {
+    const fixture = (
+      properties: Record<string, unknown>,
+      extra: Record<string, unknown> = {}
+    ): string =>
+      JSON.stringify({
+        additionalProperties: false,
+        properties,
+        required: ["value"],
+        type: "object",
+        ...extra,
+      });
+    const prepared = (
+      value: unknown,
+      extra?: Record<string, unknown>
+    ): unknown =>
+      JSON.parse(prepareCodexResponseSchema(fixture({ value }, extra)))
+        .properties.value;
+
+    for (const [value, type] of [
+      [{ const: 2 }, "integer"],
+      [{ const: 0 }, "integer"],
+      [{ const: 1.5 }, "number"],
+      [{ const: "a" }, "string"],
+      [{ const: "" }, "string"],
+      [{ const: false }, "boolean"],
+      [{ description: "Choice", enum: ["a", "b"] }, "string"],
+      [{ enum: [1, 2] }, "integer"],
+      [{ enum: [true, false] }, "boolean"],
+    ] as const) {
+      expect(prepared(value)).toEqual({ ...value, type });
+    }
+    // Integers are numbers too, so a mix of the two shares type number.
+    expect(prepared({ enum: [1, 2.5] })).toEqual({
+      enum: [1, 2.5],
+      type: "number",
+    });
+
+    // A null among the values becomes its own branch, the shape of the
+    // nullable wrapper, and never counts as a second type.
+    expect(prepared({ description: "Choice", enum: ["a", null, "b"] })).toEqual(
+      {
+        anyOf: [
+          { description: "Choice", enum: ["a", "b"], type: "string" },
+          { type: "null" },
+        ],
+      }
+    );
+    expect(prepared({ enum: [null, 1, 2.5] })).toEqual({
+      anyOf: [{ enum: [1, 2.5], type: "number" }, { type: "null" }],
+    });
+    expect(prepared({ const: null, title: "Nothing" })).toEqual({
+      title: "Nothing",
+      type: "null",
+    });
+    expect(prepared({ enum: [null] })).toEqual({ type: "null" });
+
+    // References keep pointing at the typed definition, and an alias stays a
+    // lone reference.
+    expect(
+      JSON.parse(
+        prepareCodexResponseSchema(
+          fixture(
+            { value: { $ref: "#/$defs/alias" } },
+            {
+              $defs: {
+                alias: { $ref: "#/$defs/state", description: "Alias" },
+                state: { description: "State", enum: ["on", null, "off"] },
+              },
+            }
+          )
+        )
+      ).$defs
+    ).toEqual({
+      alias: { $ref: "#/$defs/state" },
+      state: {
+        anyOf: [
+          { description: "State", enum: ["on", "off"], type: "string" },
+          { type: "null" },
+        ],
+      },
+    });
+
+    // Optional properties holding literals get the nullable wrapper around
+    // their already-typed copy, never a second null.
+    expect(
+      JSON.parse(
+        prepareCodexResponseSchema(
+          fixture({
+            settings: {
+              additionalProperties: false,
+              properties: {
+                mode: { enum: ["fast", null] },
+                version: { const: 2 },
+              },
+              required: ["mode", "version"],
+              type: "object",
+            },
+            tags: { items: { enum: ["a", "b"] }, type: "array" },
+            value: { const: "v" },
+          })
+        )
+      ).properties
+    ).toEqual({
+      settings: {
+        anyOf: [
+          {
+            additionalProperties: false,
+            properties: {
+              mode: {
+                anyOf: [{ enum: ["fast"], type: "string" }, { type: "null" }],
+              },
+              version: { const: 2, type: "integer" },
+            },
+            required: ["mode", "version"],
+            type: "object",
+          },
+          { type: "null" },
+        ],
+      },
+      tags: {
+        anyOf: [
+          { items: { enum: ["a", "b"], type: "string" }, type: "array" },
+          { type: "null" },
+        ],
+      },
+      value: { const: "v", type: "string" },
+    });
+    // A literal that is itself optional has no type that excludes null, so it
+    // still fails as an optional property, not as a mixed literal.
+    for (const value of [
+      { const: 2 },
+      { enum: ["a"] },
+      { enum: ["a", null] },
+    ]) {
+      expect(() =>
+        prepareCodexResponseSchema(
+          JSON.stringify({
+            additionalProperties: false,
+            properties: { value },
+            required: [],
+            type: "object",
+          })
+        )
+      ).toThrow(
+        "optional property #/properties/value must declare a type that excludes null"
+      );
+    }
+
+    for (const value of [
+      { enum: ["a", 1] },
+      { enum: ["a", null, 1] },
+      { enum: [true, 1] },
+      { enum: [1, 2.5, "a"] },
+      { enum: [1, 2.5, {}] },
+      { enum: [] },
+      { enum: [["a"]] },
+      { enum: [{ a: 1 }, null] },
+      { const: { a: 1 } },
+      { const: [1] },
+    ]) {
+      expect(() => prepared(value)).toThrow(
+        "at #/properties/value must hold values of one scalar type"
+      );
+    }
+    expect(() => prepared({ enum: "a" })).toThrow(
+      "enum at #/properties/value must be an array"
+    );
+    // JSON.stringify would turn an overflowing number into null, so these
+    // fixtures stay raw text: 1e400 parses as Infinity.
+    for (const value of [
+      '{"const":1e400}',
+      '{"const":-1e400}',
+      '{"enum":[1e400,1]}',
+      '{"enum":[1,null,-1e400]}',
+      '{"enum":[2.5,1e400]}',
+    ]) {
+      expect(() =>
+        prepareCodexResponseSchema(
+          `{"additionalProperties":false,"properties":{"value":${value}},"required":["value"],"type":"object"}`
+        )
+      ).toThrow("at #/properties/value must hold values of one scalar type");
+    }
+    expect(
+      JSON.parse(
+        prepareCodexResponseSchema(
+          '{"additionalProperties":false,"properties":{"value":{"enum":[1e308,-0,1.0]}},"required":["value"],"type":"object"}'
+        )
+      ).properties.value
+    ).toEqual({ enum: [1e308, 0, 1], type: "integer" });
   });
 
   test("sends every $ref in the runner response schema with no sibling", () => {
