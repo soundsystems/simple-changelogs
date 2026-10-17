@@ -1,0 +1,26 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Start here",
+      "description": "The full distribution for apps that ship to several surfaces: customer and developer histories, web, mobile, store and internal notes.",
+      "skills": ["simple-changelogs"]
+    },
+    {
+      "title": "One surface",
+      "description": "Narrower distributions for a repository that ships only web or only mobile release notes.",
+      "skills": ["simple-changelogs-web", "simple-changelogs-mobile"]
+    },
+    {
+      "title": "CMS operators",
+      "description": "A private changelog for signed-in CMS operators, alone or beside public web history.",
+      "skills": ["simple-changelogs-cms", "simple-changelogs-web-cms"]
+    },
+    {
+      "title": "Skill repositories",
+      "description": "Changelogs, packaged notes and guidance versions for repositories that publish agent skills.",
+      "skills": ["simple-changelogs-skill-maintainer"]
+    }
+  ]
+}

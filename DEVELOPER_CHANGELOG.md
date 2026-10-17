@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
+  - The README gains a "What it writes" section after the introduction: one
+    invented release as a `CHANGELOG.md` entry and the matching
+    `DEVELOPER_CHANGELOG.md` entry, in the format the skill specifies
+    (product-area group, nested bullets, signature comment). `query.ts
+    check` parses both examples cleanly.
+  - `skills.sh.json` at the repository root groups the six skills on the
+    listing page under "Start here", "One surface", "CMS operators", and
+    "Skill repositories". skills.sh reads it from the GitHub default branch
+    only after a `skills` CLI install with telemetry enabled, and caches repo
+    pages, so the grouping appears some time after the file reaches `main`.
+    It changes the listing's display only, not what the CLI installs or any
+    `SKILL.md`.
+  - Neither change touches an installed skill, so `CHANGELOG.md` has no
+    entry.
+<!-- simple-changelogs-signature agent="Claude Opus 5.5 xhigh" at="2026-10-17T10:14:08-05:00" -->
+
 ## 0.26.1 - 2026-10-12
 
 - Codex eval adapter, strict schema copy:
