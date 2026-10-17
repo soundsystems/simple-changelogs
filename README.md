@@ -6,6 +6,43 @@ Simple Changelogs is an agent-neutral family of release-history skills. Choose
 one changelog-owning distribution for a repository so agents load only the
 audiences and release surfaces that exist there.
 
+## What it writes
+
+With default settings, every distribution except CMS-only keeps two Markdown
+histories, and one change can appear in both at different depths. In this
+invented release, the customer entry uses the default product-area grouping,
+and each block ends with a comment naming the agent that wrote it and when.
+
+`CHANGELOG.md`:
+
+```md
+## 2.4.0 - 2026-09-15
+
+- **Reports**:
+  - You can now schedule a saved report to arrive by email as a CSV file
+    every day, week, or month.
+  - Each scheduled export keeps the filters and columns it was saved with.
+<!-- simple-changelogs-signature agent="Example Agent" at="2026-09-15T16:20:00-05:00" -->
+```
+
+`DEVELOPER_CHANGELOG.md`:
+
+```md
+## 2.4.0 - 2026-09-15
+
+- Scheduled report exports:
+  - A `report_schedules` table stores each schedule with a snapshot of the
+    report's filters and columns, so later edits to the saved report do not
+    change what a schedule sends.
+  - An hourly job renders due schedules to CSV and sends them through the
+    existing mailer. A failed send retries three times, then pauses the
+    schedule.
+<!-- simple-changelogs-signature agent="Example Agent" at="2026-09-15T16:20:00-05:00" -->
+```
+
+Entries like these come from the skill, and public release-note pages are
+derived from `CHANGELOG.md`, never from the developer history.
+
 ## Distributions
 
 The Skills CLI reads each directory's `SKILL.md` name and description when it
