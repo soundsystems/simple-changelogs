@@ -20,6 +20,7 @@
     "authoringFiles",
     "authoringQuestion",
     "authoring",
+    "communication",
     "guidanceUpdate",
     "inventory",
     "onboardingContribution",
@@ -80,6 +81,22 @@
     },
     "authoringQuestion": {
       "enum": ["pending", "answered", "repair", "not-applicable"]
+    },
+    "communication": {
+      "description": "How the skill talks to this person: the effective style, the layer it came from, and the sidecar that set it. A display preference; it grants nothing.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errors", "path", "source", "style"],
+      "properties": {
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "path": {
+          "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+        },
+        "source": {
+          "enum": ["personal", "repository", "companion", "default"]
+        },
+        "style": { "enum": ["ultra-simple", "standard"] }
+      }
     },
     "authoring": { "$ref": "#/$defs/authoringInspection" },
     "guidanceUpdate": {
@@ -920,6 +937,7 @@
         "kind": {
           "enum": [
             "authoring",
+            "communication",
             "changelog",
             "cms-changelog",
             "cms-policy",

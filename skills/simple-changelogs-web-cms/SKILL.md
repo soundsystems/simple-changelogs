@@ -69,6 +69,10 @@ Before write-capable work, run the bundled `scripts/setup.ts` inspection helper:
 Repository instructions take precedence when they define stricter audience,
 access, release, source-of-truth, or surface rules.
 
+Talk to people and other agents as `references/communication.md` says. When
+inspection reports `communication.style` as `ultra-simple`, also follow its
+Ultra-Simple Mode section.
+
 ## Reference router
 
 | Concern | Read |
@@ -76,6 +80,7 @@ access, release, source-of-truth, or surface rules.
 | Public/developer setup, distribution, or signatures | `references/setup.md` |
 | Public guidance changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
+| Talking to people and other agents; Ultra-Simple Mode | `references/communication.md` |
 | Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification and expert public detail | `references/entry-classification.md` |
 | Public history reconstruction | `references/backfill.md` |

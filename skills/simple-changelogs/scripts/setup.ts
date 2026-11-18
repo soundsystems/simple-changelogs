@@ -100,6 +100,13 @@ const CMS_POLICY_FILENAME = ".simple-changelogs-cms.json";
 // would stop every older installed copy.
 const AUTHORING_FILENAME = ".simple-changelogs-authoring.json";
 const PERSONAL_AUTHORING_FILENAME = "authoring.json";
+// How the skill talks to a person (references/communication.md): a display
+// preference in a sidecar of its own, for the same reason as authoring. It
+// grants nothing, and no rule reads it to decide what may be written.
+const COMMUNICATION_FILENAME = ".simple-changelogs-communication.json";
+const CHANGES_COMMUNICATION_FILENAME = ".simple-changes-communication.json";
+const PERSONAL_COMMUNICATION_FILENAME = "communication.json";
+const COMMUNICATION_STYLES = ["ultra-simple", "standard"] as const;
 const AUTHORING_ROLE = "release-notes";
 const AUTHORING_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 const DEFAULT_AUTHORING_EFFORT = "xhigh";
@@ -120,6 +127,7 @@ const NON_DESTINATION_FILES = new Set([
   SETUP_TRANSACTION_FILENAME,
   // Configuration whose name contains "changelogs", never a destination.
   AUTHORING_FILENAME,
+  COMMUNICATION_FILENAME,
 ]);
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
@@ -294,6 +302,22 @@ type GuidanceUpdateKind = (typeof GUIDANCE_UPDATE_KINDS)[number];
 type GuidanceBackfillRecommendation =
   (typeof GUIDANCE_BACKFILL_RECOMMENDATIONS)[number];
 type PolicyState = "absent" | "valid" | "malformed";
+type CommunicationStyle = (typeof COMMUNICATION_STYLES)[number];
+
+interface CommunicationSidecar {
+  schemaVersion: 1;
+  style: CommunicationStyle;
+}
+
+// The effective style and where it came from. `companion` is the
+// repository's Simple Changes sidecar, followed only when this skill has no
+// setting of its own.
+interface CommunicationInspection {
+  errors: string[];
+  path: string | null;
+  source: "personal" | "repository" | "companion" | "default";
+  style: CommunicationStyle;
+}
 type SetupStatus =
   | "already-configured"
   | "blocked"
@@ -481,6 +505,7 @@ type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
 interface WriteRecord {
   kind:
     | "authoring"
+    | "communication"
     | "changelog"
     | "cms-changelog"
     | "cms-policy"
@@ -501,6 +526,7 @@ export interface SetupResult {
   capabilities: IntegrationCapabilities | null;
   cmsPolicy: StateRecord<CmsPolicy> | null;
   command: "apply" | "inspect";
+  communication: CommunicationInspection;
   detectedHarnesses: DetectedHarness[];
   detection: Detection;
   errors: string[];
@@ -700,6 +726,9 @@ export interface ApplyOptions extends InspectOptions {
   cmsChangelog?: string;
   cmsRoute?: string;
   cmsSurfaceProven?: boolean;
+  // A standalone transaction: `ultra-simple` or `standard`. It writes only
+  // the communication sidecar for --scope.
+  communication?: string;
   confirm?: boolean;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
   curationMax?: number;
@@ -2071,6 +2100,79 @@ const authoringQuestionFor = (
   // Every copy that carries this helper is at or above AUTHORING_GUIDANCE,
   // the checkpoint that introduced the question.
   return states.includes("valid") ? "answered" : "pending";
+};
+
+// Only `schemaVersion` and `style` are read. Other members are ignored, so a
+// later release can add one without this copy refusing the whole file.
+export const validateCommunication = (
+  value: unknown,
+  label: string
+): { errors: string[]; value?: CommunicationSidecar } => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { errors: [`${label} must be a JSON object`] };
+  }
+  const { schemaVersion, style } = value as Record<string, unknown>;
+  if (schemaVersion !== 1) {
+    return { errors: [`${label}: schemaVersion must be 1`] };
+  }
+  if (typeof style !== "string" || !oneOf(style, COMMUNICATION_STYLES)) {
+    return {
+      errors: [`${label}: style must be ${COMMUNICATION_STYLES.join(" or ")}`],
+    };
+  }
+  return { errors: [], value: { schemaVersion: 1, style } };
+};
+
+export const resolveCommunicationPaths = (
+  repo: string,
+  configDirectory?: string
+): { companion: string; personal: string; repository: string } => ({
+  companion: join(resolve(repo), CHANGES_COMMUNICATION_FILENAME),
+  personal: join(
+    dirname(resolveGlobalPreferencesPath(configDirectory)),
+    PERSONAL_COMMUNICATION_FILENAME
+  ),
+  repository: join(resolve(repo), COMMUNICATION_FILENAME),
+});
+
+/**
+ * The effective style, highest layer first: the person's own setting, the
+ * project's, then the project's Simple Changes setting. A personal setting
+ * outranks the project's because the style grants nothing. A file that
+ * cannot be used is reported and skipped, never guessed at, so the worst
+ * outcome of a broken sidecar is the standard voice.
+ */
+const inspectCommunication = async (
+  root: string,
+  configDirectory?: string
+): Promise<CommunicationInspection> => {
+  const paths = resolveCommunicationPaths(root, configDirectory);
+  const layers = [
+    ["personal", paths.personal],
+    ["repository", paths.repository],
+    ["companion", paths.companion],
+  ] as const;
+  const records = await Promise.all(
+    layers.map(([source, path]) =>
+      readState(path, (value) =>
+        validateCommunication(value, `${source} communication sidecar`)
+      )
+    )
+  );
+  const errors: string[] = [];
+  for (const [index, record] of records.entries()) {
+    const layer = layers[index];
+    if (layer && record.value) {
+      return {
+        errors,
+        path: record.path,
+        source: layer[0],
+        style: record.value.style,
+      };
+    }
+    errors.push(...record.errors);
+  }
+  return { errors, path: null, source: "default", style: "standard" };
 };
 
 const inspectAuthoring = async (
@@ -3991,6 +4093,7 @@ export const inspectRepository = async (
     inventory,
     capabilities,
     authoringState,
+    communication,
   ] = await Promise.all([
     readState(join(root, POLICY_FILENAME), validateRepoPolicy),
     readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
@@ -4005,6 +4108,7 @@ export const inspectRepository = async (
     ),
     capabilitiesFor(installed),
     inspectAuthoring(root, options, taskMode),
+    inspectCommunication(root, options.configDirectory),
   ]);
   const { errors: authoringErrors, ...authoringFields } = authoringState;
   const authoringPending = authoringState.authoringQuestion === "pending";
@@ -4079,6 +4183,7 @@ export const inspectRepository = async (
     cmsPolicy:
       installed === "cms" || installed === "web-cms" ? cmsPolicy : null,
     command: "inspect",
+    communication,
     detection,
     errors: [
       ...relevantPolicy.errors,
@@ -5668,6 +5773,162 @@ export const writeAuthoringFile = async (
   }
 };
 
+// Options that may accompany --communication; it refuses every other, so
+// one call never mixes how the skill talks with policy, history, or
+// authoring writes.
+const COMMUNICATION_COMPANION_OPTIONS = new Set([
+  "communication",
+  "configDirectory",
+  "confirm",
+  "distribution",
+  "environment",
+  "harnessDataPath",
+  "repo",
+  "scope",
+  "taskMode",
+]);
+
+const communicationPreconditionErrors = (options: ApplyOptions): string[] => {
+  const mixed = Object.entries(options)
+    .filter(
+      ([key, value]) =>
+        !COMMUNICATION_COMPANION_OPTIONS.has(key) &&
+        value !== undefined &&
+        value !== false
+    )
+    .map(([key]) => key);
+  const errors: string[] = [];
+  if (mixed.length > 0) {
+    errors.push(
+      `apply --communication is a standalone transaction that changes no other setting; record ${mixed.join(", ")} in a separate apply.`
+    );
+  }
+  if (!oneOf(options.communication, COMMUNICATION_STYLES)) {
+    errors.push(
+      `--communication must be ${COMMUNICATION_STYLES.join(" or ")}.`
+    );
+  }
+  if (options.scope !== "repository" && options.scope !== "all-projects") {
+    errors.push(
+      "apply --communication requires --scope repository or --scope all-projects; for one conversation, just use the style and save nothing."
+    );
+  }
+  if (!options.confirm) {
+    errors.push(
+      "Confirmation is required before writing the communication setting."
+    );
+  }
+  return errors;
+};
+
+// Stage-and-rename under the setup transaction marker, as the authoring
+// sidecar is written. A file that is not valid, or that changed since it was
+// read, is never replaced; an unchanged style writes nothing, so members a
+// later release added are kept.
+const writeCommunicationFile = async (
+  path: string,
+  style: CommunicationStyle,
+  mode: number
+): Promise<WriteRecord> => {
+  const read = () =>
+    readState(path, (value) =>
+      validateCommunication(value, "communication sidecar")
+    );
+  await mkdir(dirname(path), { mode: 0o700, recursive: true });
+  const markerPath = join(dirname(path), SETUP_TRANSACTION_FILENAME);
+  await acquireTransaction(markerPath);
+  try {
+    const current = await read();
+    if (current.state === "malformed") {
+      throw new Error(
+        `Refusing to replace a communication setting that cannot be read; repair or remove it first: ${current.errors.join("; ")}`
+      );
+    }
+    if (current.value?.style === style) {
+      return { kind: "communication", path, written: false };
+    }
+    const bytesBefore = await rawSidecarBytes(path);
+    const content = json({ schemaVersion: 1, style });
+    const staged = await stageFile({
+      content,
+      kind: "communication",
+      mode,
+      path,
+    });
+    try {
+      await chmod(staged.temporaryPath, mode);
+      if (!sameBytes(await rawSidecarBytes(path), bytesBefore)) {
+        throw new Error(
+          `${path} changed while this setting was being written; nothing was replaced. Inspect it and retry.`
+        );
+      }
+      await ensureNoSymlink(path);
+      await rename(staged.temporaryPath, path);
+    } catch (error) {
+      await rm(staged.temporaryPath, { force: true });
+      throw error;
+    }
+    return { kind: "communication", path, written: true };
+  } finally {
+    await rm(markerPath, { force: true }).catch(() => undefined);
+  }
+};
+
+const COMMUNICATION_SUMMARIES: Record<CommunicationStyle, string> = {
+  standard:
+    "Ultra-Simple Mode is off: Simple Changelogs uses its standard voice and asks its usual setup questions.",
+  "ultra-simple":
+    "Ultra-Simple Mode is on: Simple Changelogs keeps messages short, skips tool terms, and asks only when the answer changes what happens.",
+};
+
+/**
+ * Records how the skill talks as a standalone transaction that writes only
+ * the communication sidecar for the chosen scope, so switching the display
+ * mode can never change policy, history, or authority.
+ */
+const applyCommunication = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<SetupResult | null> => {
+  if (options.communication === undefined) {
+    return null;
+  }
+  const preconditions = communicationPreconditionErrors(options);
+  const style = options.communication;
+  if (preconditions.length > 0 || !oneOf(style, COMMUNICATION_STYLES)) {
+    return blockResult(inspect, preconditions);
+  }
+  const paths = resolveCommunicationPaths(
+    inspect.repository,
+    options.configDirectory
+  );
+  const repositoryScope = options.scope === "repository";
+  let write: WriteRecord;
+  try {
+    write = await writeCommunicationFile(
+      repositoryScope ? paths.repository : paths.personal,
+      style,
+      repositoryScope ? 0o644 : 0o600
+    );
+  } catch (error) {
+    return blockResult(inspect, [
+      `Communication write failed: ${stringifyError(error)}`,
+    ]);
+  }
+  const communication = await inspectCommunication(
+    inspect.repository,
+    options.configDirectory
+  ).catch(() => inspect.communication);
+  const commit = repositoryScope ? " Commit this file with your policy." : "";
+  return {
+    ...inspect,
+    command: "apply",
+    communication,
+    summary: `${COMMUNICATION_SUMMARIES[style]} ${write.written ? `Saved in ${write.path}.${commit}` : `${write.path} already says so; nothing was written.`}`,
+    writes: [write],
+  };
+};
+
 /**
  * Records the owner's authoring answer as a standalone transaction that
  * writes only the sidecar for the chosen scope. It is independent of the
@@ -5745,6 +6006,14 @@ const applyAuthoring = async (
   };
 };
 
+// The standalone transactions: each writes one sidecar and nothing else.
+const applyStandalone = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<SetupResult | null> =>
+  (await applyCommunication(options, inspect)) ??
+  (await applyAuthoring(options, inspect));
+
 export const applySetup = async (
   options: ApplyOptions
 ): Promise<SetupResult> => {
@@ -5770,9 +6039,9 @@ export const applySetup = async (
     // post-onboarding updates, exactly as inspection reports it.
     return { ...inspect, command: "apply" };
   }
-  const authoringResult = await applyAuthoring(options, inspect);
-  if (authoringResult) {
-    return authoringResult;
+  const standalone = await applyStandalone(options, inspect);
+  if (standalone) {
+    return standalone;
   }
   const suppliedVersionActions = [
     options.publicVersionPatch,
@@ -5874,6 +6143,7 @@ interface ParsedCli {
 
 const valueOptionNames = new Set([
   "--authoring",
+  "--communication",
   "--backfill",
   "--cms-changelog",
   "--cms-route",
@@ -5995,6 +6265,7 @@ export const parseCli = (argv: string[]): ParsedCli => {
       cmsChangelog: values.get("--cms-changelog"),
       cmsRoute: values.get("--cms-route"),
       cmsSurfaceProven: flags.has("--cms-surface-proven"),
+      communication: values.get("--communication"),
       confirm: flags.has("--confirm"),
       crossSurfaceVersioning: enumValue(
         "--cross-surface-versioning",

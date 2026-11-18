@@ -402,6 +402,27 @@ tests or automation. CMS-only and web+CMS application additionally require
 `--cms-auth-proven`, `--cms-surface-proven`, and an exact `--cms-route`; the
 helper never derives CMS access authority from global preferences.
 
+### Ultra-Simple Mode
+
+For people who want the result and not the tooling: short messages, no tool
+terms unless you use them first, and a question only when your answer changes
+what happens. Every distribution carries the same rules in
+`references/communication.md`, which also governs how the skill talks in its
+standard voice.
+
+```sh
+bun skills/simple-changelogs/scripts/setup.ts apply \
+  --communication ultra-simple --scope repository --confirm --repo .
+```
+
+That writes one file, `.simple-changelogs-communication.json`, and the helper
+refuses any other option in the same command, so the mode can never change
+policy or history. Commit the file and everyone in the project gets the mode;
+`--scope all-projects` saves a private setting for you in every project, and
+`--communication standard` turns it off. A project that turned the mode on in
+Simple Changes (`.simple-changes-communication.json`) gets it here with no
+file of its own.
+
 ### Query the history
 
 The Markdown changelog distributions bundle a read-only `scripts/query.ts`
@@ -487,8 +508,8 @@ Every installed skill must contain exactly one root `SKILL.md`; the entire
 
 Some installed files are byte-for-byte copies of one canonical source: the
 setup, handoff, query, and CMS helpers, the minified protocol schemas, the
-shared release-handoff, version-decisions, and testing-notes references, the
-fork checker, and the authoring preferences data (`agents/harnesses.json`,
+shared communication, release-handoff, version-decisions, and testing-notes
+references, the fork checker, and the authoring preferences data (`agents/harnesses.json`,
 canonical in `tooling/simple-changelogs/agents/`, and the authoring and harness
 schemas, canonical in the full distribution). Edit the canonical source, then
 run `bun run sync-distros` to rewrite

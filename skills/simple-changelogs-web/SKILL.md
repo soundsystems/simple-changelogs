@@ -64,6 +64,10 @@ and inspect `.simple-changelogs.json`.
 Repository instructions take precedence when they define a stricter audience,
 release flow, source of truth, or surface boundary.
 
+Talk to people and other agents as `references/communication.md` says. When
+inspection reports `communication.style` as `ultra-simple`, also follow its
+Ultra-Simple Mode section.
+
 ## Reference router
 
 | Concern | Read |
@@ -71,6 +75,7 @@ release flow, source of truth, or surface boundary.
 | First use, policy, distribution, or signatures | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
+| Talking to people and other agents; Ultra-Simple Mode | `references/communication.md` |
 | Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification, expert public detail, and wording | `references/entry-classification.md` |
 | Missing files or authorized historical audits | `references/backfill.md` |

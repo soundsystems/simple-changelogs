@@ -67,6 +67,10 @@ root.
 Repository instructions take precedence when they set a stricter audience,
 release process, content source, or validation command.
 
+Talk to people and other agents as `references/communication.md` says. When
+inspection reports `communication.style` as `ultra-simple`, also follow its
+Ultra-Simple Mode section.
+
 ## Reference router
 
 | Concern | Read |
@@ -74,6 +78,7 @@ release process, content source, or validation command.
 | First use, policy, or JSON source structure | `references/setup.md` |
 | Guidance-version changes | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
+| Talking to people and other agents; Ultra-Simple Mode | `references/communication.md` |
 | Operator relevance, wording, grouping, or sensitive detail | `references/entry-classification.md` |
 | Historical reconstruction or audits | `references/backfill.md` |
 | Delegated entry classification, preparation, verification, capability negotiation, or receipts | `references/release-handoff.md` |
