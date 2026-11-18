@@ -2,6 +2,100 @@
 
 ## Unreleased
 
+## 0.27.0 - 2026-11-18
+
+- Communication reference (`references/communication.md`,
+  soundsystems/simple-changes#35):
+  - One file, canonical in the full distribution and byte-synced to the
+    other five by a new `sync-distros` rule, routed from every `SKILL.md`
+    by one paragraph before the router and one router row. It holds the
+    rules for every message (say less, ask less, keep unblocked work
+    moving, brief other agents) and Ultra-Simple Mode. It is exactly 100
+    lines, the most a reference may have without a Contents list, and a
+    test holds every copy to that.
+  - It must be true in all six distributions, the CMS-only one included, so
+    it names no distribution, refers to the bundled helper as "this
+    distribution's bundled `scripts/setup.ts`", says "the histories this
+    distribution keeps" and "the statuses `references/release-handoff.md`
+    defines for this distribution", and names no status the CMS-only
+    distribution forbids.
+  - New `communication-reference.check.ts` pins the rules in the canonical
+    file and the paragraph and router row in every `SKILL.md`.
+- Communication sidecar (`tooling/simple-changelogs/scripts/setup.ts`):
+  - `.simple-changelogs-communication.json` or a personal
+    `communication.json` beside `preferences.json`, holding
+    `{ "schemaVersion": 1, "style": "ultra-simple" | "standard" }`. Like the
+    authoring sidecar it is never a policy key, whose validators reject
+    unknown keys. `validateCommunication` reads only those two members and
+    ignores any other, so a later release can add one.
+  - Both project files, this skill's and Simple Changes'
+    `.simple-changes-communication.json`, are read and written in the
+    project location `projectLocationOf` finds as Simple Changes finds its
+    primary checkout: the first checkout `git worktree list --porcelain`
+    names that is not bare. A linked worktree, a subdirectory, and the
+    worktrees of a bare repository therefore agree with each other and
+    with Simple Changes. A directory Git does not know is its own
+    location, and a bare repository with no checkout refuses a
+    project-scope write. Discovery runs Git without the repository-local
+    variables `git rev-parse --local-env-vars` lists, so a hook running
+    for one repository cannot redirect a write meant for another.
+  - `inspect` reports `communication` (`style`, `source`, `path`,
+    `errors`). `inspectCommunication` takes one snapshot of each layer,
+    uses the first usable one of personal, repository, then `companion`,
+    otherwise `standard`, and reports every unusable file. The personal
+    layer outranks the repository's, unlike policy, because the style
+    grants nothing.
+  - `apply --communication <style> --scope repository|all-projects
+    --confirm` is a standalone transaction beside `apply --authoring`
+    (`applyStandalone` runs whichever was asked for). It refuses every
+    option outside `COMMUNICATION_COMPANION_OPTIONS`, a style outside the
+    two, a run-only scope, and a missing `--confirm`. It runs after the
+    read-only and blocked-state guards.
+  - The write takes no setup transaction marker. Rounds 1 and 2 of review
+    both found that sharing `acquireTransaction` let a style-only write
+    recover, and so roll back, an interrupted ordinary setup. No other
+    setup write touches this file, so `writeCommunicationFile` only stages
+    and renames it: one `snapshotCommunication` read is validated, an
+    unchanged style writes nothing (which keeps members a later release
+    added), and the rename happens only if the file's bytes are still that
+    snapshot's. A file it cannot read is never replaced.
+  - `walkTextFiles` skips both skills' sidecars at the repository root
+    before counting toward its 400-file cap, and `NON_DESTINATION_FILES`
+    gains this skill's, so the destination scan neither lists nor counts
+    them. Copies before 0.27.0 do list
+    `.simple-changelogs-communication.json` as a candidate, as copies
+    before 0.26.0 did for the authoring sidecar; a project that uses both
+    skills can avoid that by saving the mode in Simple Changes only.
+  - `setup-result.schema.json` requires `communication` and adds the
+    `communication` write kind. New `setup-communication.check.ts` covers
+    resolution across the layers, unusable files, linked, bare, and plain
+    layouts, a foreign Git environment, the capped scan with exactly 400
+    files, the apply transaction (the sidecar is the only path created and
+    inspection is otherwise identical), a sidecar edited between the read
+    and the rename, four setup-marker states left untouched, refusals, a
+    read-only task, and the command line.
+- Guidance and budgets:
+  - Guidance stays 26 in all six distributions. A bump would stop the next
+    write-capable task in every configured repository with an update
+    notice for a mode that is off by default and rules that need no
+    decision.
+  - The full distribution's Markdown was 2,392 bytes under its 224 KiB
+    budget, and the new reference with its two `SKILL.md` pointers adds
+    about 5,800. `references/guidance-updates.md` therefore folds guidance
+    notes 16 to 24 into the summary table, now "Guidance 1 to 24", as notes
+    1 to 15 already were. All nine machine-read
+    `simple-changelogs-guidance-update` marker comments stay, so
+    `parseGuidanceUpdateChanges` reports the same changes for a repository
+    recorded below those versions; only the prose is shorter. Sections 25
+    and 26, which tests pin, are unchanged. The full distribution is at
+    229,194 bytes, 182 under the budget.
+  - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
+    in-sync files where it expected 74, 77, and 76.
+- Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
+  should-fix defects. Round 2 found three round 1 items not fully fixed,
+  one of them still blocking, and 4 new should-fix defects. Each fix is
+  described above.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T17:30:39-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

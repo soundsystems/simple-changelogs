@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+## 0.27.0 - 2026-11-18
+
+- **Ultra-Simple Mode**
+  - Every distribution has a new Ultra-Simple Mode for people who want the
+    result and not the tooling. The agent uses your words instead of tool
+    terms ("what's new" for changelog and release notes, "a fix, something
+    new, a big change" for patch, minor, major), reports a finished task in
+    one line, and asks only when your answer changes what happens. Say
+    "details" for the exact files, versions, and commands.
+  - Turn it on with `scripts/setup.ts apply --communication ultra-simple
+    --scope repository --confirm`, then commit the new
+    `.simple-changelogs-communication.json` so everyone in the project gets
+    it. `--scope all-projects` saves it privately for you in every project,
+    and `--communication standard` turns it off. Your own setting outranks
+    the project's, so you can choose the mode for a team and keep full
+    detail yourself.
+  - One answer covers both skills. A project that turned the mode on in
+    Simple Changes 0.34.0 or later (`.simple-changes-communication.json`)
+    gets it here with no file of its own.
+  - The mode never changes what is written, who decides versions, or what
+    may be published. The command writes only that one file and refuses any
+    other option in the same call. A version choice your policy sets to
+    ask, showing notes somewhere new, changing text customers have seen,
+    and publishing without existing permission are still asked, in plain
+    words.
+- **Shorter messages, fewer questions**
+  - Every distribution now carries `references/communication.md`, which
+    sets how the skill talks in every mode. Agents send a message only when
+    it would change what you do, skip the request restated and the steps
+    that worked, and never paste raw JSON or a helper's error as the
+    explanation. What a hand-off must report, such as the checks run, is
+    never dropped.
+  - Agents ask less: nothing your request, policy, or repository already
+    answers, no "should I continue?", and nothing twice while nothing has
+    changed. A guided setup still asks one question at a time.
+  - One open decision no longer holds up the rest. While a version choice
+    waits for you in a write task, the agent still classifies the change,
+    writes the pending entries your distribution keeps, and runs the
+    checks. A read-only or classify request stays read-only while it
+    waits.
+  - Messages from one agent to another are written as briefs: the goal,
+    the exact scope, what is decided, what not to do, and what to return.
+- **Versions and guidance**
+  - `scripts/setup.ts inspect` now reports `communication`: the style in
+    effect, where it came from, and the file that set it.
+  - All six distributions stay on guidance 26, so no repository is asked
+    anything by this update. This release is 0.27.0 and is tagged
+    `v0.27.0`.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T17:30:39-06:00" -->
+
 ## 0.26.1 - 2026-10-12
 
 - **Bug Fixes & Improvements**:
