@@ -48,14 +48,16 @@ describe("communication reference", () => {
       "Never leave out what this distribution's hand-off step requires, such as the checks run and the evidence it names",
       "Ask only what is the owner's to decide, recommended answer first",
       "or the same thing twice while nothing has changed",
-      "Ask everything already known in one message",
+      // Batching never overrides a guided setup's one question at a time.
+      "Ask independent decisions together; a guided setup still asks one question at a time",
       "A decision one item is waiting on blocks that item and nothing else",
       // Keeping work moving never widens what the current task may write.
       "keep going with what the current task already allows",
       "the pending entries and histories this distribution keeps",
       "In a read-only task or a delegated `classify`, it is analysis and read-only checks, and nothing is written",
       "End a turn on a question only when nothing else can proceed",
-      "an open version choice is `decision-required`, never `blocked`",
+      // True in every distribution, the CMS-only one included.
+      "A delegated request still returns exactly the statuses `references/release-handoff.md` defines for this distribution; waiting on the owner never changes them",
       "is a brief for a reader who has none of your context",
       "give a reviewer the text and the rules, never your conclusion",
     ]) {
@@ -70,7 +72,9 @@ describe("communication reference", () => {
       "Never introduce a tool term; use the person's own",
       "the mode stays on",
       // The setup shortcut applies only where setup is wanted and unchosen.
-      "When a write task needs setup and the owner has not asked for a walkthrough or to customize",
+      "When a write task needs setup and the owner has chosen no setup path",
+      "only on that path do signatures, grouping, release names, and storage take the recommended default",
+      "a setup path the owner names is followed as written",
       "A read-only request never starts setup",
       "A required stop is never skipped because the mode is on",
       // Still asked, whatever the mode.

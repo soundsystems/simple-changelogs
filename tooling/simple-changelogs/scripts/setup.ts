@@ -11,6 +11,7 @@ import {
   open,
   readdir,
   readFile,
+  realpath,
   rename,
   rm,
   stat,
@@ -2130,40 +2131,107 @@ export const validateCommunication = (
   return { errors: [], value: { schemaVersion: 1, style } };
 };
 
-// The primary checkout of `root`'s repository: where Simple Changes keeps
-// and reads the project's settings, so both skills agree in every checkout
-// of one project. `root` itself outside a linked worktree, or when Git
-// cannot say.
-export const primaryCheckoutOf = async (root: string): Promise<string> => {
-  try {
-    const { stdout } = await execFileAsync(
-      "git",
-      ["-C", root, "rev-parse", "--git-common-dir"],
-      { maxBuffer: 1024 * 1024, timeout: 10_000 }
-    );
-    const commonDirectory = resolve(root, stdout.trim());
-    return basename(commonDirectory) === ".git"
-      ? dirname(commonDirectory)
-      : resolve(root);
-  } catch {
-    return resolve(root);
+// Variables that point Git at a repository other than the one a directory
+// is in, as `git rev-parse --local-env-vars` lists them. A hook running for
+// one repository sets some of them, so discovery for `--repo` clears them
+// and never mistakes the hook's repository for the one it was asked about.
+const GIT_LOCAL_ENVIRONMENT = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_CONFIG",
+  "GIT_CONFIG_COUNT",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_DIR",
+  "GIT_GRAFT_FILE",
+  "GIT_IMPLICIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_NAMESPACE",
+  "GIT_NO_REPLACE_OBJECTS",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_PREFIX",
+  "GIT_QUARANTINE_PATH",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_SHALLOW_FILE",
+  "GIT_WORK_TREE",
+] as const;
+
+const gitDiscoveryEnvironment = (): NodeJS.ProcessEnv => {
+  const environment = { ...process.env };
+  for (const name of GIT_LOCAL_ENVIRONMENT) {
+    delete environment[name];
   }
+  return environment;
 };
 
-// Both repository files live in the primary checkout, the personal one
+// Where a project's communication settings live, and what kind of place it
+// is: the primary `checkout` of a Git repository, a `directory` Git does not
+// know, or a `bare` repository that has no checkout to hold a project file.
+export interface ProjectLocation {
+  kind: "bare" | "checkout" | "directory";
+  path: string;
+}
+
+const WORKTREE_RECORD_SEPARATOR = /\n\n+/u;
+
+/**
+ * The primary checkout of `root`'s repository, found as Simple Changes finds
+ * it: the first checkout `git worktree list` names that is not bare. Both
+ * skills then read a project's settings from the same place in every
+ * checkout, a subdirectory or a linked worktree included.
+ */
+export const projectLocationOf = async (
+  root: string
+): Promise<ProjectLocation> => {
+  let stdout: string;
+  try {
+    ({ stdout } = await execFileAsync(
+      "git",
+      ["-C", root, "worktree", "list", "--porcelain"],
+      {
+        env: gitDiscoveryEnvironment(),
+        maxBuffer: 16 * 1024 * 1024,
+        timeout: 10_000,
+      }
+    ));
+  } catch {
+    return { kind: "directory", path: resolve(root) };
+  }
+  const first = stdout
+    .split(WORKTREE_RECORD_SEPARATOR)
+    .map((record) => record.split("\n"))
+    .filter((lines) => !lines.includes("bare"))
+    .map((lines) => lines.find((line) => line.startsWith("worktree ")))
+    .find((line) => line !== undefined);
+  if (first) {
+    const path = first.slice("worktree ".length);
+    return {
+      kind: "checkout",
+      path: await realpath(path).catch(() => resolve(path)),
+    };
+  }
+  return { kind: "bare", path: resolve(root) };
+};
+
+// Both repository files live in the project location, the personal one
 // beside the personal preferences.
 export const resolveCommunicationPaths = async (
   repo: string,
   configDirectory?: string
-): Promise<{ companion: string; personal: string; repository: string }> => {
-  const primary = await primaryCheckoutOf(resolve(repo));
+): Promise<{
+  companion: string;
+  location: ProjectLocation;
+  personal: string;
+  repository: string;
+}> => {
+  const location = await projectLocationOf(resolve(repo));
   return {
-    companion: join(primary, CHANGES_COMMUNICATION_FILENAME),
+    companion: join(location.path, CHANGES_COMMUNICATION_FILENAME),
+    location,
     personal: join(
       dirname(resolveGlobalPreferencesPath(configDirectory)),
       PERSONAL_COMMUNICATION_FILENAME
     ),
-    repository: join(primary, COMMUNICATION_FILENAME),
+    repository: join(location.path, COMMUNICATION_FILENAME),
   };
 };
 
@@ -5891,80 +5959,48 @@ const communicationPreconditionErrors = (options: ApplyOptions): string[] => {
   return errors;
 };
 
-// Takes the setup marker for a write that must never roll anything back.
-// `acquireTransaction` recovers an interrupted setup it finds, restoring or
-// removing the policy and history files that setup named. A style-only write
-// may not do that, so it stops at a marker that names any file, or that it
-// cannot read, and leaves recovery to an ordinary setup write. An orphaned
-// marker that names nothing has nothing to roll back and is cleared as usual.
-const acquireTransactionWithoutRollback = async (
-  markerPath: string
-): Promise<void> => {
-  let raw: string | null = null;
-  try {
-    raw = await readFile(markerPath, "utf8");
-  } catch (error) {
-    if (errorCode(error) !== "ENOENT") {
-      throw error;
-    }
-  }
-  if (raw !== null) {
-    const marker = parseMarker(raw);
-    if (!marker || Object.keys(marker.targets).length > 0) {
-      throw new Error(
-        `A setup write at ${markerPath} is in progress or was interrupted. This command changes only the communication setting and never recovers one, because recovery can restore or remove policy and history files. Finish or recover that setup, then retry.`
-      );
-    }
-  }
-  await acquireTransaction(markerPath);
-};
-
-// Stage-and-rename under the setup transaction marker, as the authoring
-// sidecar is written. One snapshot of the existing file decides everything:
-// it is refused when it cannot be used, left alone when it already holds the
-// style (which keeps members a later release added), and replaced only if
-// its bytes are still that snapshot's just before the rename.
+// Stage and rename one file. No other setup write touches a communication
+// sidecar, so this takes no setup transaction marker: it cannot wait on,
+// recover, or roll back another write, whatever state that write is in.
+// One snapshot of the existing file decides everything: it is refused when
+// it cannot be used, left alone when it already holds the style (which
+// keeps members a later release added), and replaced only if its bytes are
+// still that snapshot's just before the rename.
 const writeCommunicationFile = async (
   path: string,
   style: CommunicationStyle,
   mode: number
 ): Promise<WriteRecord> => {
   await mkdir(dirname(path), { mode: 0o700, recursive: true });
-  const markerPath = join(dirname(path), SETUP_TRANSACTION_FILENAME);
-  await acquireTransactionWithoutRollback(markerPath);
+  const current = await snapshotCommunication(path, "communication sidecar");
+  if (current.errors.length > 0) {
+    throw new Error(
+      `Refusing to replace a communication setting that cannot be read; repair or remove it first: ${current.errors.join("; ")}`
+    );
+  }
+  if (current.style === style) {
+    return { kind: "communication", path, written: false };
+  }
+  const staged = await stageFile({
+    content: json({ schemaVersion: 1, style }),
+    kind: "communication",
+    mode,
+    path,
+  });
   try {
-    const current = await snapshotCommunication(path, "communication sidecar");
-    if (current.errors.length > 0) {
+    await chmod(staged.temporaryPath, mode);
+    await ensureNoSymlink(path);
+    if (!sameBytes(await rawSidecarBytes(path), current.bytes)) {
       throw new Error(
-        `Refusing to replace a communication setting that cannot be read; repair or remove it first: ${current.errors.join("; ")}`
+        `${path} changed while this setting was being written; nothing was replaced. Inspect it and retry.`
       );
     }
-    if (current.style === style) {
-      return { kind: "communication", path, written: false };
-    }
-    const staged = await stageFile({
-      content: json({ schemaVersion: 1, style }),
-      kind: "communication",
-      mode,
-      path,
-    });
-    try {
-      await chmod(staged.temporaryPath, mode);
-      await ensureNoSymlink(path);
-      if (!sameBytes(await rawSidecarBytes(path), current.bytes)) {
-        throw new Error(
-          `${path} changed while this setting was being written; nothing was replaced. Inspect it and retry.`
-        );
-      }
-      await rename(staged.temporaryPath, path);
-    } catch (error) {
-      await rm(staged.temporaryPath, { force: true });
-      throw error;
-    }
-    return { kind: "communication", path, written: true };
-  } finally {
-    await rm(markerPath, { force: true }).catch(() => undefined);
+    await rename(staged.temporaryPath, path);
+  } catch (error) {
+    await rm(staged.temporaryPath, { force: true });
+    throw error;
   }
+  return { kind: "communication", path, written: true };
 };
 
 // What a write records, by scope: a project's setting is its default, and a
@@ -5998,7 +6034,8 @@ const communicationSummary = (
     write.written
       ? `Saved in ${write.path}.${scope === "repository" ? " Commit this file with your policy." : ""}`
       : `${write.path} already says so; nothing was written.`,
-    effective.style === style
+    // Precedence is named only when another file really decided.
+    effective.style === style || effective.path === write.path
       ? null
       : `For you it stays ${effective.style === "ultra-simple" ? "on" : "off"}: ${effective.path} outranks it.`,
   ]
@@ -6029,6 +6066,11 @@ const applyCommunication = async (
       inspect.repository,
       options.configDirectory
     );
+    if (scope === "repository" && paths.location.kind === "bare") {
+      throw new Error(
+        `${paths.location.path} is a bare repository with no checkout to hold a project setting; run this from a checkout, or use --scope all-projects.`
+      );
+    }
     write = await writeCommunicationFile(
       scope === "repository" ? paths.repository : paths.personal,
       style,

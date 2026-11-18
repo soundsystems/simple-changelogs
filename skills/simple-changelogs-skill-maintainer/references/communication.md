@@ -15,8 +15,8 @@ hand-off step requires, such as the checks run and the evidence it names.
 
 Ask only what is the owner's to decide, recommended answer first. Do not ask
 what the request, saved policy, or repository evidence answers, whether to
-continue, or the same thing twice while nothing has changed. Ask everything
-already known in one message.
+continue, or the same thing twice while nothing has changed. Ask independent
+decisions together; a guided setup still asks one question at a time.
 
 ## Keep work moving
 
@@ -27,9 +27,9 @@ classification, the pending entries and histories this distribution keeps,
 and the checks. In a read-only task or a delegated `classify`, it is
 analysis and read-only checks, and nothing is written. End a turn on a
 question only when nothing else can proceed, and when the answer arrives,
-finish that item only. A delegated request still returns the statuses
-`references/release-handoff.md` defines: an open version choice is
-`decision-required`, never `blocked`.
+finish that item only. A delegated request still returns exactly the
+statuses `references/release-handoff.md` defines for this distribution;
+waiting on the owner never changes them.
 
 ## Other agents
 
@@ -55,13 +55,13 @@ by where people read it. Never say distribution, guidance version, policy,
 receipt, digest, or handoff. When the person says "details", answer that one
 question with exact files, versions, and commands; the mode stays on.
 
-**Questions.** When a write task needs setup and the owner has not asked for
-a walkthrough or to customize, take the one-answer recommended setup in
-`references/onboarding.md` and show its receipt in these words. A read-only
-request never starts setup. Do not ask about signatures, grouping, release
-names, or storage beyond that receipt: use what is saved or the recommended
-default. A required stop is never skipped because the mode is on. Still ask,
-in plain words:
+**Questions.** When a write task needs setup and the owner has chosen no
+setup path, take the one-answer recommended setup in
+`references/onboarding.md` and show its receipt in these words; only on that
+path do signatures, grouping, release names, and storage take the
+recommended default. A read-only request never starts setup, and a setup
+path the owner names is followed as written. A required stop is never
+skipped because the mode is on. Still ask, in plain words:
 
 - every question an update notice lists;
 - a version choice set to ask, with a suggestion only when suggestions are
@@ -79,7 +79,7 @@ exist only in the project are written, not published.
 - "What's new is updated: `<the customer line>`. Nothing is published yet."
 - "Version `<number>` is written up. It is not published yet."
 - "Version `<number>`'s notes are live at `<address>`. I read them back."
-- "Nothing here changes what your customers see, so I left what's new alone."
+- "Nothing here changes what this history's readers see, so I left it alone."
 
 ## The setting
 
