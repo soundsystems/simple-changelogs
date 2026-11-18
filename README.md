@@ -415,8 +415,9 @@ bun skills/simple-changelogs/scripts/setup.ts apply \
   --communication ultra-simple --scope repository --confirm --repo .
 ```
 
-That writes one file, `.simple-changelogs-communication.json`, and the helper
-refuses any other option in the same command, so the mode can never change
+That writes one file, `.simple-changelogs-communication.json` in the
+project's main checkout, and the helper refuses any other option in the same
+command and never recovers an interrupted setup, so the mode can never change
 policy or history. Commit the file and everyone in the project gets the mode;
 `--scope all-projects` saves a private setting for you in every project, and
 `--communication standard` turns it off. A project that turned the mode on in

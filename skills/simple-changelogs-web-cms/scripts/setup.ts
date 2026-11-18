@@ -129,6 +129,13 @@ const NON_DESTINATION_FILES = new Set([
   AUTHORING_FILENAME,
   COMMUNICATION_FILENAME,
 ]);
+// Both skills' communication sidecars at the repository root are settings,
+// never product text: the capped walk skips them before counting, so adding
+// one cannot push a real file past the cap.
+const COMMUNICATION_SIDECARS = new Set([
+  COMMUNICATION_FILENAME,
+  CHANGES_COMMUNICATION_FILENAME,
+]);
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
 const RELEASE_DESTINATION_PATH = /(?:what.?s.?new|release.?notes?|changelog)/u;
@@ -2123,56 +2130,118 @@ export const validateCommunication = (
   return { errors: [], value: { schemaVersion: 1, style } };
 };
 
-export const resolveCommunicationPaths = (
+// The primary checkout of `root`'s repository: where Simple Changes keeps
+// and reads the project's settings, so both skills agree in every checkout
+// of one project. `root` itself outside a linked worktree, or when Git
+// cannot say.
+export const primaryCheckoutOf = async (root: string): Promise<string> => {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", root, "rev-parse", "--git-common-dir"],
+      { maxBuffer: 1024 * 1024, timeout: 10_000 }
+    );
+    const commonDirectory = resolve(root, stdout.trim());
+    return basename(commonDirectory) === ".git"
+      ? dirname(commonDirectory)
+      : resolve(root);
+  } catch {
+    return resolve(root);
+  }
+};
+
+// Both repository files live in the primary checkout, the personal one
+// beside the personal preferences.
+export const resolveCommunicationPaths = async (
   repo: string,
   configDirectory?: string
-): { companion: string; personal: string; repository: string } => ({
-  companion: join(resolve(repo), CHANGES_COMMUNICATION_FILENAME),
-  personal: join(
-    dirname(resolveGlobalPreferencesPath(configDirectory)),
-    PERSONAL_COMMUNICATION_FILENAME
-  ),
-  repository: join(resolve(repo), COMMUNICATION_FILENAME),
-});
+): Promise<{ companion: string; personal: string; repository: string }> => {
+  const primary = await primaryCheckoutOf(resolve(repo));
+  return {
+    companion: join(primary, CHANGES_COMMUNICATION_FILENAME),
+    personal: join(
+      dirname(resolveGlobalPreferencesPath(configDirectory)),
+      PERSONAL_COMMUNICATION_FILENAME
+    ),
+    repository: join(primary, COMMUNICATION_FILENAME),
+  };
+};
+
+// One read of a sidecar: its exact bytes and what they hold. Validation and
+// every later comparison use these same bytes, so a file that changes
+// between two reads can never be judged by one and replaced by the other.
+interface CommunicationSnapshot {
+  bytes: Buffer | null;
+  errors: string[];
+  style: CommunicationStyle | null;
+}
+
+const snapshotCommunication = async (
+  path: string,
+  label: string
+): Promise<CommunicationSnapshot> => {
+  const unusable = (error: string): CommunicationSnapshot => ({
+    bytes: null,
+    errors: [error],
+    style: null,
+  });
+  let metadata: Awaited<ReturnType<typeof lstat>>;
+  try {
+    metadata = await lstat(path);
+  } catch (error) {
+    return errorCode(error) === "ENOENT"
+      ? { bytes: null, errors: [], style: null }
+      : unusable(`Could not inspect ${path}: ${stringifyError(error)}`);
+  }
+  if (metadata.isSymbolicLink()) {
+    return unusable(`Refusing symbolic-link state at ${path}`);
+  }
+  if (!metadata.isFile()) {
+    return unusable(`State path is not a regular file: ${path}`);
+  }
+  try {
+    const bytes = await readFile(path);
+    const result = validateCommunication(
+      JSON.parse(bytes.toString("utf8")) as unknown,
+      label
+    );
+    return result.value
+      ? { bytes, errors: [], style: result.value.style }
+      : { bytes, errors: result.errors, style: null };
+  } catch (error) {
+    return unusable(`Could not parse ${path}: ${stringifyError(error)}`);
+  }
+};
 
 /**
  * The effective style, highest layer first: the person's own setting, the
  * project's, then the project's Simple Changes setting. A personal setting
  * outranks the project's because the style grants nothing. A file that
- * cannot be used is reported and skipped, never guessed at, so the worst
- * outcome of a broken sidecar is the standard voice.
+ * cannot be used is skipped, never guessed at, and reported from every
+ * layer, so a person's own setting never hides a broken project file.
  */
 const inspectCommunication = async (
   root: string,
   configDirectory?: string
 ): Promise<CommunicationInspection> => {
-  const paths = resolveCommunicationPaths(root, configDirectory);
+  const paths = await resolveCommunicationPaths(root, configDirectory);
   const layers = [
     ["personal", paths.personal],
     ["repository", paths.repository],
     ["companion", paths.companion],
   ] as const;
-  const records = await Promise.all(
+  const snapshots = await Promise.all(
     layers.map(([source, path]) =>
-      readState(path, (value) =>
-        validateCommunication(value, `${source} communication sidecar`)
-      )
+      snapshotCommunication(path, `${source} communication sidecar`)
     )
   );
-  const errors: string[] = [];
-  for (const [index, record] of records.entries()) {
-    const layer = layers[index];
-    if (layer && record.value) {
-      return {
-        errors,
-        path: record.path,
-        source: layer[0],
-        style: record.value.style,
-      };
-    }
-    errors.push(...record.errors);
-  }
-  return { errors, path: null, source: "default", style: "standard" };
+  const errors = snapshots.flatMap((snapshot) => snapshot.errors);
+  const chosen = snapshots.findIndex((snapshot) => snapshot.style !== null);
+  const layer = layers[chosen];
+  const style = snapshots[chosen]?.style;
+  return layer && style
+    ? { errors, path: layer[1], source: layer[0], style }
+    : { errors, path: null, source: "default", style: "standard" };
 };
 
 const inspectAuthoring = async (
@@ -2314,6 +2383,7 @@ const walkTextFiles = async (
         }
         const textFile =
           entry.isFile() &&
+          !(directory === root && COMMUNICATION_SIDECARS.has(entry.name)) &&
           !isGitIgnored(path, false) &&
           (TEXT_EXTENSIONS.has(extname(entry.name).toLowerCase()) ||
             entry.name === "SKILL.md");
@@ -5821,48 +5891,71 @@ const communicationPreconditionErrors = (options: ApplyOptions): string[] => {
   return errors;
 };
 
+// Takes the setup marker for a write that must never roll anything back.
+// `acquireTransaction` recovers an interrupted setup it finds, restoring or
+// removing the policy and history files that setup named. A style-only write
+// may not do that, so it stops at a marker that names any file, or that it
+// cannot read, and leaves recovery to an ordinary setup write. An orphaned
+// marker that names nothing has nothing to roll back and is cleared as usual.
+const acquireTransactionWithoutRollback = async (
+  markerPath: string
+): Promise<void> => {
+  let raw: string | null = null;
+  try {
+    raw = await readFile(markerPath, "utf8");
+  } catch (error) {
+    if (errorCode(error) !== "ENOENT") {
+      throw error;
+    }
+  }
+  if (raw !== null) {
+    const marker = parseMarker(raw);
+    if (!marker || Object.keys(marker.targets).length > 0) {
+      throw new Error(
+        `A setup write at ${markerPath} is in progress or was interrupted. This command changes only the communication setting and never recovers one, because recovery can restore or remove policy and history files. Finish or recover that setup, then retry.`
+      );
+    }
+  }
+  await acquireTransaction(markerPath);
+};
+
 // Stage-and-rename under the setup transaction marker, as the authoring
-// sidecar is written. A file that is not valid, or that changed since it was
-// read, is never replaced; an unchanged style writes nothing, so members a
-// later release added are kept.
+// sidecar is written. One snapshot of the existing file decides everything:
+// it is refused when it cannot be used, left alone when it already holds the
+// style (which keeps members a later release added), and replaced only if
+// its bytes are still that snapshot's just before the rename.
 const writeCommunicationFile = async (
   path: string,
   style: CommunicationStyle,
   mode: number
 ): Promise<WriteRecord> => {
-  const read = () =>
-    readState(path, (value) =>
-      validateCommunication(value, "communication sidecar")
-    );
   await mkdir(dirname(path), { mode: 0o700, recursive: true });
   const markerPath = join(dirname(path), SETUP_TRANSACTION_FILENAME);
-  await acquireTransaction(markerPath);
+  await acquireTransactionWithoutRollback(markerPath);
   try {
-    const current = await read();
-    if (current.state === "malformed") {
+    const current = await snapshotCommunication(path, "communication sidecar");
+    if (current.errors.length > 0) {
       throw new Error(
         `Refusing to replace a communication setting that cannot be read; repair or remove it first: ${current.errors.join("; ")}`
       );
     }
-    if (current.value?.style === style) {
+    if (current.style === style) {
       return { kind: "communication", path, written: false };
     }
-    const bytesBefore = await rawSidecarBytes(path);
-    const content = json({ schemaVersion: 1, style });
     const staged = await stageFile({
-      content,
+      content: json({ schemaVersion: 1, style }),
       kind: "communication",
       mode,
       path,
     });
     try {
       await chmod(staged.temporaryPath, mode);
-      if (!sameBytes(await rawSidecarBytes(path), bytesBefore)) {
+      await ensureNoSymlink(path);
+      if (!sameBytes(await rawSidecarBytes(path), current.bytes)) {
         throw new Error(
           `${path} changed while this setting was being written; nothing was replaced. Inspect it and retry.`
         );
       }
-      await ensureNoSymlink(path);
       await rename(staged.temporaryPath, path);
     } catch (error) {
       await rm(staged.temporaryPath, { force: true });
@@ -5874,12 +5967,43 @@ const writeCommunicationFile = async (
   }
 };
 
-const COMMUNICATION_SUMMARIES: Record<CommunicationStyle, string> = {
-  standard:
-    "Ultra-Simple Mode is off: Simple Changelogs uses its standard voice and asks its usual setup questions.",
-  "ultra-simple":
-    "Ultra-Simple Mode is on: Simple Changelogs keeps messages short, skips tool terms, and asks only when the answer changes what happens.",
+// What a write records, by scope: a project's setting is its default, and a
+// person's own setting can still outrank it.
+const COMMUNICATION_SAVED: Record<
+  "all-projects" | "repository",
+  Record<CommunicationStyle, string>
+> = {
+  "all-projects": {
+    standard:
+      "Ultra-Simple Mode is off for you in every project: Simple Changelogs uses its standard voice.",
+    "ultra-simple":
+      "Ultra-Simple Mode is on for you in every project: Simple Changelogs keeps messages short, skips tool terms, and asks only when the answer changes what happens.",
+  },
+  repository: {
+    standard:
+      "Ultra-Simple Mode is off for this project by default: Simple Changelogs uses its standard voice.",
+    "ultra-simple":
+      "Ultra-Simple Mode is on for this project by default: Simple Changelogs keeps messages short, skips tool terms, and asks only when the answer changes what happens.",
+  },
 };
+
+const communicationSummary = (
+  scope: "all-projects" | "repository",
+  style: CommunicationStyle,
+  write: WriteRecord,
+  effective: CommunicationInspection
+): string =>
+  [
+    COMMUNICATION_SAVED[scope][style],
+    write.written
+      ? `Saved in ${write.path}.${scope === "repository" ? " Commit this file with your policy." : ""}`
+      : `${write.path} already says so; nothing was written.`,
+    effective.style === style
+      ? null
+      : `For you it stays ${effective.style === "ultra-simple" ? "on" : "off"}: ${effective.path} outranks it.`,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" ");
 
 /**
  * Records how the skill talks as a standalone transaction that writes only
@@ -5898,33 +6022,34 @@ const applyCommunication = async (
   if (preconditions.length > 0 || !oneOf(style, COMMUNICATION_STYLES)) {
     return blockResult(inspect, preconditions);
   }
-  const paths = resolveCommunicationPaths(
-    inspect.repository,
-    options.configDirectory
-  );
-  const repositoryScope = options.scope === "repository";
+  const scope = options.scope === "repository" ? "repository" : "all-projects";
   let write: WriteRecord;
   try {
+    const paths = await resolveCommunicationPaths(
+      inspect.repository,
+      options.configDirectory
+    );
     write = await writeCommunicationFile(
-      repositoryScope ? paths.repository : paths.personal,
+      scope === "repository" ? paths.repository : paths.personal,
       style,
-      repositoryScope ? 0o644 : 0o600
+      scope === "repository" ? 0o644 : 0o600
     );
   } catch (error) {
     return blockResult(inspect, [
       `Communication write failed: ${stringifyError(error)}`,
     ]);
   }
+  // The write is committed; report what was saved for this scope, and what
+  // now applies to this person, which their own setting may still decide.
   const communication = await inspectCommunication(
     inspect.repository,
     options.configDirectory
   ).catch(() => inspect.communication);
-  const commit = repositoryScope ? " Commit this file with your policy." : "";
   return {
     ...inspect,
     command: "apply",
     communication,
-    summary: `${COMMUNICATION_SUMMARIES[style]} ${write.written ? `Saved in ${write.path}.${commit}` : `${write.path} already says so; nothing was written.`}`,
+    summary: communicationSummary(scope, style, write, communication),
     writes: [write],
   };
 };

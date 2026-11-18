@@ -44,16 +44,20 @@ describe("communication reference", () => {
     for (const rule of [
       "Send a message only when the reader would act differently after it, and say each thing once",
       "Never paste raw JSON or a helper's error as the explanation",
+      // Saying less never drops what a hand-off must report.
+      "Never leave out what this distribution's hand-off step requires, such as the checks run and the evidence it names",
       "Ask only what is the owner's to decide, recommended answer first",
       "or the same thing twice while nothing has changed",
       "Ask everything already known in one message",
-      "A version the policy sets to `ask` is still asked, once",
       "A decision one item is waiting on blocks that item and nothing else",
+      // Keeping work moving never widens what the current task may write.
+      "keep going with what the current task already allows",
+      "the pending entries and histories this distribution keeps",
+      "In a read-only task or a delegated `classify`, it is analysis and read-only checks, and nothing is written",
       "End a turn on a question only when nothing else can proceed",
-      // Keeping work moving never changes what a delegated receipt reports.
       "an open version choice is `decision-required`, never `blocked`",
       "is a brief for a reader who has none of your context",
-      "Give a reviewer the text and the rules, never your conclusion",
+      "give a reviewer the text and the rules, never your conclusion",
     ]) {
       expect(canonical).toContain(rule);
     }
@@ -64,20 +68,39 @@ describe("communication reference", () => {
       "It is a display preference, never a permission",
       "what is written, who decides versions, what may be published, and the records kept stay the same",
       "Never introduce a tool term; use the person's own",
-      "it does not turn the mode off",
-      "save nothing beyond the confirmed setup",
-      // Still asked, whatever the mode.
-      "a version choice set to ask",
-      "showing notes somewhere new, changing text customers have seen, and anything that publishes",
+      "the mode stays on",
+      // The setup shortcut applies only where setup is wanted and unchosen.
+      "When a write task needs setup and the owner has not asked for a walkthrough or to customize",
+      "A read-only request never starts setup",
       "A required stop is never skipped because the mode is on",
-      "never a finished line for unfinished work",
+      // Still asked, whatever the mode.
+      "every question an update notice lists",
+      "a version choice set to ask, with a suggestion only when suggestions are on",
+      'otherwise without one ("Which version should this be?")',
+      "showing notes somewhere new, changing text customers have seen, or publishing, unless existing authority covers that exact destination and action",
+      "One line by default, plus what the hand-off step requires",
+      "Never a finished line for unfinished work: notes that exist only in the project are written, not published",
       '"What\'s new is updated: `<the customer line>`. Nothing is published yet."',
-      // The setting: one file, one transaction, and one answer for both skills.
-      "writes one file, `.simple-changelogs-communication.json`, refuses any other option in the same command, and never replaces a file it cannot read",
+      '"Version `<number>` is written up. It is not published yet."',
+      // The setting: one file, one transaction, and one place for a project.
+      "writes one file, `.simple-changelogs-communication.json` in the project's main checkout, refuses any other option in the same command, never replaces a file it cannot read, and never recovers an interrupted setup",
       "the project's Simple Changes setting (`.simple-changes-communication.json`) when this skill has none",
+      "Both project files are read from the main checkout, as Simple Changes reads them",
       "The personal setting outranks the project's because the mode grants nothing",
     ]) {
       expect(canonical).toContain(rule);
+    }
+  });
+
+  test("stays short enough to need no contents list, in every distribution", async () => {
+    const copies = await Promise.all(
+      distributions.map((name) =>
+        readFile(join(SKILLS, name, "references", "communication.md"), "utf8")
+      )
+    );
+    for (const copy of copies) {
+      expect(collapse(copy)).toBe(canonical);
+      expect(copy.split("\n").length - 1).toBeLessThanOrEqual(100);
     }
   });
 });
