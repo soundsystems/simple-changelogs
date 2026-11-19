@@ -4,9 +4,9 @@
 
 ## 0.26.2 - 2026-11-18
 
-- **Ultra-Simple Mode**:
-  - Every distribution has a new Ultra-Simple Mode for people who want the
-    result and not the tooling. The agent uses your words instead of tool
+- **Bug Fixes & Improvements**:
+  - New: every distribution has an Ultra-Simple Mode for people who want
+    the result and not the tooling. The agent uses your words instead of tool
     terms ("what's new" for changelog and release notes, "a fix, something
     new, a big change" for patch, minor, major), sums up a finished task in
     one line beside any checklist your distribution requires, and asks only
@@ -31,11 +31,9 @@
     refused when the file holds settings this version cannot safely
     rewrite. Nothing is written over a CMS history that has that filename,
     or beside a setup that stopped part-way, which it asks you to finish
-    first.
-    A version choice your policy sets to ask, showing notes somewhere new,
-    changing text customers have seen, and publishing without existing
-    permission are still asked, in plain words.
-- **Shorter messages, fewer questions**:
+    first. A version choice your policy sets to ask, showing notes
+    somewhere new, changing text customers have seen, and publishing
+    without existing permission are still asked, in plain words.
   - Every distribution now carries `references/communication.md`, which
     sets how the skill talks in every mode. Agents send a message only when
     it would change what you do, skip the request restated and the steps
@@ -52,13 +50,12 @@
     request writes nothing at all.
   - Messages from one agent to another are written as briefs: the goal,
     the exact scope, what is decided, what not to do, and what to return.
-- **Versions and guidance**:
   - `scripts/setup.ts inspect` now reports `communication`: the style in
     effect, where it came from, and the file that set it.
   - All six distributions stay on guidance 26, so no repository is asked
     anything by this update. This release is 0.26.2, and its tag is
     `v0.26.2`.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:43:00-06:00" -->
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T23:02:00-06:00" -->
 
 ## 0.26.1 - 2026-10-12
 

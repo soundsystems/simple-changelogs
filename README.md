@@ -411,24 +411,25 @@ what happens. Every distribution carries the same rules in
 standard voice.
 
 Ask your agent to turn it on, or run the `scripts/setup.ts` bundled with the
-skill your project uses. For the full distribution, from this repository:
+skill your project uses. For a project that uses the full distribution:
 
 ```sh
 bun skills/simple-changelogs/scripts/setup.ts apply \
-  --communication ultra-simple --scope repository --confirm --repo .
+  --communication ultra-simple --scope repository --confirm \
+  --repo /path/to/your/project
 ```
 
-A helper from a distribution your project does not use refuses and writes
-nothing. The command writes one file, `.simple-changelogs-communication.json`
-beside the policy at the `--repo` root, and the helper refuses any option that
-asks for another settings or history change and never recovers an interrupted
-setup, so the mode can never change policy or history. Commit the file and it
-is the project's default; each person's own setting still outranks it. A
-checkout whose branch does not have the file yet falls through to the next
-setting. `--scope all-projects` saves a private setting for you in every
-project, and `--communication standard` turns it off. A project that turned
-the mode on in Simple Changes (`.simple-changes-communication.json`) gets it
-here with no file of its own.
+If inspection reports a distribution conflict, the helper refuses and writes
+nothing. Otherwise the command writes one file,
+`.simple-changelogs-communication.json` beside the policy at the `--repo`
+root, and the helper refuses any option that asks for another settings or
+history change and never recovers an interrupted setup, so the mode can never
+change policy or history. Commit the file and it is the project's default;
+each person's own setting still outranks it. A checkout whose branch does not
+have the file yet falls through to the next setting. `--scope all-projects`
+saves a private setting for you in every project, and `--communication
+standard` turns it off. A project that turned the mode on in Simple Changes
+(`.simple-changes-communication.json`) gets it here with no file of its own.
 
 ### Query the history
 

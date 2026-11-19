@@ -153,8 +153,10 @@
   those and found 3 should-fix defects outside the code: the version
   number above, an activation example that only the full distribution's
   helper accepts, and a one-line result rule that did not keep a
-  distribution's required checklist.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:43:00-06:00" -->
+  distribution's required checklist. Round 8 confirmed those and found two
+  sentences in the README's activation example to narrow. The public
+  entry is one flat **Bug Fixes & Improvements** group, the patch format.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T23:02:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

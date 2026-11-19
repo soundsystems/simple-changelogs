@@ -745,6 +745,26 @@ describe("apply --communication", () => {
     ]);
   });
 
+  test("reports a failed look-up of the marker as that, with no recovery advice", async () => {
+    const target = await fixture();
+    // The personal settings location is a file, so nothing can be looked up
+    // inside it: not knowing is not "another setup is unfinished".
+    const notADirectory = join(target.repo, "settings-file");
+    await writeFile(notADirectory, "x\n");
+    const refused = await apply(
+      { ...target, config: notADirectory },
+      { communication: "ultra-simple", confirm: true, scope: "all-projects" }
+    );
+    expect(refused.status).toBe("blocked");
+    const errors = refused.errors.join("\n");
+    expect(errors).toContain(
+      `Could not check ${notADirectory} for an unfinished setup, so no communication setting was saved`
+    );
+    expect(errors).not.toContain("Run that setup again");
+    expect(refused.writes).toEqual([]);
+    expect(await readFile(notADirectory, "utf8")).toBe("x\n");
+  });
+
   test("never replaces a sidecar that changed after it was read", async () => {
     const target = await fixture();
     await writeFile(target.paths.repository, sidecar("standard"));
