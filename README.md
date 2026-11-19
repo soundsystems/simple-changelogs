@@ -402,6 +402,35 @@ tests or automation. CMS-only and web+CMS application additionally require
 `--cms-auth-proven`, `--cms-surface-proven`, and an exact `--cms-route`; the
 helper never derives CMS access authority from global preferences.
 
+### Ultra-Simple Mode
+
+For people who want the result and not the tooling: short messages, no tool
+terms unless you use them first, and a question only when your answer changes
+what happens. Every distribution carries the same rules in
+`references/communication.md`, which also governs how the skill talks in its
+standard voice.
+
+Ask your agent to turn it on, or run the `scripts/setup.ts` bundled with the
+skill your project uses. For a project that uses the full distribution:
+
+```sh
+bun skills/simple-changelogs/scripts/setup.ts apply \
+  --communication ultra-simple --scope repository --confirm \
+  --repo /path/to/your/project
+```
+
+If inspection reports a distribution conflict, the helper refuses and writes
+nothing. The only file this command can write is
+`.simple-changelogs-communication.json`, beside the policy at the `--repo`
+root, and the helper refuses any option that asks for another settings or
+history change and never recovers an interrupted setup, so the mode can never
+change policy or history. Commit the file and it is the project's default;
+each person's own setting still outranks it. A checkout whose branch does not
+have the file yet falls through to the next setting. `--scope all-projects`
+saves a private setting for you in every project, and `--communication
+standard` turns it off. A project that turned the mode on in Simple Changes
+(`.simple-changes-communication.json`) gets it here with no file of its own.
+
 ### Query the history
 
 The Markdown changelog distributions bundle a read-only `scripts/query.ts`
@@ -487,8 +516,8 @@ Every installed skill must contain exactly one root `SKILL.md`; the entire
 
 Some installed files are byte-for-byte copies of one canonical source: the
 setup, handoff, query, and CMS helpers, the minified protocol schemas, the
-shared release-handoff, version-decisions, and testing-notes references, the
-fork checker, and the authoring preferences data (`agents/harnesses.json`,
+shared communication, release-handoff, version-decisions, and testing-notes
+references, the fork checker, and the authoring preferences data (`agents/harnesses.json`,
 canonical in `tooling/simple-changelogs/agents/`, and the authoring and harness
 schemas, canonical in the full distribution). Edit the canonical source, then
 run `bun run sync-distros` to rewrite

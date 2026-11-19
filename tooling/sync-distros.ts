@@ -152,6 +152,13 @@ const syncRules = (): SyncRule[] => [
     productVersionDistributions,
     "references/version-decisions.md"
   ),
+  // How every distribution talks to people and other agents, and
+  // Ultra-Simple Mode: one reference, the same in all of them.
+  ...copies(
+    skillPath(FULL, "references/communication.md"),
+    changelogDistributions,
+    "references/communication.md"
+  ),
   ...copies(
     skillPath(FULL, "references/testing-notes.md"),
     ["simple-changelogs-mobile"],

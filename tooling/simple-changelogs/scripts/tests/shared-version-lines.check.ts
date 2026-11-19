@@ -652,6 +652,13 @@ describe("recording shared version lines", () => {
     expect(() =>
       parseCli(["apply", "--shared-version-lines", "web,mobile"])
     ).toThrow("--shared-version-lines must be JSON");
+    // Valid JSON that is not a list is refused too: `false` would otherwise
+    // read as an option nobody passed.
+    for (const value of ["false", "null", '{"mode":"catch-up"}']) {
+      expect(() =>
+        parseCli(["apply", "--shared-version-lines", value])
+      ).toThrow("--shared-version-lines must be a JSON array");
+    }
     expect(resolveGlobalPreferencesPath("/tmp/x")).toContain(
       "preferences.json"
     );

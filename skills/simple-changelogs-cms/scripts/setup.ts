@@ -100,6 +100,13 @@ const CMS_POLICY_FILENAME = ".simple-changelogs-cms.json";
 // would stop every older installed copy.
 const AUTHORING_FILENAME = ".simple-changelogs-authoring.json";
 const PERSONAL_AUTHORING_FILENAME = "authoring.json";
+// How the skill talks to a person (references/communication.md): a display
+// preference in a sidecar of its own, for the same reason as authoring. It
+// grants nothing, and no rule reads it to decide what may be written.
+const COMMUNICATION_FILENAME = ".simple-changelogs-communication.json";
+const CHANGES_COMMUNICATION_FILENAME = ".simple-changes-communication.json";
+const PERSONAL_COMMUNICATION_FILENAME = "communication.json";
+const COMMUNICATION_STYLES = ["ultra-simple", "standard"] as const;
 const AUTHORING_ROLE = "release-notes";
 const AUTHORING_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 const DEFAULT_AUTHORING_EFFORT = "xhigh";
@@ -120,7 +127,19 @@ const NON_DESTINATION_FILES = new Set([
   SETUP_TRANSACTION_FILENAME,
   // Configuration whose name contains "changelogs", never a destination.
   AUTHORING_FILENAME,
+  COMMUNICATION_FILENAME,
 ]);
+// Both skills' communication sidecars are settings, never product text,
+// wherever `--repo` put them: the capped walk skips them at every depth
+// before counting, so adding one cannot push a real file past the cap or
+// read as a release-note destination from a monorepo root.
+const COMMUNICATION_SIDECARS = new Set([
+  COMMUNICATION_FILENAME,
+  CHANGES_COMMUNICATION_FILENAME,
+]);
+// Compared without case, as most checkouts on macOS and Windows store names.
+const isCommunicationSidecarName = (name: string): boolean =>
+  COMMUNICATION_SIDECARS.has(name.toLowerCase());
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
 const RELEASE_DESTINATION_PATH = /(?:what.?s.?new|release.?notes?|changelog)/u;
@@ -294,6 +313,22 @@ type GuidanceUpdateKind = (typeof GUIDANCE_UPDATE_KINDS)[number];
 type GuidanceBackfillRecommendation =
   (typeof GUIDANCE_BACKFILL_RECOMMENDATIONS)[number];
 type PolicyState = "absent" | "valid" | "malformed";
+type CommunicationStyle = (typeof COMMUNICATION_STYLES)[number];
+
+interface CommunicationSidecar {
+  schemaVersion: 1;
+  style: CommunicationStyle;
+}
+
+// The effective style and where it came from. `companion` is the
+// repository's Simple Changes sidecar, followed only when this skill has no
+// setting of its own.
+interface CommunicationInspection {
+  errors: string[];
+  path: string | null;
+  source: "personal" | "repository" | "companion" | "default";
+  style: CommunicationStyle;
+}
 type SetupStatus =
   | "already-configured"
   | "blocked"
@@ -481,6 +516,7 @@ type CompleteSelection = Required<Omit<Selection, OptionalSelectionKeys>> &
 interface WriteRecord {
   kind:
     | "authoring"
+    | "communication"
     | "changelog"
     | "cms-changelog"
     | "cms-policy"
@@ -501,6 +537,7 @@ export interface SetupResult {
   capabilities: IntegrationCapabilities | null;
   cmsPolicy: StateRecord<CmsPolicy> | null;
   command: "apply" | "inspect";
+  communication: CommunicationInspection;
   detectedHarnesses: DetectedHarness[];
   detection: Detection;
   errors: string[];
@@ -700,6 +737,9 @@ export interface ApplyOptions extends InspectOptions {
   cmsChangelog?: string;
   cmsRoute?: string;
   cmsSurfaceProven?: boolean;
+  // A standalone transaction: `ultra-simple` or `standard`. It writes only
+  // the communication sidecar for --scope.
+  communication?: string;
   confirm?: boolean;
   crossSurfaceVersioning?: CrossSurfaceVersioning;
   curationMax?: number;
@@ -2073,6 +2113,169 @@ const authoringQuestionFor = (
   return states.includes("valid") ? "answered" : "pending";
 };
 
+// Only `schemaVersion` and `style` are read. Other members are ignored, so a
+// later release can add one without this copy refusing the whole file.
+export const validateCommunication = (
+  value: unknown,
+  label: string
+): { errors: string[]; value?: CommunicationSidecar } => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { errors: [`${label} must be a JSON object`] };
+  }
+  const { schemaVersion, style } = value as Record<string, unknown>;
+  if (schemaVersion !== 1) {
+    return { errors: [`${label}: schemaVersion must be 1`] };
+  }
+  if (typeof style !== "string" || !oneOf(style, COMMUNICATION_STYLES)) {
+    return {
+      errors: [`${label}: style must be ${COMMUNICATION_STYLES.join(" or ")}`],
+    };
+  }
+  return { errors: [], value: { schemaVersion: 1, style } };
+};
+
+// Both project files sit at the `--repo` root, beside the policy and the
+// authoring sidecar and found the same way: no Git is asked. A checkout
+// whose branch lacks the committed file falls through to the next layer.
+// The personal file sits beside the personal preferences.
+export const resolveCommunicationPaths = (
+  repo: string,
+  configDirectory?: string
+): { companion: string; personal: string; repository: string } => {
+  const root = resolve(repo);
+  return {
+    companion: join(root, CHANGES_COMMUNICATION_FILENAME),
+    personal: join(
+      dirname(resolveGlobalPreferencesPath(configDirectory)),
+      PERSONAL_COMMUNICATION_FILENAME
+    ),
+    repository: join(root, COMMUNICATION_FILENAME),
+  };
+};
+
+/**
+ * The file a stored CMS policy names as the project's history, or null. A
+ * setup from before the communication sidecars existed could have given the
+ * history one of their names; that file is history, never a setting. The
+ * policy is read leniently, so one that fails validation still protects the
+ * file it names: any plain filename counts, whatever its extension. Only a
+ * regular file is read.
+ */
+const cmsHistoryPath = async (root: string): Promise<string | null> => {
+  const policyPath = join(root, CMS_POLICY_FILENAME);
+  try {
+    if (!(await lstat(policyPath)).isFile()) {
+      return null;
+    }
+    const stored = JSON.parse(await readFile(policyPath, "utf8")) as unknown;
+    const name = isRecord(stored) ? stored.changelogPath : null;
+    return typeof name === "string" &&
+      name !== "" &&
+      basename(name) === name &&
+      !name.includes("\\")
+      ? join(root, name)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+// Whether `path` is that history. Names are compared without case, because
+// on most macOS and Windows checkouts two spellings are one file.
+const isCmsHistory = (history: string | null, path: string): boolean =>
+  history !== null &&
+  dirname(history) === dirname(path) &&
+  basename(history).toLowerCase() === basename(path).toLowerCase();
+
+// One read of a sidecar: its exact bytes and what they hold. Validation and
+// every later comparison use these same bytes, so a file that changes
+// between two reads can never be judged by one and replaced by the other.
+interface CommunicationSnapshot {
+  bytes: Buffer | null;
+  errors: string[];
+  style: CommunicationStyle | null;
+  // Members of a usable file that this copy does not know, by name.
+  unknownMembers: string[];
+}
+
+const snapshotCommunication = async (
+  path: string,
+  label: string
+): Promise<CommunicationSnapshot> => {
+  const unusable = (error: string): CommunicationSnapshot => ({
+    bytes: null,
+    errors: [error],
+    style: null,
+    unknownMembers: [],
+  });
+  let metadata: Awaited<ReturnType<typeof lstat>>;
+  try {
+    metadata = await lstat(path);
+  } catch (error) {
+    return errorCode(error) === "ENOENT"
+      ? { bytes: null, errors: [], style: null, unknownMembers: [] }
+      : unusable(`Could not inspect ${path}: ${stringifyError(error)}`);
+  }
+  if (metadata.isSymbolicLink()) {
+    return unusable(`Refusing symbolic-link state at ${path}`);
+  }
+  if (!metadata.isFile()) {
+    return unusable(`State path is not a regular file: ${path}`);
+  }
+  try {
+    const bytes = await readFile(path);
+    const parsed = JSON.parse(bytes.toString("utf8")) as unknown;
+    const result = validateCommunication(parsed, label);
+    return result.value && isRecord(parsed)
+      ? {
+          bytes,
+          errors: [],
+          style: result.value.style,
+          unknownMembers: Object.keys(parsed).filter(
+            (name) => name !== "schemaVersion" && name !== "style"
+          ),
+        }
+      : { bytes, errors: result.errors, style: null, unknownMembers: [] };
+  } catch (error) {
+    return unusable(`Could not parse ${path}: ${stringifyError(error)}`);
+  }
+};
+
+/**
+ * The effective style, highest layer first: the person's own setting, the
+ * project's, then the project's Simple Changes setting. A personal setting
+ * outranks the project's because the style grants nothing. A file that
+ * cannot be used is skipped, never guessed at, and reported from every
+ * layer, so a person's own setting never hides a broken project file. A
+ * project file that is the CMS history is no layer at all.
+ */
+const inspectCommunication = async (
+  root: string,
+  configDirectory?: string
+): Promise<CommunicationInspection> => {
+  const paths = resolveCommunicationPaths(root, configDirectory);
+  const history = await cmsHistoryPath(resolve(root));
+  const layers = (
+    [
+      ["personal", paths.personal],
+      ["repository", paths.repository],
+      ["companion", paths.companion],
+    ] as const
+  ).filter(([, path]) => !isCmsHistory(history, path));
+  const snapshots = await Promise.all(
+    layers.map(([source, path]) =>
+      snapshotCommunication(path, `${source} communication sidecar`)
+    )
+  );
+  const errors = snapshots.flatMap((snapshot) => snapshot.errors);
+  const chosen = snapshots.findIndex((snapshot) => snapshot.style !== null);
+  const layer = layers[chosen];
+  const style = snapshots[chosen]?.style;
+  return layer && style
+    ? { errors, path: layer[1], source: layer[0], style }
+    : { errors, path: null, source: "default", style: "standard" };
+};
+
 const inspectAuthoring = async (
   root: string,
   options: InspectOptions,
@@ -2212,6 +2415,7 @@ const walkTextFiles = async (
         }
         const textFile =
           entry.isFile() &&
+          !isCommunicationSidecarName(entry.name) &&
           !isGitIgnored(path, false) &&
           (TEXT_EXTENSIONS.has(extname(entry.name).toLowerCase()) ||
             entry.name === "SKILL.md");
@@ -3991,6 +4195,7 @@ export const inspectRepository = async (
     inventory,
     capabilities,
     authoringState,
+    communication,
   ] = await Promise.all([
     readState(join(root, POLICY_FILENAME), validateRepoPolicy),
     readState(join(root, CMS_POLICY_FILENAME), validateCmsPolicy),
@@ -4005,6 +4210,7 @@ export const inspectRepository = async (
     ),
     capabilitiesFor(installed),
     inspectAuthoring(root, options, taskMode),
+    inspectCommunication(root, options.configDirectory),
   ]);
   const { errors: authoringErrors, ...authoringFields } = authoringState;
   const authoringPending = authoringState.authoringQuestion === "pending";
@@ -4079,6 +4285,7 @@ export const inspectRepository = async (
     cmsPolicy:
       installed === "cms" || installed === "web-cms" ? cmsPolicy : null,
     command: "inspect",
+    communication,
     detection,
     errors: [
       ...relevantPolicy.errors,
@@ -5182,6 +5389,11 @@ const selectionErrors = (
       "CMS changelog must be one repository-root JSON filename without path traversal."
     );
   }
+  if (needsCms && isCommunicationSidecarName(options.cmsChangelog ?? "")) {
+    errors.push(
+      `CMS changelog cannot be named ${options.cmsChangelog}: that filename holds a communication setting.`
+    );
+  }
   return errors;
 };
 
@@ -5668,6 +5880,278 @@ export const writeAuthoringFile = async (
   }
 };
 
+// Options that may accompany --communication; it refuses every other, so
+// one call never mixes how the skill talks with policy, history, or
+// authoring writes.
+const COMMUNICATION_COMPANION_OPTIONS = new Set([
+  "communication",
+  "configDirectory",
+  "confirm",
+  "distribution",
+  "environment",
+  "harnessDataPath",
+  "repo",
+  "scope",
+  "taskMode",
+]);
+
+const communicationPreconditionErrors = (options: ApplyOptions): string[] => {
+  const mixed = Object.entries(options)
+    .filter(
+      ([key, value]) =>
+        !COMMUNICATION_COMPANION_OPTIONS.has(key) &&
+        value !== undefined &&
+        value !== false
+    )
+    .map(([key]) => key);
+  const errors: string[] = [];
+  if (mixed.length > 0) {
+    errors.push(
+      `apply --communication is a standalone transaction that changes no other setting; record ${mixed.join(", ")} in a separate apply.`
+    );
+  }
+  if (!oneOf(options.communication, COMMUNICATION_STYLES)) {
+    errors.push(
+      `--communication must be ${COMMUNICATION_STYLES.join(" or ")}.`
+    );
+  }
+  if (options.scope !== "repository" && options.scope !== "all-projects") {
+    errors.push(
+      "apply --communication requires --scope repository or --scope all-projects; for one conversation, just use the style and save nothing."
+    );
+  }
+  if (!options.confirm) {
+    errors.push(
+      "Confirmation is required before writing the communication setting."
+    );
+  }
+  return errors;
+};
+
+// Put a staged file where nothing is, never replacing: a hard link fails
+// when another save got there first, where a rename would silently win.
+const installNewCommunication = async (
+  stagedPath: string,
+  path: string
+): Promise<void> => {
+  const taken = await link(stagedPath, path).then(
+    () => false,
+    (error: unknown) => {
+      if (errorCode(error) === "EEXIST") {
+        return true;
+      }
+      throw error;
+    }
+  );
+  if (taken) {
+    throw new Error(
+      `A communication setting was saved at ${path} while this one was being written; nothing was replaced. Run the command again to see it.`
+    );
+  }
+  // The link is the commit: the setting is saved whatever happens to the
+  // staged name, so a failed clean-up is never reported as a failed save.
+  await rm(stagedPath, { force: true }).catch(() => undefined);
+};
+
+// Stage and install one file. No other setup write touches a communication
+// sidecar, so this takes no setup transaction marker: it cannot wait on,
+// recover, or roll back another write, whatever state that write is in.
+// The caller refuses first while a marker exists, so this never runs
+// beside an unfinished setup either.
+// One snapshot of the existing file decides everything: it is refused when
+// it cannot be used and left alone when it already holds the style. A file
+// with members this version does not know is refused too, since rewriting
+// it could lose or alter them. Any other file is replaced after its bytes
+// are compared with that snapshot's, immediately before the rename; where
+// none exists the new one is installed without replacing, so of two first
+// saves one wins and the other is told.
+const writeCommunicationFile = async (
+  path: string,
+  style: CommunicationStyle,
+  mode: number
+): Promise<WriteRecord> => {
+  const current = await snapshotCommunication(path, "communication sidecar");
+  if (current.errors.length > 0) {
+    throw new Error(
+      `Refusing to replace a communication setting that cannot be read; repair or remove it first: ${current.errors.join("; ")}`
+    );
+  }
+  if (current.style === style) {
+    return { kind: "communication", path, written: false };
+  }
+  if (current.unknownMembers.length > 0) {
+    throw new Error(
+      `${path} holds settings this version cannot safely rewrite (${current.unknownMembers.join(", ")}); nothing was changed. Edit "style" by hand, or change it with a version that knows them.`
+    );
+  }
+  const staged = await stageFile({
+    content: json({ schemaVersion: 1, style }),
+    kind: "communication",
+    mode,
+    path,
+  });
+  try {
+    await chmod(staged.temporaryPath, mode);
+    await ensureNoSymlink(path);
+    if (current.bytes === null) {
+      await installNewCommunication(staged.temporaryPath, path);
+    } else {
+      if (!sameBytes(await rawSidecarBytes(path), current.bytes)) {
+        throw new Error(
+          `${path} changed while this setting was being written; nothing was replaced. Inspect it and retry.`
+        );
+      }
+      await rename(staged.temporaryPath, path);
+    }
+  } catch (error) {
+    await rm(staged.temporaryPath, { force: true });
+    throw error;
+  }
+  return { kind: "communication", path, written: true };
+};
+
+/**
+ * Why a setting cannot be saved at `path`, or null. For a project the
+ * `--repo` root must already be a directory, since staging would otherwise
+ * create a mistyped one. For either scope no setup may be unfinished in the
+ * destination's directory, and the path must not be the history a CMS
+ * policy at that root names.
+ */
+const communicationSaveProblem = async (
+  scope: "all-projects" | "repository",
+  root: string,
+  path: string
+): Promise<string | null> => {
+  if (scope === "repository") {
+    const metadata = await stat(root).catch(() => null);
+    if (!metadata?.isDirectory()) {
+      return `${root} is not an existing directory, so no project setting was saved. Check --repo, or use --scope all-projects.`;
+    }
+  }
+  // A marker means another setup is writing beside this file, or stopped
+  // part-way and will be rolled back by the next one. Whatever it names,
+  // nothing is saved next to it: its roll-back restores what it recorded,
+  // which can be "this file did not exist".
+  const marker = await lstat(
+    join(dirname(path), SETUP_TRANSACTION_FILENAME)
+  ).then(
+    () => "present" as const,
+    (error: unknown) =>
+      errorCode(error) === "ENOENT" ? ("absent" as const) : error
+  );
+  if (marker === "present") {
+    return `Another setup in ${dirname(path)} is running or stopped part-way (${SETUP_TRANSACTION_FILENAME} is there), so no communication setting was saved beside it. Run that setup again to finish it, then save the setting.`;
+  }
+  if (marker !== "absent") {
+    // Not knowing is not "none": say what failed, and promise no recovery.
+    return `Could not check ${dirname(path)} for an unfinished setup, so no communication setting was saved: ${stringifyError(marker)}`;
+  }
+  if (isCmsHistory(await cmsHistoryPath(root), path)) {
+    return `${path} is this project's CMS history, as ${CMS_POLICY_FILENAME} names it, so no communication setting can be saved there and the history was left as it is. Use --scope ${scope === "repository" ? "all-projects" : "repository"}, or give the history another filename first.`;
+  }
+  return null;
+};
+
+// What a write records, by scope: a project's setting is its default, and a
+// person's own setting can still outrank it.
+const COMMUNICATION_SAVED: Record<
+  "all-projects" | "repository",
+  Record<CommunicationStyle, string>
+> = {
+  "all-projects": {
+    standard:
+      "Ultra-Simple Mode is off for you in every project: Simple Changelogs uses its standard voice.",
+    "ultra-simple":
+      "Ultra-Simple Mode is on for you in every project: Simple Changelogs keeps messages short, skips tool terms, and asks only when the answer changes what happens.",
+  },
+  repository: {
+    standard:
+      "Ultra-Simple Mode is off for this project by default: Simple Changelogs uses its standard voice.",
+    "ultra-simple":
+      "Ultra-Simple Mode is on for this project by default: Simple Changelogs keeps messages short, skips tool terms, and asks only when the answer changes what happens.",
+  },
+};
+
+const communicationSummary = (
+  scope: "all-projects" | "repository",
+  style: CommunicationStyle,
+  write: WriteRecord,
+  effective: CommunicationInspection
+): string =>
+  [
+    COMMUNICATION_SAVED[scope][style],
+    write.written
+      ? `Saved in ${write.path}.${scope === "repository" ? " Commit this file with your policy." : ""}`
+      : `${write.path} already says so; nothing was written.`,
+    // Precedence is named only when another file really decided.
+    effective.style === style ||
+    effective.path === write.path ||
+    effective.path === null
+      ? null
+      : `For you it stays ${effective.style === "ultra-simple" ? "on" : "off"}: ${effective.path} outranks it.`,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" ");
+
+/**
+ * Records how the skill talks as a standalone transaction that writes only
+ * the communication sidecar for the chosen scope, so switching the display
+ * mode can never change policy, history, or authority.
+ */
+const applyCommunication = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<SetupResult | null> => {
+  if (options.communication === undefined) {
+    return null;
+  }
+  const preconditions = communicationPreconditionErrors(options);
+  const style = options.communication;
+  if (preconditions.length > 0 || !oneOf(style, COMMUNICATION_STYLES)) {
+    return blockResult(inspect, preconditions);
+  }
+  const scope = options.scope === "repository" ? "repository" : "all-projects";
+  let write: WriteRecord;
+  try {
+    const paths = resolveCommunicationPaths(
+      inspect.repository,
+      options.configDirectory
+    );
+    const destination =
+      scope === "repository" ? paths.repository : paths.personal;
+    const problem = await communicationSaveProblem(
+      scope,
+      inspect.repository,
+      destination
+    );
+    if (problem) {
+      throw new Error(problem);
+    }
+    write = await writeCommunicationFile(
+      destination,
+      style,
+      scope === "repository" ? 0o644 : 0o600
+    );
+  } catch (error) {
+    return blockResult(inspect, [
+      `Communication write failed: ${stringifyError(error)}`,
+    ]);
+  }
+  // The write is committed; report what was saved for this scope, and what
+  // now applies to this person, which their own setting may still decide.
+  const communication = await inspectCommunication(
+    inspect.repository,
+    options.configDirectory
+  ).catch(() => inspect.communication);
+  return {
+    ...inspect,
+    command: "apply",
+    communication,
+    summary: communicationSummary(scope, style, write, communication),
+    writes: [write],
+  };
+};
+
 /**
  * Records the owner's authoring answer as a standalone transaction that
  * writes only the sidecar for the chosen scope. It is independent of the
@@ -5745,6 +6229,14 @@ const applyAuthoring = async (
   };
 };
 
+// The standalone transactions: each writes one sidecar and nothing else.
+const applyStandalone = async (
+  options: ApplyOptions,
+  inspect: SetupResult
+): Promise<SetupResult | null> =>
+  (await applyCommunication(options, inspect)) ??
+  (await applyAuthoring(options, inspect));
+
 export const applySetup = async (
   options: ApplyOptions
 ): Promise<SetupResult> => {
@@ -5770,9 +6262,9 @@ export const applySetup = async (
     // post-onboarding updates, exactly as inspection reports it.
     return { ...inspect, command: "apply" };
   }
-  const authoringResult = await applyAuthoring(options, inspect);
-  if (authoringResult) {
-    return authoringResult;
+  const standalone = await applyStandalone(options, inspect);
+  if (standalone) {
+    return standalone;
   }
   const suppliedVersionActions = [
     options.publicVersionPatch,
@@ -5874,6 +6366,7 @@ interface ParsedCli {
 
 const valueOptionNames = new Set([
   "--authoring",
+  "--communication",
   "--backfill",
   "--cms-changelog",
   "--cms-route",
@@ -5911,6 +6404,27 @@ const booleanOptionNames = new Set([
 ]);
 
 const NON_NEGATIVE_INTEGER = /^(?:0|[1-9]\d{0,8})$/u;
+
+// `--shared-version-lines`: a JSON array. Anything else, `false` included,
+// would read as "not supplied" to a command that refuses options it does
+// not use.
+const sharedVersionLinesOption = (
+  lines: string | undefined
+): SharedVersionLine[] | undefined => {
+  if (lines === undefined) {
+    return;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(lines);
+  } catch (error) {
+    throw new Error("--shared-version-lines must be JSON", { cause: error });
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("--shared-version-lines must be a JSON array");
+  }
+  return parsed as SharedVersionLine[];
+};
 
 export const parseCli = (argv: string[]): ParsedCli => {
   const [command] = argv;
@@ -5961,13 +6475,9 @@ export const parseCli = (argv: string[]): ParsedCli => {
     }
     return value;
   };
-  const lines = values.get("--shared-version-lines");
-  let sharedVersionLines: SharedVersionLine[] | undefined;
-  try {
-    sharedVersionLines = lines === undefined ? undefined : JSON.parse(lines);
-  } catch (error) {
-    throw new Error("--shared-version-lines must be JSON", { cause: error });
-  }
+  const sharedVersionLines = sharedVersionLinesOption(
+    values.get("--shared-version-lines")
+  );
   // `none`, one template, or a JSON object of per-train templates.
   let releaseTags: ReleaseTagsSetting | undefined =
     values.get("--release-tags");
@@ -5995,6 +6505,7 @@ export const parseCli = (argv: string[]): ParsedCli => {
       cmsChangelog: values.get("--cms-changelog"),
       cmsRoute: values.get("--cms-route"),
       cmsSurfaceProven: flags.has("--cms-surface-proven"),
+      communication: values.get("--communication"),
       confirm: flags.has("--confirm"),
       crossSurfaceVersioning: enumValue(
         "--cross-surface-versioning",

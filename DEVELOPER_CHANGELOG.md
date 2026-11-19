@@ -2,6 +2,161 @@
 
 ## Unreleased
 
+## 0.26.2 - 2026-11-18
+
+- Communication reference (`references/communication.md`,
+  soundsystems/simple-changes#35):
+  - One file, canonical in the full distribution and byte-synced to the
+    other five by a new `sync-distros` rule, routed from every `SKILL.md`
+    by one paragraph before the router and one router row. It holds the
+    rules for every message (say less, ask less, keep unblocked work
+    moving, brief other agents) and Ultra-Simple Mode. It is exactly 100
+    lines, the most a reference may have without a Contents list, and a
+    test holds every copy to that.
+  - It must be true in all six distributions, the CMS-only one included, so
+    it names no distribution, refers to the bundled helper as "this
+    distribution's bundled `scripts/setup.ts`", says "the statuses
+    `references/release-handoff.md` defines for this distribution", and
+    names no status the CMS-only distribution forbids.
+  - New `communication-reference.check.ts` pins the rules in the canonical
+    file and the paragraph and router row in every `SKILL.md`.
+- Communication sidecar (`tooling/simple-changelogs/scripts/setup.ts`):
+  - `.simple-changelogs-communication.json` or a personal
+    `communication.json` beside `preferences.json`, holding
+    `{ "schemaVersion": 1, "style": "ultra-simple" | "standard" }`. Like the
+    authoring sidecar it is never a policy key, whose validators reject
+    unknown keys. `validateCommunication` reads only those two members and
+    ignores any other, so a later release can add one.
+  - Both project files are found at the `--repo` root, beside the policy
+    and the authoring sidecar and the same way: this skill's, which the
+    helper reads and writes, and Simple Changes'
+    `.simple-changes-communication.json`, which it only reads. No Git is
+    asked. Rounds 1 to 3 of review each found a
+    defect in locating Simple Changes' primary checkout from here (a
+    hook's Git environment, then a missing or prunable worktree, a path
+    with a line break, and a failed or timed-out Git call read as "not a
+    repository"), so `projectLocationOf` was removed. The cost is one
+    documented difference: Simple Changes reads its file from the primary
+    checkout, so a checkout whose branch lacks the committed file falls
+    through to the next setting here, and gets the standard voice only
+    when no usable setting supplies a style. The style grants nothing, so
+    that difference changes wording only.
+  - A project save needs `--repo` to be an existing directory
+    (`communicationSaveProblem`), since staging would otherwise create a
+    mistyped one.
+  - A CMS history can have a sidecar's name: CMS setup accepted any
+    repository-root JSON filename. One predicate, `isCmsHistory`, decides
+    it everywhere, comparing names without case because two spellings are
+    one file on most macOS and Windows checkouts. `cmsHistoryPath` reads
+    the stored CMS policy leniently, so a policy that fails validation
+    still protects the plain filename it names, whatever its extension. `inspectCommunication` drops any
+    layer that is that history, a save for either scope refuses it and
+    leaves the history as it is, and a new CMS setup refuses both skills'
+    sidecar names (`isCommunicationSidecarName`).
+  - No setting is saved beside an unfinished setup. Matching the paths a
+    save could collide with drew a finding four rounds running (no guard,
+    spelling and scope, an uppercase extension, then a crashed older CMS
+    setup whose marker records the sidecar as "did not exist" and whose
+    recovery would delete a style saved meanwhile), so the round 6 decider
+    replaced more matching with one rule: `communicationSaveProblem`
+    refuses while `.simple-changelogs.setup-transaction.json` exists in
+    the destination's directory, whatever it names, and says to finish
+    that setup first. A marker exists only while a setup writes or after
+    one crashed.
+  - `inspect` reports `communication` (`style`, `source`, `path`,
+    `errors`). `inspectCommunication` takes one snapshot of each layer,
+    uses the first usable one of personal, repository, then `companion`,
+    otherwise `standard`, and reports every unusable file. The personal
+    layer outranks the repository's, unlike policy, because the style
+    grants nothing.
+  - `apply --communication <style> --scope repository|all-projects
+    --confirm` is a standalone transaction beside `apply --authoring`
+    (`applyStandalone` runs whichever was asked for). It refuses every
+    option outside `COMMUNICATION_COMPANION_OPTIONS`, a style outside the
+    two, a run-only scope, and a missing `--confirm`. It runs after the
+    read-only and blocked-state guards.
+  - The write takes no setup transaction marker. Rounds 1 and 2 of review
+    both found that sharing `acquireTransaction` let a style-only write
+    recover, and so roll back, an interrupted ordinary setup. No other
+    setup write touches this file, so `writeCommunicationFile` only stages
+    and installs it. One `snapshotCommunication` read is validated, and an
+    unchanged style writes nothing. A file with members this version does
+    not know is refused: parsing and writing it back can alter a value, as
+    it does an integer above 2^53. Any other file is compared with that
+    snapshot's bytes immediately before the rename; the comparison and the
+    rename are two steps, so an edit that lands between them can still be
+    replaced. Where no
+    file exists, `installNewCommunication` hard-links the staged file into
+    place, which fails with `EEXIST` when another save got there first,
+    where a rename would have replaced it unseen; the link is the commit,
+    so a failed clean-up of the staged name is not reported as a failed
+    save. A file it cannot read is never replaced.
+  - `walkTextFiles` skips both skills' sidecars at every depth, since a
+    save with `--repo apps/web` puts one below a monorepo root, before
+    counting toward its 400-file cap, and `NON_DESTINATION_FILES`
+    gains this skill's, so the destination scan neither lists nor counts
+    them. Copies before 0.26.2 do list
+    `.simple-changelogs-communication.json` as a candidate, as copies
+    before 0.26.0 did for the authoring sidecar; a project that uses both
+    skills can avoid that by saving the mode in Simple Changes only.
+  - `setup-result.schema.json` requires `communication` and adds the
+    `communication` write kind. New `setup-communication.check.ts` covers
+    resolution across the layers, unusable files, two checkouts of which
+    one holds the files, a CMS history under a sidecar's name in either
+    spelling and for either scope (read and write, present and absent),
+    the capped scan with exactly 400 files and nested sidecars, the apply
+    transaction (the sidecar is the only path created and inspection is
+    otherwise identical), a file a newer copy extended, a sidecar edited
+    between the read and the rename, a second first save landing before
+    the install, a `--repo` that is missing or a file, four setup-marker
+    states left untouched, refusals, a read-only task, and the command
+    line.
+- Guidance, version, and budgets:
+  - Guidance stays 26 in all six distributions. A bump would stop the next
+    write-capable task in every configured repository with an update
+    notice for a mode that is off by default and rules that need no
+    decision.
+  - The version is 0.26.2. Family releases are numbered
+    `0.<guidance>.<patch>`, so a release that leaves guidance at 26 is a
+    patch whatever it adds. This entry was drafted as 0.27.0 until round 7
+    of review pointed at that rule.
+  - The full distribution's Markdown was 2,392 bytes under its 224 KiB
+    budget, and the new reference with its two `SKILL.md` pointers adds
+    about 5,800. `references/guidance-updates.md` therefore folds guidance
+    notes 16 to 24 into the summary table, now "Guidance 1 to 24", as notes
+    1 to 15 already were. All nine machine-read
+    `simple-changelogs-guidance-update` marker comments stay, so
+    `parseGuidanceUpdateChanges` reports the same changes for a repository
+    recorded below those versions; only the prose is shorter. Sections 25
+    and 26, which tests pin, are unchanged. The full distribution is at
+    229,290 bytes, 86 under the budget.
+  - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
+    in-sync files where it expected 74, 77, and 76.
+- Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
+  should-fix defects. Round 2 found three round 1 items not fully fixed,
+  one of them still blocking, and 4 new should-fix defects. Round 3, over
+  the full range, found 6 should-fix defects, three of them in Git
+  discovery for the third round running, so discovery was removed as
+  described above instead of patched again. Round 4 found 5 should-fix
+  defects: two gaps in the CMS history guard (spelling and scope), closed
+  by the one predicate above, the setup shortcut choosing for the owner,
+  nested sidecars in the scan, and the lossy rewrite. Round 5 found 4
+  should-fix defects: a history named with an uppercase extension, two
+  sentences that overstated who gets the mode, group headings the history
+  reader could not parse, and a refusal message that guessed at who added
+  a member. Round 6 found 3 should-fix defects and 1 nit. A fresh
+  claude-opus-5-5 at high effort decided them under the owner's rubric:
+  fix the marker case with the rule above instead of the named patch, fix
+  the suggestion wording and the stale developer sentence, and file the
+  nit (the mode's trigger lines do not repeat that the current request
+  comes first) as soundsystems/simple-changelogs#1. Round 7 confirmed
+  those and found 3 should-fix defects outside the code: the version
+  number above, an activation example that only the full distribution's
+  helper accepts, and a one-line result rule that did not keep a
+  distribution's required checklist. Round 8 confirmed those and found two
+  sentences in the README's activation example to narrow. The public
+  entry is one flat **Bug Fixes & Improvements** group, the patch format.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T23:02:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

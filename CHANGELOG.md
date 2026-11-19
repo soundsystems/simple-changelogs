@@ -2,6 +2,61 @@
 
 ## Unreleased
 
+## 0.26.2 - 2026-11-18
+
+- **Bug Fixes & Improvements**:
+  - New: every distribution has an Ultra-Simple Mode for people who want
+    the result and not the tooling. The agent uses your words instead of tool
+    terms ("what's new" for changelog and release notes, "a fix, something
+    new, a big change" for patch, minor, major), sums up a finished task in
+    one line beside any checklist your distribution requires, and asks only
+    when your answer changes what happens. Say "details" for the exact
+    files, versions, and commands.
+  - Turn it on by asking your agent, or with the `scripts/setup.ts` bundled
+    with the skill your project uses: `apply --communication ultra-simple
+    --scope repository --confirm --repo .`. Then commit the new
+    `.simple-changelogs-communication.json` to make it the project's
+    default. `--scope all-projects` saves it privately for you in every
+    project, and `--communication standard` turns it off. Your own setting
+    outranks the project's, so you can choose the mode for a team and keep
+    full detail yourself.
+  - One answer covers both skills. A project that turned the mode on in
+    Simple Changes 0.33.1 or later (`.simple-changes-communication.json`)
+    gets it here with no file of its own.
+  - The mode never changes what is written, who decides versions, or what
+    may be published. The command writes only that one file and refuses any
+    option that asks for another settings or history change. A first save
+    never replaces a setting saved at the same moment. A change to an
+    existing file checks for edits immediately before replacing it, and is
+    refused when the file holds settings this version cannot safely
+    rewrite. Nothing is written over a CMS history that has that filename,
+    or beside a setup that stopped part-way, which it asks you to finish
+    first. A version choice your policy sets to ask, showing notes
+    somewhere new, changing text customers have seen, and publishing
+    without existing permission are still asked, in plain words.
+  - Every distribution now carries `references/communication.md`, which
+    sets how the skill talks in every mode. Agents send a message only when
+    it would change what you do, skip the request restated and the steps
+    that worked, and never paste raw JSON or a helper's error as the
+    explanation. What a hand-off must report, such as the checks run, is
+    never dropped.
+  - Agents ask less: nothing your request, policy, or repository already
+    answers, no "should I continue?", and nothing twice while nothing has
+    changed. A guided setup still asks one question at a time.
+  - One open decision no longer holds up the rest. While a version choice
+    your policy sets to ask waits for you, the agent still classifies the
+    change, drafts the wording, and runs read-only checks. No release file
+    or version changes until you answer, and a read-only or classify
+    request writes nothing at all.
+  - Messages from one agent to another are written as briefs: the goal,
+    the exact scope, what is decided, what not to do, and what to return.
+  - `scripts/setup.ts inspect` now reports `communication`: the style in
+    effect, where it came from, and the file that set it.
+  - All six distributions stay on guidance 26, so no repository is asked
+    anything by this update. This release is 0.26.2, and its tag is
+    `v0.26.2`.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T23:02:00-06:00" -->
+
 ## 0.26.1 - 2026-10-12
 
 - **Bug Fixes & Improvements**:

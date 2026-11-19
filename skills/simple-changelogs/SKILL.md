@@ -71,6 +71,10 @@ inspection helper and inspect `.simple-changelogs.json` at the repository root.
 Repository instructions take precedence when they establish a stricter scope,
 audience, release process, or source of truth.
 
+Talk to people and other agents as `references/communication.md` says. When
+inspection reports `communication.style` as `ultra-simple`, also follow its
+Ultra-Simple Mode section.
+
 ## Reference Router
 
 Read only the references needed for the current branch of work:
@@ -80,6 +84,7 @@ Read only the references needed for the current branch of work:
 | First use, policy state, setup prompts, or raw-markdown signatures | `references/setup.md` |
 | Guidance-version changes and their user-readable effects | `references/guidance-updates.md` |
 | Guided first-use onboarding conversation | `references/onboarding.md` |
+| Talking to people and other agents; Ultra-Simple Mode | `references/communication.md` |
 | Reading histories, merges missing an entry, structure and store-note lint | `references/querying.md` |
 | Customer/developer classification, expert public detail, wording, grouping, or hot fixes | `references/entry-classification.md` |
 | Missing files, history reconstruction, or approved historical audits | `references/backfill.md` |
