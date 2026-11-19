@@ -472,7 +472,7 @@ describe("apply --communication", () => {
     const refused = await writeAttempt(target);
     expect(refused.status).toBe("blocked");
     expect(refused.errors.join("\n")).toContain(
-      "holds settings this copy does not know (lastId), saved by a newer copy of the skill; nothing was changed"
+      "holds settings this version cannot safely rewrite (lastId); nothing was changed"
     );
     expect(refused.writes).toEqual([]);
     expect(await readFile(target.paths.repository, "utf8")).toBe(extended);
@@ -555,8 +555,11 @@ describe("apply --communication", () => {
       [".simple-changelogs-communication.json", false],
       [".Simple-Changelogs-Communication.json", true],
       [".Simple-Changelogs-Communication.json", false],
+      // A hand-written policy: the extension's case fails validation, and
+      // the name is still the history's.
+      [".simple-changelogs-communication.JSON", false],
     ] as const) {
-      // biome-ignore lint/performance/noAwaitInLoops: four independent fixtures, checked one at a time for a clear failure.
+      // biome-ignore lint/performance/noAwaitInLoops: five independent fixtures, checked one at a time for a clear failure.
       const target = await fixture();
       await writeFile(
         join(target.repo, ".simple-changelogs-cms.json"),

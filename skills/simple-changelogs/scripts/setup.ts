@@ -2158,7 +2158,8 @@ export const resolveCommunicationPaths = (
  * setup from before the communication sidecars existed could have given the
  * history one of their names; that file is history, never a setting. The
  * policy is read leniently, so one that fails validation still protects the
- * file it names, and only when it is a regular file.
+ * file it names: any plain filename counts, whatever its extension. Only a
+ * regular file is read.
  */
 const cmsHistoryPath = async (root: string): Promise<string | null> => {
   const policyPath = join(root, CMS_POLICY_FILENAME);
@@ -2167,8 +2168,12 @@ const cmsHistoryPath = async (root: string): Promise<string | null> => {
       return null;
     }
     const stored = JSON.parse(await readFile(policyPath, "utf8")) as unknown;
-    return isRecord(stored) && validRepositoryJsonName(stored.changelogPath)
-      ? join(root, stored.changelogPath)
+    const name = isRecord(stored) ? stored.changelogPath : null;
+    return typeof name === "string" &&
+      name !== "" &&
+      basename(name) === name &&
+      !name.includes("\\")
+      ? join(root, name)
       : null;
   } catch {
     return null;
@@ -5953,11 +5958,11 @@ const installNewCommunication = async (
 // recover, or roll back another write, whatever state that write is in.
 // One snapshot of the existing file decides everything: it is refused when
 // it cannot be used and left alone when it already holds the style. A file
-// with members this copy does not know was saved by a newer copy, and
-// rewriting it could lose or alter them, so it is refused too. Any other
-// file is replaced only if its bytes are still that snapshot's just before
-// the rename; where none exists the new one is installed without replacing,
-// so of two first saves one wins and the other is told.
+// with members this version does not know is refused too, since rewriting
+// it could lose or alter them. Any other file is replaced after its bytes
+// are compared with that snapshot's, immediately before the rename; where
+// none exists the new one is installed without replacing, so of two first
+// saves one wins and the other is told.
 const writeCommunicationFile = async (
   path: string,
   style: CommunicationStyle,
@@ -5974,7 +5979,7 @@ const writeCommunicationFile = async (
   }
   if (current.unknownMembers.length > 0) {
     throw new Error(
-      `${path} holds settings this copy does not know (${current.unknownMembers.join(", ")}), saved by a newer copy of the skill; nothing was changed. Change the style with that copy, or edit "style" by hand.`
+      `${path} holds settings this version cannot safely rewrite (${current.unknownMembers.join(", ")}); nothing was changed. Edit "style" by hand, or change it with a version that knows them.`
     );
   }
   const staged = await stageFile({
@@ -6379,6 +6384,27 @@ const booleanOptionNames = new Set([
 
 const NON_NEGATIVE_INTEGER = /^(?:0|[1-9]\d{0,8})$/u;
 
+// `--shared-version-lines`: a JSON array. Anything else, `false` included,
+// would read as "not supplied" to a command that refuses options it does
+// not use.
+const sharedVersionLinesOption = (
+  lines: string | undefined
+): SharedVersionLine[] | undefined => {
+  if (lines === undefined) {
+    return;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(lines);
+  } catch (error) {
+    throw new Error("--shared-version-lines must be JSON", { cause: error });
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("--shared-version-lines must be a JSON array");
+  }
+  return parsed as SharedVersionLine[];
+};
+
 export const parseCli = (argv: string[]): ParsedCli => {
   const [command] = argv;
   if (command !== "inspect" && command !== "apply") {
@@ -6428,13 +6454,9 @@ export const parseCli = (argv: string[]): ParsedCli => {
     }
     return value;
   };
-  const lines = values.get("--shared-version-lines");
-  let sharedVersionLines: SharedVersionLine[] | undefined;
-  try {
-    sharedVersionLines = lines === undefined ? undefined : JSON.parse(lines);
-  } catch (error) {
-    throw new Error("--shared-version-lines must be JSON", { cause: error });
-  }
+  const sharedVersionLines = sharedVersionLinesOption(
+    values.get("--shared-version-lines")
+  );
   // `none`, one template, or a JSON object of per-train templates.
   let releaseTags: ReleaseTagsSetting | undefined =
     values.get("--release-tags");

@@ -4,7 +4,7 @@
 
 ## 0.27.0 - 2026-11-18
 
-- **Ultra-Simple Mode**
+- **Ultra-Simple Mode**:
   - Every distribution has a new Ultra-Simple Mode for people who want the
     result and not the tooling. The agent uses your words instead of tool
     terms ("what's new" for changelog and release notes, "a fix, something
@@ -14,25 +14,25 @@
   - Turn it on by asking your agent, or with the skill's bundled helper,
     `bun skills/simple-changelogs/scripts/setup.ts apply --communication
     ultra-simple --scope repository --confirm --repo .`, then commit the new
-    `.simple-changelogs-communication.json` so everyone in the project gets
-    it. `--scope all-projects` saves it privately for you in every project,
-    and `--communication standard` turns it off. Your own setting outranks
-    the project's, so you can choose the mode for a team and keep full
-    detail yourself.
+    `.simple-changelogs-communication.json` to make it the project's
+    default. `--scope all-projects` saves it privately for you in every
+    project, and `--communication standard` turns it off. Your own setting
+    outranks the project's, so you can choose the mode for a team and keep
+    full detail yourself.
   - One answer covers both skills. A project that turned the mode on in
     Simple Changes 0.34.0 or later (`.simple-changes-communication.json`)
     gets it here with no file of its own.
   - The mode never changes what is written, who decides versions, or what
     may be published. The command writes only that one file and refuses any
     option that asks for another settings or history change. A first save
-    never replaces a setting saved at the same moment, a change is refused
-    when the file changed since it was read or holds settings a newer copy
-    added, and nothing is written over a CMS history that has that
-    filename. A version choice
-    your policy sets to ask, showing notes somewhere new, changing text
-    customers have seen, and publishing without existing permission are
-    still asked, in plain words.
-- **Shorter messages, fewer questions**
+    never replaces a setting saved at the same moment. A change to an
+    existing file checks for edits immediately before replacing it, and is
+    refused when the file holds settings this version cannot safely
+    rewrite. Nothing is written over a CMS history that has that filename.
+    A version choice your policy sets to ask, showing notes somewhere new,
+    changing text customers have seen, and publishing without existing
+    permission are still asked, in plain words.
+- **Shorter messages, fewer questions**:
   - Every distribution now carries `references/communication.md`, which
     sets how the skill talks in every mode. Agents send a message only when
     it would change what you do, skip the request restated and the steps
@@ -49,13 +49,13 @@
     request writes nothing at all.
   - Messages from one agent to another are written as briefs: the goal,
     the exact scope, what is decided, what not to do, and what to return.
-- **Versions and guidance**
+- **Versions and guidance**:
   - `scripts/setup.ts inspect` now reports `communication`: the style in
     effect, where it came from, and the file that set it.
   - All six distributions stay on guidance 26, so no repository is asked
     anything by this update. This release is 0.27.0, and its tag is
     `v0.27.0`.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:49:00-06:00" -->
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:04:00-06:00" -->
 
 ## 0.26.1 - 2026-10-12
 

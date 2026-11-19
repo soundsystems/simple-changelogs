@@ -92,8 +92,9 @@ describe("communication reference", () => {
       // The setting: one file, one transaction, and one place for a project.
       "writes one file, `.simple-changelogs-communication.json` beside the policy, refuses an option that asks for another settings or history change, and never replaces a file it cannot read or recovers an interrupted setup",
       "the project's Simple Changes setting (`.simple-changes-communication.json`) when this skill has none",
-      "Project files are read at the `--repo` root like the policy, so a checkout whose branch lacks the committed file uses the standard voice",
-      "The personal setting outranks the project's because the mode grants nothing",
+      "Commit it and it is the project's default",
+      "Project files are read at the `--repo` root like the policy, so a checkout whose branch lacks a committed file falls through to the next setting",
+      "The personal one outranks the project's: the mode grants nothing",
     ]) {
       expect(canonical).toContain(rule);
     }

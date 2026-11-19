@@ -48,7 +48,7 @@
     it everywhere, comparing names without case because two spellings are
     one file on most macOS and Windows checkouts. `cmsHistoryPath` reads
     the stored CMS policy leniently, so a policy that fails validation
-    still protects the file it names. `inspectCommunication` drops any
+    still protects the plain filename it names, whatever its extension. `inspectCommunication` drops any
     layer that is that history, a save for either scope refuses it and
     leaves the history as it is, and a new CMS setup refuses both skills'
     sidecar names (`isCommunicationSidecarName`).
@@ -69,10 +69,12 @@
     recover, and so roll back, an interrupted ordinary setup. No other
     setup write touches this file, so `writeCommunicationFile` only stages
     and installs it. One `snapshotCommunication` read is validated, and an
-    unchanged style writes nothing. A file with members this copy does not
-    know was saved by a newer copy and is refused: parsing and writing it
-    back can alter a value, as it does an integer above 2^53. Any other
-    file is replaced only if its bytes are still that snapshot's. Where no
+    unchanged style writes nothing. A file with members this version does
+    not know is refused: parsing and writing it back can alter a value, as
+    it does an integer above 2^53. Any other file is compared with that
+    snapshot's bytes immediately before the rename; the comparison and the
+    rename are two steps, so an edit that lands between them can still be
+    replaced. Where no
     file exists, `installNewCommunication` hard-links the staged file into
     place, which fails with `EEXIST` when another save got there first,
     where a rename would have replaced it unseen; the link is the commit,
@@ -112,7 +114,7 @@
     `parseGuidanceUpdateChanges` reports the same changes for a repository
     recorded below those versions; only the prose is shorter. Sections 25
     and 26, which tests pin, are unchanged. The full distribution is at
-    229,264 bytes, 112 under the budget.
+    229,251 bytes, 125 under the budget.
   - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
     in-sync files where it expected 74, 77, and 76.
 - Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
@@ -123,8 +125,12 @@
   described above instead of patched again. Round 4 found 5 should-fix
   defects: two gaps in the CMS history guard (spelling and scope), closed
   by the one predicate above, the setup shortcut choosing for the owner,
-  nested sidecars in the scan, and the lossy rewrite.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:49:00-06:00" -->
+  nested sidecars in the scan, and the lossy rewrite. Round 5 found 4
+  should-fix defects: a history named with an uppercase extension, two
+  sentences that overstated who gets the mode, group headings the history
+  reader could not parse, and a refusal message that guessed at who added
+  a member.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:04:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

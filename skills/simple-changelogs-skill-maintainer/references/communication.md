@@ -88,13 +88,13 @@ ultra-simple --scope repository --confirm --repo .` to save the mode. It
 writes one file, `.simple-changelogs-communication.json` beside the policy,
 refuses an option that asks for another settings or history change, and never
 replaces a file it cannot read or recovers an interrupted setup. Commit it
-and everyone in the project gets the mode. `--scope all-projects` saves a
-private `communication.json` for you; `--communication standard` turns it off.
+and it is the project's default. `--scope all-projects` saves a private
+`communication.json` for you; `--communication standard` turns it off.
 
 Highest first: what the person says now, their personal setting, the
 project's, the project's Simple Changes setting
 (`.simple-changes-communication.json`) when this skill has none, then
 standard. Project files are read at the `--repo` root like the policy, so a
-checkout whose branch lacks the committed file uses the standard voice. The
-personal setting outranks the project's because the mode grants nothing.
+checkout whose branch lacks a committed file falls through to the next
+setting. The personal one outranks the project's: the mode grants nothing.
 `inspect` reports the style, its source, and every unusable file.
