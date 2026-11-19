@@ -55,13 +55,13 @@ by where people read it. Never say distribution, guidance version, policy,
 receipt, digest, or handoff. When the person says "details", answer that one
 question with exact files, versions, and commands; the mode stays on.
 
-**Questions.** When a write task needs setup and the owner has chosen no
-setup path, take the one-answer recommended setup in
-`references/onboarding.md` and show its receipt in these words; only on that
-path do signatures, grouping, release names, and storage take the
-recommended default. A read-only request never starts setup, and a setup
-path the owner names is followed as written. A required stop is never
-skipped because the mode is on. Still ask, in plain words:
+**Questions.** When a write task needs setup, ask the first-screen choice of
+`references/onboarding.md` in plain words, recommended first. When the owner
+picks the recommended setup, take its one-answer path and show its receipt
+in these words; only on that path do signatures, grouping, release names,
+and storage take the recommended default. A read-only request never starts
+setup, and a setup path the owner names is followed as written. A required
+stop is never skipped because the mode is on. Still ask, in plain words:
 
 - every question an update notice lists;
 - a version choice set to ask, with a suggestion only when suggestions are

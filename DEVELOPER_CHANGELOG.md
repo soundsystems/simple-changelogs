@@ -15,10 +15,9 @@
     test holds every copy to that.
   - It must be true in all six distributions, the CMS-only one included, so
     it names no distribution, refers to the bundled helper as "this
-    distribution's bundled `scripts/setup.ts`", says "the histories this
-    distribution keeps" and "the statuses `references/release-handoff.md`
-    defines for this distribution", and names no status the CMS-only
-    distribution forbids.
+    distribution's bundled `scripts/setup.ts`", says "the statuses
+    `references/release-handoff.md` defines for this distribution", and
+    names no status the CMS-only distribution forbids.
   - New `communication-reference.check.ts` pins the rules in the canonical
     file and the paragraph and router row in every `SKILL.md`.
 - Communication sidecar (`tooling/simple-changelogs/scripts/setup.ts`):
@@ -28,10 +27,11 @@
     authoring sidecar it is never a policy key, whose validators reject
     unknown keys. `validateCommunication` reads only those two members and
     ignores any other, so a later release can add one.
-  - Both project files, this skill's and Simple Changes'
-    `.simple-changes-communication.json`, are read and written at the
-    `--repo` root, beside the policy and the authoring sidecar and found
-    the same way. No Git is asked. Rounds 1 to 3 of review each found a
+  - Both project files are found at the `--repo` root, beside the policy
+    and the authoring sidecar and the same way: this skill's, which the
+    helper reads and writes, and Simple Changes'
+    `.simple-changes-communication.json`, which it only reads. No Git is
+    asked. Rounds 1 to 3 of review each found a
     defect in locating Simple Changes' primary checkout from here (a
     hook's Git environment, then a missing or prunable worktree, a path
     with a line break, and a failed or timed-out Git call read as "not a
@@ -41,15 +41,17 @@
     standard voice here. The style grants nothing, so that difference
     changes wording only.
   - A project save needs `--repo` to be an existing directory
-    (`projectSettingProblem`), since staging would otherwise create a
+    (`communicationSaveProblem`), since staging would otherwise create a
     mistyped one.
-  - A CMS history can have the sidecar's name: CMS setup accepted any
-    repository-root JSON filename. `cmsHistoryPath` reads the stored CMS
-    policy leniently, so a policy that fails validation still protects the
-    file it names. `inspectCommunication` drops a layer whose path is that
-    history, the project save refuses it and leaves the history as it is,
-    and a new CMS setup refuses both skills' sidecar names
-    (`COMMUNICATION_SIDECARS`).
+  - A CMS history can have a sidecar's name: CMS setup accepted any
+    repository-root JSON filename. One predicate, `isCmsHistory`, decides
+    it everywhere, comparing names without case because two spellings are
+    one file on most macOS and Windows checkouts. `cmsHistoryPath` reads
+    the stored CMS policy leniently, so a policy that fails validation
+    still protects the file it names. `inspectCommunication` drops any
+    layer that is that history, a save for either scope refuses it and
+    leaves the history as it is, and a new CMS setup refuses both skills'
+    sidecar names (`isCommunicationSidecarName`).
   - `inspect` reports `communication` (`style`, `source`, `path`,
     `errors`). `inspectCommunication` takes one snapshot of each layer,
     uses the first usable one of personal, repository, then `companion`,
@@ -67,15 +69,18 @@
     recover, and so roll back, an interrupted ordinary setup. No other
     setup write touches this file, so `writeCommunicationFile` only stages
     and installs it. One `snapshotCommunication` read is validated, and an
-    unchanged style writes nothing. A file that exists is replaced only if
-    its bytes are still that snapshot's, and keeps every member the
-    snapshot read, so a later release's additions survive a style change.
-    Where no file exists, `installNewCommunication` hard-links the staged
-    file into place, which fails with `EEXIST` when another save got there
-    first, where a rename would have replaced it unseen. A file it cannot
-    read is never replaced.
-  - `walkTextFiles` skips both skills' sidecars at the repository root
-    before counting toward its 400-file cap, and `NON_DESTINATION_FILES`
+    unchanged style writes nothing. A file with members this copy does not
+    know was saved by a newer copy and is refused: parsing and writing it
+    back can alter a value, as it does an integer above 2^53. Any other
+    file is replaced only if its bytes are still that snapshot's. Where no
+    file exists, `installNewCommunication` hard-links the staged file into
+    place, which fails with `EEXIST` when another save got there first,
+    where a rename would have replaced it unseen; the link is the commit,
+    so a failed clean-up of the staged name is not reported as a failed
+    save. A file it cannot read is never replaced.
+  - `walkTextFiles` skips both skills' sidecars at every depth, since a
+    save with `--repo apps/web` puts one below a monorepo root, before
+    counting toward its 400-file cap, and `NON_DESTINATION_FILES`
     gains this skill's, so the destination scan neither lists nor counts
     them. Copies before 0.27.0 do list
     `.simple-changelogs-communication.json` as a candidate, as copies
@@ -84,13 +89,15 @@
   - `setup-result.schema.json` requires `communication` and adds the
     `communication` write kind. New `setup-communication.check.ts` covers
     resolution across the layers, unusable files, two checkouts of which
-    one holds the files, a CMS history under the sidecar's name (read and
-    write), the capped scan with exactly 400 files, the apply transaction
-    (the sidecar is the only path created and inspection is otherwise
-    identical), kept members, a sidecar edited between the read and the
-    rename, a second first save landing before the install, a `--repo`
-    that is missing or a file, four setup-marker states left untouched,
-    refusals, a read-only task, and the command line.
+    one holds the files, a CMS history under a sidecar's name in either
+    spelling and for either scope (read and write, present and absent),
+    the capped scan with exactly 400 files and nested sidecars, the apply
+    transaction (the sidecar is the only path created and inspection is
+    otherwise identical), a file a newer copy extended, a sidecar edited
+    between the read and the rename, a second first save landing before
+    the install, a `--repo` that is missing or a file, four setup-marker
+    states left untouched, refusals, a read-only task, and the command
+    line.
 - Guidance and budgets:
   - Guidance stays 26 in all six distributions. A bump would stop the next
     write-capable task in every configured repository with an update
@@ -105,7 +112,7 @@
     `parseGuidanceUpdateChanges` reports the same changes for a repository
     recorded below those versions; only the prose is shorter. Sections 25
     and 26, which tests pin, are unchanged. The full distribution is at
-    229,209 bytes, 167 under the budget.
+    229,264 bytes, 112 under the budget.
   - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
     in-sync files where it expected 74, 77, and 76.
 - Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
@@ -113,8 +120,11 @@
   one of them still blocking, and 4 new should-fix defects. Round 3, over
   the full range, found 6 should-fix defects, three of them in Git
   discovery for the third round running, so discovery was removed as
-  described above instead of patched again.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:27:00-06:00" -->
+  described above instead of patched again. Round 4 found 5 should-fix
+  defects: two gaps in the CMS history guard (spelling and scope), closed
+  by the one predicate above, the setup shortcut choosing for the owner,
+  nested sidecars in the scan, and the lossy rewrite.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:49:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

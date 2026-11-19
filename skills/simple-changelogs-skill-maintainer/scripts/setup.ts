@@ -129,13 +129,17 @@ const NON_DESTINATION_FILES = new Set([
   AUTHORING_FILENAME,
   COMMUNICATION_FILENAME,
 ]);
-// Both skills' communication sidecars at the repository root are settings,
-// never product text: the capped walk skips them before counting, so adding
-// one cannot push a real file past the cap.
+// Both skills' communication sidecars are settings, never product text,
+// wherever `--repo` put them: the capped walk skips them at every depth
+// before counting, so adding one cannot push a real file past the cap or
+// read as a release-note destination from a monorepo root.
 const COMMUNICATION_SIDECARS = new Set([
   COMMUNICATION_FILENAME,
   CHANGES_COMMUNICATION_FILENAME,
 ]);
+// Compared without case, as most checkouts on macOS and Windows store names.
+const isCommunicationSidecarName = (name: string): boolean =>
+  COMMUNICATION_SIDECARS.has(name.toLowerCase());
 const RELEASE_HEADING =
   /^##\s+(?!\[?unreleased(?:\]|$)|pending(?:\s|$))(?=\S).+$/gimu;
 const RELEASE_DESTINATION_PATH = /(?:what.?s.?new|release.?notes?|changelog)/u;
@@ -2152,15 +2156,17 @@ export const resolveCommunicationPaths = (
 /**
  * The file a stored CMS policy names as the project's history, or null. A
  * setup from before the communication sidecars existed could have given the
- * history one of their names; that file is history, never a setting. It is
- * read leniently, so a policy that fails validation still protects the file
- * it names.
+ * history one of their names; that file is history, never a setting. The
+ * policy is read leniently, so one that fails validation still protects the
+ * file it names, and only when it is a regular file.
  */
 const cmsHistoryPath = async (root: string): Promise<string | null> => {
+  const policyPath = join(root, CMS_POLICY_FILENAME);
   try {
-    const stored = JSON.parse(
-      await readFile(join(root, CMS_POLICY_FILENAME), "utf8")
-    ) as unknown;
+    if (!(await lstat(policyPath)).isFile()) {
+      return null;
+    }
+    const stored = JSON.parse(await readFile(policyPath, "utf8")) as unknown;
     return isRecord(stored) && validRepositoryJsonName(stored.changelogPath)
       ? join(root, stored.changelogPath)
       : null;
@@ -2169,15 +2175,22 @@ const cmsHistoryPath = async (root: string): Promise<string | null> => {
   }
 };
 
+// Whether `path` is that history. Names are compared without case, because
+// on most macOS and Windows checkouts two spellings are one file.
+const isCmsHistory = (history: string | null, path: string): boolean =>
+  history !== null &&
+  dirname(history) === dirname(path) &&
+  basename(history).toLowerCase() === basename(path).toLowerCase();
+
 // One read of a sidecar: its exact bytes and what they hold. Validation and
 // every later comparison use these same bytes, so a file that changes
 // between two reads can never be judged by one and replaced by the other.
 interface CommunicationSnapshot {
   bytes: Buffer | null;
   errors: string[];
-  // Every member of a usable file, those a later release added included.
-  members: Record<string, unknown> | null;
   style: CommunicationStyle | null;
+  // Members of a usable file that this copy does not know, by name.
+  unknownMembers: string[];
 }
 
 const snapshotCommunication = async (
@@ -2187,15 +2200,15 @@ const snapshotCommunication = async (
   const unusable = (error: string): CommunicationSnapshot => ({
     bytes: null,
     errors: [error],
-    members: null,
     style: null,
+    unknownMembers: [],
   });
   let metadata: Awaited<ReturnType<typeof lstat>>;
   try {
     metadata = await lstat(path);
   } catch (error) {
     return errorCode(error) === "ENOENT"
-      ? { bytes: null, errors: [], members: null, style: null }
+      ? { bytes: null, errors: [], style: null, unknownMembers: [] }
       : unusable(`Could not inspect ${path}: ${stringifyError(error)}`);
   }
   if (metadata.isSymbolicLink()) {
@@ -2209,8 +2222,15 @@ const snapshotCommunication = async (
     const parsed = JSON.parse(bytes.toString("utf8")) as unknown;
     const result = validateCommunication(parsed, label);
     return result.value && isRecord(parsed)
-      ? { bytes, errors: [], members: parsed, style: result.value.style }
-      : { bytes, errors: result.errors, members: null, style: null };
+      ? {
+          bytes,
+          errors: [],
+          style: result.value.style,
+          unknownMembers: Object.keys(parsed).filter(
+            (name) => name !== "schemaVersion" && name !== "style"
+          ),
+        }
+      : { bytes, errors: result.errors, style: null, unknownMembers: [] };
   } catch (error) {
     return unusable(`Could not parse ${path}: ${stringifyError(error)}`);
   }
@@ -2236,7 +2256,7 @@ const inspectCommunication = async (
       ["repository", paths.repository],
       ["companion", paths.companion],
     ] as const
-  ).filter(([, path]) => path !== history);
+  ).filter(([, path]) => !isCmsHistory(history, path));
   const snapshots = await Promise.all(
     layers.map(([source, path]) =>
       snapshotCommunication(path, `${source} communication sidecar`)
@@ -2390,7 +2410,7 @@ const walkTextFiles = async (
         }
         const textFile =
           entry.isFile() &&
-          !(directory === root && COMMUNICATION_SIDECARS.has(entry.name)) &&
+          !isCommunicationSidecarName(entry.name) &&
           !isGitIgnored(path, false) &&
           (TEXT_EXTENSIONS.has(extname(entry.name).toLowerCase()) ||
             entry.name === "SKILL.md");
@@ -5364,7 +5384,7 @@ const selectionErrors = (
       "CMS changelog must be one repository-root JSON filename without path traversal."
     );
   }
-  if (needsCms && COMMUNICATION_SIDECARS.has(options.cmsChangelog ?? "")) {
+  if (needsCms && isCommunicationSidecarName(options.cmsChangelog ?? "")) {
     errors.push(
       `CMS changelog cannot be named ${options.cmsChangelog}: that filename holds a communication setting.`
     );
@@ -5923,7 +5943,9 @@ const installNewCommunication = async (
       `A communication setting was saved at ${path} while this one was being written; nothing was replaced. Run the command again to see it.`
     );
   }
-  await rm(stagedPath, { force: true });
+  // The link is the commit: the setting is saved whatever happens to the
+  // staged name, so a failed clean-up is never reported as a failed save.
+  await rm(stagedPath, { force: true }).catch(() => undefined);
 };
 
 // Stage and install one file. No other setup write touches a communication
@@ -5931,10 +5953,11 @@ const installNewCommunication = async (
 // recover, or roll back another write, whatever state that write is in.
 // One snapshot of the existing file decides everything: it is refused when
 // it cannot be used and left alone when it already holds the style. A file
-// that exists is replaced, keeping every member it has, only if its bytes
-// are still that snapshot's just before the rename; where none exists the
-// new one is installed without replacing, so of two first saves one wins
-// and the other is told.
+// with members this copy does not know was saved by a newer copy, and
+// rewriting it could lose or alter them, so it is refused too. Any other
+// file is replaced only if its bytes are still that snapshot's just before
+// the rename; where none exists the new one is installed without replacing,
+// so of two first saves one wins and the other is told.
 const writeCommunicationFile = async (
   path: string,
   style: CommunicationStyle,
@@ -5949,8 +5972,13 @@ const writeCommunicationFile = async (
   if (current.style === style) {
     return { kind: "communication", path, written: false };
   }
+  if (current.unknownMembers.length > 0) {
+    throw new Error(
+      `${path} holds settings this copy does not know (${current.unknownMembers.join(", ")}), saved by a newer copy of the skill; nothing was changed. Change the style with that copy, or edit "style" by hand.`
+    );
+  }
   const staged = await stageFile({
-    content: json({ ...(current.members ?? { schemaVersion: 1 }), style }),
+    content: json({ schemaVersion: 1, style }),
     kind: "communication",
     mode,
     path,
@@ -5976,20 +6004,24 @@ const writeCommunicationFile = async (
 };
 
 /**
- * Why a project's setting cannot be saved at `path`, or null. The `--repo`
- * root must already be a directory, since staging would otherwise create a
- * mistyped one, and the path must not be the history a CMS policy names.
+ * Why a setting cannot be saved at `path`, or null. For a project the
+ * `--repo` root must already be a directory, since staging would otherwise
+ * create a mistyped one. For either scope the path must not be the history
+ * a CMS policy at that root names.
  */
-const projectSettingProblem = async (
+const communicationSaveProblem = async (
+  scope: "all-projects" | "repository",
   root: string,
   path: string
 ): Promise<string | null> => {
-  const metadata = await stat(root).catch(() => null);
-  if (!metadata?.isDirectory()) {
-    return `${root} is not an existing directory, so no project setting was saved. Check --repo, or use --scope all-projects.`;
+  if (scope === "repository") {
+    const metadata = await stat(root).catch(() => null);
+    if (!metadata?.isDirectory()) {
+      return `${root} is not an existing directory, so no project setting was saved. Check --repo, or use --scope all-projects.`;
+    }
   }
-  if ((await cmsHistoryPath(root)) === path) {
-    return `${path} is this project's CMS history, as ${CMS_POLICY_FILENAME} names it, so no communication setting can be saved there and the history was left as it is. Use --scope all-projects, or give the history another filename first.`;
+  if (isCmsHistory(await cmsHistoryPath(root), path)) {
+    return `${path} is this project's CMS history, as ${CMS_POLICY_FILENAME} names it, so no communication setting can be saved there and the history was left as it is. Use --scope ${scope === "repository" ? "all-projects" : "repository"}, or give the history another filename first.`;
   }
   return null;
 };
@@ -6059,15 +6091,18 @@ const applyCommunication = async (
       inspect.repository,
       options.configDirectory
     );
-    const problem =
-      scope === "repository"
-        ? await projectSettingProblem(inspect.repository, paths.repository)
-        : null;
+    const destination =
+      scope === "repository" ? paths.repository : paths.personal;
+    const problem = await communicationSaveProblem(
+      scope,
+      inspect.repository,
+      destination
+    );
     if (problem) {
       throw new Error(problem);
     }
     write = await writeCommunicationFile(
-      scope === "repository" ? paths.repository : paths.personal,
+      destination,
       style,
       scope === "repository" ? 0o644 : 0o600
     );

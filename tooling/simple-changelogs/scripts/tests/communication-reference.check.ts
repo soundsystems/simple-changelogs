@@ -73,7 +73,9 @@ describe("communication reference", () => {
       "Never introduce a tool term; use the person's own",
       "the mode stays on",
       // The setup shortcut applies only where setup is wanted and unchosen.
-      "When a write task needs setup and the owner has chosen no setup path",
+      // Setup is still the owner's choice; the mode only words it plainly.
+      "When a write task needs setup, ask the first-screen choice of `references/onboarding.md` in plain words, recommended first",
+      "When the owner picks the recommended setup, take its one-answer path and show its receipt in these words",
       "only on that path do signatures, grouping, release names, and storage take the recommended default",
       "a setup path the owner names is followed as written",
       "A read-only request never starts setup",

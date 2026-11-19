@@ -236,22 +236,30 @@ describe("communication style resolution", () => {
   });
 
   test("a CMS history that has the sidecar's name is never read as a setting", async () => {
-    const target = await fixture();
     const history = `${JSON.stringify({ entries: [], schemaVersion: 1 })}\n`;
-    await writeFile(
-      join(target.repo, ".simple-changelogs-cms.json"),
-      JSON.stringify({ changelogPath: ".simple-changelogs-communication.json" })
-    );
-    await writeFile(target.paths.repository, history);
-    await writeFile(target.paths.companion, sidecar("ultra-simple"));
-    // The history is no broken setting: nothing is reported, and the next
-    // layer decides.
-    expect((await inspect(target)).communication).toEqual({
-      errors: [],
-      path: target.paths.companion,
-      source: "companion",
-      style: "ultra-simple",
-    });
+    // The exact name, and a spelling that is the same file wherever names
+    // are stored without case.
+    for (const name of [
+      ".simple-changelogs-communication.json",
+      ".Simple-Changelogs-Communication.json",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: two independent fixtures, checked one at a time for a clear failure.
+      const target = await fixture();
+      await writeFile(
+        join(target.repo, ".simple-changelogs-cms.json"),
+        JSON.stringify({ changelogPath: name })
+      );
+      await writeFile(join(target.repo, name), history);
+      await writeFile(target.paths.companion, sidecar("ultra-simple"));
+      // The history is no broken setting: nothing is reported, and the next
+      // layer decides.
+      expect((await inspect(target)).communication).toEqual({
+        errors: [],
+        path: target.paths.companion,
+        source: "companion",
+        style: "ultra-simple",
+      });
+    }
   });
 
   test("the capped file scan never counts a communication sidecar", async () => {
@@ -277,6 +285,16 @@ describe("communication style resolution", () => {
     });
     await writeFile(target.paths.repository, sidecar("ultra-simple"));
     await writeFile(target.paths.companion, sidecar("ultra-simple"));
+    // A setting saved with --repo notes, seen from the root: still a
+    // setting, though its name contains "changelogs".
+    await writeFile(
+      join(target.repo, "notes", ".simple-changelogs-communication.json"),
+      sidecar("ultra-simple")
+    );
+    await writeFile(
+      join(target.repo, "notes", ".simple-changes-communication.json"),
+      sidecar("ultra-simple")
+    );
     const after = await inspect(target);
     expect(after.inventory).toEqual(before.inventory);
     expect(after.unresolvedQuestions).toEqual(before.unresolvedQuestions);
@@ -444,23 +462,34 @@ describe("apply --communication", () => {
     expect(await readFile(elsewhere, "utf8")).toBe(sidecar("standard"));
   });
 
-  test("keeps members a later release added when the style changes", async () => {
+  test("never rewrites a file a newer copy extended", async () => {
     const target = await fixture();
-    await writeFile(
-      target.paths.repository,
-      sidecar("standard", { later: { kept: true } })
+    // A number this runtime cannot hold exactly: parsing and writing it
+    // back would change it, so the file is left to the copy that knows it.
+    const extended =
+      '{ "schemaVersion": 1, "style": "standard", "lastId": 9007199254740993 }\n';
+    await writeFile(target.paths.repository, extended);
+    const refused = await writeAttempt(target);
+    expect(refused.status).toBe("blocked");
+    expect(refused.errors.join("\n")).toContain(
+      "holds settings this copy does not know (lastId), saved by a newer copy of the skill; nothing was changed"
     );
-    const applied = await writeAttempt(target);
-    expect(applied.writes).toEqual([
-      { kind: "communication", path: target.paths.repository, written: true },
-    ]);
-    expect(
-      JSON.parse(await readFile(target.paths.repository, "utf8")) as unknown
-    ).toEqual({
-      later: { kept: true },
-      schemaVersion: 1,
-      style: "ultra-simple",
+    expect(refused.writes).toEqual([]);
+    expect(await readFile(target.paths.repository, "utf8")).toBe(extended);
+    // It is still read, and saving the style it already has changes nothing.
+    expect((await inspect(target)).communication).toMatchObject({
+      source: "repository",
+      style: "standard",
     });
+    const same = await apply(target, {
+      communication: "standard",
+      confirm: true,
+      scope: "repository",
+    });
+    expect(same.writes).toEqual([
+      { kind: "communication", path: target.paths.repository, written: false },
+    ]);
+    expect(await readFile(target.paths.repository, "utf8")).toBe(extended);
   });
 
   test("of two first saves, one wins and the other is told", async () => {
@@ -518,19 +547,23 @@ describe("apply --communication", () => {
 
   test("never saves a setting over the history a CMS policy names", async () => {
     const history = `${JSON.stringify({ entries: [], schemaVersion: 1 })}\n`;
-    // The history exists, or the policy names it before it was created:
-    // either way that filename is the history's.
-    for (const exists of [true, false]) {
-      // biome-ignore lint/performance/noAwaitInLoops: two independent fixtures, checked one at a time for a clear failure.
+    // The history exists, or the policy names it before it was created,
+    // under the exact name or another spelling of it: either way that
+    // filename is the history's.
+    for (const [name, exists] of [
+      [".simple-changelogs-communication.json", true],
+      [".simple-changelogs-communication.json", false],
+      [".Simple-Changelogs-Communication.json", true],
+      [".Simple-Changelogs-Communication.json", false],
+    ] as const) {
+      // biome-ignore lint/performance/noAwaitInLoops: four independent fixtures, checked one at a time for a clear failure.
       const target = await fixture();
       await writeFile(
         join(target.repo, ".simple-changelogs-cms.json"),
-        JSON.stringify({
-          changelogPath: ".simple-changelogs-communication.json",
-        })
+        JSON.stringify({ changelogPath: name })
       );
       if (exists) {
-        await writeFile(target.paths.repository, history);
+        await writeFile(join(target.repo, name), history);
       }
       const refused = await writeAttempt(target);
       expect(refused.status).toBe("blocked");
@@ -540,14 +573,11 @@ describe("apply --communication", () => {
       expect(refused.writes).toEqual([]);
       expect((await readdir(target.repo)).sort()).toEqual(
         exists
-          ? [
-              ".simple-changelogs-cms.json",
-              ".simple-changelogs-communication.json",
-            ]
+          ? [".simple-changelogs-cms.json", name].sort()
           : [".simple-changelogs-cms.json"]
       );
       if (exists) {
-        expect(await readFile(target.paths.repository, "utf8")).toBe(history);
+        expect(await readFile(join(target.repo, name), "utf8")).toBe(history);
       }
       // The person's own setting is still theirs to save.
       const personal = await apply(target, {
@@ -561,11 +591,37 @@ describe("apply --communication", () => {
     }
   });
 
+  test("a personal save never lands on a CMS history either", async () => {
+    // The personal settings are pointed at the project itself, and its CMS
+    // history has the personal file's name.
+    const repo = await temporaryDirectory("repo");
+    const target: Fixture = {
+      config: repo,
+      paths: resolveCommunicationPaths(repo, repo),
+      repo,
+    };
+    await writeFile(
+      join(repo, ".simple-changelogs-cms.json"),
+      JSON.stringify({ changelogPath: "communication.json" })
+    );
+    const refused = await apply(target, {
+      communication: "ultra-simple",
+      confirm: true,
+      scope: "all-projects",
+    });
+    expect(refused.status).toBe("blocked");
+    expect(refused.errors.join("\n")).toContain(
+      `${target.paths.personal} is this project's CMS history`
+    );
+    expect(await readdir(repo)).toEqual([".simple-changelogs-cms.json"]);
+  });
+
   test("a new CMS setup cannot name its history after a communication sidecar", async () => {
     const target = await fixture();
     for (const name of [
       ".simple-changelogs-communication.json",
       ".simple-changes-communication.json",
+      ".Simple-Changelogs-Communication.json",
     ]) {
       // biome-ignore lint/performance/noAwaitInLoops: the cases share one repository, so they run in order.
       const refused = await applySetup({

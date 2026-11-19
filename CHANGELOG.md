@@ -11,8 +11,9 @@
     new, a big change" for patch, minor, major), reports a finished task in
     one line, and asks only when your answer changes what happens. Say
     "details" for the exact files, versions, and commands.
-  - Turn it on with `scripts/setup.ts apply --communication ultra-simple
-    --scope repository --confirm`, then commit the new
+  - Turn it on by asking your agent, or with the skill's bundled helper,
+    `bun skills/simple-changelogs/scripts/setup.ts apply --communication
+    ultra-simple --scope repository --confirm --repo .`, then commit the new
     `.simple-changelogs-communication.json` so everyone in the project gets
     it. `--scope all-projects` saves it privately for you in every project,
     and `--communication standard` turns it off. Your own setting outranks
@@ -23,9 +24,11 @@
     gets it here with no file of its own.
   - The mode never changes what is written, who decides versions, or what
     may be published. The command writes only that one file and refuses any
-    option that asks for another settings or history change. It never
-    replaces a setting someone else saved while it ran, and never writes
-    over a CMS history that already has that filename. A version choice
+    option that asks for another settings or history change. A first save
+    never replaces a setting saved at the same moment, a change is refused
+    when the file changed since it was read or holds settings a newer copy
+    added, and nothing is written over a CMS history that has that
+    filename. A version choice
     your policy sets to ask, showing notes somewhere new, changing text
     customers have seen, and publishing without existing permission are
     still asked, in plain words.
@@ -52,7 +55,7 @@
   - All six distributions stay on guidance 26, so no repository is asked
     anything by this update. This release is 0.27.0, and its tag is
     `v0.27.0`.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:27:00-06:00" -->
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:49:00-06:00" -->
 
 ## 0.26.1 - 2026-10-12
 
