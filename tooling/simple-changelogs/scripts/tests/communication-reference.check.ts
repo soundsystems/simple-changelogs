@@ -46,7 +46,8 @@ describe("communication reference", () => {
       "Never paste raw JSON or a helper's error as the explanation",
       // Saying less never drops what a hand-off must report.
       "Never leave out what this distribution's hand-off step requires, such as the checks run and the evidence it names",
-      "Ask only what is the owner's to decide, recommended answer first",
+      // A saved setting that turns suggestions off still governs.
+      "Ask only what is the owner's to decide, recommended answer first unless a saved setting turns suggestions off",
       "or the same thing twice while nothing has changed",
       // Batching never overrides a guided setup's one question at a time.
       "Ask independent decisions together; a guided setup still asks one question at a time",

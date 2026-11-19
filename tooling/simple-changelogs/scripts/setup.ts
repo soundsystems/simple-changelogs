@@ -5956,6 +5956,8 @@ const installNewCommunication = async (
 // Stage and install one file. No other setup write touches a communication
 // sidecar, so this takes no setup transaction marker: it cannot wait on,
 // recover, or roll back another write, whatever state that write is in.
+// The caller refuses first while a marker exists, so this never runs
+// beside an unfinished setup either.
 // One snapshot of the existing file decides everything: it is refused when
 // it cannot be used and left alone when it already holds the style. A file
 // with members this version does not know is refused too, since rewriting
@@ -6011,8 +6013,9 @@ const writeCommunicationFile = async (
 /**
  * Why a setting cannot be saved at `path`, or null. For a project the
  * `--repo` root must already be a directory, since staging would otherwise
- * create a mistyped one. For either scope the path must not be the history
- * a CMS policy at that root names.
+ * create a mistyped one. For either scope no setup may be unfinished in the
+ * destination's directory, and the path must not be the history a CMS
+ * policy at that root names.
  */
 const communicationSaveProblem = async (
   scope: "all-projects" | "repository",
@@ -6024,6 +6027,19 @@ const communicationSaveProblem = async (
     if (!metadata?.isDirectory()) {
       return `${root} is not an existing directory, so no project setting was saved. Check --repo, or use --scope all-projects.`;
     }
+  }
+  // A marker means another setup is writing beside this file, or stopped
+  // part-way and will be rolled back by the next one. Whatever it names,
+  // nothing is saved next to it: its roll-back restores what it recorded,
+  // which can be "this file did not exist".
+  const pending = await lstat(
+    join(dirname(path), SETUP_TRANSACTION_FILENAME)
+  ).then(
+    () => true,
+    (error: unknown) => errorCode(error) !== "ENOENT"
+  );
+  if (pending) {
+    return `Another setup in ${dirname(path)} is running or stopped part-way (${SETUP_TRANSACTION_FILENAME} is there), so no communication setting was saved beside it. Run that setup again to finish it, then save the setting.`;
   }
   if (isCmsHistory(await cmsHistoryPath(root), path)) {
     return `${path} is this project's CMS history, as ${CMS_POLICY_FILENAME} names it, so no communication setting can be saved there and the history was left as it is. Use --scope ${scope === "repository" ? "all-projects" : "repository"}, or give the history another filename first.`;

@@ -28,7 +28,9 @@
     never replaces a setting saved at the same moment. A change to an
     existing file checks for edits immediately before replacing it, and is
     refused when the file holds settings this version cannot safely
-    rewrite. Nothing is written over a CMS history that has that filename.
+    rewrite. Nothing is written over a CMS history that has that filename,
+    or beside a setup that stopped part-way, which it asks you to finish
+    first.
     A version choice your policy sets to ask, showing notes somewhere new,
     changing text customers have seen, and publishing without existing
     permission are still asked, in plain words.
@@ -55,7 +57,7 @@
   - All six distributions stay on guidance 26, so no repository is asked
     anything by this update. This release is 0.27.0, and its tag is
     `v0.27.0`.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:04:00-06:00" -->
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:17:00-06:00" -->
 
 ## 0.26.1 - 2026-10-12
 

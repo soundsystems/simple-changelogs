@@ -13,23 +13,23 @@ repeated cautions, filler, and closing offers. Never paste raw JSON or a
 helper's error as the explanation. Never leave out what this distribution's
 hand-off step requires, such as the checks run and the evidence it names.
 
-Ask only what is the owner's to decide, recommended answer first. Do not ask
-what the request, saved policy, or repository evidence answers, whether to
-continue, or the same thing twice while nothing has changed. Ask independent
-decisions together; a guided setup still asks one question at a time.
+Ask only what is the owner's to decide, recommended answer first unless a
+saved setting turns suggestions off. Do not ask what the request, saved
+policy, or repository evidence answers, whether to continue, or the same
+thing twice while nothing has changed. Ask independent decisions together; a
+guided setup still asks one question at a time.
 
 ## Keep work moving
 
-A decision one item is waiting on blocks that item and nothing else. Ask as
-soon as the question is known and keep going with what the current task
-already allows. While a version choice set to ask is open, that is
-classifying the change, drafting the wording, and read-only checks: no
-release file or version changes until the owner answers. A read-only task
-or a delegated `classify` writes nothing at all. End a turn on a question
-only when nothing else can proceed, and when the answer arrives, finish
-that item only. A delegated request still returns exactly the statuses
-`references/release-handoff.md` defines for this distribution; waiting on
-the owner never changes them.
+A decision one item is waiting on blocks that item and nothing else. Ask at
+once and keep going with what the current task already allows. While a
+version choice set to ask is open, that is classifying the change, drafting
+the wording, and read-only checks: no release file or version changes until
+the owner answers. A read-only task or a delegated `classify` writes nothing
+at all. End a turn on a question only when nothing else can proceed, and when
+the answer arrives, finish that item only. A delegated request still returns
+exactly the statuses `references/release-handoff.md` defines for this
+distribution; waiting on the owner never changes them.
 
 ## Other agents
 

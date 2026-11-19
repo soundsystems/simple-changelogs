@@ -674,7 +674,7 @@ describe("apply --communication", () => {
     expect(applied.summary).not.toContain("Ultra-Simple Mode is on:");
   });
 
-  test("never waits on, recovers, or rolls back another setup write", async () => {
+  test("saves nothing beside an unfinished setup, and never recovers or rolls it back", async () => {
     const target = await fixture();
     const marker = join(target.repo, MARKER);
     const changelog = join(target.repo, "CHANGELOG.md");
@@ -684,25 +684,22 @@ describe("apply --communication", () => {
     // held. Recovering it would delete one file and rewrite the other.
     await writeFile(changelog, "# Changelog\n");
     await writeFile(developer, "# Developer Changelog\n\nNewer.\n");
-    const untouched = async (text: string): Promise<void> => {
+    const refused = async (text: string): Promise<void> => {
       await writeFile(marker, text);
-      await rm(target.paths.repository, { force: true });
       const applied = await writeAttempt(target);
-      expect(applied.writes).toEqual([
-        {
-          kind: "communication",
-          path: target.paths.repository,
-          written: true,
-        },
-      ]);
-      // The style was saved, and nothing of the other write was touched.
+      expect(applied.status).toBe("blocked");
+      expect(applied.errors.join("\n")).toContain(
+        `Another setup in ${target.repo} is running or stopped part-way (${MARKER} is there), so no communication setting was saved beside it`
+      );
+      expect(applied.writes).toEqual([]);
+      // Nothing of the other write was touched, and no style was saved for
+      // its roll-back to delete.
       expect(await readFile(marker, "utf8")).toBe(text);
       expect(await readFile(changelog, "utf8")).toBe("# Changelog\n");
       expect(await readFile(developer, "utf8")).toBe(
         "# Developer Changelog\n\nNewer.\n"
       );
       expect((await readdir(target.repo)).sort()).toEqual([
-        ".simple-changelogs-communication.json",
         MARKER,
         "CHANGELOG.md",
         "DEVELOPER_CHANGELOG.md",
@@ -712,18 +709,40 @@ describe("apply --communication", () => {
       "CHANGELOG.md": null,
       "DEVELOPER_CHANGELOG.md": "# Developer Changelog\n\nOlder.\n",
     };
-    // An orphaned transaction, one held by a live process, an empty one,
-    // and a marker nobody can read: the style write treats them all alike.
-    await untouched(
+    // An orphaned transaction, one held by a live process, an empty one, a
+    // marker nobody can read, and an older copy's CMS setup that recorded
+    // the style file itself as "did not exist": all alike.
+    await refused(
       `${JSON.stringify({ pid: DEAD_PID, schemaVersion: 2, targets })}\n`
     );
-    await untouched(
+    await refused(
       `${JSON.stringify({ pid: process.pid, schemaVersion: 2, targets })}\n`
     );
-    await untouched(
+    await refused(
       `${JSON.stringify({ pid: DEAD_PID, schemaVersion: 2, targets: {} })}\n`
     );
-    await untouched("not a marker");
+    await refused("not a marker");
+    await refused(
+      `${JSON.stringify({
+        pid: DEAD_PID,
+        schemaVersion: 2,
+        targets: { ".simple-changelogs-communication.json": null },
+      })}\n`
+    );
+    // The person's own setting lives elsewhere, so it can still be saved,
+    // and once the setup is finished the project's can be too.
+    const personal = await apply(target, {
+      communication: "ultra-simple",
+      confirm: true,
+      scope: "all-projects",
+    });
+    expect(personal.writes).toEqual([
+      { kind: "communication", path: target.paths.personal, written: true },
+    ]);
+    await rm(marker);
+    expect((await writeAttempt(target)).writes).toEqual([
+      { kind: "communication", path: target.paths.repository, written: true },
+    ]);
   });
 
   test("never replaces a sidecar that changed after it was read", async () => {

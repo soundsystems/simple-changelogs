@@ -37,9 +37,10 @@
     with a line break, and a failed or timed-out Git call read as "not a
     repository"), so `projectLocationOf` was removed. The cost is one
     documented difference: Simple Changes reads its file from the primary
-    checkout, so a checkout whose branch lacks the committed file gets the
-    standard voice here. The style grants nothing, so that difference
-    changes wording only.
+    checkout, so a checkout whose branch lacks the committed file falls
+    through to the next setting here, and gets the standard voice only
+    when no usable setting supplies a style. The style grants nothing, so
+    that difference changes wording only.
   - A project save needs `--repo` to be an existing directory
     (`communicationSaveProblem`), since staging would otherwise create a
     mistyped one.
@@ -52,6 +53,16 @@
     layer that is that history, a save for either scope refuses it and
     leaves the history as it is, and a new CMS setup refuses both skills'
     sidecar names (`isCommunicationSidecarName`).
+  - No setting is saved beside an unfinished setup. Matching the paths a
+    save could collide with drew a finding four rounds running (no guard,
+    spelling and scope, an uppercase extension, then a crashed older CMS
+    setup whose marker records the sidecar as "did not exist" and whose
+    recovery would delete a style saved meanwhile), so the round 6 decider
+    replaced more matching with one rule: `communicationSaveProblem`
+    refuses while `.simple-changelogs.setup-transaction.json` exists in
+    the destination's directory, whatever it names, and says to finish
+    that setup first. A marker exists only while a setup writes or after
+    one crashed.
   - `inspect` reports `communication` (`style`, `source`, `path`,
     `errors`). `inspectCommunication` takes one snapshot of each layer,
     uses the first usable one of personal, repository, then `companion`,
@@ -114,7 +125,7 @@
     `parseGuidanceUpdateChanges` reports the same changes for a repository
     recorded below those versions; only the prose is shorter. Sections 25
     and 26, which tests pin, are unchanged. The full distribution is at
-    229,251 bytes, 125 under the budget.
+    229,271 bytes, 105 under the budget.
   - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
     in-sync files where it expected 74, 77, and 76.
 - Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
@@ -129,8 +140,13 @@
   should-fix defects: a history named with an uppercase extension, two
   sentences that overstated who gets the mode, group headings the history
   reader could not parse, and a refusal message that guessed at who added
-  a member.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:04:00-06:00" -->
+  a member. Round 6 found 3 should-fix defects and 1 nit. A fresh
+  claude-opus-5-5 at high effort decided them under the owner's rubric:
+  fix the marker case with the rule above instead of the named patch, fix
+  the suggestion wording and the stale developer sentence, and file the
+  nit (the mode's trigger lines do not repeat that the current request
+  comes first) as soundsystems/simple-changelogs#1.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:17:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching
