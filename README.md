@@ -410,16 +410,20 @@ what happens. Every distribution carries the same rules in
 `references/communication.md`, which also governs how the skill talks in its
 standard voice.
 
+Ask your agent to turn it on, or run the `scripts/setup.ts` bundled with the
+skill your project uses. For the full distribution, from this repository:
+
 ```sh
 bun skills/simple-changelogs/scripts/setup.ts apply \
   --communication ultra-simple --scope repository --confirm --repo .
 ```
 
-That writes one file, `.simple-changelogs-communication.json` beside the
-policy at the `--repo` root, and the helper refuses any option that asks for
-another settings or history change and never recovers an interrupted setup,
-so the mode can never change policy or history. Commit the file and it is
-the project's default; each person's own setting still outranks it. A
+A helper from a distribution your project does not use refuses and writes
+nothing. The command writes one file, `.simple-changelogs-communication.json`
+beside the policy at the `--repo` root, and the helper refuses any option that
+asks for another settings or history change and never recovers an interrupted
+setup, so the mode can never change policy or history. Commit the file and it
+is the project's default; each person's own setting still outranks it. A
 checkout whose branch does not have the file yet falls through to the next
 setting. `--scope all-projects` saves a private setting for you in every
 project, and `--communication standard` turns it off. A project that turned

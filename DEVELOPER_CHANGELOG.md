@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.27.0 - 2026-11-18
+## 0.26.2 - 2026-11-18
 
 - Communication reference (`references/communication.md`,
   soundsystems/simple-changes#35):
@@ -95,7 +95,7 @@
     save with `--repo apps/web` puts one below a monorepo root, before
     counting toward its 400-file cap, and `NON_DESTINATION_FILES`
     gains this skill's, so the destination scan neither lists nor counts
-    them. Copies before 0.27.0 do list
+    them. Copies before 0.26.2 do list
     `.simple-changelogs-communication.json` as a candidate, as copies
     before 0.26.0 did for the authoring sidecar; a project that uses both
     skills can avoid that by saving the mode in Simple Changes only.
@@ -111,11 +111,15 @@
     the install, a `--repo` that is missing or a file, four setup-marker
     states left untouched, refusals, a read-only task, and the command
     line.
-- Guidance and budgets:
+- Guidance, version, and budgets:
   - Guidance stays 26 in all six distributions. A bump would stop the next
     write-capable task in every configured repository with an update
     notice for a mode that is off by default and rules that need no
     decision.
+  - The version is 0.26.2. Family releases are numbered
+    `0.<guidance>.<patch>`, so a release that leaves guidance at 26 is a
+    patch whatever it adds. This entry was drafted as 0.27.0 until round 7
+    of review pointed at that rule.
   - The full distribution's Markdown was 2,392 bytes under its 224 KiB
     budget, and the new reference with its two `SKILL.md` pointers adds
     about 5,800. `references/guidance-updates.md` therefore folds guidance
@@ -125,7 +129,7 @@
     `parseGuidanceUpdateChanges` reports the same changes for a repository
     recorded below those versions; only the prose is shorter. Sections 25
     and 26, which tests pin, are unchanged. The full distribution is at
-    229,271 bytes, 105 under the budget.
+    229,290 bytes, 86 under the budget.
   - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
     in-sync files where it expected 74, 77, and 76.
 - Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
@@ -145,8 +149,12 @@
   fix the marker case with the rule above instead of the named patch, fix
   the suggestion wording and the stale developer sentence, and file the
   nit (the mode's trigger lines do not repeat that the current request
-  comes first) as soundsystems/simple-changelogs#1.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:17:00-06:00" -->
+  comes first) as soundsystems/simple-changelogs#1. Round 7 confirmed
+  those and found 3 should-fix defects outside the code: the version
+  number above, an activation example that only the full distribution's
+  helper accepts, and a one-line result rule that did not keep a
+  distribution's required checklist.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:43:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

@@ -2,25 +2,26 @@
 
 ## Unreleased
 
-## 0.27.0 - 2026-11-18
+## 0.26.2 - 2026-11-18
 
 - **Ultra-Simple Mode**:
   - Every distribution has a new Ultra-Simple Mode for people who want the
     result and not the tooling. The agent uses your words instead of tool
     terms ("what's new" for changelog and release notes, "a fix, something
-    new, a big change" for patch, minor, major), reports a finished task in
-    one line, and asks only when your answer changes what happens. Say
-    "details" for the exact files, versions, and commands.
-  - Turn it on by asking your agent, or with the skill's bundled helper,
-    `bun skills/simple-changelogs/scripts/setup.ts apply --communication
-    ultra-simple --scope repository --confirm --repo .`, then commit the new
+    new, a big change" for patch, minor, major), sums up a finished task in
+    one line beside any checklist your distribution requires, and asks only
+    when your answer changes what happens. Say "details" for the exact
+    files, versions, and commands.
+  - Turn it on by asking your agent, or with the `scripts/setup.ts` bundled
+    with the skill your project uses: `apply --communication ultra-simple
+    --scope repository --confirm --repo .`. Then commit the new
     `.simple-changelogs-communication.json` to make it the project's
     default. `--scope all-projects` saves it privately for you in every
     project, and `--communication standard` turns it off. Your own setting
     outranks the project's, so you can choose the mode for a team and keep
     full detail yourself.
   - One answer covers both skills. A project that turned the mode on in
-    Simple Changes 0.34.0 or later (`.simple-changes-communication.json`)
+    Simple Changes 0.33.1 or later (`.simple-changes-communication.json`)
     gets it here with no file of its own.
   - The mode never changes what is written, who decides versions, or what
     may be published. The command writes only that one file and refuses any
@@ -55,9 +56,9 @@
   - `scripts/setup.ts inspect` now reports `communication`: the style in
     effect, where it came from, and the file that set it.
   - All six distributions stay on guidance 26, so no repository is asked
-    anything by this update. This release is 0.27.0, and its tag is
-    `v0.27.0`.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:17:00-06:00" -->
+    anything by this update. This release is 0.26.2, and its tag is
+    `v0.26.2`.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T22:43:00-06:00" -->
 
 ## 0.26.1 - 2026-10-12
 

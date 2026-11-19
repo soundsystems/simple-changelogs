@@ -71,10 +71,10 @@ stop is never skipped because the mode is on. Still ask, in plain words:
   publishing, unless existing authority covers that exact destination and
   action.
 
-**Results.** One line by default, plus what the hand-off step requires. For
-a problem: what happened, what stayed as it was, and the next useful step,
-with no error text. Never a finished line for unfinished work: notes that
-exist only in the project are written, not published.
+**Results.** One result line by default, plus any checklist and hand-off
+details this distribution requires. For a problem: what happened, what stayed
+as it was, and the next step, with no error text. Never a finished line for
+unfinished work: notes only in the project are written, not published.
 
 - "What's new is updated: `<the customer line>`. Nothing is published yet."
 - "Version `<number>` is written up. It is not published yet."

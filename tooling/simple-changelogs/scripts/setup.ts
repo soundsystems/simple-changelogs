@@ -6032,14 +6032,19 @@ const communicationSaveProblem = async (
   // part-way and will be rolled back by the next one. Whatever it names,
   // nothing is saved next to it: its roll-back restores what it recorded,
   // which can be "this file did not exist".
-  const pending = await lstat(
+  const marker = await lstat(
     join(dirname(path), SETUP_TRANSACTION_FILENAME)
   ).then(
-    () => true,
-    (error: unknown) => errorCode(error) !== "ENOENT"
+    () => "present" as const,
+    (error: unknown) =>
+      errorCode(error) === "ENOENT" ? ("absent" as const) : error
   );
-  if (pending) {
+  if (marker === "present") {
     return `Another setup in ${dirname(path)} is running or stopped part-way (${SETUP_TRANSACTION_FILENAME} is there), so no communication setting was saved beside it. Run that setup again to finish it, then save the setting.`;
+  }
+  if (marker !== "absent") {
+    // Not knowing is not "none": say what failed, and promise no recovery.
+    return `Could not check ${dirname(path)} for an unfinished setup, so no communication setting was saved: ${stringifyError(marker)}`;
   }
   if (isCmsHistory(await cmsHistoryPath(root), path)) {
     return `${path} is this project's CMS history, as ${CMS_POLICY_FILENAME} names it, so no communication setting can be saved there and the history was left as it is. Use --scope ${scope === "repository" ? "all-projects" : "repository"}, or give the history another filename first.`;

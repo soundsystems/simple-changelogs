@@ -86,8 +86,9 @@ describe("communication reference", () => {
       "a version choice set to ask, with a suggestion only when suggestions are on",
       'otherwise without one ("Which version should this be?")',
       "showing notes somewhere new, changing text customers have seen, or publishing, unless existing authority covers that exact destination and action",
-      "One line by default, plus what the hand-off step requires",
-      "Never a finished line for unfinished work: notes that exist only in the project are written, not published",
+      // The short result never replaces a checklist a distribution requires.
+      "One result line by default, plus any checklist and hand-off details this distribution requires",
+      "Never a finished line for unfinished work: notes only in the project are written, not published",
       '"What\'s new is updated: `<the customer line>`. Nothing is published yet."',
       '"Version `<number>` is written up. It is not published yet."',
       // The setting: one file, one transaction, and one place for a project.
