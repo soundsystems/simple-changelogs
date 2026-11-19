@@ -23,10 +23,12 @@
     gets it here with no file of its own.
   - The mode never changes what is written, who decides versions, or what
     may be published. The command writes only that one file and refuses any
-    other option in the same call. A version choice your policy sets to
-    ask, showing notes somewhere new, changing text customers have seen,
-    and publishing without existing permission are still asked, in plain
-    words.
+    option that asks for another settings or history change. It never
+    replaces a setting someone else saved while it ran, and never writes
+    over a CMS history that already has that filename. A version choice
+    your policy sets to ask, showing notes somewhere new, changing text
+    customers have seen, and publishing without existing permission are
+    still asked, in plain words.
 - **Shorter messages, fewer questions**
   - Every distribution now carries `references/communication.md`, which
     sets how the skill talks in every mode. Agents send a message only when
@@ -38,19 +40,19 @@
     answers, no "should I continue?", and nothing twice while nothing has
     changed. A guided setup still asks one question at a time.
   - One open decision no longer holds up the rest. While a version choice
-    waits for you in a write task, the agent still classifies the change,
-    writes the pending entries your distribution keeps, and runs the
-    checks. A read-only or classify request stays read-only while it
-    waits.
+    your policy sets to ask waits for you, the agent still classifies the
+    change, drafts the wording, and runs read-only checks. No release file
+    or version changes until you answer, and a read-only or classify
+    request writes nothing at all.
   - Messages from one agent to another are written as briefs: the goal,
     the exact scope, what is decided, what not to do, and what to return.
 - **Versions and guidance**
   - `scripts/setup.ts inspect` now reports `communication`: the style in
     effect, where it came from, and the file that set it.
   - All six distributions stay on guidance 26, so no repository is asked
-    anything by this update. This release is 0.27.0 and is tagged
+    anything by this update. This release is 0.27.0, and its tag is
     `v0.27.0`.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T17:30:39-06:00" -->
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:27:00-06:00" -->
 
 ## 0.26.1 - 2026-10-12
 

@@ -6,19 +6,17 @@ import {
   mkdtemp,
   readdir,
   readFile,
-  realpath,
   rm,
   stat,
   symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { spawn } from "bun";
 import {
   applySetup,
   inspectRepository,
-  projectLocationOf,
   resolveCommunicationPaths,
   type SetupResult,
   validateCommunication,
@@ -51,7 +49,7 @@ const sidecar = (style: string, extra: Record<string, unknown> = {}): string =>
 
 interface Fixture {
   config: string;
-  paths: Awaited<ReturnType<typeof resolveCommunicationPaths>>;
+  paths: ReturnType<typeof resolveCommunicationPaths>;
   repo: string;
 }
 
@@ -62,37 +60,10 @@ const fixture = async (): Promise<Fixture> => {
   ]);
   return {
     config,
-    paths: await resolveCommunicationPaths(repo, config),
+    paths: resolveCommunicationPaths(repo, config),
     repo,
   };
 };
-
-const git = async (cwd: string, ...args: string[]): Promise<void> => {
-  const child = spawn({
-    cmd: ["git", "-C", cwd, ...args],
-    stderr: "pipe",
-    stdout: "pipe",
-  });
-  if ((await child.exited) !== 0) {
-    throw new Error(
-      `git ${args.join(" ")} failed: ${await new Response(child.stderr).text()}`
-    );
-  }
-};
-
-const commitEmpty = (repo: string): Promise<void> =>
-  git(
-    repo,
-    "-c",
-    "user.name=Tests",
-    "-c",
-    "user.email=tests@example.invalid",
-    "commit",
-    "-q",
-    "--allow-empty",
-    "-m",
-    "Initial"
-  );
 
 const MARKER = ".simple-changelogs.setup-transaction.json";
 // No process holds this ID, so a marker carrying it is an orphan.
@@ -232,169 +203,55 @@ describe("communication style resolution", () => {
     expect(communication.errors[1]).toContain("must be a JSON object");
   });
 
-  test("reads both project files from the primary checkout, as Simple Changes does", async () => {
-    const config = await temporaryDirectory("config");
-    const primary = await realpath(await temporaryDirectory("primary"));
-    await git(primary, "init", "-q", "-b", "main");
-    await commitEmpty(primary);
-    await mkdir(join(primary, "apps", "web"), { recursive: true });
-    const linked = join(await temporaryDirectory("linked"), "tree");
-    await git(primary, "worktree", "add", "-q", "-b", "feature", linked);
-    // The settings were added after the worktree was created, and are not
-    // committed: only the primary checkout holds them.
-    await writeFile(
-      join(primary, ".simple-changes-communication.json"),
-      sidecar("ultra-simple")
-    );
-    const expected = {
-      companion: join(primary, ".simple-changes-communication.json"),
-      location: { kind: "checkout", path: primary },
-      repository: join(primary, ".simple-changelogs-communication.json"),
-    };
-    // A linked worktree and a subdirectory both resolve to the same place.
-    for (const repo of [linked, join(primary, "apps", "web"), primary]) {
-      // biome-ignore lint/performance/noAwaitInLoops: three independent reads, checked one at a time for a clear failure.
-      expect(await resolveCommunicationPaths(repo, config)).toMatchObject(
-        expected
-      );
-    }
-    const fromLinked = await inspectRepository({
-      configDirectory: config,
-      distribution: "web",
-      environment: {},
-      repo: linked,
-      taskMode: "read",
-    });
-    expect(fromLinked.communication).toMatchObject({
-      path: expected.companion,
+  test("reads both project files at the --repo root, beside the policy", async () => {
+    // Two checkouts of one project. Only the first holds the settings, as
+    // when they were saved there and not yet committed.
+    const first = await fixture();
+    const second = await fixture();
+    await writeFile(first.paths.companion, sidecar("ultra-simple"));
+    expect((await inspect(first)).communication).toMatchObject({
+      path: join(first.repo, ".simple-changes-communication.json"),
       source: "companion",
       style: "ultra-simple",
     });
-
-    // A repository-scope write from the linked worktree lands there too.
-    const applied = await applySetup({
-      communication: "standard",
-      configDirectory: config,
-      confirm: true,
-      distribution: "web",
-      environment: {},
-      repo: linked,
-      scope: "repository",
-      taskMode: "write",
-    });
-    expect(applied.writes).toEqual([
-      { kind: "communication", path: expected.repository, written: true },
-    ]);
-    expect(applied.communication).toMatchObject({
-      source: "repository",
+    // The other checkout lacks the file, so it keeps the standard voice.
+    expect((await inspect(second)).communication).toEqual({
+      errors: [],
+      path: null,
+      source: "default",
       style: "standard",
     });
-    expect(await readdir(linked)).toEqual([".git"]);
-  });
-
-  test("finds the first checkout of a bare repository, and refuses a project write without one", async () => {
-    const config = await temporaryDirectory("config");
-    const bare = join(
-      await realpath(await temporaryDirectory("bare")),
-      "p.git"
-    );
-    await git(dirname(bare), "init", "-q", "--bare", "-b", "main", bare);
-    // No checkout exists yet: there is nowhere to keep a project setting.
-    expect(await projectLocationOf(bare)).toEqual({ kind: "bare", path: bare });
-    const refused = await applySetup({
+    // A project save lands in the checkout it was asked about, and only there.
+    const applied = await apply(second, {
       communication: "ultra-simple",
-      configDirectory: config,
       confirm: true,
-      distribution: "web",
-      environment: {},
-      repo: bare,
       scope: "repository",
-      taskMode: "write",
     });
-    expect(refused.status).toBe("blocked");
-    expect(refused.errors.join("\n")).toContain(
-      "is a bare repository with no checkout to hold a project setting"
-    );
-    expect(await readdir(bare)).not.toContain(
-      ".simple-changelogs-communication.json"
-    );
-
-    const seed = await realpath(await temporaryDirectory("seed"));
-    await git(seed, "init", "-q", "-b", "main");
-    await commitEmpty(seed);
-    await git(seed, "push", "-q", bare, "main");
-    const first = join(await realpath(await temporaryDirectory("one")), "tree");
-    const second = join(
-      await realpath(await temporaryDirectory("two")),
-      "tree"
-    );
-    await git(bare, "worktree", "add", "-q", first, "main");
-    await git(bare, "worktree", "add", "-q", "-b", "other", second, "main");
-    // Both worktrees, and the bare repository itself, agree on one place.
-    for (const repo of [first, second, bare]) {
-      // biome-ignore lint/performance/noAwaitInLoops: three independent reads, checked one at a time for a clear failure.
-      expect(await projectLocationOf(repo)).toEqual({
-        kind: "checkout",
-        path: first,
-      });
-    }
+    expect(applied.writes).toEqual([
+      { kind: "communication", path: second.paths.repository, written: true },
+    ]);
+    expect(await readdir(first.repo)).toEqual([
+      ".simple-changes-communication.json",
+    ]);
   });
 
-  test("a directory Git does not know is its own project location", async () => {
-    const plain = await realpath(await temporaryDirectory("plain"));
-    expect(await projectLocationOf(plain)).toEqual({
-      kind: "directory",
-      path: plain,
+  test("a CMS history that has the sidecar's name is never read as a setting", async () => {
+    const target = await fixture();
+    const history = `${JSON.stringify({ entries: [], schemaVersion: 1 })}\n`;
+    await writeFile(
+      join(target.repo, ".simple-changelogs-cms.json"),
+      JSON.stringify({ changelogPath: ".simple-changelogs-communication.json" })
+    );
+    await writeFile(target.paths.repository, history);
+    await writeFile(target.paths.companion, sidecar("ultra-simple"));
+    // The history is no broken setting: nothing is reported, and the next
+    // layer decides.
+    expect((await inspect(target)).communication).toEqual({
+      errors: [],
+      path: target.paths.companion,
+      source: "companion",
+      style: "ultra-simple",
     });
-  });
-
-  test("ignores another repository's Git environment when locating the project", async () => {
-    const config = await temporaryDirectory("config");
-    const other = await realpath(await temporaryDirectory("other"));
-    const project = await realpath(await temporaryDirectory("project"));
-    await git(other, "init", "-q", "-b", "main");
-    await commitEmpty(other);
-    await git(project, "init", "-q", "-b", "main");
-    await commitEmpty(project);
-    // A hook running for `other` calls the helper for `project`.
-    const saved = { dir: process.env.GIT_DIR, tree: process.env.GIT_WORK_TREE };
-    process.env.GIT_DIR = join(other, ".git");
-    process.env.GIT_WORK_TREE = other;
-    try {
-      expect(await projectLocationOf(project)).toEqual({
-        kind: "checkout",
-        path: project,
-      });
-      const applied = await applySetup({
-        communication: "ultra-simple",
-        configDirectory: config,
-        confirm: true,
-        distribution: "web",
-        environment: {},
-        repo: project,
-        scope: "repository",
-        taskMode: "write",
-      });
-      expect(applied.writes).toEqual([
-        {
-          kind: "communication",
-          path: join(project, ".simple-changelogs-communication.json"),
-          written: true,
-        },
-      ]);
-    } finally {
-      for (const [name, value] of [
-        ["GIT_DIR", saved.dir],
-        ["GIT_WORK_TREE", saved.tree],
-      ] as const) {
-        if (value === undefined) {
-          delete process.env[name];
-        } else {
-          process.env[name] = value;
-        }
-      }
-    }
-    expect(await readdir(other)).toEqual([".git"]);
   });
 
   test("the capped file scan never counts a communication sidecar", async () => {
@@ -585,6 +442,150 @@ describe("apply --communication", () => {
     });
     expect(linked.status).toBe("blocked");
     expect(await readFile(elsewhere, "utf8")).toBe(sidecar("standard"));
+  });
+
+  test("keeps members a later release added when the style changes", async () => {
+    const target = await fixture();
+    await writeFile(
+      target.paths.repository,
+      sidecar("standard", { later: { kept: true } })
+    );
+    const applied = await writeAttempt(target);
+    expect(applied.writes).toEqual([
+      { kind: "communication", path: target.paths.repository, written: true },
+    ]);
+    expect(
+      JSON.parse(await readFile(target.paths.repository, "utf8")) as unknown
+    ).toEqual({
+      later: { kept: true },
+      schemaVersion: 1,
+      style: "ultra-simple",
+    });
+  });
+
+  test("of two first saves, one wins and the other is told", async () => {
+    const target = await fixture();
+    // Nothing is saved when the writer looks. Another save then lands before
+    // this one installs its file: staging has just set the new file's mode,
+    // the last step before the install.
+    const other = sidecar("standard");
+    const chmod = spyOn(fsPromises, "chmod").mockImplementationOnce(
+      async (...args: Parameters<typeof fsPromises.chmod>) => {
+        chmod.mockRestore();
+        await writeFile(target.paths.repository, other);
+        await fsPromises.chmod(...args);
+      }
+    );
+    try {
+      const refused = await writeAttempt(target);
+      expect(refused.status).toBe("blocked");
+      expect(refused.errors.join("\n")).toContain(
+        "while this one was being written; nothing was replaced"
+      );
+      expect(refused.writes).toEqual([]);
+    } finally {
+      chmod.mockRestore();
+    }
+    expect(await readFile(target.paths.repository, "utf8")).toBe(other);
+    // No staged file is left beside it.
+    expect(await readdir(target.repo)).toEqual([
+      ".simple-changelogs-communication.json",
+    ]);
+  });
+
+  test("saves no project setting where --repo is not an existing directory", async () => {
+    const target = await fixture();
+    const missing = join(target.repo, "mistyped");
+    const refused = await apply(
+      { ...target, repo: missing },
+      { communication: "ultra-simple", confirm: true, scope: "repository" }
+    );
+    expect(refused.status).toBe("blocked");
+    expect(refused.errors.join("\n")).toContain(
+      "is not an existing directory, so no project setting was saved"
+    );
+    expect(await readdir(target.repo)).toEqual([]);
+    // A file is not a directory either.
+    const file = join(target.repo, "notes.txt");
+    await writeFile(file, "notes\n");
+    const onFile = await apply(
+      { ...target, repo: file },
+      { communication: "ultra-simple", confirm: true, scope: "repository" }
+    );
+    expect(onFile.status).toBe("blocked");
+    expect(await readFile(file, "utf8")).toBe("notes\n");
+  });
+
+  test("never saves a setting over the history a CMS policy names", async () => {
+    const history = `${JSON.stringify({ entries: [], schemaVersion: 1 })}\n`;
+    // The history exists, or the policy names it before it was created:
+    // either way that filename is the history's.
+    for (const exists of [true, false]) {
+      // biome-ignore lint/performance/noAwaitInLoops: two independent fixtures, checked one at a time for a clear failure.
+      const target = await fixture();
+      await writeFile(
+        join(target.repo, ".simple-changelogs-cms.json"),
+        JSON.stringify({
+          changelogPath: ".simple-changelogs-communication.json",
+        })
+      );
+      if (exists) {
+        await writeFile(target.paths.repository, history);
+      }
+      const refused = await writeAttempt(target);
+      expect(refused.status).toBe("blocked");
+      expect(refused.errors.join("\n")).toContain(
+        `${target.paths.repository} is this project's CMS history, as .simple-changelogs-cms.json names it`
+      );
+      expect(refused.writes).toEqual([]);
+      expect((await readdir(target.repo)).sort()).toEqual(
+        exists
+          ? [
+              ".simple-changelogs-cms.json",
+              ".simple-changelogs-communication.json",
+            ]
+          : [".simple-changelogs-cms.json"]
+      );
+      if (exists) {
+        expect(await readFile(target.paths.repository, "utf8")).toBe(history);
+      }
+      // The person's own setting is still theirs to save.
+      const personal = await apply(target, {
+        communication: "ultra-simple",
+        confirm: true,
+        scope: "all-projects",
+      });
+      expect(personal.writes).toEqual([
+        { kind: "communication", path: target.paths.personal, written: true },
+      ]);
+    }
+  });
+
+  test("a new CMS setup cannot name its history after a communication sidecar", async () => {
+    const target = await fixture();
+    for (const name of [
+      ".simple-changelogs-communication.json",
+      ".simple-changes-communication.json",
+    ]) {
+      // biome-ignore lint/performance/noAwaitInLoops: the cases share one repository, so they run in order.
+      const refused = await applySetup({
+        backfillStatus: "not-applicable",
+        cmsAuthProven: true,
+        cmsChangelog: name,
+        cmsRoute: "/admin/changelog",
+        cmsSurfaceProven: true,
+        configDirectory: target.config,
+        confirm: true,
+        distribution: "cms",
+        repo: target.repo,
+        scope: "repository",
+      });
+      expect(refused.status).toBe("blocked");
+      expect(refused.errors.join("\n")).toContain(
+        `CMS changelog cannot be named ${name}`
+      );
+    }
+    expect(await readdir(target.repo)).toEqual([]);
   });
 
   test("says what was saved and what still applies to this person", async () => {

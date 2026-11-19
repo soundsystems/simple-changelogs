@@ -53,8 +53,9 @@ describe("communication reference", () => {
       "A decision one item is waiting on blocks that item and nothing else",
       // Keeping work moving never widens what the current task may write.
       "keep going with what the current task already allows",
-      "the pending entries and histories this distribution keeps",
-      "In a read-only task or a delegated `classify`, it is analysis and read-only checks, and nothing is written",
+      // A version choice set to ask still gates every release file.
+      "While a version choice set to ask is open, that is classifying the change, drafting the wording, and read-only checks: no release file or version changes until the owner answers",
+      "A read-only task or a delegated `classify` writes nothing at all",
       "End a turn on a question only when nothing else can proceed",
       // True in every distribution, the CMS-only one included.
       "A delegated request still returns exactly the statuses `references/release-handoff.md` defines for this distribution; waiting on the owner never changes them",
@@ -87,9 +88,9 @@ describe("communication reference", () => {
       '"What\'s new is updated: `<the customer line>`. Nothing is published yet."',
       '"Version `<number>` is written up. It is not published yet."',
       // The setting: one file, one transaction, and one place for a project.
-      "writes one file, `.simple-changelogs-communication.json` in the project's main checkout, refuses any other option in the same command, never replaces a file it cannot read, and never recovers an interrupted setup",
+      "writes one file, `.simple-changelogs-communication.json` beside the policy, refuses an option that asks for another settings or history change, and never replaces a file it cannot read or recovers an interrupted setup",
       "the project's Simple Changes setting (`.simple-changes-communication.json`) when this skill has none",
-      "Both project files are read from the main checkout, as Simple Changes reads them",
+      "Project files are read at the `--repo` root like the policy, so a checkout whose branch lacks the committed file uses the standard voice",
       "The personal setting outranks the project's because the mode grants nothing",
     ]) {
       expect(canonical).toContain(rule);

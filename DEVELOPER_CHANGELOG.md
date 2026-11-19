@@ -29,16 +29,27 @@
     unknown keys. `validateCommunication` reads only those two members and
     ignores any other, so a later release can add one.
   - Both project files, this skill's and Simple Changes'
-    `.simple-changes-communication.json`, are read and written in the
-    project location `projectLocationOf` finds as Simple Changes finds its
-    primary checkout: the first checkout `git worktree list --porcelain`
-    names that is not bare. A linked worktree, a subdirectory, and the
-    worktrees of a bare repository therefore agree with each other and
-    with Simple Changes. A directory Git does not know is its own
-    location, and a bare repository with no checkout refuses a
-    project-scope write. Discovery runs Git without the repository-local
-    variables `git rev-parse --local-env-vars` lists, so a hook running
-    for one repository cannot redirect a write meant for another.
+    `.simple-changes-communication.json`, are read and written at the
+    `--repo` root, beside the policy and the authoring sidecar and found
+    the same way. No Git is asked. Rounds 1 to 3 of review each found a
+    defect in locating Simple Changes' primary checkout from here (a
+    hook's Git environment, then a missing or prunable worktree, a path
+    with a line break, and a failed or timed-out Git call read as "not a
+    repository"), so `projectLocationOf` was removed. The cost is one
+    documented difference: Simple Changes reads its file from the primary
+    checkout, so a checkout whose branch lacks the committed file gets the
+    standard voice here. The style grants nothing, so that difference
+    changes wording only.
+  - A project save needs `--repo` to be an existing directory
+    (`projectSettingProblem`), since staging would otherwise create a
+    mistyped one.
+  - A CMS history can have the sidecar's name: CMS setup accepted any
+    repository-root JSON filename. `cmsHistoryPath` reads the stored CMS
+    policy leniently, so a policy that fails validation still protects the
+    file it names. `inspectCommunication` drops a layer whose path is that
+    history, the project save refuses it and leaves the history as it is,
+    and a new CMS setup refuses both skills' sidecar names
+    (`COMMUNICATION_SIDECARS`).
   - `inspect` reports `communication` (`style`, `source`, `path`,
     `errors`). `inspectCommunication` takes one snapshot of each layer,
     uses the first usable one of personal, repository, then `companion`,
@@ -55,10 +66,14 @@
     both found that sharing `acquireTransaction` let a style-only write
     recover, and so roll back, an interrupted ordinary setup. No other
     setup write touches this file, so `writeCommunicationFile` only stages
-    and renames it: one `snapshotCommunication` read is validated, an
-    unchanged style writes nothing (which keeps members a later release
-    added), and the rename happens only if the file's bytes are still that
-    snapshot's. A file it cannot read is never replaced.
+    and installs it. One `snapshotCommunication` read is validated, and an
+    unchanged style writes nothing. A file that exists is replaced only if
+    its bytes are still that snapshot's, and keeps every member the
+    snapshot read, so a later release's additions survive a style change.
+    Where no file exists, `installNewCommunication` hard-links the staged
+    file into place, which fails with `EEXIST` when another save got there
+    first, where a rename would have replaced it unseen. A file it cannot
+    read is never replaced.
   - `walkTextFiles` skips both skills' sidecars at the repository root
     before counting toward its 400-file cap, and `NON_DESTINATION_FILES`
     gains this skill's, so the destination scan neither lists nor counts
@@ -68,12 +83,14 @@
     skills can avoid that by saving the mode in Simple Changes only.
   - `setup-result.schema.json` requires `communication` and adds the
     `communication` write kind. New `setup-communication.check.ts` covers
-    resolution across the layers, unusable files, linked, bare, and plain
-    layouts, a foreign Git environment, the capped scan with exactly 400
-    files, the apply transaction (the sidecar is the only path created and
-    inspection is otherwise identical), a sidecar edited between the read
-    and the rename, four setup-marker states left untouched, refusals, a
-    read-only task, and the command line.
+    resolution across the layers, unusable files, two checkouts of which
+    one holds the files, a CMS history under the sidecar's name (read and
+    write), the capped scan with exactly 400 files, the apply transaction
+    (the sidecar is the only path created and inspection is otherwise
+    identical), kept members, a sidecar edited between the read and the
+    rename, a second first save landing before the install, a `--repo`
+    that is missing or a file, four setup-marker states left untouched,
+    refusals, a read-only task, and the command line.
 - Guidance and budgets:
   - Guidance stays 26 in all six distributions. A bump would stop the next
     write-capable task in every configured repository with an update
@@ -88,14 +105,16 @@
     `parseGuidanceUpdateChanges` reports the same changes for a repository
     recorded below those versions; only the prose is shorter. Sections 25
     and 26, which tests pin, are unchanged. The full distribution is at
-    229,194 bytes, 182 under the budget.
+    229,209 bytes, 167 under the budget.
   - `sync-distros.check.ts` expects the five new copies: 79, 82, and 81
     in-sync files where it expected 74, 77, and 76.
 - Review: gpt-6.2-astra at high effort. Round 1 found 2 blocking and 8
   should-fix defects. Round 2 found three round 1 items not fully fixed,
-  one of them still blocking, and 4 new should-fix defects. Each fix is
-  described above.
-<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T17:30:39-06:00" -->
+  one of them still blocking, and 4 new should-fix defects. Round 3, over
+  the full range, found 6 should-fix defects, three of them in Git
+  discovery for the third round running, so discovery was removed as
+  described above instead of patched again.
+<!-- simple-changelogs-signature agent="Claude Fable 5.2 xhigh" at="2026-11-18T21:27:00-06:00" -->
 - skills.sh listing (<https://skills.sh/soundsystems/simple-changelogs>):
   - The README gains a "What it writes" section after the introduction: one
     invented release as a `CHANGELOG.md` entry and the matching

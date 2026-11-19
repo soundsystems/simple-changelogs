@@ -22,14 +22,14 @@ decisions together; a guided setup still asks one question at a time.
 
 A decision one item is waiting on blocks that item and nothing else. Ask as
 soon as the question is known and keep going with what the current task
-already allows. In a write task with a version choice open, that is the
-classification, the pending entries and histories this distribution keeps,
-and the checks. In a read-only task or a delegated `classify`, it is
-analysis and read-only checks, and nothing is written. End a turn on a
-question only when nothing else can proceed, and when the answer arrives,
-finish that item only. A delegated request still returns exactly the
-statuses `references/release-handoff.md` defines for this distribution;
-waiting on the owner never changes them.
+already allows. While a version choice set to ask is open, that is
+classifying the change, drafting the wording, and read-only checks: no
+release file or version changes until the owner answers. A read-only task
+or a delegated `classify` writes nothing at all. End a turn on a question
+only when nothing else can proceed, and when the answer arrives, finish
+that item only. A delegated request still returns exactly the statuses
+`references/release-handoff.md` defines for this distribution; waiting on
+the owner never changes them.
 
 ## Other agents
 
@@ -85,16 +85,16 @@ exist only in the project are written, not published.
 
 Run this distribution's bundled `scripts/setup.ts` with `apply --communication
 ultra-simple --scope repository --confirm --repo .` to save the mode. It
-writes one file, `.simple-changelogs-communication.json` in the project's
-main checkout, refuses any other option in the same command, never replaces
-a file it cannot read, and never recovers an interrupted setup. Commit it and
-everyone in the project gets the mode. `--scope all-projects` saves a private
-`communication.json` for you, and `--communication standard` turns it off.
+writes one file, `.simple-changelogs-communication.json` beside the policy,
+refuses an option that asks for another settings or history change, and never
+replaces a file it cannot read or recovers an interrupted setup. Commit it
+and everyone in the project gets the mode. `--scope all-projects` saves a
+private `communication.json` for you; `--communication standard` turns it off.
 
 Highest first: what the person says now, their personal setting, the
 project's, the project's Simple Changes setting
 (`.simple-changes-communication.json`) when this skill has none, then
-standard. Both project files are read from the main checkout, as Simple
-Changes reads them. The personal setting outranks the project's because the
-mode grants nothing. `inspect` reports the style in effect, its source, and
-every unusable file under `communication`.
+standard. Project files are read at the `--repo` root like the policy, so a
+checkout whose branch lacks the committed file uses the standard voice. The
+personal setting outranks the project's because the mode grants nothing.
+`inspect` reports the style, its source, and every unusable file.
