@@ -420,8 +420,8 @@ bun skills/simple-changelogs/scripts/setup.ts apply \
 ```
 
 If inspection reports a distribution conflict, the helper refuses and writes
-nothing. Otherwise the command writes one file,
-`.simple-changelogs-communication.json` beside the policy at the `--repo`
+nothing. The only file this command can write is
+`.simple-changelogs-communication.json`, beside the policy at the `--repo`
 root, and the helper refuses any option that asks for another settings or
 history change and never recovers an interrupted setup, so the mode can never
 change policy or history. Commit the file and it is the project's default;
